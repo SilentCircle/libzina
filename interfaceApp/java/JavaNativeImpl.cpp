@@ -90,7 +90,7 @@ static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* en
     msgIds[0] = 4711;
 }
 
-static void recieveData(const std::string msgFileName)
+static void reciveData(const std::string msgFileName)
 {
     uint8_t msgData[2000];
     FILE* msgFile = fopen(msgFileName.c_str(), "r");
@@ -268,6 +268,7 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std:
 /*
  * HTTP request helper callback for provisioning etc.
  */
+#if defined JAVA_HELPER || defined UNITTESTS
 int32_t httpHelper(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response)
 {
     if (axolotlCallbackObject == NULL)
@@ -309,6 +310,29 @@ int32_t httpHelper(const std::string& requestUri, const std::string& method, con
 
     return result;
 }
+#else
+static int32_t httpHelper(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response)
+{
+
+    char* t_send_http_json(const char *url, const char *meth,  char *bufResp, int iMaxLen, int &iRespContentLen, const char *pContent);
+
+    int iSizeOfRet = 4 * 1024;
+    char *retBuf = new char [iSizeOfRet];
+    int iContentLen = 0;
+
+    int code = 0;
+    char *content = t_send_http_json (requestUri.c_str(), method.c_str(), retBuf, iSizeOfRet - 1, iContentLen, requestData.c_str());
+
+    if(content && iContentLen > 0 && response)
+        response->assign((const char*)content, iContentLen);
+
+    delete retBuf;
+
+    if(iContentLen < 1)
+        return -1;
+   return 200;
+}
+#endif
 
 #ifndef EMBEDDED
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
@@ -383,7 +407,11 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyt
 #ifdef UNITTESTS
     sipTransport->setSendDataFunction(sendDataFuncTesting);
 #elif defined (EMBEDDED)
-#warning "***** Set SIP send data function to function provided by Janis' SIP handler, set sipTransport as callback to Janis' functions"
+    // Functions defined in t_a_main module of silentphone library, this sends the data
+    // via SIP message
+    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+
+    sipTransport->setSendDataFunction(g_sendDataFuncAxo);
 #else
 #error "***** Missing initialization."
 #endif
@@ -409,7 +437,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyt
     const char* db = (const char *)env->GetStringUTFChars(dbName, 0);
     store->openStore(std::string (db));
     env->ReleaseStringUTFChars(dbName, db);
-    
+
     AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
     if (ownAxoConv == NULL) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
         ownAxoConv = new AxoConversation(name, name, string());
@@ -573,7 +601,7 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     }
 
     if (strcmp("read", cmd) == 0) {
-        recieveData(dataContainer);
+        reciveData(dataContainer);
     }
 
     env->ReleaseStringUTFChars(command, cmd);
