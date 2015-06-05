@@ -81,7 +81,6 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
     std::list<std::string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
     int32_t numDevices = devices->size();
 
-    cerr << "Devices: " << numDevices << endl;
     if (numDevices == 0) {
         std::vector<std::pair<std::string, std::string> >* msgPairs = sendMessagePreKeys(messageDescriptor, attachementDescriptor, messageAttributes);
         if (msgPairs == NULL) {
@@ -117,7 +116,6 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
          {
              "name":           <string>         # sender's name
              "scClientDevId":  <string>         # sender's long device id
-             "deviceId":       <int32_t>        # optional, TextSecure device id
              "supplement":     <string>         # suplementary data, encrypted, B64
              "message":        <string>         # message, encrypted, B64
          }

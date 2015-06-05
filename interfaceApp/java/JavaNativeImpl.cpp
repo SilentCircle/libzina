@@ -603,6 +603,11 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     if (strcmp("read", cmd) == 0) {
         reciveData(dataContainer);
     }
+    
+    if (strcmp("resetaxodb", cmd) == 0) {
+        SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+        store->resetStore();
+    }
 
     env->ReleaseStringUTFChars(command, cmd);
     return result;

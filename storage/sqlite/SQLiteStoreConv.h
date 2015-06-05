@@ -143,6 +143,11 @@ public:
 
     void removePreKey(int32_t preKeyId);
 
+    /*
+     * @brief For use for debugging and development only
+     */
+    int32_t resetStore() { return createTables(); }
+
 private:
     SQLiteStoreConv();
     ~SQLiteStoreConv();

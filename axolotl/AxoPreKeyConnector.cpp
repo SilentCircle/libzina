@@ -93,8 +93,8 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     conv->setDHIr(B);
     conv->setDHIs(A);
 //    cerr << "Remote party '" << user << "' takes 'Alice' role" << endl;
-    conv->setDHRr(B0);     // Bob's B0 public part
-    conv->setA0(A0);
+    conv->setDHRr(B0);              // Bob's B0 public part
+    conv->setA0(A0);                // Alice's generated pre-key.
     conv->setRK(root);
     conv->setCKr(chain);
     conv->setPreKeyId(bobPreKeyId);
@@ -137,7 +137,7 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation& conv, int32_t 
     EcCurve::calculateAgreement(*B0, A->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength, EcCurveTypes::Curve25519KeyLength);
     EcCurve::calculateAgreement(*B0, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
     string master((const char*)masterSecret, EcCurveTypes::Curve25519KeyLength*3);
-
+    delete B0;
 //    hexdump("master Bob", master);
 
     // derive root and chain key
@@ -148,8 +148,9 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation& conv, int32_t 
     memset_volatile((void*)master.data(), 0, master.size());
 
 //    cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
-    conv.setDHRs(A0);  // Actually Bob's pre-key (B0) - because of the optimized pre-key handling
-    conv.setDHIs(A);
+    conv.setDHRs(A0);              // Actually Bob's pre-key - because of the optimized pre-key handling
+    conv.setDHIs(A);               // Bob's (own) identity keys
+    conv.setDHIr(B);               // Alice's (remote) identity key
     conv.setRK(root);
     conv.setCKs(chain);
     conv.setRatchetFlag(false);
