@@ -316,12 +316,19 @@ static int32_t httpHelper(const std::string& requestUri, const std::string& meth
 
     char* t_send_http_json(const char *url, const char *meth,  char *bufResp, int iMaxLen, int &iRespContentLen, const char *pContent);
 
+    Log("httpHelper request, method: '%s', url '%s'", method.c_str(), requestUri.c_str());
+    if (requestData.size() > 0) {
+        Log("httpHelper request, data: '%s'", requestData.c_str());
+    }
+
     int iSizeOfRet = 4 * 1024;
     char *retBuf = new char [iSizeOfRet];
     int iContentLen = 0;
 
     int code = 0;
     char *content = t_send_http_json (requestUri.c_str(), method.c_str(), retBuf, iSizeOfRet - 1, iContentLen, requestData.c_str());
+
+    Log("httpHelper response data: '%s'", content ? content : "No response data");
 
     if(content && iContentLen > 0 && response)
         response->assign((const char*)content, iContentLen);
@@ -410,8 +417,10 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyt
     // Functions defined in t_a_main module of silentphone library, this sends the data
     // via SIP message
     void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+    void t_setAxoTransport(Transport *transport);
 
     sipTransport->setSendDataFunction(g_sendDataFuncAxo);
+    t_setAxoTransport(sipTransport);
 #else
 #error "***** Missing initialization."
 #endif
