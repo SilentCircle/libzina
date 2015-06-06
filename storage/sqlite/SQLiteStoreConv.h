@@ -12,7 +12,11 @@
 #include <stdint.h>
 #include <list>
 
+#ifdef ANDROID
+#include "clients/tivi/android/jni/sqlite3/sqlite3.h"
+#else
 #include <sqlite3.h>
+#endif
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
