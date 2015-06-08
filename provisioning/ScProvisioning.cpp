@@ -189,7 +189,7 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
         return NULL;
     }
     int32_t numIds = cJSON_GetArraySize(devIds);
-    for (int32_t i; i < numIds; i++) {
+    for (int32_t i = 0; i < numIds; i++) {
         std::string id(cJSON_GetArrayItem(devIds, i)->valuestring);
         deviceIds->push_back(id);
     }
