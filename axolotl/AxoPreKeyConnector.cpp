@@ -15,6 +15,9 @@
 void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, int32_t requested);
 
 using namespace axolotl;
+
+void Log(const char* format, ...);
+
 AxoPreKeyConnector::AxoPreKeyConnector()
 {
 
@@ -116,8 +119,17 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 */
 int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation& conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
 {
+    if (!conv.getRK().empty())
+        return OK;
+
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     string* preKeyData = store->loadPreKey(bobPreKeyId);
+    Log("Got prekey id: %d, data: %p", bobPreKeyId, preKeyData);
+    if (preKeyData == NULL) {
+        Log("code: %d, info: %s", store->getSqlCode(), store->getLastError());
+        store->dumpPreKeys();
+        return -1;
+    }
     store->removePreKey(bobPreKeyId);
 
 //     cerr << "Load local of: " << conv.getLocalUser() << ", sender: " << conv.getPartner().getName() << endl;

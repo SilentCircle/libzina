@@ -52,6 +52,8 @@ public:
 
     int32_t registerAxolotlDevice(std::string* result);
 
+    int32_t newPreKeys(int32_t number);
+
     /**
      * @brief Return the stored error code.
      * 

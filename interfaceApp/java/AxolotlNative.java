@@ -106,6 +106,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native byte[] registerAxolotlDevice(int[] resultCode);
 
     /**
+     * Generate and register a set of new pre-keys.
+     * 
+     * @return Result of the register new pre-key request, usually a HTTP code (200, 404, etc)
+     */
+    public static native int newPreKeys(int number);
+
+    /**
      * Return the stored error code.
      * 
      * Functions of this implementation store error code in case they detect

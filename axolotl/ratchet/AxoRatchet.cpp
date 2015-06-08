@@ -38,6 +38,9 @@ static void hexdump(const char* title, const std::string& in)
 #endif
 
 using namespace axolotl;
+
+void Log(const char* format, ...);
+
 AxoRatchet::AxoRatchet()
 {
 
@@ -382,6 +385,8 @@ string* AxoRatchet::decrypt(AxoConversation& conv, const string& wire, const str
         int32_t result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
         delete aliceId;
         delete alicePreKey;
+        if (result < 0)
+            return NULL;
     }
     string encrypted((const char*)msgStruct.encryptedMsg, msgStruct.encryptedMsgLen);
     string* decrypted = new string();

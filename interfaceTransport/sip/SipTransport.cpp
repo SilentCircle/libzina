@@ -3,6 +3,8 @@
 
 using namespace axolotl;
 
+void Log(const char* format, ...);
+
 std::vector< int64_t >* SipTransport::sendAxoMessage( const std::string& recipient, std::vector< std::pair< std::string, std::string > >* msgPairs )
 {
     int32_t numPairs = msgPairs->size();
@@ -49,7 +51,9 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length)
 {
     std::string info;
-    if (data != NULL)
-        info.assign((const char*)data, length);
+    if (data != NULL) {
+        Log("state report data: %p, length: %d", data, length);
+        // info.assign((const char*)data, 200);
+    }
     appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
 }

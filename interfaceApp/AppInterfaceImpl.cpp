@@ -26,6 +26,8 @@ using namespace axolotl;
 
 static std::string Empty;
 
+void Log(const char* format, ...);
+
 AppInterfaceImpl::AppInterfaceImpl(const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId,
                                  RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback):
                  AppInterface(receiveCallback, stateReportCallback), tempBuffer_(NULL), tempBufferSize_(0),
@@ -198,11 +200,13 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
 
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
+    Log("++++ Conversation: %p", axoConv);
     // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills
     // in the other data based on the received message.
     if (axoConv == NULL) {
         axoConv = new AxoConversation(ownUser_, sender, senderScClientDevId);
     }
+    Log("++++ Conversation partner: %s", axoConv->getPartner().getName().c_str());
     std::string supplementsPlain;
     std::string* messagePlain;
     messagePlain = AxoRatchet::decrypt(*axoConv, message, supplements, &supplementsPlain);
@@ -353,7 +357,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
 
     root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
-    cJSON_AddStringToObject(root, "scClientDevId", scClientDevId_.c_str());
+//    cJSON_AddStringToObject(root, "scClientDevId", scClientDevId_.c_str());
 
     AxoConversation* ownConv = AxoConversation::loadLocalConversation(ownUser_);
     if (ownConv == NULL) {
@@ -371,10 +375,10 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
 
     int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer);
     b64Buffer[b64Len] = 0;
-    cJSON_AddStringToObject(root, "identityKey", b64Buffer);
+    cJSON_AddStringToObject(root, "identity_key", b64Buffer);
 
     cJSON* jsonPkrArray;
-    cJSON_AddItemToObject(root, "preKeys", jsonPkrArray = cJSON_CreateArray());
+    cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair< int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
     if (preList == NULL) {
@@ -388,7 +392,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());
-        cJSON_AddNumberToObject(pkrObject, "keyId", pkPair.first);
+        cJSON_AddNumberToObject(pkrObject, "id", pkPair.first);
 
         // Get pre-key's public key data, serialized
         const DhKeyPair* ecPair = pkPair.second;
@@ -408,6 +412,13 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
     int32_t code = Provisioning::registerAxoDevice(registerRequest, authorization_, scClientDevId_, result);
 
     return code;
+}
+
+int32_t AppInterfaceImpl::newPreKeys(int32_t number)
+{
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    string result;
+    return ScProvisioning::newPreKeys(store, scClientDevId_, authorization_, &result);
 }
 
 void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)

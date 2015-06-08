@@ -41,6 +41,14 @@ JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_registerAxolotlDevice
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    newPreKeys
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_newPreKeys
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    getErrorCode
  * Signature: ()I
  */

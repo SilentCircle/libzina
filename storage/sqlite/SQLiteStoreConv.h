@@ -147,6 +147,7 @@ public:
 
     void removePreKey(int32_t preKeyId);
 
+    void dumpPreKeys() const;
     /*
      * @brief For use for debugging and development only
      */

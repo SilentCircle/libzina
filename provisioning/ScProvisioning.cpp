@@ -57,8 +57,9 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
         "key" :       <string>,          # public part encoded base64 data
     }
  }
+ "axolotl": {"prekey": {"id": 740820098, "key": "AbInUu24ot/07lc4q432zrwd+xbZA8oS1+OB/8j1CKU3"}, "identity_key": "AR2/g2VTSYpqbnRJVi4Wdz8hAnZZmHvknf15qRrClZcs"}}
 */
-static const char* getPreKeyRequest = "/v1/user/%s/devices/%s/?api_key=%s";
+static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization, pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
     char temp[1000];
@@ -68,7 +69,7 @@ int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
-    if (code > 400)
+    if (code >= 400)
         return 0;
 
     uint8_t pubKeyBuffer[MAX_KEY_BYTES_ENCODED];
@@ -79,32 +80,21 @@ int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string
         return 0;
 
     // username is required in SC implementation
-    cJSON* cjTemp = cJSON_GetObjectItem(root, "username");
+    cJSON* cjKey = cJSON_GetObjectItem(root, "axolotl");
+    if (cjKey == NULL) {
+        return 0;
+    }
+
+    cJSON* cjTemp = cJSON_GetObjectItem(cjKey, "identity_key");
     char* jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
-    if (jsString == NULL) {
-        return 0;
-    }
-    std::string username(jsString);
-
-    // Silent Circle device id is required in SC implementation
-    cjTemp = cJSON_GetObjectItem(root, "scClientDevId");
-    jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
-    if (jsString == NULL) {
-        cJSON_Delete(root);
-        return 0;
-    }
-    std::string scClientDevId(jsString);
-
-    cjTemp = cJSON_GetObjectItem(root, "identityKey");
-    jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
         cJSON_Delete(root);
         return 0;
     }
     std::string identity(jsString);
 
-    cJSON* pky = cJSON_GetObjectItem(root, "preKey");
-    int32_t pkyId = cJSON_GetObjectItem(pky, "keyId")->valueint;
+    cJSON* pky = cJSON_GetObjectItem(cjKey, "preKey");
+    int32_t pkyId = cJSON_GetObjectItem(pky, "id")->valueint;
     std::string pkyPub(cJSON_GetObjectItem(pky, "key")->valuestring);
 
     int32_t len = b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer);
@@ -139,7 +129,7 @@ int32_t Provisioning::getNumPreKeys(const std::string& authorization)
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
-    if (code > 400)
+    if (code >= 400)
         return -1;
 
     cJSON* root = cJSON_Parse(response.c_str());
@@ -161,7 +151,7 @@ int32_t Provisioning::getNumPreKeys(const std::string& authorization)
     "scClientDevIds" : [<string>, ..., <string>]   # array of known Axolotl ScClientDevIds for this user/account
  }
  */
-static const char* getUserDevicesRequest = "/v1/user/%s/devices/?filter=axolotl&api_key=%s";
+static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&api_key=%s";
 
 std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization)
 {
@@ -173,7 +163,7 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
-    if (code > 400)
+    if (code >= 400)
         return NULL;
 
     std::list<std::string>* deviceIds = new std::list<std::string>;
@@ -182,7 +172,7 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
     if (root == NULL)
         return NULL;
 
-    cJSON* devIds = cJSON_GetObjectItem(root, "scClientDevIds");
+    cJSON* devIds = cJSON_GetObjectItem(root, "devices");
     if (devIds == NULL || devIds->type != cJSON_Array) {
         cJSON_Delete(root);
         delete deviceIds;
@@ -190,7 +180,11 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
     }
     int32_t numIds = cJSON_GetArraySize(devIds);
     for (int32_t i = 0; i < numIds; i++) {
-        std::string id(cJSON_GetArrayItem(devIds, i)->valuestring);
+        cJSON* arrayItem = cJSON_GetArrayItem(devIds, i);
+        cJSON* devId = cJSON_GetObjectItem(arrayItem, "id");
+        if (devId == NULL)
+            continue;
+        std::string id(devId->valuestring);
         deviceIds->push_back(id);
     }
     // Clear JSON buffer and context
@@ -230,11 +224,11 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
 
     root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
-    cJSON_AddStringToObject(root, "scClientDevId", longDevId.c_str());
+//    cJSON_AddStringToObject(root, "scClientDevId", longDevId.c_str());
 //    cJSON_AddNumberToObject(root, "registrationId", store->getLocalRegistrationId());
 
     cJSON* jsonPkrArray;
-    cJSON_AddItemToObject(root, "preKeys", jsonPkrArray = cJSON_CreateArray());
+    cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store);
     if (preList == NULL) {
@@ -248,7 +242,7 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());
-        cJSON_AddNumberToObject(pkrObject, "keyId", prePair.first);
+        cJSON_AddNumberToObject(pkrObject, "id", prePair.first);
 
         // Get pre-key's public key data, serialized
         const DhKeyPair* ecPair = prePair.second;

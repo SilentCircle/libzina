@@ -117,6 +117,7 @@ static const char* createPreKeys = "CREATE TABLE PreKeys (keyid INTEGER NOT NULL
 static const char* insertPreKey = "INSERT INTO PreKeys (keyId, iv, preKeyData) VALUES (?1, ?2, ?3);";
 static const char* selectPreKey = "SELECT iv, preKeyData FROM PreKeys WHERE keyid=?1;";
 static const char* deletePreKey = "DELETE FROM PreKeys WHERE keyId=?1;";
+static const char* selectPreKeyAll = "SELECT keyId, iv, preKeyData FROM PreKeys;";
 
 
 #ifdef UNITTESTS
@@ -142,6 +143,8 @@ static void hexdump(const char* title, const std::string& in)
 #endif
 
 using namespace axolotl;
+
+void Log(const char* format, ...);
 
 static int32_t getUserVersion(sqlite3* db)
 {
@@ -866,4 +869,21 @@ cleanup:
     sqlite3_finalize(stmt);
 }
 
+void SQLiteStoreConv::dumpPreKeys() const
+{
+    sqlite3_stmt *stmt;
+
+    // SELECT keyId, iv, preKeyData FROM PreKeys;"
+    SQLITE_CHK(SQLITE_PREPARE(db, selectPreKeyAll, -1, &stmt, NULL));
+
+    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int32_t keyId = sqlite3_column_int(stmt, 0);
+        Log("+++ prekey found: %d", keyId);
+    }
+
+    
+cleanup:
+    sqlite3_finalize(stmt);
+
+}
 

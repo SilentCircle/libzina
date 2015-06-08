@@ -63,7 +63,7 @@ static int Log(char const *format, va_list arg) {
 }
 
 
-static void Log(const char* format, ...)
+void Log(const char* format, ...)
 {
     va_list arg;
     va_start(arg, format);
@@ -268,6 +268,7 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std:
 /*
  * HTTP request helper callback for provisioning etc.
  */
+#define JAVA_HELPER
 #if defined JAVA_HELPER || defined UNITTESTS
 int32_t httpHelper(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response)
 {
@@ -276,8 +277,10 @@ int32_t httpHelper(const std::string& requestUri, const std::string& method, con
 
     CTJNIEnv jni;
     JNIEnv *env = jni.getEnv();
-    if (!env)
+
+    if (!env) {
         return -2;
+    }
 
     jbyteArray uri = NULL;
     uri = env->NewByteArray(requestUri.size());
@@ -294,11 +297,9 @@ int32_t httpHelper(const std::string& requestUri, const std::string& method, con
     jintArray code = env->NewIntArray(1);
 
     jbyteArray data = (jbyteArray)env->CallObjectMethod(axolotlCallbackObject, httpHelperCallback, uri, mthod, reqData, code);
-    if (data != NULL) {
+     if (data != NULL) {
         arrayToString(env, data, response);
-        env->DeleteLocalRef(data);
     }
-
     int32_t result = -1;
     env->GetIntArrayRegion(code, 0, 1, &result);
 
@@ -386,7 +387,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyt
             return -4;
         }
         httpHelperCallback = env->GetMethodID(callbackClass, "httpHelper", "([BLjava/lang/String;[B[I)[B");
-        if (stateReportCallback == NULL) {
+        if (httpHelperCallback == NULL) {
             return -5;
         }
 
@@ -447,16 +448,19 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyt
     store->openStore(std::string (db));
     env->ReleaseStringUTFChars(dbName, db);
 
+    int32_t retVal = 1;
     AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
     if (ownAxoConv == NULL) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
+        Log("Axolotl - create identity for: '%s'", name.c_str());
         ownAxoConv = new AxoConversation(name, name, string());
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         ownAxoConv->setDHIs(idKeyPair);
         ownAxoConv->storeConversation();
+        retVal = 2;
     }
     delete ownAxoConv;    // Not needed anymore here
 
-    return 1;
+    return retVal;
 }
 
 /*
@@ -553,6 +557,16 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
     }
     return infoBytes;
 }
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    newPreKeys
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL 
+JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
+{
+    int32_t result = axoAppInterface->newPreKeys(numbers);
+}
 
 /*
  * Class:     AxolotlNative
@@ -586,7 +600,6 @@ JNI_FUNCTION(getErrorInfo)(JNIEnv* env, jclass clazz)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
 {
-#ifdef UNITTESTS
     int32_t result = 0;
     const char* cmd = (const char *)env->GetStringUTFChars(command, 0);
 
@@ -603,6 +616,7 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     }
     Log("testCommand - command: '%s' - data: '%s'", cmd, dataContainer.c_str());
 
+#ifdef UNITTESTS
     if (strcmp("http", cmd) == 0) {
         std::string resultData;
         result = httpHelper(std::string("/some/request"), dataContainer, std::string("MTH"), &resultData);
@@ -612,19 +626,17 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     if (strcmp("read", cmd) == 0) {
         reciveData(dataContainer);
     }
-    
+#endif
     if (strcmp("resetaxodb", cmd) == 0) {
         SQLiteStoreConv* store = SQLiteStoreConv::getStore();
         store->resetStore();
+        Log("Resetted Axolotl store");
     }
 
     env->ReleaseStringUTFChars(command, cmd);
     return result;
 
     return 0;
-#else
-    return -1;
-#endif
 }
 
 /*

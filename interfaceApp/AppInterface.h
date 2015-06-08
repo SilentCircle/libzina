@@ -154,6 +154,14 @@ public:
     virtual int32_t registerAxolotlDevice(std::string* result) = 0;
 
     /**
+     /**
+     * @brief Generate and register a set of new pre-keys.
+     * 
+     * @return Result of the register new pre-key request, usually a HTTP code (200, 404, etc)
+     */
+    virtual int32_t newPreKeys(int32_t number) = 0;
+
+    /**
      * @brief Callback to UI to receive a Message from transport 
      *
      * Creates a JSON formatted message descriptor of the received message and forwards it to the UI

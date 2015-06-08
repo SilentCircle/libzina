@@ -89,7 +89,7 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server's request return code, e.g. 200 or 404 or alike.
      */
-    static int32_t newPreKeys(axolotl::SQLiteStoreConv* store, const std::string& longDevId, const std::string& authorization, std::string* result);
+    static int32_t newPreKeys(SQLiteStoreConv* store, const std::string& longDevId, const std::string& authorization, std::string* result);
 
 };
 } // namespace
