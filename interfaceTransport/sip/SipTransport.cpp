@@ -21,6 +21,7 @@ std::vector< int64_t >* SipTransport::sendAxoMessage( const std::string& recipie
         names[index] = (uint8_t*)recipient.c_str();
         devIds[index] = (uint8_t*)msgPair.first.c_str();
         envelopes[index] = (uint8_t*)msgPair.second.data();
+        Log("envelope size: %d", msgPair.second.size());
         sizes[index] = msgPair.second.size();
     }
     names[index] = NULL; devIds[index] = NULL; envelopes[index] = NULL; 

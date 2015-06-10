@@ -40,7 +40,7 @@ public:
      * @param supplementsPlain Additional data for the message if available and decryption was successful.
      * @return Plaintext or @c NULL if decryption failed
      */
-    static string* decrypt(AxoConversation& conv, const string& wire, const string& supplements, string* supplementsPlain);
+    static string* decrypt( axolotl::AxoConversation* conv, const string& wire, const string& supplements, string* supplementsPlain );
 };
 }
 /**

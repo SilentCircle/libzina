@@ -29,20 +29,22 @@ AxoPreKeyConnector::~AxoPreKeyConnector()
 }
 
 #ifdef UNITTESTS
-// Used in testing and debugging to do in-depth checks
+static char hexBuffer[2000] = {0};
 static void hexdump(const char* title, const unsigned char *s, int l) {
     int n=0;
+//sprintf(char *str, const char *format, ...);
 
     if (s == NULL) return;
 
-    fprintf(stderr, "%s",title);
+    memset(hexBuffer, 0, 2000);
+    int len = sprintf(hexBuffer, "%s",title);
     for( ; n < l ; ++n)
     {
         if((n%16) == 0)
-            fprintf(stderr, "\n%04x",n);
-        fprintf(stderr, " %02x",s[n]);
+            len += sprintf(hexBuffer+len, "\n%04x",n);
+        len += sprintf(hexBuffer+len, " %02x",s[n]);
     }
-    fprintf(stderr, "\n");
+    sprintf(hexBuffer+len, "\n");
 }
 static void hexdump(const char* title, const std::string& in)
 {
@@ -81,7 +83,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     EcCurve::calculateAgreement(*B0, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
     string master((const char*)masterSecret, EcCurveTypes::Curve25519KeyLength*3);
 
-//    hexdump("master Alice", master);
+//    hexdump("master Alice", master); Log("%s", hexBuffer);
 
     // derive root and chain key
     std::string root;
@@ -99,6 +101,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     conv->setDHRr(B0);              // Bob's B0 public part
     conv->setA0(A0);                // Alice's generated pre-key.
     conv->setRK(root);
+    Log("++++ RK length: %d", conv->getRK().size());
     conv->setCKr(chain);
     conv->setPreKeyId(bobPreKeyId);
     conv->setRatchetFlag(true);
@@ -117,24 +120,24 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     B0 = P1_PK1 (public data)
 
 */
-int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation& conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
+int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
 {
-    if (!conv.getRK().empty())
+    if (!conv->getRK().empty())
         return OK;
 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    store->dumpPreKeys();
     string* preKeyData = store->loadPreKey(bobPreKeyId);
-    Log("Got prekey id: %d, data: %p", bobPreKeyId, preKeyData);
+//    Log("Got prekey id: %d, data: %p", bobPreKeyId, preKeyData);
     if (preKeyData == NULL) {
-        Log("code: %d, info: %s", store->getSqlCode(), store->getLastError());
-        store->dumpPreKeys();
+//        Log("code: %d, info: %s", store->getSqlCode(), store->getLastError());
         return -1;
     }
     store->removePreKey(bobPreKeyId);
 
 //     cerr << "Load local of: " << conv.getLocalUser() << ", sender: " << conv.getPartner().getName() << endl;
 //     cerr << "PreKey id: " << bobPreKeyId << ", data: " << preKeyData << endl;
-    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv.getLocalUser());
+    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
 
     DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
     delete preKeyData;
@@ -150,7 +153,7 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation& conv, int32_t 
     EcCurve::calculateAgreement(*B0, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
     string master((const char*)masterSecret, EcCurveTypes::Curve25519KeyLength*3);
     delete B0;
-//    hexdump("master Bob", master);
+//    hexdump("master Bob", master);  Log("%s", hexBuffer);
 
     // derive root and chain key
     std::string root;
@@ -159,13 +162,13 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation& conv, int32_t 
     memset_volatile(masterSecret, 0, EcCurveTypes::Curve25519KeyLength*3);
     memset_volatile((void*)master.data(), 0, master.size());
 
-//    cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
-    conv.setDHRs(A0);              // Actually Bob's pre-key - because of the optimized pre-key handling
-    conv.setDHIs(A);               // Bob's (own) identity keys
-    conv.setDHIr(B);               // Alice's (remote) identity key
-    conv.setRK(root);
-    conv.setCKs(chain);
-    conv.setRatchetFlag(false);
+//    cerr << "Remote party '" << conv.getPartner().getName() << "' takes 'Bob' role" << endl;
+    conv->setDHRs(A0);              // Actually Bob's pre-key - because of the optimized pre-key handling
+    conv->setDHIs(A);               // Bob's (own) identity keys
+    conv->setDHIr(B);               // Alice's (remote) identity key
+    conv->setRK(root);
+    conv->setCKs(chain);
+    conv->setRatchetFlag(false);
 
     return OK;
 }

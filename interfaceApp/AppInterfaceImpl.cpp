@@ -200,29 +200,24 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
 
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
-    Log("++++ Conversation: %p", axoConv);
     // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills
     // in the other data based on the received message.
     if (axoConv == NULL) {
         axoConv = new AxoConversation(ownUser_, sender, senderScClientDevId);
     }
-    Log("++++ Conversation partner: %s", axoConv->getPartner().getName().c_str());
     std::string supplementsPlain;
     std::string* messagePlain;
-    messagePlain = AxoRatchet::decrypt(*axoConv, message, supplements, &supplementsPlain);
+    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain);
+    delete axoConv;
 
+//    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
         errorCode_ = NOT_DECRYPTABLE;
+        Log("++++ error code decrypt: %d", errorCode_);
         messageStateReport(0, -1, receiveErrorJson(errorCode_, sender, senderScClientDevId, messageEnvelope));
-        delete axoConv;
         return errorCode_;
     }
-    // Here we can delete A0 in case it was set, if this as Alice then Bob replied and
-    // A0 is not needed anymore.
-    delete(axoConv->getA0());
-    axoConv->setA0(NULL);
-    axoConv->storeConversation();
-    delete axoConv;
+
     /*
      * Message descriptor for received message:
      {

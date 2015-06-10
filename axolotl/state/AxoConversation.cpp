@@ -12,6 +12,8 @@
 using namespace axolotl;
 using namespace std;
 
+void Log(const char* format, ...);
+
 AxoConversation* AxoConversation::loadConversation(const std::string& localUser, const std::string& user, const std::string& deviceId)
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -31,9 +33,16 @@ AxoConversation* AxoConversation::loadConversation(const std::string& localUser,
     return conv;
 }
 
+AxoConversation* AxoConversation::loadConversationEmpty(const std::string& localUser, const std::string& user, const std::string& deviceId)
+{
+    AxoConversation* conv = new AxoConversation(localUser, user, deviceId);
+    return conv;
+}
+
 void AxoConversation::storeConversation()
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+
     const string* data = serialize();
 
     store->storeConversation(partner_.getName(), deviceId_, localUser_, *data);
@@ -84,7 +93,7 @@ void AxoConversation::deserialize(const std::string& data)
     std::string alias(cJSON_GetObjectItem(jsonItem, "alias")->valuestring);
     partner_.setAlias(alias);
 
-    char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
+    char b64Buffer[MAX_KEY_BYTES_ENCODED*2] = {0};   // Twice the max. size on binary data - b64 is times 1.5
     uint8_t binBuffer[MAX_KEY_BYTES_ENCODED];  // Twice the max. size on binary data - b64 is times 1.5
 
     // Get RK b64 string, decode and store
@@ -93,6 +102,7 @@ void AxoConversation::deserialize(const std::string& data)
     size_t b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        Log("++++ deserialize RK: b64length: %d, binLength: %d", b64Length, binLength);
         RK.assign((const char*)binBuffer, binLength);
     }
 
@@ -177,6 +187,7 @@ void AxoConversation::deserialize(const std::string& data)
     if (b64Length > 0) {
         binLength = b64Decode(b64Buffer, b64Length, binBuffer);
         CKr.assign((const char*)binBuffer, binLength);
+        Log("++++ deserialize CKr: b64length: %d, binLength: %d", b64Length, binLength);
     }
     Ns = cJSON_GetObjectItem(root, "Ns")->valueint;
     Nr = cJSON_GetObjectItem(root, "Nr")->valueint;
@@ -189,7 +200,7 @@ void AxoConversation::deserialize(const std::string& data)
 
 const std::string* AxoConversation::serialize() const
 {
-    cJSON *root;
+    cJSON *root = NULL;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
     root = cJSON_CreateObject();
@@ -205,6 +216,7 @@ const std::string* AxoConversation::serialize() const
     int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer);
     b64Buffer[b64Len] = 0;
     cJSON_AddStringToObject(root, "RK", b64Buffer);
+
 
     // DHRs key pair, private, public
     cJSON_AddItemToObject(root, "DHRs", jsonItem = cJSON_CreateObject());
@@ -256,6 +268,7 @@ const std::string* AxoConversation::serialize() const
     else
         cJSON_AddStringToObject(root, "DHIr", "");
 
+
     // A0 key pair, private, public
     cJSON_AddItemToObject(root, "A0", jsonItem = cJSON_CreateObject());
     if (A0 != NULL) {
@@ -271,7 +284,6 @@ const std::string* AxoConversation::serialize() const
         cJSON_AddStringToObject(jsonItem, "private", "");
         cJSON_AddStringToObject(jsonItem, "public", "");
     }
-
 
     // The two chain keys
     b64Len = b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer);
@@ -290,7 +302,7 @@ const std::string* AxoConversation::serialize() const
 
     char *out = cJSON_Print(root);
     std::string* data = new std::string(out);
-//    cerr << *data << endl;
+//    Log("%s", data->c_str());
     cJSON_Delete(root); free(out);
 
     return data;

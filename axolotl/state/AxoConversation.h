@@ -27,6 +27,7 @@
 #include "../crypto/DhPublicKey.h"
 #include "../crypto/DhKeyPair.h"
 #include "../state/AxoContact.h"
+#include "../crypto/Ec255PublicKey.h"
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
@@ -65,6 +66,16 @@ public:
      * @return the loaded AxoConversation or NULL if none was stored.
      */
     static AxoConversation* loadConversation(const std::string& localUser, const std::string& user, const std::string& deviceId);
+
+    /**
+     * @brief Create an empty conversation, just with names.
+     * 
+     * @param localUser name of own user/account
+     * @param user Name of the remote user
+     * @param deviceId The remote user's device id if it is available
+     * @return created AxoConversation
+     */
+    static AxoConversation* loadConversationEmpty(const std::string& localUser, const std::string& user, const std::string& deviceId);
 
     /**
      * @brief Store this conversation in persitent store
@@ -130,12 +141,12 @@ public:
     list<string>* stagedMk;
 
 #ifdef UNITTESTS
-    const std::string* dump() const         { return serialize(); }
+//    const std::string* dump() const         { return serialize(); }
 #endif
 
 private:
     void deserialize(const std::string& data);
-    const std::string* serialize() const;
+    const std::string* serialize(  ) const;
 
     AxoContact   partner_;
     std::string  deviceId_;

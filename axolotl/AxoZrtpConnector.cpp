@@ -37,6 +37,8 @@ static CMutexClass sessionLock;
 static map<string, AxoZrtpConnector*>* stagingList = new map<string, AxoZrtpConnector*>;
 
 using namespace axolotl;
+void Log(const char* format, ...);
+
 const std::string getAxoPublicKeyData(const std::string& localUser, const std::string& user, const std::string& deviceId)
 {
     sessionLock.Lock();
@@ -162,19 +164,19 @@ void setAxoExportedKey(const std::string& localUser, const std::string& user, co
 
 //    hexdump(conv->getPartner().getName().c_str(), staging->getRemoteIdKey()->serialize());
 
-    conv->setDHIr(staging->getRemoteIdKey());
+    conv->setDHIr((Ec255PublicKey*)staging->getRemoteIdKey());
     staging->setRemoteIdKey(NULL);
 
     if (staging->getRole() == Alice) {
-//        cerr << "Remote party '" << user << "' takes 'Alice' role" << endl;
-        conv->setDHRr(staging->getRemoteRatchetKey());     // Bob's B0 public part
+        cerr << "Remote party '" << user << "' takes 'Alice' role" << endl;
+        conv->setDHRr((Ec255PublicKey*)staging->getRemoteRatchetKey());     // Bob's B0 public part
         staging->setRemoteRatchetKey(NULL);
         conv->setRK(root);
         conv->setCKr(chain);
         conv->setRatchetFlag(true);
     }
     else {
-//        cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
+        cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
         conv->setDHRs(staging->getRatchetKey());           // Bob's B0 key
         staging->setRatchetKey(NULL);
         conv->setRK(root);
