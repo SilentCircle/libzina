@@ -88,16 +88,14 @@ public:
 
     void deleteStagedMk(pair<string, string>& both);
 
-    const AxoContact& getPartner() { return partner_; }
+    const AxoContact& getPartner()  { return partner_; }
 
-    const string& getLocalUser()   { return localUser_; }
+    const string& getLocalUser()    { return localUser_; }
 
-    /**
-     * @brief Get pointer of sender's Identity key pair.
-     * 
-     * Ownership stays with Conversation.
-     */
-//    const DhKeyPair* getIdentityKeySender() { return DHIs; }
+    const string& getDeviceId()     { return deviceId_; }
+
+    void setErrorCode(int32_t code) { errorCode_ = code; } 
+    int32_t getErrorCode()          { return errorCode_; }
 
     void setRK(const std::string& key)      { RK = key; }
     const std::string& getRK() const        { return RK; }
@@ -141,13 +139,14 @@ public:
     list<string>* stagedMk;
 
 #ifdef UNITTESTS
-//    const std::string* dump() const         { return serialize(); }
+    const std::string* dump() const         { return serialize(); }
 #endif
 
 private:
     void deserialize(const std::string& data);
     const std::string* serialize(  ) const;
 
+    // The following data goes to persistant store
     AxoContact   partner_;
     std::string  deviceId_;
     std::string  localUser_;
@@ -174,7 +173,7 @@ private:
 
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
-
+    // ***** end of persitant data
     /*
     skipped_HK_MK : A list of stored message keys and associated header keys
                 for "skipped" messages, i.e. messages that have not been
@@ -183,6 +182,7 @@ private:
                 a certain age.
     Impemented via database and temporary list, see stagedMk above.
     */ 
+    int32_t errorCode_;
 };
 }
 /**

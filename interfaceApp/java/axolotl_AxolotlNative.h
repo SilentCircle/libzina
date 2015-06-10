@@ -73,6 +73,14 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_testCommand
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    axoCommand
+ * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_axoCommand
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    repoOpenDatabase
  * Signature: (Ljava/lang/String;)I
  */

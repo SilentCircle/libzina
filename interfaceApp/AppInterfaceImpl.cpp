@@ -73,9 +73,10 @@ static void createSupplementString(const std::string& attachementDesc, const std
 std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDescriptor, const std::string& attachementDescriptor, const std::string& messageAttributes)
 {
 
-    std::string recipient;
-    std::string message;
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &message);
+    string recipient;
+    string msgId;
+    string message;
+    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
     if (parseResult < 0)
         return NULL;
@@ -126,6 +127,7 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
         MessageEnvelope envelope;
         envelope.set_name(ownUser_);
         envelope.set_scclientdevid(scClientDevId_);
+        envelope.set_msgid(msgId);
         if (!supplementsEncrypted.empty())
             envelope.set_supplement(supplementsEncrypted);
         envelope.set_message(*wireMessage);
@@ -193,10 +195,11 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
 
-    const std::string& sender = envelope.name();
-    const std::string& senderScClientDevId = envelope.scclientdevid();
-    const std::string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
-    const std::string& message = envelope.message();
+    const string& sender = envelope.name();
+    const string& senderScClientDevId = envelope.scclientdevid();
+    const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
+    const string& message = envelope.message();
+    const string& msgId = envelope.msgid();
 
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
@@ -233,6 +236,7 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
     cJSON_AddNumberToObject(root, "version", 1);
     cJSON_AddStringToObject(root, "sender", sender.c_str());
     cJSON_AddStringToObject(root, "scClientDevId", senderScClientDevId.c_str());
+    cJSON_AddStringToObject(root, "msgId", msgId.c_str());
     cJSON_AddStringToObject(root, "message", messagePlain->c_str());
     delete messagePlain;
 
@@ -376,10 +380,6 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair< int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
-    if (preList == NULL) {
-        cJSON_Delete(root);
-        return REG_PRE_KEY;
-    }
     int32_t size = preList->size();
     for (int32_t i = 0; i < size; i++) {
         pair< int32_t, const DhKeyPair* >pkPair = preList->front();
@@ -428,9 +428,10 @@ std::vector<std::pair<std::string, std::string> >* AppInterfaceImpl::sendMessage
                                                                                         const std::string& attachementDescriptor, 
                                                                                         const std::string& messageAttributes)
 {
-    std::string recipient;
-    std::string message;
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &message);
+    string recipient;
+    string msgId;
+    string message;
+    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
     if (parseResult < 0)
         return NULL;
@@ -452,7 +453,7 @@ std::vector<std::pair<std::string, std::string> >* AppInterfaceImpl::sendMessage
         std::string recipientDeviceId = devices->front();
         devices->pop_front();
 
-        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, message, supplements, msgPairs);
+        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, message, supplements, msgId, msgPairs);
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
 
@@ -477,7 +478,7 @@ std::vector<std::pair<std::string, std::string> >* AppInterfaceImpl::sendMessage
 }
 
 
-int32_t AppInterfaceImpl::parseMsgDescriptor(const std::string& messageDescriptor, std::string* recipient, std::string* message)
+int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message)
 {
     cJSON* root = cJSON_Parse(messageDescriptor.c_str());
     if (root == NULL) {
@@ -495,10 +496,19 @@ int32_t AppInterfaceImpl::parseMsgDescriptor(const std::string& messageDescripto
     }
     recipient->assign(jsString);
 
+    // Get the message id
+    cjTemp = cJSON_GetObjectItem(root, "msgId");
+    jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
+    if (jsString == NULL) {
+        errorInfo_ = "msgId";
+        goto cleanup;
+    }
+    msgId->assign(jsString);
+
     // Get the message
     cjTemp = cJSON_GetObjectItem(root, "message");
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
-    if (jsString == 0) {
+    if (jsString == NULL) {
         errorInfo_ = "message";
         goto cleanup;
     }
@@ -512,9 +522,10 @@ cleanup:
 }
 
 
-int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const std::string& recipientDeviceId,
-                                          const std::string& message, const std::string& supplements, 
-                                          std::vector<std::pair<std::string, std::string> >* msgPairs)
+int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& recipientDeviceId,
+                                          const std::string& message, const string& supplements,
+                                          const string& msgId,
+                                          vector<pair<string, string> >* msgPairs)
 {
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(recipient, recipientDeviceId, authorization_, &preIdKeys);
@@ -550,6 +561,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const std::string&
     MessageEnvelope envelope;
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
+    envelope.set_msgid(msgId);
     if (!supplementsEncrypted.empty())
         envelope.set_supplement(supplementsEncrypted);
     envelope.set_message(*wireMessage);

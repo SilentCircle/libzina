@@ -103,7 +103,7 @@ TEST(ZrtpRatchet, Setup)
     ASSERT_TRUE(p1p2Wire != NULL);
 //    hexdump("p1p2Wire", *p1p2Wire);
 
-    string* p1p2Plain = AxoRatchet::decrypt(*p2p1Conv, *p1p2Wire, string(), NULL);
+    string* p1p2Plain = AxoRatchet::decrypt(p2p1Conv, *p1p2Wire, string(), NULL);
     ASSERT_TRUE(p1p2Plain != NULL);
 //    hexdump("p1p2Plain", *p1p2Plain);
 //    cerr << *p1p2Plain << endl;
@@ -113,7 +113,7 @@ TEST(ZrtpRatchet, Setup)
     ASSERT_TRUE(p2p1Wire != NULL);
 //    hexdump("p2p1Wire", *p2p1Wire);
 
-    string* p2p1Plain =  AxoRatchet::decrypt(*p1p2Conv, *p2p1Wire, string(), NULL);
+    string* p2p1Plain =  AxoRatchet::decrypt(p1p2Conv, *p2p1Wire, string(), NULL);
     ASSERT_TRUE(p2p1Plain != NULL);
 //    hexdump("p2p1Plain", *p2p1Plain);
 //    cerr << *p2p1Plain << endl;
@@ -126,7 +126,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P1");
         p1p2Wire = AxoRatchet::encrypt(*p1p2Conv, loop, string(), NULL);
 
-        p1p2Plain = AxoRatchet::decrypt(*p2p1Conv, *p1p2Wire, string(), NULL);
+        p1p2Plain = AxoRatchet::decrypt(p2p1Conv, *p1p2Wire, string(), NULL);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_EQ(loop, *p1p2Plain);
         delete p1p2Wire;
@@ -139,7 +139,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P2");
         p2p1Wire = AxoRatchet::encrypt(*p2p1Conv, loop, string(), NULL);
 
-        p2p1Plain = AxoRatchet::decrypt(*p1p2Conv, *p2p1Wire, string(), NULL);
+        p2p1Plain = AxoRatchet::decrypt(p1p2Conv, *p2p1Wire, string(), NULL);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_EQ(loop, *p2p1Plain);
         delete p2p1Wire;
@@ -166,7 +166,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P1 - second time");
         p1p2Wire = AxoRatchet::encrypt(*p1p2Conv, loop, string(), NULL);
 
-        p1p2Plain = AxoRatchet::decrypt(*p2p1Conv, *p1p2Wire, string(), NULL);
+        p1p2Plain = AxoRatchet::decrypt(p2p1Conv, *p1p2Wire, string(), NULL);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_EQ(loop, *p1p2Plain);
         delete p1p2Wire;
@@ -179,7 +179,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P2 - second time");
         p2p1Wire = AxoRatchet::encrypt(*p2p1Conv, loop, string(), NULL);
 
-        p2p1Plain = AxoRatchet::decrypt(*p1p2Conv, *p2p1Wire, string(), NULL);
+        p2p1Plain = AxoRatchet::decrypt(p1p2Conv, *p2p1Wire, string(), NULL);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_EQ(loop, *p2p1Plain);
         delete p2p1Wire;
@@ -190,7 +190,7 @@ TEST(ZrtpRatchet, Setup)
 
     for(it = outOfOrder.begin(); it != outOfOrder.end();) {
         std::pair<std::string, const string*>* pair = *it;
-        p1p2Plain = AxoRatchet::decrypt(*p2p1Conv, *(pair->second), string(), NULL);
+        p1p2Plain = AxoRatchet::decrypt(p2p1Conv, *(pair->second), string(), NULL);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_EQ(pair->first, *p1p2Plain);
         delete pair->second;
@@ -205,7 +205,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P1 - third time");
         p1p2Wire = AxoRatchet::encrypt(*p1p2Conv, loop, string(), NULL);
 
-        p1p2Plain = AxoRatchet::decrypt(*p2p1Conv, *p1p2Wire, string(), NULL);
+        p1p2Plain = AxoRatchet::decrypt(p2p1Conv, *p1p2Wire, string(), NULL);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_EQ(loop, *p1p2Plain);
         delete p1p2Wire;
@@ -218,7 +218,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P2 - third time");
         p2p1Wire = AxoRatchet::encrypt(*p2p1Conv, loop, string(), NULL);
 
-        p2p1Plain = AxoRatchet::decrypt(*p1p2Conv, *p2p1Wire, string(), NULL);
+        p2p1Plain = AxoRatchet::decrypt(p1p2Conv, *p2p1Wire, string(), NULL);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_EQ(loop, *p2p1Plain);
         delete p2p1Wire;
@@ -231,7 +231,7 @@ TEST(ZrtpRatchet, Setup)
         loop.append(1, c).append(" from P1 - forth time");
         p1p2Wire = AxoRatchet::encrypt(*p1p2Conv, loop, string(), NULL);
 
-        p1p2Plain = AxoRatchet::decrypt(*p2p1Conv, *p1p2Wire, string(), NULL);
+        p1p2Plain = AxoRatchet::decrypt(p2p1Conv, *p1p2Wire, string(), NULL);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_EQ(loop, *p1p2Plain);
         delete p1p2Wire;

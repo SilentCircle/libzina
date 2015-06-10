@@ -145,9 +145,18 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * For testing only, not available in production code.
      * 
-     * Return -1 in production code.
+     * Returns -1 in production code.
      */
     public static native int testCommand(String command, byte[] data);
+
+    /**
+     * Command interface to send managment command and to request managment information.
+     * 
+     * @param command the managment command string.
+     * @param optinal data required for the command.
+     * @return a string depending on command.
+     */
+    public static native String axoCommand(String command, byte[] data);
 
     /**
      * Receive a Message.

@@ -8,4 +8,5 @@ message MessageEnvelope {
   optional uint32 device_id      = 3;
   optional bytes  supplement     = 4;
   optional bytes  message        = 5;
+  optional string msgId          = 6;
 }

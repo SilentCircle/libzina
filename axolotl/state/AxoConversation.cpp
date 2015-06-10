@@ -215,6 +215,7 @@ const std::string* AxoConversation::serialize() const
 
     int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer);
     b64Buffer[b64Len] = 0;
+    Log("++++ serialize RK: b64length: %d, inLength: %d", b64Len, RK.size());
     cJSON_AddStringToObject(root, "RK", b64Buffer);
 
 
@@ -288,10 +289,12 @@ const std::string* AxoConversation::serialize() const
     // The two chain keys
     b64Len = b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer);
     b64Buffer[b64Len] = 0;
+    Log("++++ serialize CKs: b64length: %d, inLength: %d", b64Len, CKs.size());
     cJSON_AddStringToObject(root, "CKs", b64Buffer);
 
     b64Len = b64Encode((const uint8_t*)CKr.data(), CKr.size(), b64Buffer);
     b64Buffer[b64Len] = 0;
+    Log("++++ serialize CKr: b64length: %d, inLength: %d", b64Len, CKr.size());
     cJSON_AddStringToObject(root, "CKr", b64Buffer);
 
     cJSON_AddNumberToObject(root, "Ns", Ns);

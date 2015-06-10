@@ -102,11 +102,9 @@ private:
                                                                           const std::string& attachementDescriptor,
                                                                           const std::string& messageAttributes);
 
-    int32_t parseMsgDescriptor(const std::string& messageDescriptor, std::string* recipient, std::string* message);
+    int32_t parseMsgDescriptor( const string& messageDescriptor, string* recipient, string* msgId, string* message );
 
-    int32_t createPreKeyMsg(string& recipient,  const std::string& recipientDeviceId, 
-                            const std::string& message, const std::string& supplements, 
-                            std::vector<std::pair<std::string, std::string> >* msgPairs);
+    int32_t createPreKeyMsg( string& recipient, const string& recipientDeviceId, const string& message, const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
     char* tempBuffer_;
     size_t tempBufferSize_;
     std::string ownUser_;

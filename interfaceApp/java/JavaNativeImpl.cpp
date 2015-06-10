@@ -635,8 +635,25 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
 
     env->ReleaseStringUTFChars(command, cmd);
     return result;
+}
 
-    return 0;
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    axoCommand
+ * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL JNI_FUNCTION(axoCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
+{
+    if (command == NULL)
+        return NULL;
+    const char* cmd = (const char *)env->GetStringUTFChars(command, 0);
+
+    std::string dataContainer;
+    arrayToString(env, data, &dataContainer);
+
+
+    env->ReleaseStringUTFChars(command, cmd);
+    return NULL;
 }
 
 /*

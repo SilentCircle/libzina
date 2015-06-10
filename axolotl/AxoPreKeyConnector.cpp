@@ -101,7 +101,6 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     conv->setDHRr(B0);              // Bob's B0 public part
     conv->setA0(A0);                // Alice's generated pre-key.
     conv->setRK(root);
-    Log("++++ RK length: %d", conv->getRK().size());
     conv->setCKr(chain);
     conv->setPreKeyId(bobPreKeyId);
     conv->setRatchetFlag(true);
@@ -128,9 +127,8 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->dumpPreKeys();
     string* preKeyData = store->loadPreKey(bobPreKeyId);
-//    Log("Got prekey id: %d, data: %p", bobPreKeyId, preKeyData);
     if (preKeyData == NULL) {
-//        Log("code: %d, info: %s", store->getSqlCode(), store->getLastError());
+        conv->setErrorCode(NO_PRE_KEY_FOUND);
         return -1;
     }
     store->removePreKey(bobPreKeyId);

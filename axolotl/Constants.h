@@ -33,17 +33,13 @@ namespace axolotl {
     static const int32_t VERSION_NO_SUPPORTED = -11;  //!< Unspported protocol version
     static const int32_t BUFFER_TOO_SMALL  = -12;     //!< Buffer too small to store some data
     static const int32_t NOT_DECRYPTABLE = -13;       //!< Could not decrypt received message
-    static const int32_t NO_OWN_ID  = -15;            //!< Found no own identity for registration
-    static const int32_t REG_PRE_KEY  = -17;          //!< Failed to generate pre-keys for registration request
-    static const int32_t JS_FIELD_MISSING  = -18;     //!< Missing a required JSON field
-    static const int32_t NO_DEVS_FOUND  = -19;        //!< No registered Axolotl devices found for a user
-    static const int32_t NO_PRE_KEY_FOUND  = -20;     //!< No more pre-keys for user's devices
-    static const int32_t NO_SESSION_USER  = -21;      //!< No session for this user found
-    static const int32_t HMAC_VERIFICATION  = -22;    //!< HMAC verifiation failed
-    static const int32_t SESSION_NOT_INITED  = -23;   //!< Session not initialized
-    static const int32_t MSG_VERSION_WRONG  = -24;    //!< Message and session version don't match
-    static const int32_t OLD_MESSAGE  = -25;          //!< Old message received (already processed)
-    static const int32_t FUTURE_MESSAGE  = -26;       //!< Over 2000 messages into the future!
+    static const int32_t NO_OWN_ID  = -14;            //!< Found no own identity for registration
+    static const int32_t JS_FIELD_MISSING  = -15;     //!< Missing a required JSON field
+    static const int32_t NO_DEVS_FOUND  = -16;        //!< No registered Axolotl devices found for a user
+    static const int32_t NO_PRE_KEY_FOUND  = -17;     //!< No more pre-keys for user's devices
+    static const int32_t NO_SESSION_USER  = -18;      //!< No session for this user found
+    static const int32_t SESSION_NOT_INITED  = -19;   //!< Session not initialized
+    static const int32_t OLD_MESSAGE  = -20;          //!< Old message received (already processed)
 
 
     // Error codes for public key modules, between -100 and -199

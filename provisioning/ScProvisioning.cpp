@@ -231,10 +231,6 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store);
-    if (preList == NULL) {
-        cJSON_Delete(root);
-        return REG_PRE_KEY;
-    }
     int32_t size = preList->size();
     for (int32_t i = 0; i < size; i++) {
         pair<int32_t, const DhKeyPair*> prePair = preList->front();

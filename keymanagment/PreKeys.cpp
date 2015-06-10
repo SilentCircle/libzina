@@ -30,7 +30,6 @@ static string* preKeyJson(int32_t keyId, const DhKeyPair& preKeyPair)
 
     char *out = cJSON_Print(root);
     std::string* data = new std::string(out);
-//    cerr << "PreKey data to store: " << *data << endl;
     cJSON_Delete(root); free(out);
 
     return data;

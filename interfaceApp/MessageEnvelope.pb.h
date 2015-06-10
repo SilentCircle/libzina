@@ -152,6 +152,18 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_message();
   inline void set_allocated_message(::std::string* message);
 
+  // optional string msgId = 6;
+  inline bool has_msgid() const;
+  inline void clear_msgid();
+  static const int kMsgIdFieldNumber = 6;
+  inline const ::std::string& msgid() const;
+  inline void set_msgid(const ::std::string& value);
+  inline void set_msgid(const char* value);
+  inline void set_msgid(const char* value, size_t size);
+  inline ::std::string* mutable_msgid();
+  inline ::std::string* release_msgid();
+  inline void set_allocated_msgid(::std::string* msgid);
+
   // @@protoc_insertion_point(class_scope:axolotl.MessageEnvelope)
  private:
   inline void set_has_name();
@@ -164,6 +176,8 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline void clear_has_supplement();
   inline void set_has_message();
   inline void clear_has_message();
+  inline void set_has_msgid();
+  inline void clear_has_msgid();
 
   ::std::string _unknown_fields_;
 
@@ -173,6 +187,7 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   ::std::string* scclientdevid_;
   ::std::string* supplement_;
   ::std::string* message_;
+  ::std::string* msgid_;
   ::google::protobuf::uint32 device_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
@@ -518,6 +533,82 @@ inline void MessageEnvelope::set_allocated_message(::std::string* message) {
     message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.message)
+}
+
+// optional string msgId = 6;
+inline bool MessageEnvelope::has_msgid() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void MessageEnvelope::set_has_msgid() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void MessageEnvelope::clear_has_msgid() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void MessageEnvelope::clear_msgid() {
+  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_->clear();
+  }
+  clear_has_msgid();
+}
+inline const ::std::string& MessageEnvelope::msgid() const {
+  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.msgId)
+  return *msgid_;
+}
+inline void MessageEnvelope::set_msgid(const ::std::string& value) {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  msgid_->assign(value);
+  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.msgId)
+}
+inline void MessageEnvelope::set_msgid(const char* value) {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  msgid_->assign(value);
+  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.msgId)
+}
+inline void MessageEnvelope::set_msgid(const char* value, size_t size) {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  msgid_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.msgId)
+}
+inline ::std::string* MessageEnvelope::mutable_msgid() {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.msgId)
+  return msgid_;
+}
+inline ::std::string* MessageEnvelope::release_msgid() {
+  clear_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = msgid_;
+    msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void MessageEnvelope::set_allocated_msgid(::std::string* msgid) {
+  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete msgid_;
+  }
+  if (msgid) {
+    set_has_msgid();
+    msgid_ = msgid;
+  } else {
+    clear_has_msgid();
+    msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.msgId)
 }
 
 

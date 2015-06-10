@@ -389,8 +389,6 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     ParsedMessage msgStruct;
     parseWireMsg(wire, &msgStruct);
 
-//    cerr << "decrypt: " << *conv.dump();
-
     // This is a message with embedded pre-key and identity key. Need to setup the
     // Axolotl conversation first. According to the optimized pre-key handling this
     // client takes the Axolotl 'Bob' role.
@@ -415,7 +413,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     string CKp;
     string macKey;
     pair <string, string> MK;
-//    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d",  conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
+//    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
 
     if (!newRatchet) {
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
@@ -435,7 +433,6 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
 
         // set up the new ratchet DHRr and derive the new RK and CKr from it
         conv->setDHRr(DHRp);
-//        cerr << "ratchet flag: " << conv.getRatchetFlag() << ", DHRs: " << conv.getDHRs() << endl;
 
         // RKp, CKp = KDF( HMAC-HASH(RK, DH(DHRp, DHRs)) )
         //With the new ratchet key derive the purported RK and CKr
@@ -457,7 +454,6 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         delete saveDHRr;
         conv->setRatchetFlag(true);
     }
-    //    cerr << "store MK: " << conv.stagedMk->size() << endl;
     conv->storeStagedMks();
     conv->setCKr(CKp);
     conv->setNr(msgStruct.Np + 1);     // Receiver: expected next message number 
@@ -497,7 +493,6 @@ const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, 
 {
     bool ratchetSave = conv.getRatchetFlag();
 
- //   cerr << "encrypt: " << *conv.dump();
     if (ratchetSave) {
         const DhKeyPair* oldDHRs = conv.getDHRs();
         const DhKeyPair* newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
@@ -519,16 +514,12 @@ const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, 
 
 //     cerr << "Encrypt message to: " << conv.getPartner().getName() << ", ratchet: " << ratchetSave << ", Nr: " << conv.getNr() 
 //          << ", Ns: " << conv.getNs() << ", PNs: " << conv.getPNs() << endl;
-//     hexdump("encrypt macKey", macKey); Log("%s", hexBuffer);
-//     hexdump("encrypt CKs", conv.getCKs()); Log("%s", hexBuffer);
-
     string encryptedData;
 
     aesCbcEncrypt(MK, iv, message, &encryptedData);
     if (supplements.size() > 0 && encryptedSupplements != NULL)
         aesCbcEncrypt(MK, iv, supplements, encryptedSupplements);
 
-//    Log("+++++ encrypt: mac size: %d, data size: %d", macKey.size(), encryptedData.size());
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
     hmac_sha256((uint8_t*)macKey.data(), (uint32_t)macKey.size(), (uint8_t*)encryptedData.data(), encryptedData.size(), mac, &macLen);
