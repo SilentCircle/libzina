@@ -5,8 +5,11 @@
 #define HASH_MAP_CLASS unordered_map
 
 /* the location of <unordered_map> or <hash_map> */
-#define HASH_MAP_H <tr1/unordered_map>
 
+#if !defined(__APPLE__)
+
+#define HASH_MAP_H <tr1/unordered_map>
+#endif
 /* the namespace of hash_map/hash_set */
 #define HASH_NAMESPACE std::tr1
 
@@ -14,8 +17,9 @@
 #define HASH_SET_CLASS unordered_set
 
 /* the location of <unordered_set> or <hash_set> */
+#if !defined(__APPLE__)
 #define HASH_SET_H <tr1/unordered_set>
-
+#endif
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
@@ -24,6 +28,12 @@
 
 /* Define to 1 if you have the `ftruncate' function. */
 #define HAVE_FTRUNCATE 1
+
+#if defined(__APPLE__)
+#undef HAVE_HASH_MAP
+#undef HAVE_HASH_SET
+#undef HASH_MAP_H
+#endif
 
 #if defined(ANDROID)
 /*
@@ -36,11 +46,12 @@
 #undef HAVE_HASH_MAP
 /* define if the compiler has hash_set */
 #undef HAVE_HASH_SET
-#else
+#elif defined(__APPLE__)
 /* define if the compiler has hash_map */
-#define HAVE_HASH_MAP 1
+//#define HAVE_HASH_MAP 1
 /* define if the compiler has hash_set */
-#define HAVE_HASH_SET 1
+//#define HAVE_HASH_SET 1
+
 #endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
