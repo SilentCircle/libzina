@@ -112,7 +112,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
     // Hash CKs with "0"
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
-    hmac_sha256((uint8_t*)chainKey.data(), (uint32_t)chainKey.size(), (uint8_t*)"0", 1, mac, &macLen);
+    hmac_sha256((uint8_t*)chainKey.data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"0", 1, mac, &macLen);
 
     // We need a key and an IV
     uint8_t keyMaterialBytes[SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE + SYMMETRIC_KEY_LENGTH];
@@ -413,7 +413,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     string CKp;
     string macKey;
     pair <string, string> MK;
-//    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
+    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
 
     if (!newRatchet) {
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
