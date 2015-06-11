@@ -289,8 +289,11 @@ private:
     ~AppRepository();
 
     AppRepository(const AppRepository& other) {};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
     AppRepository& operator=(const AppRepository& other) {};
     bool operator==(const AppRepository& other) const {};
+#pragma clang diagnostic pop
 
     /**
      * Create AppRepository tables in database.

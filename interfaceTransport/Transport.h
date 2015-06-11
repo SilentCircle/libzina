@@ -21,7 +21,7 @@ namespace axolotl{
 class Transport
 {
 public:
-    ~Transport() {}
+    virtual ~Transport() {}
 
         /**
      * @brief Set the function that actually sends data.

@@ -127,8 +127,11 @@ public:
 
 private:
     AxoZrtpConnector (const AxoZrtpConnector& other) {}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
     AxoZrtpConnector& operator= (const AxoZrtpConnector& other) {}
     bool operator== (const AxoZrtpConnector& other) const {}
+#pragma clang diagnostic pop
 
     AxoConversation* conv_;
     AxoConversation* localConv_;

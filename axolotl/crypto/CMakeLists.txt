@@ -25,8 +25,6 @@ set (hkdf_src
     ${CMAKE_SOURCE_DIR}/axolotl/crypto/Ec255PrivateKey.cpp
     ${CMAKE_SOURCE_DIR}/axolotl/crypto/DhKeyPair.cpp
     ${CMAKE_SOURCE_DIR}/axolotl/crypto/EcCurve.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/DerivedMessageSecrets.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/DerivedRootSecrets.cpp
     ${CMAKE_SOURCE_DIR}/axolotl/crypto/AesCbc.cpp
 )
 

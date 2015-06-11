@@ -413,7 +413,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     string CKp;
     string macKey;
     pair <string, string> MK;
-    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
+//    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
 
     if (!newRatchet) {
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
@@ -512,8 +512,7 @@ const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, 
     string macKey;
     deriveMk(conv.getCKs(), &MK, &iv, &macKey);
 
-//     cerr << "Encrypt message to: " << conv.getPartner().getName() << ", ratchet: " << ratchetSave << ", Nr: " << conv.getNr() 
-//          << ", Ns: " << conv.getNs() << ", PNs: " << conv.getPNs() << endl;
+//    Log("Encrypt message to: %s, ratchet: %d, Nr: %d, Ns: %d, PNp: %d", conv.getPartner().getName().c_str(), ratchetSave, conv.getNr(), conv.getNr(), conv.getPNs());
     string encryptedData;
 
     aesCbcEncrypt(MK, iv, message, &encryptedData);

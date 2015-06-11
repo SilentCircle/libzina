@@ -54,7 +54,7 @@ static jmethodID httpHelperCallback = NULL;
 
 static int32_t debugLevel = 1;
 
-static int Log(char const *format, va_list arg) {
+static void Log(char const *format, va_list arg) {
 #ifdef ANDROID
     LOG(if (debugLevel > 0) __android_log_vprint(ANDROID_LOG_DEBUG, "axolotl", format, arg);)
 #else
@@ -565,7 +565,7 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
 {
-    int32_t result = axoAppInterface->newPreKeys(numbers);
+    return axoAppInterface->newPreKeys(numbers);
 }
 
 /*

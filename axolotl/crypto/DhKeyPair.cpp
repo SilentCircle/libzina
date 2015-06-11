@@ -53,4 +53,5 @@ DhKeyPair& DhKeyPair::operator=(const DhKeyPair& otherPair)
         privateKey_  = new Ec255PrivateKey(otherPair.privateKey_->privateData());
     else
         privateKey_ = NULL;
+    return *this;
 }

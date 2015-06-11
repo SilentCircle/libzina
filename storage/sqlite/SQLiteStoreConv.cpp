@@ -657,12 +657,10 @@ list<pair<string, string> >* SQLiteStoreConv::loadStagedMks(const string& name, 
         delete[] iv;
         sqlCode_= sqlite3_step(stmt);
     }
-    sqlite3_finalize(stmt);
-
-    return keys;
 
 cleanup:
     sqlite3_finalize(stmt);
+    return keys;
 }
 
 void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv)

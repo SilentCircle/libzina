@@ -95,8 +95,11 @@ public:
 private:
     // not support for copy, assignment and equals
     AppInterfaceImpl ( const AppInterfaceImpl& other ) {}
-    AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) {}
-    bool operator== ( const AppInterfaceImpl& other ) const {}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+    AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) { }
+    bool operator== ( const AppInterfaceImpl& other ) const { }
+#pragma clang diagnostic pop
 
     std::vector<std::pair<std::string, std::string> >* sendMessagePreKeys(const std::string& messageDescriptor,
                                                                           const std::string& attachementDescriptor,

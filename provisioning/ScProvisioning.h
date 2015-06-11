@@ -44,7 +44,7 @@ public:
     static void setHttpHelper(HTTP_FUNC httpHelper);
 
 private:
-    friend Provisioning;
+    friend class Provisioning;
     /**
      * @brief functions pointer to the HTTP helper function
      * 
@@ -68,7 +68,11 @@ private:
     ScProvisioning() {}
     ScProvisioning(const ScProvisioning& other) {}
     ~ScProvisioning() {}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
     ScProvisioning& operator=(const ScProvisioning& other) {}
+#pragma clang diagnostic pop
+
 };
 } // namespace
 

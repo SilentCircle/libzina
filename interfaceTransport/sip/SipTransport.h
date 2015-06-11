@@ -37,8 +37,11 @@ public:
 private:
 
     SipTransport(const SipTransport& other) {}
-    SipTransport& operator= ( const SipTransport& other ) {}
-    bool operator== ( const SipTransport& other ) const {}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+    SipTransport& operator= ( const SipTransport& other ) { }
+    bool operator== ( const SipTransport& other ) const { }
+#pragma clang diagnostic pop
 
     AppInterface *appInterface_;
     SEND_DATA_FUNC sendAxoData_;

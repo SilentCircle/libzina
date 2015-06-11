@@ -157,9 +157,12 @@ private:
     SQLiteStoreConv();
     ~SQLiteStoreConv();
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
     SQLiteStoreConv(const SQLiteStoreConv& other) {};
     SQLiteStoreConv& operator=(const SQLiteStoreConv& other) {};
     bool operator==(const SQLiteStoreConv& other) const {};
+#pragma clang diagnostic pop
 
     /**
      * Create Axolotl tables in database.

@@ -153,7 +153,6 @@ public:
      */
     virtual int32_t registerAxolotlDevice(std::string* result) = 0;
 
-    /**
      /**
      * @brief Generate and register a set of new pre-keys.
      * 
