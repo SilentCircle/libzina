@@ -214,17 +214,17 @@ static int32_t helper2(const std::string& requestUrl, const std::string& method,
     return 200;
 }
 
-TEST(AvailabePreKeys, Basic)
-{
-    store = SQLiteStoreConv::getStore();
-    if (!store->isReady()) {
-        store->setKey(std::string((const char*)keyInData, 32));
-        store->openStore(std::string());
-    }
-    ScProvisioning::setHttpHelper(helper2);
-
-    ASSERT_EQ(10, Provisioning::getNumPreKeys(bobAuth));
-}
+// TEST(AvailabePreKeys, Basic)
+// {
+//     store = SQLiteStoreConv::getStore();
+//     if (!store->isReady()) {
+//         store->setKey(std::string((const char*)keyInData, 32));
+//         store->openStore(std::string());
+//     }
+//     ScProvisioning::setHttpHelper(helper2);
+// 
+//     ASSERT_EQ(10, Provisioning::getNumPreKeys(bobDevId, bobAuth));
+// }
 
 
 // This simulates an answer from the provisioning server repsonding a user's available Axolotl devices

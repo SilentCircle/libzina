@@ -58,10 +58,11 @@ public:
     /**
      * @brief Get number of available pre-keys on the server.
      * 
+     * @param longDevId the SC device id
      * @param authorization autorization data, may be needed for some servers
      * @return number of available pre-keys, -1 if request to server failed.
      */
-    static int32_t getNumPreKeys(const std::string& authorization);
+    static int32_t getNumPreKeys(const string& longDevId, const string& authorization);
 
     /**
      * @brief Get the availabe registered Axolotl device of a user

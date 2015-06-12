@@ -113,6 +113,16 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native int newPreKeys(int number);
 
     /**
+     * Get number of pre-keys available on the server.
+     * 
+     * Checks if the server has pre-keys for this account/device id and return how many keys are
+     * available.
+     * 
+     * @return number of available pre-keys or -1 if request to server failed.
+     */
+    public static native int getNumPreKeys();
+
+    /**
      * Return the stored error code.
      * 
      * Functions of this implementation store error code in case they detect

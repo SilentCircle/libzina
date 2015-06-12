@@ -358,7 +358,6 @@ std::list<std::string>* SQLiteStoreConv::getKnownConversations(const std::string
 {
     sqlite3_stmt *stmt;
     int32_t nameLen;
-    std::string* name;
 
     std::list<std::string>* names = new std::list<std::string>;
 

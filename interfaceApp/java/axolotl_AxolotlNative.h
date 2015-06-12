@@ -49,6 +49,14 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_newPreKeys
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    getNumPreKeys
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_getNumPreKeys
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    getErrorCode
  * Signature: ()I
  */

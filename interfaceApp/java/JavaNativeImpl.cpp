@@ -569,6 +569,17 @@ JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
 }
 
 /*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getNumPreKeys
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(getNumPreKeys) (JNIEnv* env, jclass clazz)
+{
+    return axoAppInterface->getNumPreKeys();
+}
+
+/*
  * Class:     AxolotlNative
  * Method:    getErrorCode
  * Signature: ()I

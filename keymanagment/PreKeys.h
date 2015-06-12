@@ -30,7 +30,7 @@ public:
      * @param store The persitent Axolotl store to store and retrieve state information.
      * @return a new pre-key and its id
      */
-    static std::pair< int32_t, const DhKeyPair* > generatePreKey(SQLiteStoreConv* store );
+    static pair< int32_t, const DhKeyPair* > generatePreKey(SQLiteStoreConv* store );
 
     /**
      * @brief Generate a batch of pre-keys.
@@ -44,7 +44,7 @@ public:
      * @param store The persitent Axolotl store to store and retrieve state information.
      * @return a list of the generated new pre-key.
      */
-    static list< std::pair< int32_t, const DhKeyPair* > >* generatePreKeys(SQLiteStoreConv* store, int32_t num = 10 );
+    static list< pair< int32_t, const DhKeyPair* > >* generatePreKeys(SQLiteStoreConv* store, int32_t num = 100);
 
     /**
      * @brief Parse pre-key JSON data and return the keys

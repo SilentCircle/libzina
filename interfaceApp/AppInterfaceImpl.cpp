@@ -416,6 +416,11 @@ int32_t AppInterfaceImpl::newPreKeys(int32_t number)
     return ScProvisioning::newPreKeys(store, scClientDevId_, authorization_, &result);
 }
 
+int32_t AppInterfaceImpl::getNumPreKeys() const
+{
+    return Provisioning::getNumPreKeys(scClientDevId_, authorization_);
+}
+
 void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 {
     ScProvisioning::setHttpHelper(httpHelper);

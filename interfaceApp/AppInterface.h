@@ -161,6 +161,16 @@ public:
     virtual int32_t newPreKeys(int32_t number) = 0;
 
     /**
+     * @brief Get number of pre-keys available on the server.
+     * 
+     * Checks if the server has pre-keys for this account/device id and return how many keys are
+     * available.
+     * 
+     * @return number of available pre-keys or -1 if request to server failed.
+     */
+    virtual int32_t getNumPreKeys() const = 0;
+
+    /**
      * @brief Callback to UI to receive a Message from transport 
      *
      * Creates a JSON formatted message descriptor of the received message and forwards it to the UI

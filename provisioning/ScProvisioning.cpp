@@ -43,21 +43,16 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 // Request URL: /v1/user/<user>/devices/<devid>/?api_key=<apikey>
 // Method: GET
 /*
- {
-    "version" :        <int32_t>,        # Version of JSON get pre-key, 1 for the first implementation
-    "username" :       <string>,         # the user name for this account, enables mapping from optional E.164 number to name
-    "scClientDevId"  : <string>,         # optional, the same string as used to register the device (v1/me/device/{device_id}/)
-    "registrationId" : <int32_t>,        # the client's Axolotl registration id
-    "identityKey" :    <string>,         # public part encoded base64 data
-    "deviceId" :       <int32_t>,        # the TextSecure (Axolotl) device id if available, default 1
-    "domain":          <string>,         # optional, domain identifier, in set then 'scClientDevId' my be missing (federation support)
-    "preKey" : 
-    {
-        "keyId" :     <int32_t>,         # The key id of the signed pre key
-        "key" :       <string>,          # public part encoded base64 data
-    }
- }
- "axolotl": {"prekey": {"id": 740820098, "key": "AbInUu24ot/07lc4q432zrwd+xbZA8oS1+OB/8j1CKU3"}, "identity_key": "AR2/g2VTSYpqbnRJVi4Wdz8hAnZZmHvknf15qRrClZcs"}}
+ * Server response:
+{
+  "axolotl": {
+     "prekey": {
+         "id": 740820098, 
+         "key": "AbInUu24ot/07lc4q432zrwd+xbZA8oS1+OB/8j1CKU3"
+     },
+     "identity_key": "AR2/g2VTSYpqbnRJVi4Wdz8hAnZZmHvknf15qRrClZcs"
+  }
+}
 */
 static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization, pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
@@ -111,34 +106,77 @@ int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string
 }
 
 // Implementation of the Provisioning API: Available pre-keys
-// Request URL: /v1/me/axolotl/prekeys/?api_key=<API_key>
+// Request URL: /v1/me/device/<device_id>/"
 // Method: GET
 /*
+ * Server response:
  {
-    "version" :        <int32_t>,        # Version of JSON new pre-keys, 1 for the first implementation
-    "scClientDevId"  : <string>,         # the same string as used to register the device (v1/me/device/{device_id}/)
-    "registrationId" : <int32_t>,        # the client's Axolotl registration id
-    "availablePreKeys" : <int32_t>       # number of available pre-keys on the server
- }
+  "silent_text": {
+      "username": "xxx@xmpp-dev.silentcircle.net", 
+      "password": "badcafe"
+     },
+  "silent_phone": {
+      "username": "xxx", 
+      "tns": {
+          "+15555555555": {
+              "oca_region": "US", "oca_area": "New York", "provider": "Test"
+          }
+       }, 
+       "current_modifier": 0, 
+       "services": {
+           "global": {
+               "minutes_left": 100, "min_tier": 100
+           }
+       },
+       "numbers": [{"region": "US", "number": "+15555555555", "area": "New York"}], 
+       "owner": "sc", 
+       "password": "topsecret", 
+       "tls1": "server1.silentcircle.net", "tls2": "server2.silentcircle.net"
+   }, 
+   "axolotl": {
+       "version": 1, 
+       "prekeys": [
+           {"id": 4711, "key": "badcafebeafdead"}, 
+           {"id": 815, "key":  "cafecafebadbad"}, 
+        ], 
+        "identity_key": "deadbeaf"
+   }, 
+   "push_tokens": []}
  */
-int32_t Provisioning::getNumPreKeys(const std::string& authorization)
+static const char* getNumberPreKeys = "/v1/me/device/%s/?api_key=%s";
+
+int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& authorization)
 {
-    std::string requestUri(uriVersion);
-    requestUri.append(uriMe).append(uriAxolotl).append(uriPreKeys).append(uriApiKey).append(authorization);
+
+    char temp[1000];
+    snprintf(temp, 990, getNumberPreKeys, longDevId.c_str(), authorization.c_str());
 
     std::string response;
-    int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
+    int32_t code = ScProvisioning::httpHelper_(temp, GET, Empty, &response);
 
-    if (code >= 400)
+    if (code >= 400 || response.empty())
         return -1;
 
     cJSON* root = cJSON_Parse(response.c_str());
-    int32_t availableKeys = cJSON_GetObjectItem(root, "availablePreKeys")->valueint;
+    if (root == NULL)
+        return 1;
 
+    cJSON* axolotl = cJSON_GetObjectItem(root, "axolotl");
+    if (axolotl == NULL) {
+        cJSON_Delete(root);
+        return -1;
+    }
+
+    cJSON* keyIds = cJSON_GetObjectItem(axolotl, "prekeys");
+    if (keyIds == NULL || keyIds->type != cJSON_Array) {
+        cJSON_Delete(root);
+        return -1;
+    }
+    int32_t numIds = cJSON_GetArraySize(keyIds);
     // Clear JSON buffer and context
     cJSON_Delete(root);
 
-    return availableKeys;
+    return numIds;
 }
 
 
@@ -200,15 +238,13 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
 /*
  {
     "version" :        <int32_t>,        # Version of JSON new pre-keys, 1 for the first implementation
-    "scClientDevId"  : <string>,         # the same string as used to register the device (v1/me/device/{device_id}/)
-    "registrationId" : <int32_t>,        # this client's Axolotl registration id
-    "preKeys" : [{
-        "keyId" :     <int32_t>,         # The key id of the signed pre key
+    "prekeys" : [{
+        "id" :        <int32_t>,         # The key id of the signed pre key
         "key" :       <string>,          # public part encoded base64 data
     },
 ....
     {
-        "keyId" :     <int32_t>,         # The key id of the signed pre key
+        "id" :        <int32_t>,         # The key id of the signed pre key
         "key" :       <string>,          # public part encoded base64 data
     }]
  }

@@ -54,6 +54,8 @@ public:
 
     int32_t newPreKeys(int32_t number);
 
+    int32_t getNumPreKeys() const;
+
     /**
      * @brief Return the stored error code.
      * 

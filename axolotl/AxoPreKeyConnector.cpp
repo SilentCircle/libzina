@@ -70,6 +70,9 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
         return GENERIC_ERROR;
     }
     AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
+    if (localConv == NULL)
+        return NO_OWN_ID;
+
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
     const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
@@ -125,7 +128,7 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
         return OK;
 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    store->dumpPreKeys();
+//    store->dumpPreKeys();
     string* preKeyData = store->loadPreKey(bobPreKeyId);
     if (preKeyData == NULL) {
         conv->setErrorCode(NO_PRE_KEY_FOUND);
