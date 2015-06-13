@@ -53,7 +53,7 @@ pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
     return prePair;
 }
 
-list<pair<int32_t, const DhKeyPair*> >* PreKeys::generatePreKeys( SQLiteStoreConv* store, int32_t num )
+list<pair<int32_t, const DhKeyPair*> >* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
 {
     std::list< pair<int32_t, const DhKeyPair*> >* pkrList = new std::list< pair<int32_t, const DhKeyPair*> >;
 

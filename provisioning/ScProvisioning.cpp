@@ -249,7 +249,7 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
     }]
  }
 */
-int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, string* result )
+int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, int32_t number, string* result )
 {
     char temp[1000];
     snprintf(temp, 990, registerRequest, longDevId.c_str(), authorization.c_str());
@@ -259,14 +259,14 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
     root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(root, "version", 1);
+//    cJSON_AddNumberToObject(root, "version", 1);
 //    cJSON_AddStringToObject(root, "scClientDevId", longDevId.c_str());
 //    cJSON_AddNumberToObject(root, "registrationId", store->getLocalRegistrationId());
 
     cJSON* jsonPkrArray;
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
-    list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store);
+    list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store, number);
     int32_t size = preList->size();
     for (int32_t i = 0; i < size; i++) {
         pair<int32_t, const DhKeyPair*> prePair = preList->front();

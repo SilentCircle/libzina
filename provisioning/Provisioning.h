@@ -87,10 +87,11 @@ public:
      * @param longDevId the unique device id of one of the user's registered Axolotl devices
      * @param authorization autorization data, required to identify the user/device for which to append
      *        the new pre-keys.
+     * @param number How man pre-keys to add
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server's request return code, e.g. 200 or 404 or alike.
      */
-    static int32_t newPreKeys(SQLiteStoreConv* store, const std::string& longDevId, const std::string& authorization, std::string* result);
+    static int32_t newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, int32_t number, string* result);
 
 };
 } // namespace

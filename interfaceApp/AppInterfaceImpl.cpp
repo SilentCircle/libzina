@@ -413,7 +413,7 @@ int32_t AppInterfaceImpl::newPreKeys(int32_t number)
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     string result;
-    return ScProvisioning::newPreKeys(store, scClientDevId_, authorization_, &result);
+    return ScProvisioning::newPreKeys(store, scClientDevId_, authorization_, number, &result);
 }
 
 int32_t AppInterfaceImpl::getNumPreKeys() const
