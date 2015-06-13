@@ -102,7 +102,7 @@ void AxoConversation::deserialize(const std::string& data)
     size_t b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        Log("++++ deserialize RK: b64length: %d, binLength: %d", b64Length, binLength);
+//        Log("++++ deserialize RK: b64length: %d, binLength: %d", b64Length, binLength);
         RK.assign((const char*)binBuffer, binLength);
     }
 
@@ -187,7 +187,7 @@ void AxoConversation::deserialize(const std::string& data)
     if (b64Length > 0) {
         binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         CKr.assign((const char*)binBuffer, binLength);
-        Log("++++ deserialize CKr: b64length: %d, binLength: %d", b64Length, binLength);
+//        Log("++++ deserialize CKr: b64length: %d, binLength: %d", b64Length, binLength);
     }
     Ns = cJSON_GetObjectItem(root, "Ns")->valueint;
     Nr = cJSON_GetObjectItem(root, "Nr")->valueint;
@@ -214,7 +214,7 @@ const std::string* AxoConversation::serialize() const
     cJSON_AddStringToObject(root, "localUser", localUser_.c_str());
 
     int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-    Log("++++ serialize RK: b64length: %d, inLength: %d", b64Len, RK.size());
+//    Log("++++ serialize RK: b64length: %d, inLength: %d", b64Len, RK.size());
     cJSON_AddStringToObject(root, "RK", b64Buffer);
 
 
@@ -279,11 +279,11 @@ const std::string* AxoConversation::serialize() const
 
     // The two chain keys
     b64Len = b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-    Log("++++ serialize CKs: b64length: %d, inLength: %d", b64Len, CKs.size());
+//    Log("++++ serialize CKs: b64length: %d, inLength: %d", b64Len, CKs.size());
     cJSON_AddStringToObject(root, "CKs", b64Buffer);
 
     b64Len = b64Encode((const uint8_t*)CKr.data(), CKr.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-    Log("++++ serialize CKr: b64length: %d, inLength: %d", b64Len, CKr.size());
+//    Log("++++ serialize CKr: b64length: %d, inLength: %d", b64Len, CKr.size());
     cJSON_AddStringToObject(root, "CKr", b64Buffer);
 
     cJSON_AddNumberToObject(root, "Ns", Ns);
