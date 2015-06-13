@@ -20,7 +20,7 @@
  *        be ~1.4 * binLength (rule of thumb).
  * @return number of B64 characters in the @c b64Data buffer.
  */
-int b64Encode(const uint8_t *binData, int32_t binLength, char *b64Data);
+int b64Encode(const uint8_t *binData, int32_t binLength, char *b64Data, size_t resultSize);
 
 /**
  * @brief Decode a Base64 string to binary data
@@ -33,6 +33,6 @@ int b64Encode(const uint8_t *binData, int32_t binLength, char *b64Data);
  * @param binData Pointer to binary data byte array
  * @return number of binary bytes in the @c binData buffer
  */
-int b64Decode(const char *b64Data, int32_t b64length, uint8_t *binData);
+int b64Decode(const char *b64Data, int32_t b64length, uint8_t *binData, size_t binLength);
 
 #endif  /*B64HELPER_H */

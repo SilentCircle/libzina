@@ -133,15 +133,14 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
         envelope.set_message(*wireMessage);
         std::string serialized = envelope.SerializeAsString();
 
-        // We need to have them in b64 encodeing, check if buffer is large enough. Allocate twice
+        // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
         // the size of binary data, this is big enough to hold B64 plus paddling and terminator
         if (serialized.size() * 2 > tempBufferSize_) {
             delete tempBuffer_;
             tempBuffer_ = new char[serialized.size()*2];
             tempBufferSize_ = serialized.size()*2;
         }
-        int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_);
-        tempBuffer_[b64Len] = 0;
+        int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
 
         // replace the binary data with B64 representation
         serialized.assign(tempBuffer_, b64Len);
@@ -189,7 +188,7 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
         tempBuffer_ = new char[messageEnvelope.size()];
         tempBufferSize_ = messageEnvelope.size();
     }
-    int32_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t*)tempBuffer_);
+    int32_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t*)tempBuffer_, tempBufferSize_);
     std::string envelopeBin((const char*)tempBuffer_, binLength);
 
     MessageEnvelope envelope;
@@ -372,8 +371,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
 
     delete myIdPair;
 
-    int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer);
-    b64Buffer[b64Len] = 0;
+    int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identity_key", b64Buffer);
 
     cJSON* jsonPkrArray;
@@ -393,8 +391,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
         const DhKeyPair* ecPair = pkPair.second;
         const std::string data = ecPair->getPublicKey().serialize();
 
-        b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
         delete ecPair;
     }
@@ -580,8 +577,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
         tempBuffer_ = new char[serialized.size()*2];
         tempBufferSize_ = serialized.size()*2;
     }
-    int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_);
-    tempBuffer_[b64Len] = 0;
+    int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
 
     // replace the binary data with B64 representation
     serialized.assign(tempBuffer_, b64Len);

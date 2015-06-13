@@ -138,8 +138,7 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
 //    cJSON_AddNumberToObject(root, "registrationId", bobRegisterId);
 
     std::string data = bobIdpublicKey.serialize();
-    int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer);
-    b64Buffer[b64Len] = 0;
+    int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identityKey", b64Buffer);
 //    cJSON_AddNumberToObject(root, "deviceId", 1);
 
@@ -152,8 +151,7 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
     // Get pre-key's public key data, serialized and add it to JSON
     const DhKeyPair* ecPair = bobPreKey.second;
     data = ecPair->getPublicKey().serialize();
-    b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer);
-    b64Buffer[b64Len] = 0;
+    b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(jsonPkr, "key", b64Buffer);
     delete ecPair;
 
@@ -322,6 +320,6 @@ TEST(newPreKeys, Basic)
     ScProvisioning::setHttpHelper(helper5);
 
     std::string result;
-    int32_t ret = Provisioning::newPreKeys(store, bobDevId, bobAuth, &result);
+    int32_t ret = Provisioning::newPreKeys(store, bobDevId, bobAuth, 10, &result);
     ASSERT_TRUE(ret > 0) << "Actual return value: " << ret;
 }

@@ -27,11 +27,11 @@ static string* preKeyJson(int32_t keyId, const DhKeyPair& preKeyPair)
 
     root = cJSON_CreateObject();
 
-    int32_t b64Len = b64Encode((const uint8_t*)preKeyPair.getPrivateKey().privateData(), preKeyPair.getPrivateKey().getEncodedSize(), b64Buffer);
+    int32_t b64Len = b64Encode((const uint8_t*)preKeyPair.getPrivateKey().privateData(), preKeyPair.getPrivateKey().getEncodedSize(), b64Buffer, 270);
     b64Buffer[b64Len] = 0;
     cJSON_AddStringToObject(root, "private", b64Buffer);
 
-    b64Len = b64Encode((const uint8_t*)preKeyPair.getPublicKey().serialize().data(), preKeyPair.getPublicKey().getEncodedSize(), b64Buffer);
+    b64Len = b64Encode((const uint8_t*)preKeyPair.getPublicKey().serialize().data(), preKeyPair.getPublicKey().getEncodedSize(), b64Buffer, 270);
     b64Buffer[b64Len] = 0;
     cJSON_AddStringToObject(root, "public", b64Buffer);
 

@@ -101,7 +101,7 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "RK")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         Log("++++ deserialize RK: b64length: %d, binLength: %d", b64Length, binLength);
         RK.assign((const char*)binBuffer, binLength);
     }
@@ -111,14 +111,14 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "public")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
 
         // Here we may check the public curve type and do some code to support different curves and
         // create to correct private key. The serilaized public key data contain a curve type id. For
         // the time being use Ec255 (DJB's curve 25519).
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
-        binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer);
+        binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
         const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
         DHRs = new DhKeyPair(*pubKey, *privKey);
@@ -129,7 +129,7 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "DHRr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         DHRr = EcCurve::decodePoint(binBuffer);
     }
 
@@ -138,11 +138,11 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "public")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
 
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
-        binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer);
+        binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
         const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
         DHIs = new DhKeyPair(*pubKey, *privKey);
@@ -152,7 +152,7 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "DHIr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         DHIr = EcCurve::decodePoint(binBuffer);
     }
 
@@ -161,11 +161,11 @@ void AxoConversation::deserialize(const std::string& data)
     b64Length = strlen(cJSON_GetObjectItem(jsonItem, "public")->valuestring);
     if (b64Length > 0) {
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "public")->valuestring, b64Length+1);
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
 
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
-        binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer);
+        binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
         const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
         A0 = new DhKeyPair(*pubKey, *privKey);
@@ -177,7 +177,7 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "CKs")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         CKs.assign((const char*)binBuffer, binLength);
     }
 
@@ -185,7 +185,7 @@ void AxoConversation::deserialize(const std::string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "CKr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
-        binLength = b64Decode(b64Buffer, b64Length, binBuffer);
+        binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         CKr.assign((const char*)binBuffer, binLength);
         Log("++++ deserialize CKr: b64length: %d, binLength: %d", b64Length, binLength);
     }
@@ -213,8 +213,7 @@ const std::string* AxoConversation::serialize() const
     cJSON_AddStringToObject(root, "deviceId", deviceId_.c_str());
     cJSON_AddStringToObject(root, "localUser", localUser_.c_str());
 
-    int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer);
-    b64Buffer[b64Len] = 0;
+    int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     Log("++++ serialize RK: b64length: %d, inLength: %d", b64Len, RK.size());
     cJSON_AddStringToObject(root, "RK", b64Buffer);
 
@@ -222,12 +221,10 @@ const std::string* AxoConversation::serialize() const
     // DHRs key pair, private, public
     cJSON_AddItemToObject(root, "DHRs", jsonItem = cJSON_CreateObject());
     if (DHRs != NULL) {
-        b64Len = b64Encode((const uint8_t*)DHRs->getPrivateKey().privateData(), DHRs->getPrivateKey().getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)DHRs->getPrivateKey().privateData(), DHRs->getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "private", b64Buffer);
 
-        b64Len = b64Encode((const uint8_t*)DHRs->getPublicKey().serialize().data(), DHRs->getPublicKey().getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)DHRs->getPublicKey().serialize().data(), DHRs->getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "public", b64Buffer);
     }
     else {
@@ -237,8 +234,7 @@ const std::string* AxoConversation::serialize() const
 
     // DHRr key, public
     if (DHRr != NULL) {
-        b64Len = b64Encode((const uint8_t*)DHRr->serialize().data(), DHRr->getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)DHRr->serialize().data(), DHRr->getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(root, "DHRr", b64Buffer);
     }
     else
@@ -247,12 +243,10 @@ const std::string* AxoConversation::serialize() const
     // DHIs key pair, private, public
     cJSON_AddItemToObject(root, "DHIs", jsonItem = cJSON_CreateObject());
     if (DHIs != NULL) {
-        b64Len = b64Encode((const uint8_t*)DHIs->getPrivateKey().privateData(), DHIs->getPrivateKey().getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)DHIs->getPrivateKey().privateData(), DHIs->getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "private", b64Buffer);
 
-        b64Len = b64Encode((const uint8_t*)DHIs->getPublicKey().serialize().data(), DHIs->getPublicKey().getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)DHIs->getPublicKey().serialize().data(), DHIs->getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "public", b64Buffer);
     }
     else {
@@ -262,8 +256,7 @@ const std::string* AxoConversation::serialize() const
 
     // DHIr key, public
     if (DHIr != NULL) {
-        b64Len = b64Encode((const uint8_t*)DHIr->serialize().data(), DHIr->getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)DHIr->serialize().data(), DHIr->getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(root, "DHIr", b64Buffer);
     }
     else
@@ -273,12 +266,10 @@ const std::string* AxoConversation::serialize() const
     // A0 key pair, private, public
     cJSON_AddItemToObject(root, "A0", jsonItem = cJSON_CreateObject());
     if (A0 != NULL) {
-        b64Len = b64Encode((const uint8_t*)A0->getPrivateKey().privateData(), A0->getPrivateKey().getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)A0->getPrivateKey().privateData(), A0->getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "private", b64Buffer);
 
-        b64Len = b64Encode((const uint8_t*)A0->getPublicKey().serialize().data(), A0->getPublicKey().getEncodedSize(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        b64Len = b64Encode((const uint8_t*)A0->getPublicKey().serialize().data(), A0->getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "public", b64Buffer);
     }
     else {
@@ -287,13 +278,11 @@ const std::string* AxoConversation::serialize() const
     }
 
     // The two chain keys
-    b64Len = b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer);
-    b64Buffer[b64Len] = 0;
+    b64Len = b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     Log("++++ serialize CKs: b64length: %d, inLength: %d", b64Len, CKs.size());
     cJSON_AddStringToObject(root, "CKs", b64Buffer);
 
-    b64Len = b64Encode((const uint8_t*)CKr.data(), CKr.size(), b64Buffer);
-    b64Buffer[b64Len] = 0;
+    b64Len = b64Encode((const uint8_t*)CKr.data(), CKr.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     Log("++++ serialize CKr: b64length: %d, inLength: %d", b64Len, CKr.size());
     cJSON_AddStringToObject(root, "CKr", b64Buffer);
 

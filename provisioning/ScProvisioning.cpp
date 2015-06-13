@@ -40,7 +40,7 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 }
 
 // Implementation of the Provisioning API: Get Pre-Key
-// Request URL: /v1/user/<user>/devices/<devid>/?api_key=<apikey>
+// Request URL: /v1/user/<user>/device/<devid>/?api_key=<apikey>
 // Method: GET
 /*
  * Server response:
@@ -55,6 +55,7 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 }
 */
 static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
+
 int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization, pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
     char temp[1000];
@@ -92,10 +93,10 @@ int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string
     int32_t pkyId = cJSON_GetObjectItem(pky, "id")->valueint;
     std::string pkyPub(cJSON_GetObjectItem(pky, "key")->valuestring);
 
-    int32_t len = b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer);
+    int32_t len = b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
     const DhPublicKey* prePublic = EcCurve::decodePoint(pubKeyBuffer);
 
-    len = b64Decode(identity.data(), identity.size(), pubKeyBuffer);
+    len = b64Decode(identity.data(), identity.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
     const DhPublicKey *identityKey = EcCurve::decodePoint(pubKeyBuffer);
 
     // Clear JSON buffer and context
@@ -186,7 +187,7 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
 /*
  {
     "version" :        <int32_t>,        # Version of JSON new pre-keys, 1 for the first implementation
-    "scClientDevIds" : [<string>, ..., <string>]   # array of known Axolotl ScClientDevIds for this user/account
+    "devices" : [{"id": <string>}, ..., {"id": <string>}]   # array of known Axolotl ScClientDevIds for this user/account
  }
  */
 static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&api_key=%s";
@@ -237,7 +238,6 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
 // Method: PUT
 /*
  {
-    "version" :        <int32_t>,        # Version of JSON new pre-keys, 1 for the first implementation
     "prekeys" : [{
         "id" :        <int32_t>,         # The key id of the signed pre key
         "key" :       <string>,          # public part encoded base64 data
@@ -280,8 +280,7 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
         const DhKeyPair* ecPair = prePair.second;
         const std::string data = ecPair->getPublicKey().serialize();
 
-        int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer);
-        b64Buffer[b64Len] = 0;
+        int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
         delete ecPair;
     }
