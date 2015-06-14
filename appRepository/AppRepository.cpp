@@ -79,7 +79,7 @@ static const char *createEvents =
 
 static const char* updateEvent = "UPDATE events SET data=?1 WHERE eventid=?2;";
 static const char* insertEventSql =
-    "INSERT INTO events (eventid, inserted, msgNumber, state, data, convName)"
+    "INSERT OR REPLACE INTO events (eventid, inserted, msgNumber, state, data, convName)"
     "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5, ?6);";
 
 static const char* selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 and convName=?2;";
