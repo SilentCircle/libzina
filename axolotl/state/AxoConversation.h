@@ -41,13 +41,10 @@ class AxoConversation
 public:
     AxoConversation(const std::string& localUser, const std::string& user, const std::string& deviceId) : partner_(user, emptyString), 
                     deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0), 
-                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false) 
+                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), isNew_(true)
    {}
 
-   ~AxoConversation() 
-   {
-       delete DHRs; DHRs = NULL; delete DHRr; DHRr = NULL; delete DHIs; DHIs = NULL; delete DHIr; DHIr = NULL; delete A0; A0 = NULL;
-   }
+   ~AxoConversation() { reset(); }
 
     /**
      * @brief Load local conversation from database.
@@ -66,16 +63,6 @@ public:
      * @return the loaded AxoConversation or NULL if none was stored.
      */
     static AxoConversation* loadConversation(const std::string& localUser, const std::string& user, const std::string& deviceId);
-
-    /**
-     * @brief Create an empty conversation, just with names.
-     * 
-     * @param localUser name of own user/account
-     * @param user Name of the remote user
-     * @param deviceId The remote user's device id if it is available
-     * @return created AxoConversation
-     */
-    static AxoConversation* loadConversationEmpty(const std::string& localUser, const std::string& user, const std::string& deviceId);
 
     /**
      * @brief Store this conversation in persitent store
@@ -138,13 +125,18 @@ public:
 
     list<string>* stagedMk;
 
+    bool isNew()                            { return isNew_; }
+    void setNew(bool isNew)                 { isNew_ = isNew; }
+
+    void reset();
+
 #ifdef UNITTESTS
     const std::string* dump() const         { return serialize(); }
 #endif
 
 private:
     void deserialize(const std::string& data);
-    const std::string* serialize(  ) const;
+    const std::string* serialize() const;
 
     // The following data goes to persistant store
     AxoContact   partner_;
@@ -183,6 +175,7 @@ private:
     Impemented via database and temporary list, see stagedMk above.
     */ 
     int32_t errorCode_;
+    bool    isNew_;
 };
 }
 /**

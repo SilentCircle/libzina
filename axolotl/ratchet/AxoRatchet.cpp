@@ -406,6 +406,11 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         if (result < 0)
             return NULL;
     }
+    // Check if conversation is really setup - identity key must be available in any case
+    if (conv->getDHIr() == NULL) {
+        conv->setErrorCode(SESSION_NOT_INITED);
+        return NULL;
+    }
     string encrypted((const char*)msgStruct.encryptedMsg, msgStruct.encryptedMsgLen);
     string* decrypted = new string();
 
@@ -427,6 +432,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         bool success = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
         if (!success) {
             delete decrypted;
+            conv->setErrorCode(NOT_DECRYPTABLE);
             return NULL;
         }
     }
@@ -455,6 +461,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
             conv->setDHRr(saveDHRr);
             delete DHRp;
             delete decrypted;
+            conv->setErrorCode(NOT_DECRYPTABLE);
             return NULL;
         }
         conv->setRK(RKp);

@@ -115,7 +115,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 
 /*
  * We are P1 at this point:
- * 
+ *  The conversation msut be a new conversation state, otherwise clear old state
     A  = P2_I   (private data)
     B  = P1_I   (public data)
     A0 = P2_PK1 (private data)
@@ -135,6 +135,10 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
         return -1;
     }
     store->removePreKey(bobPreKeyId);
+    if (!conv->isNew()) {
+        conv->reset();
+        conv->setNew(true);
+    }
 
 //     cerr << "Load local of: " << conv.getLocalUser() << ", sender: " << conv.getPartner().getName() << endl;
 //     cerr << "PreKey id: " << bobPreKeyId << ", data: " << preKeyData << endl;

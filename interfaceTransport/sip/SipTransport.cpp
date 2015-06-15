@@ -53,8 +53,7 @@ void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, 
 {
     std::string info;
     if (data != NULL) {
-        Log("state report data: %p, length: %d", data, length);
-        // info.assign((const char*)data, 200);
+        info.assign((const char*)data, length);
     }
     appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
 }

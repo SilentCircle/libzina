@@ -210,11 +210,11 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
     std::string supplementsPlain;
     std::string* messagePlain;
     messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain);
+    errorCode_ = axoConv->getErrorCode();
     delete axoConv;
 
 //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
-        errorCode_ = NOT_DECRYPTABLE;
         Log("++++ error code decrypt: %d", errorCode_);
         messageStateReport(0, -1, receiveErrorJson(errorCode_, sender, senderScClientDevId, messageEnvelope));
         return errorCode_;

@@ -29,15 +29,11 @@ AxoConversation* AxoConversation::loadConversation(const std::string& localUser,
 
     AxoConversation* conv = new AxoConversation(localUser, user, deviceId);
     conv->deserialize(*data);
+    conv->setNew(false);
     delete data;
     return conv;
 }
 
-AxoConversation* AxoConversation::loadConversationEmpty(const std::string& localUser, const std::string& user, const std::string& deviceId)
-{
-    AxoConversation* conv = new AxoConversation(localUser, user, deviceId);
-    return conv;
-}
 
 void AxoConversation::storeConversation()
 {
@@ -298,4 +294,20 @@ const std::string* AxoConversation::serialize() const
     cJSON_Delete(root); free(out);
 
     return data;
+}
+
+void AxoConversation::reset()
+{
+    delete DHRs; DHRs = NULL;
+    delete DHRr; DHRr = NULL;
+    delete DHIs; DHIs = NULL;
+    delete DHIr; DHIr = NULL; 
+    delete A0; A0 = NULL;
+
+    memset_volatile((void*)CKr.data(), 0 , CKr.size());
+    CKr.clear();
+    memset_volatile((void*)CKs.data(), 0 , CKs.size());
+    CKs.clear();
+    memset_volatile((void*)RK.data(), 0 , RK.size());
+    RK.clear();
 }
