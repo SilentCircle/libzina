@@ -555,11 +555,10 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
          "name":           <string>         # sender's name
          "scClientDevId":  <string>         # sender's long device id
          "deviceId":       <int32_t>        # optional, TextSecure device id
-         "supplement":     <string>         # suplementary data, encrypted, B64
-         "message":        <string>         # message, encrypted, B64
+         "supplement":     <string>         # suplementary data, encrypted
+         "message":        <string>         # message, encrypted
       }
       */
-
     MessageEnvelope envelope;
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
@@ -570,8 +569,8 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
 
     std::string serialized = envelope.SerializeAsString();
 
-    // We need to have them in b64 encodeing, check if buffer is large enough. Allocate twice
-    // the size of binary data, this is big enough to hold B64 plus paddling and terminator
+    // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
+    // the size of binary data, this is big enough to hold B64 plus padding and terminator
     if (serialized.size() * 2 > tempBufferSize_) {
         delete tempBuffer_;
         tempBuffer_ = new char[serialized.size()*2];
