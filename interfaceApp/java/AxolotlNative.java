@@ -91,6 +91,22 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native byte[] getKnownUsers();
 
     /**
+     * Get public part of own identity key.
+     * 
+     * @return public part of own identity key, {@code null} if no own identity key available
+     */
+     public static native byte[] getOwnIdentityKey();
+
+    /**
+     * Get a list of all identity keys of a user.
+     * 
+     * 
+     * @param user the name of the user
+     * @return array of identity keys, {@code null} if no identity keys are available for that user.
+     */
+    public static native byte[][] getIdentityKeys(byte[] user);
+
+    /**
      * Register device.
      *
      * Register this device with the server. The registration requires a device id that's unique

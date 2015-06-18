@@ -10,11 +10,14 @@
 
 #include <string>
 #include <vector>
+#include <list>
 
 #include "../interfaceTransport/Transport.h"
 
 typedef int32_t (*RECV_FUNC)(const std::string&, const std::string&, const std::string&);
 typedef void (*STATE_FUNC)(int64_t, int32_t, const std::string&);
+
+using namespace std;
 
 namespace axolotl {
 class AppInterface
@@ -138,6 +141,27 @@ public:
      *         Language bindings use appropriate return types.
      */
     virtual std::string* getKnownUsers() = 0;
+
+    /**
+     * @brief Get public part of own identity key.
+     * 
+     * The returned string is not a real strings but is a container that
+     * hold the binary data of the public identity key.
+     * 
+     * @return public part of own identity key
+     */
+    virtual string getOwnIdentityKey() const = 0;
+
+    /**
+     * @brief Get a list of all identity keys of a user.
+     * 
+     * The returned strings in the list are not real strings but are containers that
+     * hold the binary data of the public identity keys of that user.
+     * 
+     * @param user the name of the user
+     * @return list of identity keys. An empty list if no identity keys are available for that user.
+     */
+    virtual list<string>* getIdentityKeys(string& user) const = 0;
 
     /**
      * @brief Register device

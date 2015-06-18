@@ -18,6 +18,8 @@
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& requestData, const std::string& method, std::string* response);
 
+using namespace std;
+
 namespace axolotl {
 class SipTransport;
 
@@ -50,6 +52,10 @@ public:
 
     std::string* getKnownUsers();
 
+    string getOwnIdentityKey() const;
+
+    list<string>* getIdentityKeys(string& user) const;
+
     int32_t registerAxolotlDevice(std::string* result);
 
     int32_t newPreKeys(int32_t number);
@@ -69,7 +75,12 @@ public:
      * 
      * @return The stored error code.
      */
-    int32_t getErrorCode()            { return errorCode_; }
+    int32_t getErrorCode() const      { return errorCode_; }
+
+    /**
+     * @brief Get name of local user for this Axolotl conversation.
+     */
+    const string& getOwnUser() const        { return ownUser_; }
 
     /**
      * @brief Return the stored error information.

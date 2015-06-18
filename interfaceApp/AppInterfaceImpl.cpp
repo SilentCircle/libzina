@@ -584,3 +584,36 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
     supplementsEncrypted.clear();
     return OK;
 }
+
+string AppInterfaceImpl::getOwnIdentityKey() const
+{
+    AxoConversation* axoConv = AxoConversation::loadLocalConversation(ownUser_);
+    if (axoConv == NULL)
+        return Empty;
+
+    const DhKeyPair* keyPair = axoConv->getDHIs();
+    const DhPublicKey& pubKey = keyPair->getPublicKey();
+    string idKey((const char*)pubKey.getPublicKeyPointer(), pubKey.getSize());
+    delete axoConv;
+    return idKey;
+}
+
+list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
+{
+    list<std::string>* idKeys = new list<string>;
+
+    list<std::string>* devices = store_->getLongDeviceIds(user, ownUser_);
+    int32_t numDevices = devices->size();
+
+    while (!devices->empty()) {
+        string recipientDeviceId = devices->front();
+        devices->pop_front();
+        AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, user, recipientDeviceId);
+        const DhPublicKey* idKey = axoConv->getDHIr();
+        string id((const char*)idKey->getPublicKeyPointer(), idKey->getSize());
+        idKeys->push_back(id);
+    }
+    delete devices;
+    return idKeys;
+}
+

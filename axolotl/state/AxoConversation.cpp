@@ -304,10 +304,15 @@ void AxoConversation::reset()
     delete DHIr; DHIr = NULL; 
     delete A0; A0 = NULL;
 
-    memset_volatile((void*)CKr.data(), 0 , CKr.size());
+    if (!CKr.empty())
+        memset_volatile((void*)CKr.data(), 0 , CKr.size());
     CKr.clear();
-    memset_volatile((void*)CKs.data(), 0 , CKs.size());
+
+    if (!CKs.empty())
+        memset_volatile((void*)CKs.data(), 0 , CKs.size());
     CKs.clear();
-    memset_volatile((void*)RK.data(), 0 , RK.size());
+
+    if (!RK.empty())
+        memset_volatile((void*)RK.data(), 0 , RK.size());
     RK.clear();
 }

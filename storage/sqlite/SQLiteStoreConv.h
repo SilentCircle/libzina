@@ -107,7 +107,7 @@ public:
     list<string>* getKnownConversations(const string& ownName);
 
     /**
-     * @brief Get a list of lond device ids for a name.
+     * @brief Get a list of long device ids for a name.
      * 
      * Returns a list of known devices for a user. A user may have several Axolotl device
      * registered with the account.

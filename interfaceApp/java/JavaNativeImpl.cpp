@@ -17,6 +17,7 @@
 #include <string>
 
 using namespace axolotl;
+using namespace std;
 
 /**
  * Define -DPACKAGE_NAME="Java_some_package_name_" to define another package 
@@ -532,6 +533,46 @@ JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 }
 
 /*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getOwnIdentityKey
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
+{
+    string idKey = axoAppInterface->getOwnIdentityKey();
+    jbyteArray key = stringToArray(env, idKey);
+    return key;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getIdentityKeys
+ * Signature: ([B)[[B
+ */
+JNIEXPORT jobjectArray JNICALL JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
+{
+    string name;
+    if (!arrayToString(env, userName, &name))
+        return NULL;
+
+    list<string>* idKeys = axoAppInterface->getIdentityKeys(name);
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(idKeys->size(), byteArrayClass, NULL);  
+
+    int32_t index = 0;
+    while (!idKeys->empty()) {
+        string s = idKeys->front();
+        idKeys->pop_front();
+        jbyteArray retData = stringToArray(env, s);
+        env->SetObjectArrayElement(retArray, index++, retData);
+    }
+    delete idKeys;
+    return retArray;
+}
+
+
+/*
  * Class:     AxolotlNative
  * Method:    registerAxolotlDevice
  * Signature: ([B[I)[B
@@ -659,12 +700,24 @@ JNIEXPORT jstring JNICALL JNI_FUNCTION(axoCommand)(JNIEnv* env, jclass clazz, js
         return NULL;
     const char* cmd = (const char *)env->GetStringUTFChars(command, 0);
 
+    jstring result = NULL;
+
     std::string dataContainer;
     arrayToString(env, data, &dataContainer);
 
+    if (strcmp("removeAxoConversation", cmd) == 0) {
+        Log("Removing Axolotl conversation data for '%s'\n", dataContainer.c_str());
 
+        SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+        store->deleteConversationsName(dataContainer, axoAppInterface->getOwnUser());
+
+        Log("Removing Axolotl conversation data for '%s' returned %d\n", dataContainer.c_str(), store->getSqlCode());
+        if (SQL_FAIL(store->getSqlCode())) {
+            jstring result = env->NewStringUTF(store->getLastError());
+        }
+    }
     env->ReleaseStringUTFChars(command, cmd);
-    return NULL;
+    return result;
 }
 
 /*
