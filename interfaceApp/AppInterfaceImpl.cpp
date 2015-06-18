@@ -29,9 +29,9 @@ static std::string Empty;
 void Log(const char* format, ...);
 
 AppInterfaceImpl::AppInterfaceImpl(const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId,
-                                 RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback):
-                 AppInterface(receiveCallback, stateReportCallback), tempBuffer_(NULL), tempBufferSize_(0),
-                 ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId)
+                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback):
+                                   AppInterface(receiveCallback, stateReportCallback), tempBuffer_(NULL), tempBufferSize_(0),
+                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId)
 {
     store_ = SQLiteStoreConv::getStore();
 }
@@ -158,12 +158,10 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
 }
 
 
-static std::string receiveErrorJson(int32_t errorCode, const std::string& sender, const std::string& senderScClientDevId,
-                                    const std::string& msgEnvelope)
+static std::string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgEnvelope)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
-    cJSON_AddNumberToObject(root, "code", errorCode);
 
     cJSON* details;
     cJSON_AddItemToObject(root, "details", details = cJSON_CreateObject());
@@ -215,8 +213,7 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
 
 //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
-        Log("++++ error code decrypt: %d", errorCode_);
-        messageStateReport(0, -1, receiveErrorJson(errorCode_, sender, senderScClientDevId, messageEnvelope));
+        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, messageEnvelope));
         return errorCode_;
     }
 
