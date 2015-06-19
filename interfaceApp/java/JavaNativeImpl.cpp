@@ -78,7 +78,7 @@ void Log(const char* format, ...)
 // names, devIds, envelopes, sizes, msgIds
 static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[])
 {
-//    Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
+    Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
 
     std::string fName((const char*)names[0]);
     fName.append((const char*)devIds[0]).append(".msg");
@@ -848,6 +848,31 @@ JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
         return -1;
     }
     return appRepository->deleteConversation(name);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    listConversations
+ * Signature: ()[[B
+ */
+JNIEXPORT jobjectArray JNICALL JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
+{
+    list<string>* convNames = appRepository->listConversations();
+
+    if (convNames == NULL)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(convNames->size(), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    while (!convNames->empty()) {
+        std::string s = convNames->front();
+        convNames->pop_front();
+        jbyteArray retData = stringToArray(env, s);
+        env->SetObjectArrayElement(retArray, index++, retData);
+    }
+    return retArray;
 }
 
 /*

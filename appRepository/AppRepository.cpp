@@ -66,6 +66,7 @@ static const char* insertConversation =
 
 static const char* selectConversation = "SELECT data FROM conversations WHERE name=?1;";
 static const char* selectConversationLike = "SELECT data FROM conversations WHERE name LIKE ?1;";
+static const char* selectConversationNames = "SELECT name FROM conversations;";
 
 static const char* deleteConversationSql = "DELETE FROM conversations WHERE name=?1;";
 
@@ -323,6 +324,27 @@ int32_t AppRepository::deleteConversation(const std::string& name)
 cleanup:
     sqlite3_finalize(stmt);
     return sqlCode_;
+}
+
+list<string>* AppRepository::listConversations() const
+{
+    sqlite3_stmt *stmt;
+    list<string>* result = new list<string>;
+
+    // selectConversationNames = "SELECT name FROM conversations;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectConversationNames, -1, &stmt, NULL));
+
+    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+        string data((const char*)sqlite3_column_text(stmt, 0));
+        result->push_back(data);
+    }
+    sqlite3_finalize(stmt);
+    return result;
+
+cleanup:
+    delete result;
+    sqlite3_finalize(stmt);
+    return NULL;
 }
 
 

@@ -19,6 +19,8 @@
 
 #define SQL_FAIL(code) ((code) > SQLITE_OK && (code) < SQLITE_ROW)
 
+using namespace std;
+
 namespace axolotl {
 
 class AppRepository 
@@ -109,6 +111,13 @@ public:
      * @return An SQLITE code.
      */
     int32_t deleteConversation(const std::string& name);
+
+    /**
+     * @brief Return a list of names for all known conversations.
+     * 
+     * @return A list of names for conversations, @c NULL in case of an error.
+     */
+    list<string>* listConversations() const;
 
     /**
      * @brief Insert serialized event/message data.

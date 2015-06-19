@@ -15,9 +15,6 @@
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
-#include <libzrtpcpp/zrtpB64Encode.h>
-#include <libzrtpcpp/zrtpB64Decode.h>
-
 #include <iostream>
 #include <algorithm>
 #include <utility>
@@ -78,8 +75,10 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
     string message;
     int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
-    if (parseResult < 0)
+    if (parseResult < 0) {
+        errorCode_ = parseResult;
         return NULL;
+    }
 
     std::list<std::string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
     int32_t numDevices = devices->size();
@@ -222,8 +221,6 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
      {
          "version":    <int32_t>,            # Version of JSON send message descriptor, 1 for the first implementation
          "sender":     <string>,             # for SC this is either the user's name or the user's DID
-                                             # set to 0 to send the message to each registered device 
-                                             # of the user
          "scClientDevId" : <string>,         # the sender's long device id
          "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
     }
@@ -275,8 +272,6 @@ JSON state information block:
                                         # detail information
         "name":      <string>,          # optional, name of sender/recipient of message,
                                         # if known
-        "deviceId":  <int32_t>,         # optional, device id of sender/recipient,
-                                        # if known
         "scClientDevId" : <string>,     # the same string as used to register the 
                                         # device (v1/me/device/{device_id}/)
         "otherInfo": <string>           # optional, additional info, e.g. SIP server 
@@ -297,7 +292,7 @@ std::string* AppInterfaceImpl::getKnownUsers()
     std::list<std::string>* names = store_->getKnownConversations(ownUser_);
 
     if (SQL_FAIL(store_->getSqlCode()) || names == NULL) {
-        std::cerr << "generatePreKey: " << store_->getLastError() << '\n';
+//        Log("generatePreKey: %d", store_->getLastError());
         return NULL;
     }
     int32_t size = names->size();
@@ -325,22 +320,14 @@ std::string* AppInterfaceImpl::getKnownUsers()
  * JSON data for a registration request:
 {
     "version" :        <int32_t>,        # Version of JSON registration, 1 for the first implementation
-    "scClientDevId"  : <string>,         # the same string as used to register the device (v1/me/device/{device_id}/)
-    "registrationId" : <int32_t>,        # this client's Axolotl registration id
-    "identityKey" :    <string>,         # public part encoded base64 data 
-    "signedPreKey" :
-    {
-        "keyId" :     <int32_t>,         # The key id of the signed pre key
-        "key" :       <string>,          # public part encoded base64 data
-        "signature" : <string>           # base64 encoded signature data"
-    }
-    "preKeys" : [{
-        "keyId" :     <int32_t>,         # The key id of the signed pre key
+    "identity_key" :    <string>,         # public part encoded base64 data 
+    "prekeys" : [{
+        "id" :     <int32_t>,         # The key id of the signed pre key
         "key" :       <string>,          # public part encoded base64 data
     },
-....
+    ....
     {
-        "keyId" :     <int32_t>,         # The key id of the signed pre key
+        "id" :     <int32_t>,         # The key id of the signed pre key
         "key" :       <string>,          # public part encoded base64 data
     }]
 }
@@ -432,9 +419,6 @@ std::vector<std::pair<std::string, std::string> >* AppInterfaceImpl::sendMessage
     string message;
     int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
-    if (parseResult < 0)
-        return NULL;
-
     std::string supplements;
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
 
@@ -522,9 +506,8 @@ cleanup:
 
 
 int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& recipientDeviceId,
-                                          const std::string& message, const string& supplements,
-                                          const string& msgId,
-                                          vector<pair<string, string> >* msgPairs)
+                                          const string& message, const string& supplements,
+                                          const string& msgId, vector<pair<string, string> >* msgPairs)
 {
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(recipient, recipientDeviceId, authorization_, &preIdKeys);
@@ -539,8 +522,8 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
         return buildResult;
     }
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
- 
-    std::string supplementsEncrypted;
+
+    string supplementsEncrypted;
 
     // Encrypt the user's message and the supplementary data if necessary
     const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
@@ -551,7 +534,6 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
      {
          "name":           <string>         # sender's name
          "scClientDevId":  <string>         # sender's long device id
-         "deviceId":       <int32_t>        # optional, TextSecure device id
          "supplement":     <string>         # suplementary data, encrypted
          "message":        <string>         # message, encrypted
       }
@@ -563,8 +545,9 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
     if (!supplementsEncrypted.empty())
         envelope.set_supplement(supplementsEncrypted);
     envelope.set_message(*wireMessage);
+    delete wireMessage;
 
-    std::string serialized = envelope.SerializeAsString();
+    string serialized = envelope.SerializeAsString();
 
     // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
     // the size of binary data, this is big enough to hold B64 plus padding and terminator
@@ -578,10 +561,9 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
     // replace the binary data with B64 representation
     serialized.assign(tempBuffer_, b64Len);
 
-    std::pair<std::string, std::string> msgPair(recipientDeviceId, serialized);
+    pair<string, string> msgPair(recipientDeviceId, serialized);
     msgPairs->push_back(msgPair);
 
-    supplementsEncrypted.clear();
     return OK;
 }
 
@@ -600,9 +582,9 @@ string AppInterfaceImpl::getOwnIdentityKey() const
 
 list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
 {
-    list<std::string>* idKeys = new list<string>;
+    list<string>* idKeys = new list<string>;
 
-    list<std::string>* devices = store_->getLongDeviceIds(user, ownUser_);
+    list<string>* devices = store_->getLongDeviceIds(user, ownUser_);
     int32_t numDevices = devices->size();
 
     while (!devices->empty()) {

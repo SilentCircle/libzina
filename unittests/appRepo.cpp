@@ -2,8 +2,10 @@
 #include "gtest/gtest.h"
 
 #include "../appRepository/AppRepository.h"
+#include <list>
 
 using namespace axolotl;
+using namespace std;
 
 TEST(AppRestore, Conversation)
 {
@@ -21,6 +23,14 @@ TEST(AppRestore, Conversation)
     sqlCode = store->loadConversation(name, &readData);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
     ASSERT_EQ(data, readData) << "data mistmatch";
+    
+    list<string>* names = store->listConversations();
+    ASSERT_TRUE(names != NULL);
+    ASSERT_EQ(1, names->size());
+    string ps = names->front();
+    ASSERT_EQ(name, ps);
+    names->pop_front();
+    delete names;
 }
 
 TEST(AppRestore, Event)
@@ -42,10 +52,6 @@ TEST(AppRestore, Event)
     sqlCode = store->loadEvent(name, msgId, &readData, &msgNumber);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
     ASSERT_EQ(msg, readData) << "data mistmatch";
-
-    // Try a second time, shall fail with contraint error
-    sqlCode = store->insertEvent(name, msgId, msg);
-    ASSERT_EQ(SQLITE_CONSTRAINT, sqlCode);
 
     int32_t msgNum = store->getHighestMsgNum(name);
     ASSERT_EQ(1, msgNum);

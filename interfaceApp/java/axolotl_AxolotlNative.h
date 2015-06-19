@@ -161,6 +161,14 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteConversation
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    listConversations
+ * Signature: ()[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_listConversations
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    insertEvent
  * Signature: ([B[B[B)I
  */

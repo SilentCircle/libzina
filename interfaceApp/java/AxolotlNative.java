@@ -326,6 +326,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native int deleteConversation(byte[] name);
 
     /**
+     * Return a list of names for all known conversations.
+     * 
+     * @return A list of names for conversations, {@code null} in case of an error.
+     */
+    public static native byte[][] listConversations();
+
+    /**
      * Insert serialized event/message data.
      *
      * The functions inserts the event/message data and assigns a sequence number to this
