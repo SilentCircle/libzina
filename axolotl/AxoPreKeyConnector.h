@@ -72,8 +72,9 @@ public:
      */
     static int32_t setupConversationBob( axolotl::AxoConversation* conv, int32_t bobPreKeyId, const axolotl::DhPublicKey* aliceId, const axolotl::DhPublicKey* alicePreKey );
 
-    AxoPreKeyConnector();
-    ~AxoPreKeyConnector();
+private:
+    AxoPreKeyConnector() {};
+    ~AxoPreKeyConnector() {};
 };
 } // namespace
 

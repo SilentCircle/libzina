@@ -29,7 +29,6 @@ AxoConversation* AxoConversation::loadConversation(const std::string& localUser,
 
     AxoConversation* conv = new AxoConversation(localUser, user, deviceId);
     conv->deserialize(*data);
-    conv->setNew(false);
     delete data;
     return conv;
 }
@@ -315,4 +314,6 @@ void AxoConversation::reset()
     if (!RK.empty())
         memset_volatile((void*)RK.data(), 0 , RK.size());
     RK.clear();
+    Nr = Ns = PNs = preKeyId = 0;
+    ratchetFlag = false;
 }

@@ -11,7 +11,7 @@
  * information.
  * 
  * In this implementation we don't manage the header keys because we don't use header
- * encryption. This a variant of the Axolotl that the above document describes.
+ * encryption. This is a variant of the Axolotl that the above document describes.
  * 
  * The variable names map to the short names that the document uses.
  * 
@@ -41,7 +41,7 @@ class AxoConversation
 public:
     AxoConversation(const std::string& localUser, const std::string& user, const std::string& deviceId) : partner_(user, emptyString), 
                     deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0), 
-                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), isNew_(true)
+                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false)
    {}
 
    ~AxoConversation() { reset(); }
@@ -125,9 +125,6 @@ public:
 
     list<string>* stagedMk;
 
-    bool isNew()                            { return isNew_; }
-    void setNew(bool isNew)                 { isNew_ = isNew; }
-
     void reset();
 
 #ifdef UNITTESTS
@@ -155,8 +152,8 @@ private:
 
     const DhKeyPair*   A0;      //!< used when using pre-ky bundles, if not null send this info (pre-key message type)
 
-    std::string  CKs;           //!< 32-byte chain key sender (used for forward-secrecy updating)
-    std::string  CKr;           //!< 32-byte chain key receiver (used for forward-secrecy updating)
+    string       CKs;           //!< 32-byte chain key sender (used for forward-secrecy updating)
+    string       CKr;           //!< 32-byte chain key receiver (used for forward-secrecy updating)
 
     int32_t      Ns;            //!< Message number sender (reset to 0 with each new ratchet)
     int32_t      Nr;            //!< Message number receiver (reset to 0 with each new ratchet)
@@ -165,7 +162,7 @@ private:
 
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
-    // ***** end of persitant data
+    // ***** end of persitent data
     /*
     skipped_HK_MK : A list of stored message keys and associated header keys
                 for "skipped" messages, i.e. messages that have not been
@@ -175,7 +172,6 @@ private:
     Impemented via database and temporary list, see stagedMk above.
     */ 
     int32_t errorCode_;
-    bool    isNew_;
 };
 }
 /**

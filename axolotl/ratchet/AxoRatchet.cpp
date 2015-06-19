@@ -87,7 +87,7 @@ static void deriveRkCk(AxoConversation& conv, string* newRK, string* newCK)
 {
     uint8_t agreement[MAX_KEY_BYTES];
 
-    Log("Old RK length: %d (%d)", conv.getRK().size(), 32);
+//    Log("Old RK length: %d (%d)", conv.getRK().size(), 32);
 
     // Compute a DH agreement from the current Ratchet keys: use receiver's (remote party's) public key and sender's
     // (local party's) private key
@@ -473,7 +473,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     conv->setCKr(CKp);
     conv->setNr(msgStruct.Np + 1);     // Receiver: expected next message number 
 
-    // Here we can delete A0 in case it was set, if this as Alice then Bob replied and
+    // Here we can delete A0 in case it was set, if this was Alice then Bob replied and
     // A0 is not needed anymore.
     delete(conv->getA0());
     conv->setA0(NULL);

@@ -78,7 +78,7 @@ void Log(const char* format, ...)
 // names, devIds, envelopes, sizes, msgIds
 static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[])
 {
-//    Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
+    Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
 
     std::string fName((const char*)names[0]);
     fName.append((const char*)devIds[0]).append(".msg");

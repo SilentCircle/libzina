@@ -18,22 +18,10 @@ using namespace axolotl;
 
 void Log(const char* format, ...);
 
-AxoPreKeyConnector::AxoPreKeyConnector()
-{
-
-}
-
-AxoPreKeyConnector::~AxoPreKeyConnector()
-{
-
-}
-
 #ifdef UNITTESTS
 static char hexBuffer[2000] = {0};
 static void hexdump(const char* title, const unsigned char *s, int l) {
     int n=0;
-//sprintf(char *str, const char *format, ...);
-
     if (s == NULL) return;
 
     memset(hexBuffer, 0, 2000);
@@ -75,6 +63,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
     const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+    delete localConv;
 
     const DhPublicKey* B = bobKeys.first;
     const DhPublicKey* B0 = bobKeys.second;
@@ -135,10 +124,6 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
         return -1;
     }
     store->removePreKey(bobPreKeyId);
-    if (!conv->isNew()) {
-        conv->reset();
-        conv->setNew(true);
-    }
 
 //     cerr << "Load local of: " << conv.getLocalUser() << ", sender: " << conv.getPartner().getName() << endl;
 //     cerr << "PreKey id: " << bobPreKeyId << ", data: " << preKeyData << endl;
@@ -146,7 +131,9 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
 
     DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
     delete preKeyData;
-    const DhKeyPair* A = localConv->getDHIs();
+
+    const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
+    delete localConv;
 
     const DhPublicKey* B = aliceId;
     const DhPublicKey* B0 = alicePreKey;

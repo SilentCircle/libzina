@@ -32,7 +32,7 @@ public class JavaTester extends AxolotlNative {
         System.out.println("data: " + data);
         return retVal;
     }
-   
+
     public static void main(String[] args) {
         System.out.println("Hello, JavaTester!");
 

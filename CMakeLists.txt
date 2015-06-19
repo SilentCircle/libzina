@@ -107,8 +107,6 @@ set (app_repo_src
 )
 if (STANDALONE)
     set (external_src
-        ${ZRTP_BASE_DIR}/zrtp/zrtpB64Decode.c
-        ${ZRTP_BASE_DIR}/zrtp/zrtpB64Encode.c
         ${ZRTP_BASE_DIR}/common/osSpecifics.c
     )
 endif()
