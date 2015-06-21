@@ -7,11 +7,15 @@
 
 #include "axolotl_AxolotlNative.h"
 #include "../AppInterfaceImpl.h"
+#include "../../provisioning/Provisioning.h"
 #include "../../appRepository/AppRepository.h"
 #include "../../interfaceTransport/sip/SipTransport.h"
 #include "../../axolotl/state/AxoConversation.h"
 #include "../../axolotl/crypto/EcCurve.h"
 #include "../../axolotl/crypto/DhKeyPair.h"
+#include "../../util/cJSON.h"
+
+#include <stdlib.h>
 #include <stdarg.h>
 #include <vector>
 #include <string>
@@ -352,18 +356,10 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 #endif
 
 /*
- * Class:     AxolotlNative
- * Method:    doInit
- * Signature: (ILjava/lang/String;[B[B[B)I
- */
-/*
  * Class:     axolotl_AxolotlNative
  * Method:    doInit
  * Signature: (ILjava/lang/String;[B[B[B[B)I
  */
-JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_doInit
-  (JNIEnv *, jobject, jint, jstring, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
-
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyteArray dbPassphrase, jbyteArray userName,
                     jbyteArray authorization, jbyteArray scClientDeviceId)
@@ -537,7 +533,8 @@ JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
  * Method:    getOwnIdentityKey
  * Signature: ()[B
  */
-JNIEXPORT jbyteArray JNICALL JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
 {
     string idKey = axoAppInterface->getOwnIdentityKey();
     jbyteArray key = stringToArray(env, idKey);
@@ -549,7 +546,8 @@ JNIEXPORT jbyteArray JNICALL JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclas
  * Method:    getIdentityKeys
  * Signature: ([B)[[B
  */
-JNIEXPORT jobjectArray JNICALL JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
 {
     string name;
     if (!arrayToString(env, userName, &name))
@@ -569,6 +567,48 @@ JNIEXPORT jobjectArray JNICALL JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclas
     }
     delete idKeys;
     return retArray;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getAxoDevicesUser
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
+{
+    string name;
+    if (!arrayToString(env, userName, &name))
+        return NULL;
+
+    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
+
+    if (devices == NULL || devices->empty()) {
+        delete devices;
+        return NULL;
+    }
+
+    cJSON *root,*devArray, *devInfo;
+    root = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "version", cJSON_CreateNumber(1));
+    cJSON_AddItemToObject(root, "devices", devArray = cJSON_CreateArray());
+
+    while (!devices->empty()) {
+        pair<string, string> idName = devices->front();
+        devices->pop_front();
+        devInfo = cJSON_CreateObject();
+        cJSON_AddStringToObject(devInfo, "id", idName.first.c_str());
+        cJSON_AddStringToObject(devInfo, "device_name", idName.second.c_str());
+        cJSON_AddItemToArray(devArray, devInfo);
+    }
+
+    delete devices;
+    char *out = cJSON_Print(root);
+    string json(out);
+    cJSON_Delete(root); free(out);
+
+    jbyteArray retData = stringToArray(env, json);
+    return retData;
 }
 
 
@@ -855,7 +895,8 @@ JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
  * Method:    listConversations
  * Signature: ()[[B
  */
-JNIEXPORT jobjectArray JNICALL JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 {
     list<string>* convNames = appRepository->listConversations();
 

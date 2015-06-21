@@ -50,7 +50,7 @@ public:
 
     void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std::string& stateInformation);
 
-    std::string* getKnownUsers();
+    string* getKnownUsers();
 
     string getOwnIdentityKey() const;
 
@@ -75,12 +75,17 @@ public:
      * 
      * @return The stored error code.
      */
-    int32_t getErrorCode() const      { return errorCode_; }
+    int32_t getErrorCode() const             { return errorCode_; }
 
     /**
      * @brief Get name of local user for this Axolotl conversation.
      */
-    const string& getOwnUser() const        { return ownUser_; }
+    const string& getOwnUser() const         { return ownUser_; }
+
+    /**
+     * @brief Get authorization data of local user.
+     */
+    const string& getOwnAuthrization() const { return authorization_; }
 
     /**
      * @brief Return the stored error information.

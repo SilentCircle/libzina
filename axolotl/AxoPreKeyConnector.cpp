@@ -113,25 +113,27 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 */
 int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
 {
-    if (!conv->getRK().empty())
-        return OK;
-
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 //    store->dumpPreKeys();
     string* preKeyData = store->loadPreKey(bobPreKeyId);
     if (preKeyData == NULL) {
-        conv->setErrorCode(NO_PRE_KEY_FOUND);
-        return -1;
+        if (conv->getRK().empty()) {
+            conv->setErrorCode(NO_PRE_KEY_FOUND);
+            return -1;
+        }
+        else
+            return OK;
     }
     store->removePreKey(bobPreKeyId);
+    conv->reset();
 
 //     cerr << "Load local of: " << conv.getLocalUser() << ", sender: " << conv.getPartner().getName() << endl;
 //     cerr << "PreKey id: " << bobPreKeyId << ", data: " << preKeyData << endl;
-    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
 
     DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
     delete preKeyData;
 
+    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
     delete localConv;
 

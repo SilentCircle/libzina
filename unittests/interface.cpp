@@ -264,22 +264,22 @@ TEST(GetDeviceIds, Basic)
         store->openStore(std::string());
     }
     ScProvisioning::setHttpHelper(helper3);
-    std::list<std::string>* devIds = Provisioning::getAxoDeviceIds(bob, bobAuth);
+    list<pair<string, string> >* devIds = Provisioning::getAxoDeviceIds(bob, bobAuth);
 
     ASSERT_TRUE(devIds != NULL);
 
     ASSERT_EQ(3, devIds->size());
-    std::string id = devIds->front();
+    string id = devIds->front().first;
     devIds->pop_front();
-    std::string id1("longDevId_1");
+    string id1("longDevId_1");
     ASSERT_EQ(id1, id);
 
-    id = devIds->front();
+    id = devIds->front().first;
     devIds->pop_front();
     std::string id2("longDevId_2");
     ASSERT_EQ(id2, id);
 
-    id = devIds->front();
+    id = devIds->front().first;
     devIds->pop_front();
     std::string id3("longDevId_3");
     ASSERT_EQ(id3, id);

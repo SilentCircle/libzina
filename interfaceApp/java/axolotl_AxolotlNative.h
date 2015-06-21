@@ -49,6 +49,14 @@ JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_getIdentityKeys
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    getAxoDevicesUser
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getAxoDevicesUser
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    registerAxolotlDevice
  * Signature: ([I)[B
  */

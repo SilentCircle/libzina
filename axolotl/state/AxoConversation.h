@@ -39,10 +39,11 @@ namespace axolotl {
 class AxoConversation
 {
 public:
-    AxoConversation(const std::string& localUser, const std::string& user, const std::string& deviceId) : partner_(user, emptyString), 
+    AxoConversation(const string& localUser, const string& user, const string& deviceId) : partner_(user, emptyString), 
                     deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0), 
                     Nr(0), PNs(0), preKeyId(0), ratchetFlag(false)
-   {}
+                    { }
+
 
    ~AxoConversation() { reset(); }
 
@@ -52,7 +53,7 @@ public:
      * @param localUser name of local user/account
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static AxoConversation* loadLocalConversation(const std::string& localUser) { return loadConversation(localUser, localUser, std::string());}
+    static AxoConversation* loadLocalConversation(const string& localUser) { return loadConversation(localUser, localUser, string());}
 
     /**
      * @brief Load a conversation from database.
@@ -62,7 +63,7 @@ public:
      * @param deviceId The remote user's device id if it is available
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static AxoConversation* loadConversation(const std::string& localUser, const std::string& user, const std::string& deviceId);
+    static AxoConversation* loadConversation(const string& localUser, const string& user, const string& deviceId);
 
     /**
      * @brief Store this conversation in persitent store

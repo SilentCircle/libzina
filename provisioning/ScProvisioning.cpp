@@ -11,7 +11,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <utility>
+
 using namespace axolotl;
+using namespace std;
 
 static std::string Empty;
 
@@ -187,12 +189,12 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
 /*
  {
     "version" :        <int32_t>,        # Version of JSON new pre-keys, 1 for the first implementation
-    "devices" : [{"id": <string>}, ..., {"id": <string>}]   # array of known Axolotl ScClientDevIds for this user/account
+    {"devices": [{"version": 1, "id": <string>, "device_name": <string>}]}  # array of known Axolotl ScClientDevIds for this user/account
  }
  */
 static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&api_key=%s";
 
-std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization)
+list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization)
 {
     char temp[1000];
     snprintf(temp, 990, getUserDevicesRequest, name.c_str(), authorization.c_str());
@@ -205,7 +207,7 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
     if (code >= 400)
         return NULL;
 
-    std::list<std::string>* deviceIds = new std::list<std::string>;
+    list<pair<string, string> >* deviceIds = new list<pair<string, string> >;
 
     cJSON* root = cJSON_Parse(response.c_str());
     if (root == NULL)
@@ -221,10 +223,15 @@ std::list<std::string>* Provisioning::getAxoDeviceIds(const std::string& name, c
     for (int32_t i = 0; i < numIds; i++) {
         cJSON* arrayItem = cJSON_GetArrayItem(devIds, i);
         cJSON* devId = cJSON_GetObjectItem(arrayItem, "id");
+        cJSON* devName = cJSON_GetObjectItem(arrayItem, "device_name");
         if (devId == NULL)
             continue;
-        std::string id(devId->valuestring);
-        deviceIds->push_back(id);
+        string id(devId->valuestring);
+        string name;
+        if (devName != NULL)
+            name.assign(devName->valuestring);
+        pair<string, string>idName(id, name);
+        deviceIds->push_back(idName);
     }
     // Clear JSON buffer and context
     cJSON_Delete(root);

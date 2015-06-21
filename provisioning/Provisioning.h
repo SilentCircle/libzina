@@ -75,7 +75,7 @@ public:
      * @param authorization autorization data, may be needed for some servers
      * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
      */
-    static std::list<std::string>* getAxoDeviceIds(const std::string& name, const std::string& authorization);
+    static list<pair<string, string> >* getAxoDeviceIds(const std::string& name, const std::string& authorization);
 
     /**
      * @brief Set new pre-keys.

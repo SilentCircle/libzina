@@ -40,6 +40,7 @@ TEST(Conversation, BasicEmpty)
     AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRK().empty());
+    delete conv1;
 }
 
 TEST(Conversation, TestDHR) 
@@ -68,6 +69,7 @@ TEST(Conversation, TestDHR)
     const DhPublicKey* pubKey1 = conv1->getDHRr();
     ASSERT_TRUE(pubKey1 != NULL);
     ASSERT_TRUE(*pubKey == *pubKey1);
+    delete conv1;
 }
 
 TEST(Conversation, TestDHI) 
@@ -75,7 +77,7 @@ TEST(Conversation, TestDHI)
     prepareStore();
 
     // localUser, remote user, remote dev id
-    AxoConversation conv(aliceName,   bobName,   bobDev);
+    AxoConversation conv(aliceName, bobName, bobDev);
     conv.setRatchetFlag(true);
 
     Ec255PublicKey* pubKey = new Ec255PublicKey(keyInData);
@@ -96,6 +98,7 @@ TEST(Conversation, TestDHI)
     const DhPublicKey* pubKey1 = conv1->getDHIr();
     ASSERT_TRUE(pubKey1 != NULL);
     ASSERT_TRUE(*pubKey == *pubKey1);
+    delete conv1;
 }
 
 TEST(Conversation, TestA0) 
@@ -117,6 +120,7 @@ TEST(Conversation, TestA0)
     const DhKeyPair* keyPair1 = conv1->getA0();
     ASSERT_TRUE(keyPair1 != NULL);
     ASSERT_TRUE(keyPair->getPublicKey() == keyPair1->getPublicKey());
+    delete conv1;
 }
 
 TEST(Conversation, SimpleFields) 
@@ -148,4 +152,5 @@ TEST(Conversation, SimpleFields)
     ASSERT_EQ(7, conv1->getNs());
     ASSERT_EQ(11, conv1->getPNs());
     ASSERT_EQ(13, conv1->getPreKeyId());
+    delete conv1;
 }

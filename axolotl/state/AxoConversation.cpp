@@ -14,25 +14,27 @@ using namespace std;
 
 void Log(const char* format, ...);
 
-AxoConversation* AxoConversation::loadConversation(const std::string& localUser, const std::string& user, const std::string& deviceId)
+AxoConversation* AxoConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     if (!store->hasConversation(user, deviceId, localUser)) {
 //        cerr << "No conversation: " << localUser << ", user: " << user << endl;
         return NULL;
     }
-    std::string* data = store->loadConversation(user, deviceId, localUser);
+
+    // Create and lock a new conversation object _before_ loading data from database
+    AxoConversation*  conv = new AxoConversation(localUser, user, deviceId);
+
+    string* data = store->loadConversation(user, deviceId, localUser);
     if (data->empty()) {            // Illegal state, should not happen
 //        cerr << "cannot load conversation" << endl;
+        delete conv;
         return NULL;
     }
-
-    AxoConversation* conv = new AxoConversation(localUser, user, deviceId);
     conv->deserialize(*data);
     delete data;
     return conv;
 }
-
 
 void AxoConversation::storeConversation()
 {

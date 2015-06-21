@@ -15,9 +15,13 @@
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
+#include <common/Thread.h>
+
 #include <iostream>
 #include <algorithm>
 #include <utility>
+
+static CMutexClass convLock;
 
 using namespace axolotl;
 
@@ -67,7 +71,7 @@ static void createSupplementString(const std::string& attachementDesc, const std
     "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
  }
  */
-std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDescriptor, const std::string& attachementDescriptor, const std::string& messageAttributes)
+std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes)
 {
 
     string recipient;
@@ -84,7 +88,7 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
     int32_t numDevices = devices->size();
 
     if (numDevices == 0) {
-        std::vector<std::pair<std::string, std::string> >* msgPairs = sendMessagePreKeys(messageDescriptor, attachementDescriptor, messageAttributes);
+        std::vector<std::pair<string, string> >* msgPairs = sendMessagePreKeys(messageDescriptor, attachementDescriptor, messageAttributes);
         if (msgPairs == NULL) {
             return NULL;
         }
@@ -95,12 +99,13 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
 
     // TODO: some check to look-up for new devices of a user, maybe triggered by UI etc.
 
-    std::string supplements;
+    string supplements;
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
 
     // Prepare the messages for all known device of this user
     std::vector<std::pair<std::string, std::string> >* msgPairs = new std::vector<std::pair<std::string, std::string> >;
 
+    convLock.Lock();
     while (!devices->empty()) {
         std::string recipientDeviceId = devices->front();
         devices->pop_front();
@@ -144,20 +149,21 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const std::string& messageDe
         // replace the binary data with B64 representation
         serialized.assign(tempBuffer_, b64Len);
 
-        std::pair<std::string, std::string> msgPair(recipientDeviceId, serialized);
+        pair<string, string> msgPair(recipientDeviceId, serialized);
         msgPairs->push_back(msgPair);
 
         supplementsEncrypted.clear();
     }
+    convLock.Unlock();
     delete devices;
 
-    std::vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
     delete msgPairs;
     return returnMsgIds;
 }
 
 
-static std::string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgEnvelope)
+static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgEnvelope)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -170,7 +176,7 @@ static std::string receiveErrorJson(const string& sender, const string& senderSc
     cJSON_AddStringToObject(details, "otherInfo", msgEnvelope.c_str());    // App may use this to retry after fixing the problem
 
     char *out = cJSON_PrintUnformatted(root);
-    std::string retVal(out);
+    string retVal(out);
     cJSON_Delete(root); free(out);
 
     return retVal;
@@ -186,7 +192,7 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
         tempBufferSize_ = messageEnvelope.size();
     }
     int32_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t*)tempBuffer_, tempBufferSize_);
-    std::string envelopeBin((const char*)tempBuffer_, binLength);
+    string envelopeBin((const char*)tempBuffer_, binLength);
 
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
@@ -204,13 +210,16 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
     if (axoConv == NULL) {
         axoConv = new AxoConversation(ownUser_, sender, senderScClientDevId);
     }
-    std::string supplementsPlain;
-    std::string* messagePlain;
+    string supplementsPlain;
+    string* messagePlain;
+
+    convLock.Lock();
     messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain);
     errorCode_ = axoConv->getErrorCode();
     delete axoConv;
+    convLock.Unlock();
 
-//    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
+    //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
         messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, messageEnvelope));
         return errorCode_;
@@ -234,12 +243,12 @@ int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
     delete messagePlain;
 
     char *out = cJSON_PrintUnformatted(root);
-    std::string msgDescriptor(out);
+    string msgDescriptor(out);
 
     cJSON_Delete(root); free(out);
 
-    std::string attachmentDescr;
-    std::string attributesDescr;
+    string attachmentDescr;
+    string attributesDescr;
     if (!supplementsPlain.empty()) {
         checkAndRemovePadding(supplementsPlain);
         cJSON* jsSupplement = cJSON_Parse(supplementsPlain.c_str());
@@ -349,11 +358,11 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
     const DhKeyPair* myIdPair = ownConv->getDHIs();
     if (myIdPair == NULL) {
         cJSON_Delete(root);
+        delete ownConv;
         return NO_OWN_ID;
     }
-    std::string data = myIdPair->getPublicKey().serialize();
-
-    delete myIdPair;
+    string data = myIdPair->getPublicKey().serialize();
+    delete ownConv;
 
     int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identity_key", b64Buffer);
@@ -361,7 +370,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
     cJSON* jsonPkrArray;
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
-    list<pair< int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
+    list<pair<int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
     int32_t size = preList->size();
     for (int32_t i = 0; i < size; i++) {
         pair< int32_t, const DhKeyPair* >pkPair = preList->front();
@@ -373,7 +382,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
 
         // Get pre-key's public key data, serialized
         const DhKeyPair* ecPair = pkPair.second;
-        const std::string data = ecPair->getPublicKey().serialize();
+        const string data = ecPair->getPublicKey().serialize();
 
         b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
@@ -382,7 +391,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
     delete preList;
 
     char *out = cJSON_Print(root);
-    std::string registerRequest(out);
+    string registerRequest(out);
     cJSON_Delete(root); free(out);
 
     int32_t code = Provisioning::registerAxoDevice(registerRequest, authorization_, scClientDevId_, result);
@@ -410,30 +419,32 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 // ***** Private functions 
 // *******************************
 
-std::vector<std::pair<std::string, std::string> >* AppInterfaceImpl::sendMessagePreKeys(const std::string& messageDescriptor, 
-                                                                                        const std::string& attachementDescriptor, 
-                                                                                        const std::string& messageAttributes)
+vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string& messageDescriptor, 
+                                                                    const string& attachementDescriptor, 
+                                                                    const string& messageAttributes)
 {
     string recipient;
     string msgId;
     string message;
     int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
-    std::string supplements;
+    string supplements;
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
 
-    std::list<std::string>* devices = Provisioning::getAxoDeviceIds(recipient, authorization_);
+    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(recipient, authorization_);
     if (devices == NULL || devices->empty()) {
         errorCode_ = NO_DEVS_FOUND;
         errorInfo_ = recipient;
+        delete devices;
         return NULL;
     }
 
     // Prepare the messages for all known device of this user
-    std::vector<std::pair<std::string, std::string> >* msgPairs = new std::vector<std::pair<std::string, std::string> >;
+    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
+    convLock.Lock();
     while (!devices->empty()) {
-        std::string recipientDeviceId = devices->front();
+        string recipientDeviceId = devices->front().first;
         devices->pop_front();
 
         int32_t result = createPreKeyMsg(recipient, recipientDeviceId, message, supplements, msgId, msgPairs);
@@ -449,6 +460,7 @@ std::vector<std::pair<std::string, std::string> >* AppInterfaceImpl::sendMessage
             return NULL;
         }
     }
+    convLock.Unlock();
     delete devices;
 
     if (msgPairs->empty()) {
@@ -594,6 +606,7 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         const DhPublicKey* idKey = axoConv->getDHIr();
         string id((const char*)idKey->getPublicKeyPointer(), idKey->getSize());
         idKeys->push_back(id);
+        delete axoConv;
     }
     delete devices;
     return idKeys;

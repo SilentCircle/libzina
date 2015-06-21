@@ -107,6 +107,16 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native byte[][] getIdentityKeys(byte[] user);
 
     /**
+     * Request a user's Axolotl device names.
+     *
+     * Ask the server for known Axolotl devices of a user.
+     *
+     * @return JSON formatted information about user's Axolotl devices. It returns {@code null} 
+     *         if no devices known for this user.
+     */
+    public static native byte[] getAxoDevicesUser(byte[] userName);
+
+    /**
      * Register device.
      *
      * Register this device with the server. The registration requires a device id that's unique
