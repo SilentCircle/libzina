@@ -168,7 +168,7 @@ void setAxoExportedKey(const std::string& localUser, const std::string& user, co
     staging->setRemoteIdKey(NULL);
 
     if (staging->getRole() == Alice) {
-        cerr << "Remote party '" << user << "' takes 'Alice' role" << endl;
+//        cerr << "Remote party '" << user << "' takes 'Alice' role" << endl;
         conv->setDHRr((Ec255PublicKey*)staging->getRemoteRatchetKey());     // Bob's B0 public part
         staging->setRemoteRatchetKey(NULL);
         conv->setRK(root);
@@ -176,7 +176,7 @@ void setAxoExportedKey(const std::string& localUser, const std::string& user, co
         conv->setRatchetFlag(true);
     }
     else {
-        cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
+//        cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
         conv->setDHRs(staging->getRatchetKey());           // Bob's B0 key
         staging->setRatchetKey(NULL);
         conv->setRK(root);
