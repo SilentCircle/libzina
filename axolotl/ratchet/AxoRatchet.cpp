@@ -505,6 +505,11 @@ return msg
  */
 const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, const std::string& supplements, std::string* encryptedSupplements)
 {
+    if (conv.getRK().empty()) {
+        conv.setErrorCode(SESSION_NOT_INITED);
+        return NULL;
+    }
+
     bool ratchetSave = conv.getRatchetFlag();
 
     if (ratchetSave) {

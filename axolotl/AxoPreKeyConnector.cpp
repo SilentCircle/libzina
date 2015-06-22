@@ -116,6 +116,10 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 //    store->dumpPreKeys();
     string* preKeyData = store->loadPreKey(bobPreKeyId);
+
+    // If no such prekey then check if the converstaion is already set-up (RK available)
+    // if yes -> OK, Alice sent the key more then one time because Bob didn't answer her
+    // yet. Otherwise Bob got an illegal pre-key.
     if (preKeyData == NULL) {
         if (conv->getRK().empty()) {
             conv->setErrorCode(NO_PRE_KEY_FOUND);

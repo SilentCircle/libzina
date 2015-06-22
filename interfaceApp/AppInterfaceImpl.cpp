@@ -118,6 +118,8 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescrip
         const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
         axoConv->storeConversation();
         delete axoConv;
+        if (wireMessage == NULL)
+            continue;
         /*
          * Create the message envelope:
          {
@@ -157,7 +159,10 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescrip
     convLock.Unlock();
     delete devices;
 
-    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+    vector<int64_t>* returnMsgIds = NULL;
+    if (!msgPairs->empty())
+        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+
     delete msgPairs;
     return returnMsgIds;
 }
@@ -527,6 +532,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
         return 0;
 
     int32_t buildResult = AxoPreKeyConnector::setupConversationAlice(ownUser_, recipient, recipientDeviceId, preKeyId, preIdKeys);
+
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult < 0) {
         errorCode_ = buildResult;
@@ -541,6 +547,9 @@ int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& reci
     const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
     axoConv->storeConversation();
     delete axoConv;
+
+    if (wireMessage == NULL)
+        return 0;
     /*
      * Create the message envelope:
      {
