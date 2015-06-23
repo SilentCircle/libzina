@@ -259,6 +259,10 @@ static void parseWireMsg(const string& wire, ParsedMessage* msgStruct)
     }
     msgStruct->encryptedMsgLen = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(int32_t);
     msgStruct->encryptedMsg = &data[byteIndex];
+    if ((byteIndex + msgStruct->encryptedMsgLen) > wire.size()) {
+        msgStruct->encryptedMsg = NULL;
+        msgStruct->encryptedMsgLen = 0;
+    }
 }
 
 static bool decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
@@ -388,13 +392,13 @@ CKr = CKp
 return read()*/
 string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements, string* supplementsPlain)
 {
-    const uint8_t* data = (const uint8_t*)wire.data();
-    const int32_t* dPi = (int32_t*)data;
-    int32_t byteIndex = 0;
-    int32_t intIndex = 0;
-
     ParsedMessage msgStruct;
     parseWireMsg(wire, &msgStruct);
+
+    if (msgStruct.encryptedMsg == NULL) {
+        conv->setErrorCode(CORRUPT_DATA);
+        return NULL;
+    }
 
     // This is a message with embedded pre-key and identity key. Need to setup the
     // Axolotl conversation first. According to the optimized pre-key handling this
