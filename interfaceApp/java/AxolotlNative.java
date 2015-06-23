@@ -32,7 +32,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * An application must call this functions before it can use any other Axolotl library
      * functions.
      * 
-     * @param debugLevel some value greater 0 to enable logging
+     * @param flags Lower 4 bits define debugging level, upper bits some flags
      * @param dbName the full path of the database filename
      * @param dbPassphrase the passphrase to encrypt database content
      * @param userName the local username, for SC it's the name of the user's account
@@ -40,7 +40,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param scClientDevId the sender's device id, same as used to register the device (v1/me/device/{device_id}/)
      * @return 1 if call was OK, a negative value in case of errors
      */
-    public native int doInit(int debugLevel, String dbName, byte[] dbPassphrase, byte[] userName, byte[] authorization, byte[] scClientDevId);
+    public native int doInit(int flags, String dbName, byte[] dbPassphrase, byte[] userName, byte[] authorization, byte[] scClientDevId);
 
     /**
      * Send a message with an optional attachment.

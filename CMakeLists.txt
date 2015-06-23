@@ -100,6 +100,7 @@ set (provisioning_src
 set (util_src
     util/cJSON.c
     util/b64helper.cpp
+    util/UUID.cpp
 )
 
 set (app_repo_src

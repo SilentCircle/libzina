@@ -361,10 +361,12 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
  * Signature: (ILjava/lang/String;[B[B[B[B)I
  */
 JNIEXPORT jint JNICALL 
-JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint debug, jstring dbName, jbyteArray dbPassphrase, jbyteArray userName,
+JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyteArray dbPassphrase, jbyteArray userName,
                     jbyteArray authorization, jbyteArray scClientDeviceId)
 {
-    debugLevel = debug;
+    debugLevel = flags & 0xf;
+    int32_t flagsInternal = flags >> 4;
+
     if (axolotlCallbackObject == NULL) {
         axolotlCallbackObject = env->NewGlobalRef(thiz);
         if (axolotlCallbackObject == NULL) {

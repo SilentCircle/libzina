@@ -109,6 +109,9 @@ public:
      */
     static void setHttpHelper(HTTP_FUNC httpHelper);
 
+    void setFlags(int32_t flags)  { flags_ = flags; }
+
+    bool isRegistered()           {return ((flags_ & 0x1) == 1); }
 
 private:
     // not support for copy, assignment and equals
@@ -136,6 +139,7 @@ private:
     std::string errorInfo_;
     SQLiteStoreConv* store_;
     Transport* transport_;
+    int32_t flags_;
 };
 } // namespace
 

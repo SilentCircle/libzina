@@ -32,7 +32,7 @@ void Log(const char* format, ...);
 AppInterfaceImpl::AppInterfaceImpl(const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback):
                                    AppInterface(receiveCallback, stateReportCallback), tempBuffer_(NULL), tempBufferSize_(0),
-                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId)
+                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), flags_(0)
 {
     store_ = SQLiteStoreConv::getStore();
 }
