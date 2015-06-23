@@ -6,6 +6,7 @@
 #include "../axolotl/crypto/EcCurve.h"
 #include "../axolotl/crypto/EcCurveTypes.h"
 #include "../axolotl/crypto/Ec255PublicKey.h"
+#include "../util/UUID.h"
 
 #include <iostream>
 using namespace axolotl;
@@ -108,3 +109,20 @@ TEST(StagedKeys, TimeDelete)
     ASSERT_EQ(2, keys->size());
     delete keys;
 }
+
+TEST(UUID, Basic)
+{
+    uuid_t uuid1;
+    struct timeval tv;
+
+    time_t tm = time(0);
+    uuid_generate_time(uuid1);
+    time_t tm1 = uuid_time(uuid1, &tv);
+
+    uuid_string_t uuidString;
+    uuid_unparse(uuid1, uuidString);
+
+    cerr << "tm: " << tm << ", tm1: " << tm1 << endl;
+    cerr << uuidString << endl;
+}
+
