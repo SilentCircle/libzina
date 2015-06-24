@@ -136,7 +136,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 }
 
 
-static void createWireMessage(AxoConversation& conv, bool ratchet, string& message, string& mac, string* wire)
+static void createWireMessage(AxoConversation& conv, string& message, string& mac, string* wire)
 {
     // Determine the wire message type:
     // 1: Normal message with new Ratchet key
@@ -159,7 +159,7 @@ static void createWireMessage(AxoConversation& conv, bool ratchet, string& messa
        Ns:        4 byte integer (network order)
        PNs:       4 byte integer (network order)
        DHRs:      32 byte ratchet key
-       mac:       8 byte mac, least 8 bytes of hmac256 of encrypted message
+       mac:       8 byte mac, truncated hmac256 of encrypted message
        if msgType == 2
            4 byte integer (network order) remote pre-key id
            32 byte identity key
@@ -548,7 +548,7 @@ const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, 
     string computedMac((const char*)mac, SHA256_DIGEST_LENGTH);
 
     string* wireMessage = new string();
-    createWireMessage(conv, ratchetSave, encryptedData, computedMac, wireMessage);
+    createWireMessage(conv, encryptedData, computedMac, wireMessage);
     conv.setNs(conv.getNs() + 1);
 
     // Hash CKs with "1"
