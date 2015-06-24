@@ -38,7 +38,21 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 
     std::string requestUri(temp);
 
-    return  ScProvisioning::httpHelper_(requestUri, PUT, request, result);
+    return ScProvisioning::httpHelper_(requestUri, PUT, request, result);
+}
+
+// Implementation of the Provisioning API: remove an Axolotl Device 
+// /v1/me/device/<device_id>/axolotl/keys/?api_key=<API_key>
+// Method: DELETE
+
+int32_t Provisioning::removeAxoDevice(const string& scClientDevId, const string& authorization, std::string* result)
+{
+    char temp[1000];
+    snprintf(temp, 990, registerRequest, scClientDevId.c_str(), authorization.c_str());
+    std::string requestUri(temp);
+
+    return ScProvisioning::httpHelper_(requestUri, DELETE, Empty, result);
+
 }
 
 // Implementation of the Provisioning API: Get Pre-Key
@@ -58,7 +72,7 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 */
 static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 
-int32_t Provisioning::getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization, pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
+int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevId, const string& authorization, pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
     char temp[1000];
     snprintf(temp, 990, getPreKeyRequest, name.c_str(), longDevId.c_str(), authorization.c_str());

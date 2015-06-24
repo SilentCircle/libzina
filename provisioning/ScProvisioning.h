@@ -29,6 +29,8 @@ static const std::string uriApiKey  ("/?api_key=");
 
 static const std::string GET("GET");
 static const std::string PUT("PUT");
+static const std::string DELETE("DELETE");
+
 
 typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response);
 

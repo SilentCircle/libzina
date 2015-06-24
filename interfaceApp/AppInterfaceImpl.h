@@ -56,7 +56,9 @@ public:
 
     list<string>* getIdentityKeys(string& user) const;
 
-    int32_t registerAxolotlDevice(std::string* result);
+    int32_t registerAxolotlDevice(string* result);
+
+    int32_t removeAxolotlDevice(string* result);
 
     int32_t newPreKeys(int32_t number);
 

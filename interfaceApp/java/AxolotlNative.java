@@ -117,7 +117,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native byte[] getAxoDevicesUser(byte[] userName);
 
     /**
-     * Register device.
+     * Register Axolotl device.
      *
      * Register this device with the server. The registration requires a device id that's unique
      * for the user's account on the server. The user should have a valid account on the server.
@@ -130,6 +130,17 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
     public static native byte[] registerAxolotlDevice(int[] resultCode);
+
+    /**
+     * Remove Axolotl device.
+     *
+     * Remove an Axolotl device from a user's account.
+     * 
+     * @param resultCode a inte array with at least a length of one. The functions returns the
+     *        request result code at index 0 
+     * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
+     */
+    public static native byte[] removeAxolotlDevice(int[] resultCode);
 
     /**
      * Generate and register a set of new pre-keys.

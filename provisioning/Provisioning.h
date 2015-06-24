@@ -38,12 +38,22 @@ public:
     static int32_t registerAxoDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result);
 
     /**
+     * @brief Remove a Axolotl device from user's account.
+     * 
+     * @param name the user's name
+     * @param scClientDevId the unique device id of one of the user's registered Axolotl devices
+     * @param authorization autorization data, may be needed for some servers
+     * @param result To store the result data of the server, usually in case of an error only
+     */
+    static int32_t removeAxoDevice(const string& scClientDevId, const string& authorization, std::string* result);
+
+
+    /**
      * @brief Get a pre-key bundle for the user/device id
      * 
      * This function contacts the server to read one set of pre-key data for the user name/device id
      * combination 
      * 
-     * @param store the persistent store.
      * @param name the user's name
      * @param longDevId the unique device id of one of the user's registered Axolotl devices
      * @param authorization autorization data, may be needed for some servers
@@ -51,8 +61,8 @@ public:
      *                  parte as the second member.
      * @return a pre-key id or @c 0 on failure
      */
-    static int32_t getPreKeyBundle( const string& name, const string& longDevId, const string& authorization, 
-                                    pair< const axolotl::DhPublicKey*, const axolotl::DhPublicKey* >* preIdKeys );
+    static int32_t getPreKeyBundle(const string& name, const string& longDevId, const string& authorization, 
+                                   pair< const axolotl::DhPublicKey*, const axolotl::DhPublicKey* >* preIdKeys );
 //    static int32_t getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization);
 
     /**

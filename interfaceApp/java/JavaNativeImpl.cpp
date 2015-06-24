@@ -640,6 +640,35 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
     }
     return infoBytes;
 }
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    removeAxolotlDevice
+ * Signature: ([I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jintArray code)
+{
+    string info;
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    int32_t result = axoAppInterface->removeAxolotlDevice(&info);
+
+    setReturnCode(env, code, result);
+
+    jbyteArray infoBytes = NULL;
+    if (!info.empty()) {
+        int32_t size = info.size();
+        infoBytes = env->NewByteArray(size);
+        if (infoBytes != NULL) {
+            env->SetByteArrayRegion(infoBytes, 0, size, (jbyte*)info.data());
+        }
+    }
+    return infoBytes;
+}
+
+
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    newPreKeys

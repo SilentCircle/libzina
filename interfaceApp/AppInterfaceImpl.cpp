@@ -404,6 +404,11 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
     return code;
 }
 
+int32_t AppInterfaceImpl::removeAxolotlDevice(string* result)
+{
+    return ScProvisioning::removeAxoDevice(scClientDevId_, authorization_, result);
+}
+
 int32_t AppInterfaceImpl::newPreKeys(int32_t number)
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
