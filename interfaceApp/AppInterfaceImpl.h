@@ -58,7 +58,7 @@ public:
 
     int32_t registerAxolotlDevice(string* result);
 
-    int32_t removeAxolotlDevice(string* result);
+    int32_t removeAxolotlDevice(string& scClientDevId, string* result);
 
     int32_t newPreKeys(int32_t number);
 

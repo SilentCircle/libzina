@@ -137,10 +137,11 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * Remove an Axolotl device from a user's account.
      * 
      * @param resultCode a inte array with at least a length of one. The functions returns the
-     *        request result code at index 0 
+     *        request result code at index 0
+     * @param deviceId the SC device id of the device to remove.
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
-    public static native byte[] removeAxolotlDevice(int[] resultCode);
+    public static native byte[] removeAxolotlDevice(byte[] deviceId, int[] resultCode);
 
     /**
      * Generate and register a set of new pre-keys.

@@ -66,10 +66,10 @@ JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_registerAxolotlDevice
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    removeAxolotlDevice
- * Signature: ([I)[B
+ * Signature: ([B[I)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_removeAxolotlDevice
-  (JNIEnv *, jclass, jintArray);
+  (JNIEnv *, jclass, jbyteArray, jintArray);
 
 /*
  * Class:     axolotl_AxolotlNative

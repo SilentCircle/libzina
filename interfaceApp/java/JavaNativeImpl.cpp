@@ -644,16 +644,21 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    removeAxolotlDevice
- * Signature: ([I)[B
+ * Signature: ([B[I)[B
  */
 JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jintArray code)
+JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, jintArray code)
 {
     string info;
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
-    int32_t result = axoAppInterface->removeAxolotlDevice(&info);
+    string devId;
+    if (!arrayToString(env, deviceId, &devId))
+        return NULL;
+
+
+    int32_t result = axoAppInterface->removeAxolotlDevice(devId, &info);
 
     setReturnCode(env, code, result);
 
