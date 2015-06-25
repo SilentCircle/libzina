@@ -56,6 +56,7 @@ static jobject axolotlCallbackObject = NULL;
 static jmethodID receiveMessageCallback = NULL;
 static jmethodID stateReportCallback = NULL;
 static jmethodID httpHelperCallback = NULL;
+static jmethodID javaNotifyCallback = NULL;
 
 static int32_t debugLevel = 1;
 
@@ -84,7 +85,7 @@ static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* en
 {
     Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
 
-    std::string fName((const char*)names[0]);
+    string fName((const char*)names[0]);
     fName.append((const char*)devIds[0]).append(".msg");
 
     FILE* msgFile = fopen(fName.c_str(), "w");
@@ -95,7 +96,7 @@ static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* en
     msgIds[0] = 4711;
 }
 
-static void reciveData(const std::string msgFileName)
+static void reciveData(const string msgFileName)
 {
     uint8_t msgData[2000];
     FILE* msgFile = fopen(msgFileName.c_str(), "r");
@@ -112,7 +113,7 @@ static void reciveData(const std::string msgFileName)
 }
 #endif
 
-static bool arrayToString(JNIEnv* env, jbyteArray array, std::string* output)
+static bool arrayToString(JNIEnv* env, jbyteArray array, string* output)
 {
     if (array == NULL)
         return false;
@@ -130,7 +131,7 @@ static bool arrayToString(JNIEnv* env, jbyteArray array, std::string* output)
     return true;
 }
 
-static jbyteArray stringToArray(JNIEnv* env, const std::string& input)
+static jbyteArray stringToArray(JNIEnv* env, const string& input)
 {
     jbyteArray data = env->NewByteArray(input.size());
     if (data == NULL)
@@ -203,7 +204,7 @@ void loadAxolotl()
  * 
  * "([B[B[B)I"
  */
-int32_t receiveMessage(const std::string& messageDescriptor, const std::string& attachementDescriptor = std::string(), const std::string& messageAttributes = std::string())
+int32_t receiveMessage(const string& messageDescriptor, const string& attachementDescriptor = string(), const string& messageAttributes = string())
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -246,7 +247,7 @@ int32_t receiveMessage(const std::string& messageDescriptor, const std::string& 
  * 
  * "(J[B)V"
  */
-void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std::string& stateInformation)
+void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -266,6 +267,38 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std:
 }
 
 /*
+ * Notify callback for AppInterfaceImpl.
+ * 
+ * "(J[B)V"
+ */
+void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
+{
+    if (axolotlCallbackObject == NULL)
+        return;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return;
+
+    jbyteArray information = NULL;
+    if (!actionInformation.empty()) {
+        information = stringToArray(env, actionInformation);
+    }
+    jbyteArray deviceId = NULL;
+    if (!devId.empty()) {
+        deviceId = stringToArray(env, devId);
+    }
+    env->CallVoidMethod(axolotlCallbackObject, javaNotifyCallback, notifyAction, information);
+
+    if (information != NULL)
+        env->DeleteLocalRef(information);
+
+    if (deviceId != NULL)
+        env->DeleteLocalRef(deviceId);
+}
+
+/*
  * Class:     AxolotlNative
  * Method:    httpHelper
  * Signature: ([BLjava/lang/String;[B[I)[B
@@ -275,7 +308,7 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std:
  */
 #define JAVA_HELPER
 #if defined JAVA_HELPER || defined UNITTESTS
-int32_t httpHelper(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response)
+int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -317,7 +350,7 @@ int32_t httpHelper(const std::string& requestUri, const std::string& method, con
     return result;
 }
 #else
-static int32_t httpHelper(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response)
+static int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
 {
 
     char* t_send_http_json(const char *url, const char *meth,  char *bufResp, int iMaxLen, int &iRespContentLen, const char *pContent);
@@ -389,23 +422,27 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         if (httpHelperCallback == NULL) {
             return -5;
         }
+        javaNotifyCallback = env->GetMethodID(callbackClass, "notifyCallback", "(I[B[B)V");
+        if (javaNotifyCallback == NULL) {
+            return -6;
+        }
 
     }
-    std::string name;
+    string name;
     if (!arrayToString(env, userName, &name) || name.empty()) {
         return -10;
     }
 
-    std::string auth;
+    string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
         return -11;
     }
 
-    std::string devId;
+    string devId;
     if (!arrayToString(env, scClientDeviceId, &devId) || devId.empty())
         return -12;
 
-    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport);
+    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback);
     Transport* sipTransport = new SipTransport(axoAppInterface);
 
     /* ***********************************************************************************
@@ -437,14 +474,14 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     if (pwLen != 32)
         return -15;
 
-    std::string dbPw((const char*)pw, pwLen);
+    string dbPw((const char*)pw, pwLen);
     env->ReleaseByteArrayElements(dbPassphrase, (jbyte*)pw, 0);
 
     // initialize and open the persitent store singleton instance
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->setKey(dbPw);
     const char* db = (const char *)env->GetStringUTFChars(dbName, 0);
-    store->openStore(std::string (db));
+    store->openStore(string (db));
     env->ReleaseStringUTFChars(dbName, db);
 
     int32_t retVal = 1;
@@ -473,23 +510,23 @@ JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescripto
     if (messageDescriptor == NULL)
         return 0L;
 
-    std::string message;
+    string message;
     if (!arrayToString(env, messageDescriptor, &message)) {
         return 0L;
     }
     Log("sendMessage - message: '%s' - length: %d", message.c_str(), message.size());
 
-    std::string attachment;
+    string attachment;
     if (attachementDescriptor != NULL) {
         arrayToString(env, attachementDescriptor, &attachment);
         Log("sendMessage - attachement: '%s' - length: %d", attachment.c_str(), attachment.size());
     }
-    std::string attributes;
+    string attributes;
     if (messageAttributes != NULL) {
         arrayToString(env, messageAttributes, &attributes);
         Log("sendMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    std::vector<int64_t>* msgIds = axoAppInterface->sendMessage(message, attachment, attributes);
+    vector<int64_t>* msgIds = axoAppInterface->sendMessage(message, attachment, attributes);
     if (msgIds == NULL || msgIds->empty()) {
         delete msgIds;
         return NULL;
@@ -516,7 +553,7 @@ JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescripto
 JNIEXPORT jbyteArray JNICALL 
 JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 {
-    std::string* jsonNames = axoAppInterface->getKnownUsers();
+    string* jsonNames = axoAppInterface->getKnownUsers();
     if (jsonNames == NULL)
         return NULL;
 
@@ -622,7 +659,7 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
 JNIEXPORT jbyteArray JNICALL 
 JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
 {
-    std::string info;
+    string info;
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -715,7 +752,7 @@ JNI_FUNCTION(getErrorCode)(JNIEnv* env, jclass clazz)
 JNIEXPORT jstring JNICALL
 JNI_FUNCTION(getErrorInfo)(JNIEnv* env, jclass clazz)
 {
-    const std::string info = axoAppInterface->getErrorInfo();
+    const string info = axoAppInterface->getErrorInfo();
     jstring errInfo = env->NewStringUTF(info.c_str());
     return errInfo;
 }
@@ -731,7 +768,7 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     int32_t result = 0;
     const char* cmd = (const char *)env->GetStringUTFChars(command, 0);
 
-    std::string dataContainer;
+    string dataContainer;
     if (data != NULL) {
         int dataLen = env->GetArrayLength(data);
         if (dataLen > 0) {
@@ -746,8 +783,8 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
 
 #ifdef UNITTESTS
     if (strcmp("http", cmd) == 0) {
-        std::string resultData;
-        result = httpHelper(std::string("/some/request"), dataContainer, std::string("MTH"), &resultData);
+        string resultData;
+        result = httpHelper(string("/some/request"), dataContainer, string("MTH"), &resultData);
         Log("httpHelper - code: %d, resultData: %s", result, resultData.c_str());
     }
 
@@ -778,7 +815,7 @@ JNIEXPORT jstring JNICALL JNI_FUNCTION(axoCommand)(JNIEnv* env, jclass clazz, js
 
     jstring result = NULL;
 
-    std::string dataContainer;
+    string dataContainer;
     arrayToString(env, data, &dataContainer);
 
     if (strcmp("removeAxoConversation", cmd) == 0) {
@@ -792,6 +829,10 @@ JNIEXPORT jstring JNICALL JNI_FUNCTION(axoCommand)(JNIEnv* env, jclass clazz, js
             jstring result = env->NewStringUTF(store->getLastError());
         }
     }
+    if (strcmp("rescanUserDevices", cmd) == 0 && !dataContainer.empty()) {
+        axoAppInterface->rescanUserDevices(dataContainer);
+    }
+
     env->ReleaseStringUTFChars(command, cmd);
     return result;
 }
@@ -812,7 +853,7 @@ static AppRepository* appRepository = NULL;
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName)
 {
-    std::string nameString;
+    string nameString;
     if (dbName != NULL) {
         const char* name = (const char *)env->GetStringUTFChars(dbName, 0);
         nameString = name;
@@ -857,7 +898,7 @@ JNI_FUNCTION(repoIsOpen) (JNIEnv* env, jclass clazz)
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePattern)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, namePattern, &name) || name.empty())
         return false;
 
@@ -873,11 +914,11 @@ JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePatte
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(storeConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray convData)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty())
         return -1;
 
-    std::string data;
+    string data;
     arrayToString(env, convData, &data);
     return appRepository->storeConversation(name, data);
 }
@@ -893,13 +934,13 @@ JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, ji
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
 
-    std::string data;
+    string data;
     int32_t result = appRepository->loadConversation(name, &data);
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
@@ -919,7 +960,7 @@ JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, ji
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
     }
@@ -944,7 +985,7 @@ JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 
     int32_t index = 0;
     while (!convNames->empty()) {
-        std::string s = convNames->front();
+        string s = convNames->front();
         convNames->pop_front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
@@ -960,15 +1001,15 @@ JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray eventData)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, eventId, &id) || id.empty()) {
         return -1;
     }
-    std::string data;
+    string data;
     arrayToString(env, eventData, &data);
     return appRepository->insertEvent(name, id, data);
 }
@@ -984,18 +1025,18 @@ JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArra
     if (code == NULL || env->GetArrayLength(code) < 2)
         return NULL;
 
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, eventId, &id) || id.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
     int32_t msgNumber = 0;
-    std::string data;
+    string data;
     int32_t result = appRepository->loadEvent(name, id, &data, &msgNumber);
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
@@ -1014,11 +1055,11 @@ JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArra
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return false;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, eventId, &id) || id.empty()) {
         return false;
     }
@@ -1037,20 +1078,20 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
     if (code == NULL || env->GetArrayLength(code) < 2)
         return NULL;
 
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
 
     int32_t msgNumber = 0;
-    std::list<std::string*> events;
+    list<string*> events;
     int32_t result = appRepository->loadEvents(name, offset, number, &events, &msgNumber);
 
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
         while (!events.empty()) {
-            std::string* s = events.front();
+            string* s = events.front();
             events.pop_front();
             delete s;
         }
@@ -1061,7 +1102,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 
     int32_t index = 0;
     while (!events.empty()) {
-        std::string* s = events.front();
+        string* s = events.front();
         events.pop_front();
         jbyteArray retData = stringToArray(env, *s);
         env->SetObjectArrayElement(retArray, index++, retData);
@@ -1079,11 +1120,11 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, eventId, &id) || id.empty()) {
         return -1;
     }
@@ -1099,19 +1140,19 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(insertObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId, jbyteArray objData)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
     }
-    std::string event;
+    string event;
     if (!arrayToString(env, eventId, &event) || event.empty()) {
         return -1;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, objId, &id) || id.empty()) {
         return -1;
     }
-    std::string data;
+    string data;
     arrayToString(env, objData, &data);
     return appRepository->insertObject(name, event, id, data);
 }
@@ -1127,21 +1168,21 @@ JNI_FUNCTION(loadObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
-    std::string event;
+    string event;
     if (!arrayToString(env, eventId, &event) || event.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, objId, &id) || id.empty()) {
         return NULL;
     }
-    std::string data;
+    string data;
     int32_t result = appRepository->loadObject(name, event, id, &data);
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
@@ -1160,15 +1201,15 @@ JNI_FUNCTION(loadObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(existObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return false;
     }
-    std::string event;
+    string event;
     if (!arrayToString(env, eventId, &event) || event.empty()) {
         return false;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, objId, &id) || id.empty()) {
         return false;
     }
@@ -1186,23 +1227,23 @@ JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
-    std::string event;
+    string event;
     if (!arrayToString(env, eventId, &event) || event.empty()) {
         setReturnCode(env, code, -1);
         return NULL;
     }
-    std::list<std::string*> objects;
+    list<string*> objects;
     int32_t result = appRepository->loadObjects(name, event, &objects);
 
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
         while (!objects.empty()) {
-            std::string* s = objects.front();
+            string* s = objects.front();
             objects.pop_front();
             delete s;
         }
@@ -1213,7 +1254,7 @@ JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 
     int32_t index = 0;
     while (!objects.empty()) {
-        std::string* s = objects.front();
+        string* s = objects.front();
         objects.pop_front();
         jbyteArray retData = stringToArray(env, *s);
         env->SetObjectArrayElement(retArray, index++, retData);
@@ -1231,15 +1272,15 @@ JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId)
 {
-    std::string name;
+    string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
     }
-    std::string event;
+    string event;
     if (!arrayToString(env, eventId, &event) || event.empty()) {
         return -1;
     }
-    std::string id;
+    string id;
     if (!arrayToString(env, objId, &id) || id.empty()) {
         return -1;
     }

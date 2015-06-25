@@ -15,6 +15,8 @@
 #include "../Transport.h"
 #include "../../interfaceApp/AppInterface.h"
 
+using namespace std;
+
 namespace axolotl {
 
 class SipTransport: public Transport
@@ -28,11 +30,13 @@ public:
 
     SEND_DATA_FUNC getTransport() { return sendAxoData_; }
 
-    std::vector<int64_t>* sendAxoMessage(const std::string& recipient, std::vector< std::pair< std::string, std::string > >* msgPairs);
+    vector<int64_t>* sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs);
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 
     void stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length);
+
+    void notifyAxo(uint8_t* data, size_t length);
 
 private:
 

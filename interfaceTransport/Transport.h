@@ -69,7 +69,7 @@ public:
     /**
      * @brief Report message status changes - callback function for network layer.
      * 
-     * The network layer calls this function message state changes, for example sent to server. 
+     * The network layer calls this function if message state changes, for example sent to server. 
      * 
      * @param messageIdentifier the unique message identifier that was created by the send message function.
      * @param stateCode the status code for this message
@@ -77,6 +77,16 @@ public:
      * @param length length of the optional data array.
      */
     virtual void stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length) = 0;
+
+    /**
+     * @brief Report SIP notify information.
+     * 
+     * The network layer calls this function to hand over information from SIP NOTIFY packets.
+     *
+     * @param data optional, supplementary data for the current message state.
+     * @param length length of the optional data array.
+     */
+    virtual void notifyAxo(uint8_t* data, size_t length) = 0;
 
 private:
 };

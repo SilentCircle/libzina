@@ -14,18 +14,22 @@
 
 #include "../interfaceTransport/Transport.h"
 
-typedef int32_t (*RECV_FUNC)(const std::string&, const std::string&, const std::string&);
-typedef void (*STATE_FUNC)(int64_t, int32_t, const std::string&);
-
 using namespace std;
+
+typedef int32_t (*RECV_FUNC)(const string&, const string&, const string&);
+typedef void (*STATE_FUNC)(int64_t, int32_t, const string&);
+typedef void (*NOTIFY_FUNC)(int32_t, const string&, const string&);
 
 namespace axolotl {
 class AppInterface
 {
 public:
-    AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL) {}
+    static const int DEVICE_SCAN = 1;
 
-    AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback) : receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback) {}
+    AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL), notifyCallback_(NULL) {}
+
+    AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback) : 
+                 receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback), notifyCallback_(notifyCallback) {}
 
     virtual ~AppInterface() {}
 
@@ -80,7 +84,7 @@ public:
      * @return unique message identifiers if the messages were processed for sending, 0 if processing
      *         failed.
      */
-    virtual std::vector<int64_t>* sendMessage(const std::string& messageDescriptor, const std::string& attachementDescriptor, const std::string& messageAttributes) = 0;
+    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes) = 0;
 
     /**
      * @brief Receive a Message from transport
@@ -110,7 +114,7 @@ public:
      *                               An empty string shows that not attributes are available.
      * @return Either success of an error code (to be defined)
      */
-    virtual int32_t receiveMessage(const std::string& messageEnvelope) = 0;
+    virtual int32_t receiveMessage(const string& messageEnvelope) = 0;
 
     /**
      * @brief Send a message state report to the application.
@@ -129,7 +133,7 @@ public:
      * @param stateInformation   JSON formatted stat information block that contains the details about
      *                           the new state or some error information.
      */
-    virtual void messageStateReport(int64_t messageIdentfier, int32_t stateCode, const std::string& stateInformation) = 0;
+    virtual void messageStateReport(int64_t messageIdentfier, int32_t stateCode, const string& stateInformation) = 0;
 
     /**
      * @brief Request names of known trusted Axolotl user identities
@@ -140,7 +144,16 @@ public:
      *         JSON array if no users known. It returns NULL in case the request failed.
      *         Language bindings use appropriate return types.
      */
-    virtual std::string* getKnownUsers() = 0;
+    virtual string* getKnownUsers() = 0;
+
+    /**
+     * @brief Get name of own user.
+     *
+     * The Axolotl library stores an identity (name) for each remote user.
+     *
+     * @return Reference to internal own user
+     */
+    virtual const string& getOwnUser() const = 0;
 
     /**
      * @brief Get public part of own identity key.
@@ -175,7 +188,7 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server return code, usually a HTTP code, e.g. 200 for OK
      */
-    virtual int32_t registerAxolotlDevice(std::string* result) = 0;
+    virtual int32_t registerAxolotlDevice(string* result) = 0;
 
      /**
      * @brief Generate and register a set of new pre-keys.
@@ -193,6 +206,14 @@ public:
      * @return number of available pre-keys or -1 if request to server failed.
      */
     virtual int32_t getNumPreKeys() const = 0;
+
+    /**
+     * @brief Rescan user device.
+     *
+     * Checks if a use has registered a new Axolotl device
+     *
+     */
+    virtual void rescanUserDevices(string& userName) = 0;
 
     /**
      * @brief Callback to UI to receive a Message from transport 
@@ -238,6 +259,20 @@ public:
      */
     STATE_FUNC stateReportCallback_;
 
+    /**
+     * @brief Notify callback.
+     *
+     * The Axolotl library uses this callback function to report data of a SIP NOTIFY to the app.
+     *
+     * @param messageIdentifier  the unique 64-bit transport message identifier. 
+     * 
+     * @param notifyActionCode   This code defines which action to perform, for example re-scan a
+     *                           user's Axolotl devices
+     * 
+     * @param actionInformation  JSON formatted state information block (string) that contains the
+     *                           details required for the action.
+     */
+    NOTIFY_FUNC notifyCallback_;
 };
 } // namespace
 

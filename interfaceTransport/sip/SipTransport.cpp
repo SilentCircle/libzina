@@ -1,11 +1,12 @@
 #include "SipTransport.h"
+#include "../../storage/sqlite/SQLiteStoreConv.h"
 #include <iostream>
 
 using namespace axolotl;
 
 void Log(const char* format, ...);
 
-std::vector< int64_t >* SipTransport::sendAxoMessage( const std::string& recipient, std::vector< std::pair< std::string, std::string > >* msgPairs )
+vector< int64_t >* SipTransport::sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs)
 {
     int32_t numPairs = msgPairs->size();
 
@@ -17,11 +18,10 @@ std::vector< int64_t >* SipTransport::sendAxoMessage( const std::string& recipie
 
     int32_t index = 0;
     for(; index < numPairs; index++) {
-        std::pair<std::string, std::string>& msgPair = msgPairs->at(index);
+        pair<string, string>& msgPair = msgPairs->at(index);
         names[index] = (uint8_t*)recipient.c_str();
         devIds[index] = (uint8_t*)msgPair.first.c_str();
         envelopes[index] = (uint8_t*)msgPair.second.data();
-        Log("envelope size: %d", msgPair.second.size());
         sizes[index] = msgPair.second.size();
     }
     names[index] = NULL; devIds[index] = NULL; envelopes[index] = NULL; 
@@ -32,7 +32,7 @@ std::vector< int64_t >* SipTransport::sendAxoMessage( const std::string& recipie
     msgPairs->clear();
     delete names; delete devIds; delete envelopes; delete sizes;
 
-    std::vector<int64_t>* msgIdsReturn = new std::vector<int64_t>;
+    vector<int64_t>* msgIdsReturn = new std::vector<int64_t>;
     for (int32_t i = 0; i < numPairs; i++) {
         if (msgIds[i] != 0)
             msgIdsReturn->push_back(msgIds[i]);
@@ -43,7 +43,7 @@ std::vector< int64_t >* SipTransport::sendAxoMessage( const std::string& recipie
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 {
-    std::string envelope((const char*)data, length);
+    string envelope((const char*)data, length);
     int32_t result = appInterface_->receiveMessage(envelope);
 
     return result;
@@ -57,3 +57,40 @@ void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, 
     }
     appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
 }
+
+void SipTransport::notifyAxo(uint8_t* data, size_t length)
+{
+    string info((const char*)data, length);
+
+    Log("++++ Notify from SIP transport: %s", info.c_str());
+    /*
+     * notify call back from SIP:
+     *   - parse data from SIP, get name and devices
+     *   - check for new devices (store->hasConversation() )
+     *   - for each new device found construct a small JSON info with name, device id and call
+     *       appInterface_->notifyCallback(messageIdentifier, RESCAN, info)
+     *     NOTE: the notifyCallback function in app should return ASAP, queue/trigger actions only
+     *   - done
+     */
+    size_t found = info.find(':');
+    if (found == string::npos)        // No colon? No name -> return
+        return;
+
+    string name = info.substr(0, found);
+    string devIds = info.substr(found + 1);
+
+    size_t pos = 0;
+    std::string devId;
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+
+    while ((pos = devIds.find(';')) != std::string::npos) {
+        devId = devIds.substr(0, pos);
+        Log("++++ found devid: %d", devId.c_str());
+        devIds.erase(0, pos + 1);
+        if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
+            appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devId);
+        }
+    }
+
+}
+

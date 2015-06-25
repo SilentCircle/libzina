@@ -73,8 +73,8 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string ot {@code null} shows that not attributes are available.
      * 
-     * @return A list of unique message identifiers, one for each message set to the user's devices.
-     *         In case of error the functions return {@code null} and the {@code getErrorCode} and
+     * @return A list of unique 64-bit transport message identifiers, one for each message set to the user's 
+     *         devices. In case of error the functions return {@code null} and the {@code getErrorCode} and
      *         {@code getErrorInfo} have the details.
      */
     public static native long[] sendMessage(byte[] messageDescriptor, byte[] attachementDescriptor, byte[] messageAttributes);
@@ -229,7 +229,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * @param messageDescriptor      The JSON formatted message descriptor, string, required.
      * 
-     * @param attachmentDescriptor  Optional, a string that contains an attachment descriptor. An empty
+     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty
      *                               string ot {@code null} shows that not attachment descriptor is available.
      * 
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
@@ -245,9 +245,9 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * The library reports state changes of message it got for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
-     * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this 
-     *                           report belongs to a received message and the library failed to 
-     *                           process it.
+     * @param messageIdentifier  the unique 64-bit transport message identifier. If this identifier 
+     *                           is 0 then this report belongs to a received message and the library 
+     *                           failed to process it.
      * 
      * @param statusCode         The status code as reported from the network transport, usually like
      *                           HTTP or SIP codes. If less 0 then the messageIdentfier may be 0 and
@@ -279,6 +279,21 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return the received data
      */
     public abstract byte[] httpHelper(byte[] requestUri, String method, byte[] requestData, int[] code);
+
+    /**
+     * Notify callback.
+     *
+     * The Axolotl library uses this callback function to report data of a SIP NOTIFY to the app.
+     *
+     * @param messageIdentifier  the unique 64-bit transport message identifier. 
+     * 
+     * @param notifyActionCode   This code defines which action to perform, for example re-scan a
+     *                           user's Axolotl devices
+     * 
+     * @param actionInformation  JSON formatted state information block (string) that contains the
+     *                           details required for the action.
+     */
+    public abstract void notifyCallback(int notifyActionCode, byte[] actionInformation, byte[] deviceId);
 
     /*
      ***************************************************************

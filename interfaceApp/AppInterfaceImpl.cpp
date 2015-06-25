@@ -11,6 +11,7 @@
 #include "../keymanagment/PreKeys.h"
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
+#include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
@@ -25,13 +26,13 @@ static CMutexClass convLock;
 
 using namespace axolotl;
 
-static std::string Empty;
+static string Empty;
 
 void Log(const char* format, ...);
 
-AppInterfaceImpl::AppInterfaceImpl(const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId,
-                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback):
-                                   AppInterface(receiveCallback, stateReportCallback), tempBuffer_(NULL), tempBufferSize_(0),
+AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
+                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback):
+                                   AppInterface(receiveCallback, stateReportCallback, notifyCallback), tempBuffer_(NULL), tempBufferSize_(0),
                                    ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), flags_(0)
 {
     store_ = SQLiteStoreConv::getStore();
@@ -43,7 +44,7 @@ AppInterfaceImpl::~AppInterfaceImpl()
     delete transport_; transport_ = NULL;
 }
 
-static void createSupplementString(const std::string& attachementDesc, const std::string& messageAttrib, std::string* supplement)
+static void createSupplementString(const string& attachementDesc, const string& messageAttrib, string* supplement)
 {
     if (!attachementDesc.empty() || !messageAttrib.empty()) {
         cJSON* msgSupplement = cJSON_CreateObject();
@@ -71,7 +72,7 @@ static void createSupplementString(const std::string& attachementDesc, const std
     "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
  }
  */
-std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes)
+vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes)
 {
 
     string recipient;
@@ -84,15 +85,15 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescrip
         return NULL;
     }
 
-    std::list<std::string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
+    list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
     int32_t numDevices = devices->size();
 
     if (numDevices == 0) {
-        std::vector<std::pair<string, string> >* msgPairs = sendMessagePreKeys(messageDescriptor, attachementDescriptor, messageAttributes);
+        vector<pair<string, string> >* msgPairs = sendMessagePreKeys(messageDescriptor, attachementDescriptor, messageAttributes);
         if (msgPairs == NULL) {
             return NULL;
         }
-        std::vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+        vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
         delete msgPairs;
         return returnMsgIds;
     }
@@ -103,16 +104,16 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescrip
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
 
     // Prepare the messages for all known device of this user
-    std::vector<std::pair<std::string, std::string> >* msgPairs = new std::vector<std::pair<std::string, std::string> >;
+    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
     convLock.Lock();
     while (!devices->empty()) {
-        std::string recipientDeviceId = devices->front();
+        string recipientDeviceId = devices->front();
         devices->pop_front();
 
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
  
-        std::string supplementsEncrypted;
+        string supplementsEncrypted;
 
         // Encrypt the user's message and the supplementary data if necessary
         const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
@@ -137,7 +138,7 @@ std::vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescrip
         if (!supplementsEncrypted.empty())
             envelope.set_supplement(supplementsEncrypted);
         envelope.set_message(*wireMessage);
-        std::string serialized = envelope.SerializeAsString();
+        string serialized = envelope.SerializeAsString();
 
         // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
         // the size of binary data, this is big enough to hold B64 plus paddling and terminator
@@ -189,7 +190,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
 
 // Take a message envelope (see sendMessage above), parse it, and process the embedded data. Then
 // forward the data to the UI layer.
-int32_t AppInterfaceImpl::receiveMessage(const std::string& messageEnvelope)
+int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 {
     if (messageEnvelope.size() > tempBufferSize_) {
         delete tempBuffer_;
@@ -293,17 +294,17 @@ JSON state information block:
     }
 }
 */
-void AppInterfaceImpl::messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std::string& stateInformation)
+void AppInterfaceImpl::messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation)
 {
     stateReportCallback_(messageIdentfier, statusCode, stateInformation);
 }
 
-std::string* AppInterfaceImpl::getKnownUsers()
+string* AppInterfaceImpl::getKnownUsers()
 {
     if (!store_->isReady())
         return NULL;
 
-    std::list<std::string>* names = store_->getKnownConversations(ownUser_);
+    list<string>* names = store_->getKnownConversations(ownUser_);
 
     if (SQL_FAIL(store_->getSqlCode()) || names == NULL) {
 //        Log("generatePreKey: %d", store_->getLastError());
@@ -317,14 +318,14 @@ std::string* AppInterfaceImpl::getKnownUsers()
     cJSON_AddItemToObject(root, "users", nameArray = cJSON_CreateArray());
 
     for (int32_t i = 0; i < size; i++) {
-        std::string name = names->front();
+        string name = names->front();
         cJSON_AddItemToArray(nameArray, cJSON_CreateString(name.c_str()));
         names->pop_front();
     }
     delete names;
 
     char *out = cJSON_PrintUnformatted(root);
-    std::string* retVal = new std::string(out);
+    string* retVal = new string(out);
     cJSON_Delete(root); free(out);
 
     return retVal;
@@ -346,7 +347,7 @@ std::string* AppInterfaceImpl::getKnownUsers()
     }]
 }
  */
-int32_t AppInterfaceImpl::registerAxolotlDevice(std::string* result)
+int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
 {
     cJSON *root;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
@@ -421,6 +422,96 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
     return Provisioning::getNumPreKeys(scClientDevId_, authorization_);
 }
 
+// Get known Axolotl device from provisioning server, check if we have a new one
+// and if yes send a "ping" message to the new devices to create an Axolotl conversation
+// for the new devices.
+
+// This is the ping command the code sends to new devices to create an Axolotl setup
+static string ping("{\"cmd\":\"ping\"}");
+
+void AppInterfaceImpl::rescanUserDevices(string& userName)
+{
+    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    if (devices == NULL || devices->empty()) {
+        delete devices;
+        return;
+    }
+
+    // Get known devices from DB, compare with devices from provisioning server
+    // and remove old devices in DB, i.e. devices not longer known on provisioning server
+    //
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+
+    list<string>* devicesDb = store_->getLongDeviceIds(userName, ownUser_);
+
+    while (!devicesDb->empty()) {
+        string devIdDb = devicesDb->front();
+        devicesDb->pop_front();
+        bool found = false;
+
+        for (list<pair<string, string> >::iterator devIterator = devices->begin(); devIterator != devices->end(); devIterator++) {
+            string devId = (*devIterator).first;
+            if (devIdDb == devId) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            store->deleteConversation(userName, devIdDb, ownUser_);
+    }
+    delete devicesDb;
+
+    // Prepare and send this to the new device:
+    // - an Empty message
+    // - a message command attribute with a ping command
+    // For each message the code generates a new UUID
+    string supplements;
+    createSupplementString(Empty, ping, &supplements);
+
+    // Prepare the messages for all known new devices of this user
+    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
+
+    convLock.Lock();
+    uuid_t pingUuid;
+    uuid_string_t uuidString;
+
+    while (!devices->empty()) {
+        string deviceId = devices->front().first;
+        devices->pop_front();
+
+        // If we already have a conversation for this device skip further processing
+        if (store->hasConversation(userName, deviceId, ownUser_)) {
+            continue;
+        }
+        uuid_generate_time(pingUuid);
+        uuid_unparse(pingUuid, uuidString);
+        string msgId(uuidString);
+
+        int32_t result = createPreKeyMsg(userName, deviceId, Empty, supplements, msgId, msgPairs);
+        if (result == 0)   // no pre-key bundle available for name/device-id combination
+            continue;
+
+        // This is always a security issue: return immediately, don't process and send a message
+        if (result < 0) {
+            delete msgPairs;
+            delete devices;
+            convLock.Unlock();
+            return;
+        }
+    }
+    convLock.Unlock();
+    delete devices;
+
+    if (msgPairs->empty()) {
+        delete msgPairs;
+        return;
+    }
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
+    delete msgPairs;
+    delete returnMsgIds;
+    return;
+}
+
 void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 {
     ScProvisioning::setHttpHelper(httpHelper);
@@ -467,6 +558,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
             delete devices;
             errorCode_ = result;
             errorInfo_ = recipientDeviceId;
+            convLock.Unlock();
             return NULL;
         }
     }

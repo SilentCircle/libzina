@@ -15,6 +15,9 @@ public class JavaTester extends AxolotlNative {
     public void messageStateReport(long messageIdentfier, int statusCode, byte[] stateInformation) { 
     }
 
+    public void notifyCallback(int notifyActionCode, byte[] actionInformation, byte[] deviceId) {
+    }
+
     public byte[] httpHelper(byte[] requestUri, String method, byte[] requestData, int[] code) {
         String uri = new String(requestUri);
         String data = new String(requestData);

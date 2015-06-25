@@ -16,7 +16,7 @@
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
 // Same as in ScProvisioning, keep in sync
-typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& requestData, const std::string& method, std::string* response);
+typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
 
 using namespace std;
 
@@ -28,12 +28,12 @@ class AppInterfaceImpl : public AppInterface
 public:
 #ifdef UNITTESTS
     AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
-    AppInterfaceImpl(SQLiteStoreConv* store, const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId) : 
+    AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
                     AppInterface(), tempBuffer_(NULL), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), 
                     store_(store), transport_(NULL) {}
 #endif
-    AppInterfaceImpl(const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId, 
-                     RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback);
+    AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
+                     RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback);
 
     ~AppInterfaceImpl();
 
@@ -42,13 +42,11 @@ public:
 
     Transport* getTransport()               { return transport_; }
 
-    std::vector<int64_t>* sendMessage(const std::string& messageDescriptor, 
-                                      const std::string& attachementDescriptor, 
-                                      const std::string& messageAttributes);
+    vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes);
 
-    int32_t receiveMessage(const std::string& messageEnvelope);
+    int32_t receiveMessage(const string& messageEnvelope);
 
-    void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const std::string& stateInformation);
+    void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation);
 
     string* getKnownUsers();
 
@@ -63,6 +61,8 @@ public:
     int32_t newPreKeys(int32_t number);
 
     int32_t getNumPreKeys() const;
+
+    void rescanUserDevices(string& userName);
 
     /**
      * @brief Return the stored error code.
@@ -102,7 +102,7 @@ public:
      * 
      * @return The stored error information string.
      */
-    const std::string& getErrorInfo() { return errorInfo_; }
+    const string& getErrorInfo() { return errorInfo_; }
 
     /**
      * @brief Initialization code must set a HTTP helper function
@@ -124,21 +124,21 @@ private:
     bool operator== ( const AppInterfaceImpl& other ) const { }
 #pragma clang diagnostic pop
 
-    std::vector<std::pair<std::string, std::string> >* sendMessagePreKeys(const std::string& messageDescriptor,
-                                                                          const std::string& attachementDescriptor,
-                                                                          const std::string& messageAttributes);
+    vector<pair<string, string> >* sendMessagePreKeys(const string& messageDescriptor, const string& attachementDescriptor,
+                                                      const string& messageAttributes);
 
-    int32_t parseMsgDescriptor( const string& messageDescriptor, string* recipient, string* msgId, string* message );
+    int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
 
-    int32_t createPreKeyMsg( string& recipient, const string& recipientDeviceId, const string& message, const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
+    int32_t createPreKeyMsg(string& recipient, const string& recipientDeviceId, const string& message, 
+                            const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
     char* tempBuffer_;
     size_t tempBufferSize_;
-    std::string ownUser_;
-    std::string authorization_;
-    std::string scClientDevId_;
+    string ownUser_;
+    string authorization_;
+    string scClientDevId_;
 
     int32_t errorCode_;
-    std::string errorInfo_;
+    string errorInfo_;
     SQLiteStoreConv* store_;
     Transport* transport_;
     int32_t flags_;
