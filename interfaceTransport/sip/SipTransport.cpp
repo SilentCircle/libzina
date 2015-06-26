@@ -67,8 +67,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
      * notify call back from SIP:
      *   - parse data from SIP, get name and devices
      *   - check for new devices (store->hasConversation() )
-     *   - for each new device found construct a small JSON info with name, device id and call
-     *       appInterface_->notifyCallback(messageIdentifier, RESCAN, info)
+     *   - if a new device was found call appInterface_->notifyCallback(...)
      *     NOTE: the notifyCallback function in app should return ASAP, queue/trigger actions only
      *   - done
      */
@@ -78,19 +77,23 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
 
     string name = info.substr(0, found);
     string devIds = info.substr(found + 1);
+    string devIdsSave(devIds);
 
     size_t pos = 0;
-    std::string devId;
+    string devId;
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
-    while ((pos = devIds.find(';')) != std::string::npos) {
+    bool newDevice = false;
+    while ((pos = devIds.find(';')) != string::npos) {
         devId = devIds.substr(0, pos);
         Log("++++ found devid: %d", devId.c_str());
         devIds.erase(0, pos + 1);
         if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
-            appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devId);
+            newDevice = true;
+            break;
         }
     }
-
+    if (newDevice)
+        appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
 }
 
