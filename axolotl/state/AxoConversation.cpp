@@ -26,7 +26,7 @@ AxoConversation* AxoConversation::loadConversation(const string& localUser, cons
     AxoConversation*  conv = new AxoConversation(localUser, user, deviceId);
 
     string* data = store->loadConversation(user, deviceId, localUser);
-    if (data->empty()) {            // Illegal state, should not happen
+    if (data == NULL || data->empty()) {   // Illegal state, should not happen
 //        cerr << "cannot load conversation" << endl;
         delete conv;
         return NULL;
