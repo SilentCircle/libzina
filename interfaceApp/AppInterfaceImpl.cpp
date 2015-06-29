@@ -209,6 +209,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     const string& message = envelope.message();
     const string& msgId = envelope.msgid();
 
+    convLock.Lock();
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
     // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills
@@ -219,7 +220,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     string supplementsPlain;
     string* messagePlain;
 
-    convLock.Lock();
     messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain);
     errorCode_ = axoConv->getErrorCode();
     delete axoConv;
