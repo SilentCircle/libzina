@@ -269,7 +269,7 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const stri
 /*
  * Notify callback for AppInterfaceImpl.
  * 
- * "(J[B)V"
+ * "(I[B[B)V"
  */
 void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
 {
@@ -289,7 +289,7 @@ void notifyCallback(int32_t notifyAction, const string& actionInformation, const
     if (!devId.empty()) {
         deviceId = stringToArray(env, devId);
     }
-    env->CallVoidMethod(axolotlCallbackObject, javaNotifyCallback, notifyAction, information);
+    env->CallVoidMethod(axolotlCallbackObject, javaNotifyCallback, notifyAction, information, deviceId);
 
     if (information != NULL)
         env->DeleteLocalRef(information);
@@ -487,7 +487,6 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     int32_t retVal = 1;
     AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
     if (ownAxoConv == NULL) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
-        Log("Axolotl - create identity for: '%s'", name.c_str());
         ownAxoConv = new AxoConversation(name, name, string());
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         ownAxoConv->setDHIs(idKeyPair);

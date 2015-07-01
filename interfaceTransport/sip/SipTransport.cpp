@@ -86,7 +86,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     bool newDevice = false;
     while ((pos = devIds.find(';')) != string::npos) {
         devId = devIds.substr(0, pos);
-        Log("++++ found devid: %d", devId.c_str());
+        Log("++++ found devid: %s", devId.c_str());
         devIds.erase(0, pos + 1);
         if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
             newDevice = true;
