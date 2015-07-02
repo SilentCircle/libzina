@@ -73,7 +73,7 @@ static const char* updateConversation = "UPDATE Conversations SET data=?1, iv=?2
 static const char* insertConversation = "INSERT OR IGNORE INTO Conversations (name, secondName, longDevId, iv, data, ownName) VALUES (?1, ?2, ?3, ?4, ?5, ?6);";
 static const char* selectConversation = "SELECT iv, data FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
 
-static const char* selectConvNames = "SELECT name FROM Conversations WHERE ownName=?1 ORDER BY name;";
+static const char* selectConvNames = "SELECT DISTINCT name FROM Conversations WHERE ownName=?1 ORDER BY name;";
 static const char* selectConvDevices = "SELECT longDevId FROM Conversations WHERE name=?1 AND ownName=?2;";
 
 // Delete a specific sessions
