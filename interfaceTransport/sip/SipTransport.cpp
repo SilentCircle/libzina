@@ -58,6 +58,8 @@ void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, 
     appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
 }
 
+static string Zeros("00000000000000000000000000000000");
+
 void SipTransport::notifyAxo(uint8_t* data, size_t length)
 {
     string info((const char*)data, length);
@@ -86,8 +88,10 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     bool newDevice = false;
     while ((pos = devIds.find(';')) != string::npos) {
         devId = devIds.substr(0, pos);
-        Log("++++ found devid: %s", devId.c_str());
         devIds.erase(0, pos + 1);
+        if (Zeros.compare(0, devId.size(), devId) == 0) {
+            continue;
+        }
         if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
             newDevice = true;
             break;
