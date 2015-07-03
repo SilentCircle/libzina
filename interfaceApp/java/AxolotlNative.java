@@ -80,6 +80,23 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native long[] sendMessage(byte[] messageDescriptor, byte[] attachementDescriptor, byte[] messageAttributes);
 
     /**
+     * Send message to siblinge devices.
+     * 
+     * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
+     * belong to a user. The client uses function for send synchronization message to the siblings to
+     * keep them in sync.
+     * 
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachementDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return unique message identifiers if the messages were processed for sending, 0 if processing
+     *         failed.
+     */
+    public static native long[] sendMessageToSiblings(byte[] messageDescriptor, byte[] attachementDescriptor, byte[] messageAttributes);
+
+    /**
      * Request names of known trusted Axolotl user identities.
      *
      * The Axolotl library stores an identity (name) for each remote user.

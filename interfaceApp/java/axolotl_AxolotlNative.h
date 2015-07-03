@@ -25,6 +25,14 @@ JNIEXPORT jlongArray JNICALL Java_axolotl_AxolotlNative_sendMessage
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    sendMessageToSiblings
+ * Signature: ([B[B[B)[J
+ */
+JNIEXPORT jlongArray JNICALL Java_axolotl_AxolotlNative_sendMessageToSiblings
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    getKnownUsers
  * Signature: ()[B
  */

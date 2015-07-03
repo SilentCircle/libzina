@@ -393,7 +393,9 @@ std::list<std::string>* SQLiteStoreConv::getLongDeviceIds(const std::string& nam
 
     while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
         idLen = sqlite3_column_bytes(stmt, 0);
-        std::string id((const char*)sqlite3_column_text(stmt, 0), idLen);
+        string id((const char*)sqlite3_column_text(stmt, 0), idLen);
+        if (id.compare(0, id.size(), dummyId, id.size()) == 0)
+            continue;
         devIds->push_back(id);
     }
     sqlite3_finalize(stmt);
@@ -418,7 +420,7 @@ std::string* SQLiteStoreConv::loadConversation(const std::string& name, const st
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
 
     // selectConversation = "SELECT iv, sessionData FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
@@ -493,7 +495,7 @@ void SQLiteStoreConv::storeConversation(const std::string& name, const std::stri
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
     // updateConversation = "UPDATE Conversations SET data=?1, iv=?2 WHERE name=?3 AND longDevId=?4 AND ownName=?5;";
     SQLITE_CHK(SQLITE_PREPARE(db, updateConversation, -1, &stmt, NULL));
@@ -534,7 +536,7 @@ bool SQLiteStoreConv::hasConversation(const std::string& name, const std::string
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
     // selectConversation = "SELECT iv, data FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectConversation, -1, &stmt, NULL));
@@ -564,7 +566,7 @@ void SQLiteStoreConv::deleteConversation(const std::string& name, const std::str
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
     //removeConversation = "DELETE FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeConversation, -1, &stmt, NULL));
@@ -614,7 +616,7 @@ list<pair<string, string> >* SQLiteStoreConv::loadStagedMks(const string& name, 
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
     // selectStagedMks = "SELECT iv, ivkeymk FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectStagedMks, -1, &stmt, NULL));
@@ -687,7 +689,7 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
 //     insertStagedMk = 
 //     "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, iv, otherkey, ivkeymk, ivkeyhdr) "
@@ -722,7 +724,7 @@ void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId
     }
     else {
         devId = dummyId;
-        devIdLen = sizeof(dummyId)-1;
+        devIdLen = strlen(dummyId);
     }
     // removeStagedMk = "DELETE FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3 AND ivkeymk=?4;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeStagedMk, -1, &stmt, NULL));
@@ -875,10 +877,8 @@ void SQLiteStoreConv::dumpPreKeys() const
 
     while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
         int32_t keyId = sqlite3_column_int(stmt, 0);
-        Log("+++ prekey found: %d", keyId);
     }
 
-    
 cleanup:
     sqlite3_finalize(stmt);
 

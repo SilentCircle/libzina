@@ -44,6 +44,8 @@ public:
 
     vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes);
 
+    vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes);
+
     int32_t receiveMessage(const string& messageEnvelope);
 
     void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation);
@@ -124,12 +126,15 @@ private:
     bool operator== ( const AppInterfaceImpl& other ) const { }
 #pragma clang diagnostic pop
 
-    vector<pair<string, string> >* sendMessagePreKeys(const string& messageDescriptor, const string& attachementDescriptor,
-                                                      const string& messageAttributes);
+    vector<int64_t>* sendMessageInternal(const string& recipient, const string& msgId, const string& message,
+                                         const string& attachementDescriptor, const string& messageAttributes);
+
+    vector<pair<string, string> >* sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
+                                                      const string& attachementDescriptor, const string& messageAttributes);
 
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
 
-    int32_t createPreKeyMsg(string& recipient, const string& recipientDeviceId, const string& message, 
+    int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& message, 
                             const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
     char* tempBuffer_;
     size_t tempBufferSize_;

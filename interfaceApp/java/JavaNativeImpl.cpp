@@ -545,6 +545,53 @@ JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescripto
 }
 
 /*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendMessageToSiblings
+ * Signature: ([B[B[B)[J
+ */
+JNIEXPORT jlongArray JNICALL
+JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachementDescriptor, jbyteArray messageAttributes)
+{
+    if (messageDescriptor == NULL)
+        return 0L;
+
+    string message;
+    if (!arrayToString(env, messageDescriptor, &message)) {
+        return 0L;
+    }
+    Log("sendMessage - message: '%s' - length: %d", message.c_str(), message.size());
+
+    string attachment;
+    if (attachementDescriptor != NULL) {
+        arrayToString(env, attachementDescriptor, &attachment);
+        Log("sendMessage - attachement: '%s' - length: %d", attachment.c_str(), attachment.size());
+    }
+    string attributes;
+    if (messageAttributes != NULL) {
+        arrayToString(env, messageAttributes, &attributes);
+        Log("sendMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
+    }
+    vector<int64_t>* msgIds = axoAppInterface->sendMessageToSiblings(message, attachment, attributes);
+    if (msgIds == NULL || msgIds->empty()) {
+        delete msgIds;
+        return NULL;
+    }
+    int size = msgIds->size();
+
+    jlongArray result = NULL;
+    result = env->NewLongArray(size);
+    jlong* resultArray = env->GetLongArrayElements(result, 0);
+
+    for(int32_t i = 0; i < size; i++) {
+        resultArray[i] = msgIds->at(i);
+    }
+    env->ReleaseLongArrayElements(result, resultArray, 0);
+    delete msgIds;
+    return result;
+}
+
+
+/*
  * Class:     AxolotlNative
  * Method:    getKnownUsers
  * Signature: ()[B

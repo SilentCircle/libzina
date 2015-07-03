@@ -87,6 +87,23 @@ public:
     virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes) = 0;
 
     /**
+     * @brief Send message to siblinge devices.
+     * 
+     * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
+     * belong to a user. The client uses function for send synchronization message to the siblings to
+     * keep them in sync.
+     * 
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachementDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return unique message identifiers if the messages were processed for sending, 0 if processing
+     *         failed.
+     */
+    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes) = 0;
+
+    /**
      * @brief Receive a Message from transport
      *
      * Takes JSON formatted message envelope of the received message and forwards it to the UI

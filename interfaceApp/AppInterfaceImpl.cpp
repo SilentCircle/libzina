@@ -84,90 +84,23 @@ vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, 
         errorCode_ = parseResult;
         return NULL;
     }
-
-    list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
-    int32_t numDevices = devices->size();
-
-    if (numDevices == 0) {
-        vector<pair<string, string> >* msgPairs = sendMessagePreKeys(messageDescriptor, attachementDescriptor, messageAttributes);
-        if (msgPairs == NULL) {
-            return NULL;
-        }
-        vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
-        delete msgPairs;
-        return returnMsgIds;
-    }
-
-    // TODO: some check to look-up for new devices of a user, maybe triggered by UI etc.
-
-    string supplements;
-    createSupplementString(attachementDescriptor, messageAttributes, &supplements);
-
-    // Prepare the messages for all known device of this user
-    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
-
-    convLock.Lock();
-    while (!devices->empty()) {
-        string recipientDeviceId = devices->front();
-        devices->pop_front();
-
-        AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
- 
-        string supplementsEncrypted;
-
-        // Encrypt the user's message and the supplementary data if necessary
-        const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
-        axoConv->storeConversation();
-        delete axoConv;
-        if (wireMessage == NULL)
-            continue;
-        /*
-         * Create the message envelope:
-         {
-             "name":           <string>         # sender's name
-             "scClientDevId":  <string>         # sender's long device id
-             "supplement":     <string>         # suplementary data, encrypted, B64
-             "message":        <string>         # message, encrypted, B64
-         }
-        */
-
-        MessageEnvelope envelope;
-        envelope.set_name(ownUser_);
-        envelope.set_scclientdevid(scClientDevId_);
-        envelope.set_msgid(msgId);
-        if (!supplementsEncrypted.empty())
-            envelope.set_supplement(supplementsEncrypted);
-        envelope.set_message(*wireMessage);
-        string serialized = envelope.SerializeAsString();
-
-        // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
-        // the size of binary data, this is big enough to hold B64 plus paddling and terminator
-        if (serialized.size() * 2 > tempBufferSize_) {
-            delete tempBuffer_;
-            tempBuffer_ = new char[serialized.size()*2];
-            tempBufferSize_ = serialized.size()*2;
-        }
-        int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
-
-        // replace the binary data with B64 representation
-        serialized.assign(tempBuffer_, b64Len);
-
-        pair<string, string> msgPair(recipientDeviceId, serialized);
-        msgPairs->push_back(msgPair);
-
-        supplementsEncrypted.clear();
-    }
-    convLock.Unlock();
-    delete devices;
-
-    vector<int64_t>* returnMsgIds = NULL;
-    if (!msgPairs->empty())
-        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
-
-    delete msgPairs;
-    return returnMsgIds;
+    return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes);
 }
 
+vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes)
+{
+
+    string recipient;
+    string msgId;
+    string message;
+    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
+
+    if (parseResult < 0) {
+        errorCode_ = parseResult;
+        return NULL;
+    }
+    return sendMessageInternal(ownUser_, msgId, message, attachementDescriptor, messageAttributes);
+}
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgEnvelope)
 {
@@ -520,15 +453,100 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 // ***** Private functions 
 // *******************************
 
-vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string& messageDescriptor, 
-                                                                    const string& attachementDescriptor, 
-                                                                    const string& messageAttributes)
+vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, const string& msgId, const string& message,
+                                                       const string& attachementDescriptor, const string& messageAttributes)
 {
-    string recipient;
-    string msgId;
-    string message;
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
+    list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
+    int32_t numDevices = devices->size();
 
+    if (numDevices == 0) {
+        vector<pair<string, string> >* msgPairs = sendMessagePreKeys(recipient, msgId, message, attachementDescriptor, messageAttributes);
+        if (msgPairs == NULL) {
+            return NULL;
+        }
+        vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+        delete msgPairs;
+        return returnMsgIds;
+    }
+
+    bool toSibling = recipient == ownUser_;
+
+    string supplements;
+    createSupplementString(attachementDescriptor, messageAttributes, &supplements);
+
+    // Prepare the messages for all known device of this user
+    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
+
+    convLock.Lock();
+    while (!devices->empty()) {
+        string recipientDeviceId = devices->front();
+        devices->pop_front();
+
+        // Don't send this to sender device, even when sending to my sibbling devices
+        if (toSibling && recipientDeviceId == scClientDevId_) {
+            continue;
+        }
+
+        AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
+ 
+        string supplementsEncrypted;
+
+        // Encrypt the user's message and the supplementary data if necessary
+        const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
+        axoConv->storeConversation();
+        delete axoConv;
+        if (wireMessage == NULL)
+            continue;
+        /*
+         * Create the message envelope:
+         {
+             "name":           <string>         # sender's name
+             "scClientDevId":  <string>         # sender's long device id
+             "supplement":     <string>         # suplementary data, encrypted, B64
+             "message":        <string>         # message, encrypted, B64
+         }
+        */
+
+        MessageEnvelope envelope;
+        envelope.set_name(ownUser_);
+        envelope.set_scclientdevid(scClientDevId_);
+        envelope.set_msgid(msgId);
+        if (!supplementsEncrypted.empty())
+            envelope.set_supplement(supplementsEncrypted);
+        envelope.set_message(*wireMessage);
+        string serialized = envelope.SerializeAsString();
+
+        // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
+        // the size of binary data, this is big enough to hold B64 plus paddling and terminator
+        if (serialized.size() * 2 > tempBufferSize_) {
+            delete tempBuffer_;
+            tempBuffer_ = new char[serialized.size()*2];
+            tempBufferSize_ = serialized.size()*2;
+        }
+        int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
+
+        // replace the binary data with B64 representation
+        serialized.assign(tempBuffer_, b64Len);
+
+        pair<string, string> msgPair(recipientDeviceId, serialized);
+        msgPairs->push_back(msgPair);
+
+        supplementsEncrypted.clear();
+    }
+    convLock.Unlock();
+    delete devices;
+
+    vector<int64_t>* returnMsgIds = NULL;
+    if (!msgPairs->empty())
+        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+
+    delete msgPairs;
+    return returnMsgIds;
+}
+
+vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
+                                                                    const string& attachementDescriptor, const string& messageAttributes)
+{
     string supplements;
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
 
@@ -540,13 +558,20 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         return NULL;
     }
 
-    // Prepare the messages for all known device of this user
+    bool toSibling = recipient == ownUser_;
+
+    // Prepare the messages for all known devices of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
     convLock.Lock();
     while (!devices->empty()) {
         string recipientDeviceId = devices->front().first;
         devices->pop_front();
+
+        // Don't send this to sender device, even when sending to my sibbling devices
+        if (toSibling && recipientDeviceId == scClientDevId_) {
+            continue;
+        }
 
         int32_t result = createPreKeyMsg(recipient, recipientDeviceId, message, supplements, msgId, msgPairs);
         if (result == 0)   // no pre-key bundle available for name/device-id combination
@@ -619,7 +644,7 @@ cleanup:
 }
 
 
-int32_t AppInterfaceImpl::createPreKeyMsg(string& recipient,  const string& recipientDeviceId,
+int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string& recipientDeviceId,
                                           const string& message, const string& supplements,
                                           const string& msgId, vector<pair<string, string> >* msgPairs)
 {
