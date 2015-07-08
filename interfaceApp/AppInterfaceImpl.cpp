@@ -488,6 +488,11 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         }
 
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
+        if (axoConv == NULL) {
+            Log("++++ Axolotl Conversation is NULL. Owner: %s, receipient: %s, recipientDeviceId: %s, device: %s", 
+                ownUser_.c_str(), recipient.c_str(), recipientDeviceId.c_str());
+            continue;
+        }
  
         string supplementsEncrypted;
 
