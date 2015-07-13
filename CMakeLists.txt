@@ -17,9 +17,9 @@ set (SOVERSION 1)
 
 ### Configuration section
 # Where to find the modules that we share with ZRTP, i.e. the ZRTP root directory
-set (ZRTP_BASE_DIR /home/werner/silentC/zrtpcpp)
+set (ZRTP_BASE_DIR /Users/werner/AndroidStudioProjects/spa2/silentphone2/support/zrtpcpp)
 
-option(STANDALONE "Build standlone shared library, otherwise a static lib without ZRTP crypto modules." ON)
+option(STANDALONE "Build standlone shared library, otherwise a static lib without ZRTP crypto modules." OFF)
 option(UNITTESTS "Build unit tests, implies STANDALONE true." OFF)
 
 set(LIBRARY_BUILD_TYPE SHARED)
@@ -112,6 +112,8 @@ if (STANDALONE)
     )
 endif()
 
+add_subdirectory(attachments)
+
 set (axo_src
     ${protocol_src}
     ${storage_src}
@@ -123,7 +125,7 @@ set (axo_src
     ${app_repo_src}
 )
 
-add_library(${axoLibName} ${LIBRARY_BUILD_TYPE} ${axo_src} $<TARGET_OBJECTS:crypto_lib>)
+add_library(${axoLibName} ${LIBRARY_BUILD_TYPE} ${axo_src} $<TARGET_OBJECTS:crypto_lib> $<TARGET_OBJECTS:attachment_lib>)
 set_target_properties(${axoLibName} PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
 TARGET_INCLUDE_DIRECTORIES(${axoLibName} PUBLIC ${ZRTP_BASE_DIR} ${ZRTP_BASE_DIR}/zrtp)
 target_link_libraries(${axoLibName} ${LIBS})
@@ -143,6 +145,7 @@ add_dependencies(android ${axoLibName} protobuf)
 #
 # Prepare Android's Android.mk and Application.mk files
 string(REPLACE ";" " " crypto_src_spc "${crypto_src_global}")
+string(REPLACE ";" " " attachment_src_spc "${attchment_src_global}")
 if (STANDALONE)
     set (axo_src "${axo_src}" ${CMAKE_SOURCE_DIR}/android/jni/sqlite3/sqlite3.c)
 else()

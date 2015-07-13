@@ -189,7 +189,7 @@ TEST(SCloud, BigBuffer)
 
     string metaDecrypt((char*)metaBuffer, metaLen);
     ASSERT_EQ(metadataBig, metaDecrypt);
-//    cerr << "metaDecrypt: " << metaDecrypt << ", length: " << metaLen << endl;
+    cerr << "metaDecrypt: " << metaDecrypt << ", length: " << metaLen << endl;
 
     int cmpResult = memcmp(dataBuffer, bigData, dataLen);
     ASSERT_EQ(0, cmpResult);

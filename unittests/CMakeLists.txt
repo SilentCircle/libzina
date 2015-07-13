@@ -36,6 +36,10 @@ target_link_libraries(interface_test gtest_main ${axoLibName})
 
 add_executable(apprepo_test appRepo.cpp)
 target_link_libraries(apprepo_test gtest_main ${axoLibName})
+
+add_executable(scloud_test scloudTest.cpp)
+target_link_libraries(scloud_test gtest_main ${axoLibName})
+
 # 
 # ############## Java testing #####################
 # 
@@ -47,7 +51,7 @@ enable_testing()
 set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.6" "-target" "1.6")
 set(CMAKE_JAVA_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/interfaceApp/java)
 
-add_jar(JavaTester JavaTester.java ${CMAKE_SOURCE_DIR}/interfaceApp/java/AxolotlNative.java)
+add_jar(JavaTester JavaTester.java CloudTester.java ${CMAKE_SOURCE_DIR}/interfaceApp/java/AxolotlNative.java)
 
 get_target_property(_jarFile JavaTester JAR_FILE)
 get_target_property(_classDir JavaTester CLASSDIR)

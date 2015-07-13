@@ -14,6 +14,7 @@
 #include "../../axolotl/crypto/EcCurve.h"
 #include "../../axolotl/crypto/DhKeyPair.h"
 #include "../../util/cJSON.h"
+#include "../../attachments/fileHandler/scloud.h"
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -133,10 +134,11 @@ static bool arrayToString(JNIEnv* env, jbyteArray array, string* output)
 
 static jbyteArray stringToArray(JNIEnv* env, const string& input)
 {
+    if (input.size() == 0)
+        return NULL;
+
     jbyteArray data = env->NewByteArray(input.size());
     if (data == NULL)
-        return NULL;
-    if (input.size() == 0)
         return NULL;
     env->SetByteArrayRegion(data, 0, input.size(), (jbyte*)input.data());
     return data;
@@ -1331,5 +1333,333 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
         return -1;
     }
     return appRepository->deleteObject(name, event, id);
+}
+
+
+static uint8_t* jarrayToCarray(JNIEnv* env, jbyteArray array, size_t* len)
+{
+    if (array == NULL)
+        return NULL;
+    
+    int dataLen = env->GetArrayLength(array);
+    *len = dataLen;
+    if (dataLen <= 0)
+        return NULL;
+    
+    const uint8_t* tmp = (uint8_t*)env->GetByteArrayElements(array, 0);
+    if (tmp == NULL)
+        return NULL;
+    
+    uint8_t* buffer = (uint8_t*)malloc(dataLen);
+    if (buffer == NULL)
+        return NULL;
+    memcpy(buffer, tmp, dataLen);
+    env->ReleaseByteArrayElements(array, (jbyte*)tmp, 0);
+    return buffer;
+}
+
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptNew
+ * Signature: ([B[B[B[I)J
+ 
+ byte[] context, byte[] data, byte[] metaData, int[] errorCode
+ */
+JNIEXPORT jlong JNICALL
+JNI_FUNCTION(cloudEncryptNew) (JNIEnv* env, jclass clazz, jbyteArray context, jbyteArray data, jbyteArray metaData, jintArray code)
+{
+    SCloudContextRef scCtxEnc;
+    
+    setReturnCode(env, code, kSCLError_NoErr);
+    
+    size_t ctxLen;
+    uint8_t* ctx = jarrayToCarray(env, context, &ctxLen);
+    
+    size_t dataLen;
+    uint8_t* inData = jarrayToCarray(env, data, &dataLen);
+    if (inData == NULL || dataLen == 0) {
+        setReturnCode(env, code, kSCLError_BadParams);
+        return 0L;
+    }
+    
+    size_t metaLen;
+    uint8_t* inMetaData = jarrayToCarray(env, metaData, &metaLen);
+    if (inMetaData == NULL || metaLen == 0) {
+        setReturnCode(env, code, kSCLError_BadParams);
+        return 0L;
+    }
+    SCLError err = SCloudEncryptNew(NULL, 0, (void*)inData, dataLen, (void*)inMetaData, metaLen,
+                                    NULL, NULL, &scCtxEnc);
+    if (err != kSCLError_NoErr) {
+        setReturnCode(env, code, err);
+        return 0L;
+    }
+    jlong retval = (jlong)scCtxEnc;
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudCalculateKey
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(cloudCalculateKey) (JNIEnv* env, jclass clazz, jlong cloudRef)
+{
+    SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
+
+    SCLError err = SCloudCalculateKey(scCtxEnc, 0);
+    return err;
+}
+
+static jbyteArray cArrayToJArray(JNIEnv* env, const uint8_t* input, size_t len)
+{
+    if (len == 0)
+        return NULL;
+
+    jbyteArray data = env->NewByteArray(len);
+    if (data == NULL)
+        return NULL;
+    env->SetByteArrayRegion(data, 0, len, (jbyte*)input);
+    return data;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetKeyBLOB
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudEncryptGetKeyBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
+{
+    SCLError err;
+    uint8_t* blob = NULL;
+    size_t blobSize = 0;
+
+    setReturnCode(env, code, kSCLError_NoErr);
+    
+    SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
+ 
+    err = SCloudEncryptGetKeyBLOB( scCtxEnc, &blob, &blobSize);
+
+    if (err != kSCLError_NoErr) {
+        setReturnCode(env, code, err);
+        if (blob != NULL)
+            free(blob);
+        return NULL;
+    }
+    jbyteArray retval = cArrayToJArray(env, blob, blobSize);
+    free(blob);
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetSegmentBLOB
+ * Signature: (JI[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudEncryptGetSegmentBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef, jint segNum, jintArray code)
+{
+    SCLError err;
+    uint8_t* blob = NULL;
+    size_t blobSize = 0;
+    
+    setReturnCode(env, code, kSCLError_NoErr);
+    
+    SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
+    
+    err = SCloudEncryptGetSegmentBLOB(scCtxEnc, segNum, &blob, &blobSize);
+    
+    if (err != kSCLError_NoErr) {
+        setReturnCode(env, code, err);
+        if (blob != NULL)
+            free(blob);
+        return NULL;
+    }
+    jbyteArray retval = cArrayToJArray(env, blob, blobSize);
+    free(blob);
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetLocator
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudEncryptGetLocator) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
+{
+    SCLError err;
+    uint8_t buffer[1024];
+    size_t bufSize = 1024;
+    
+    setReturnCode(env, code, kSCLError_NoErr);
+    
+    SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
+    
+    err = SCloudEncryptGetLocator(scCtxEnc, buffer, &bufSize);
+    if (err != kSCLError_NoErr) {
+        setReturnCode(env, code, err);
+        return NULL;
+    }
+    jbyteArray retval = cArrayToJArray(env, buffer, bufSize);
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetLocatorREST
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudEncryptGetLocatorREST) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
+{
+    SCLError err;
+    uint8_t buffer[1024];
+    size_t bufSize = 1024;
+    
+    setReturnCode(env, code, kSCLError_NoErr);
+    
+    SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
+    
+    err = SCloudEncryptGetLocatorREST(scCtxEnc, buffer, &bufSize);
+    if (err != kSCLError_NoErr) {
+        setReturnCode(env, code, err);
+        return NULL;
+    }
+    jbyteArray retval = cArrayToJArray(env, buffer, bufSize);
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptNext
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudEncryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
+{
+    SCLError err;
+    
+    SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
+    
+    size_t required = SCloudEncryptBufferSize(scCtxEnc);
+    jbyteArray data = env->NewByteArray(required);
+    if (data == NULL) {
+        setReturnCode(env, code, kSCLError_OutOfMemory);
+        return NULL;
+    }
+
+    uint8_t* bigBuffer = (uint8_t*)env->GetByteArrayElements(data, 0);
+    err = SCloudEncryptNext(scCtxEnc, bigBuffer, &required);
+    setReturnCode(env, code, err);
+    
+    env->ReleaseByteArrayElements(data, (jbyte*)bigBuffer, 0);
+    return data;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudDecryptNew
+ * Signature: ([B[I)J
+ */
+JNIEXPORT jlong JNICALL
+JNI_FUNCTION(cloudDecryptNew) (JNIEnv* env, jclass clazz, jbyteArray key, jintArray code)
+{
+    SCLError err;
+    SCloudContextRef scCtxDec;
+
+    string keyIn;
+    if (!arrayToString(env, key, &keyIn))
+        return 0L;
+    
+    err = SCloudDecryptNew((uint8_t*)keyIn.data(), keyIn.size(), NULL, NULL, &scCtxDec);
+    jlong retval = (jlong)scCtxDec;
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudDecryptNext
+ * Signature: (J[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(cloudDecryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jbyteArray in)
+{
+    SCLError err;
+    SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
+
+    size_t dataLen = env->GetArrayLength(in);
+    if (dataLen <= 0)
+        return kSCLError_BadParams;
+
+    uint8_t* data = (uint8_t*)env->GetByteArrayElements(in, 0);
+    if (data == NULL) {
+        return kSCLError_OutOfMemory;
+    }
+    err = SCloudDecryptNext(scCtxDec, data, dataLen);
+    env->ReleaseByteArrayElements(in, (jbyte*)data, 0);
+    return err;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudGetDecryptedData
+ * Signature: (J)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudGetDecryptedData) (JNIEnv* env, jclass clazz, jlong cloudRef)
+{
+    SCLError err;
+    SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
+
+    uint8_t* dataBuffer = NULL;
+    uint8_t* metaBuffer = NULL;
+    
+    size_t dataLen;
+    size_t metaLen;
+    
+    SCloudDecryptGetData(scCtxDec, &dataBuffer, &dataLen, &metaBuffer, &metaLen);
+    
+    jbyteArray retval = cArrayToJArray(env, dataBuffer, dataLen);
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudGetDecryptedMetaData
+ * Signature: (J)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(cloudGetDecryptedMetaData) (JNIEnv* env, jclass clazz, jlong cloudRef)
+{
+    SCLError err;
+    SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
+    
+    uint8_t* dataBuffer = NULL;
+    uint8_t* metaBuffer = NULL;
+    
+    size_t dataLen;
+    size_t metaLen;
+    
+    SCloudDecryptGetData(scCtxDec, &dataBuffer, &dataLen, &metaBuffer, &metaLen);
+    
+    jbyteArray retval = cArrayToJArray(env, metaBuffer, metaLen);
+    return retval;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudFree
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL
+JNI_FUNCTION(cloudFree) (JNIEnv* env, jclass clazz, jlong cloudRef)
+{
+    SCloudContextRef scCtx = (SCloudContextRef)cloudRef;
+    SCloudFree(scCtx, 1);
+ 
 }
 

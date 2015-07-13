@@ -62,24 +62,6 @@ static bool scloudContextIsValid(const SCloudContext * ref)
     return IsntNull(ref) && ref->magic == kSCloudContextMagic;
 }
 
-#ifdef UNITTESTS
-// Used in testing and debugging to do in-depth checks
-static void hexdump(const char* title, const unsigned char *s, int l) {
-    int n=0;
-
-    if (s == NULL) return;
-
-    fprintf(stderr, "%s",title);
-    for( ; n < l ; ++n)
-    {
-        if((n%16) == 0)
-            fprintf(stderr, "\n%04x",n);
-        fprintf(stderr, " %02x",s[n]);
-    }
-    fprintf(stderr, "\n");
-}
-#endif
-
 /*____________________________________________________________________________
  Public Functions
  ____________________________________________________________________________*/
@@ -212,10 +194,10 @@ done:
     return err;
 }
 
-void SCloudFree(SCloudContextRef ctx, int freeDecryptBuffers) 
+void SCloudFree(SCloudContextRef ctx, int freeBuffers) 
 {
     if(scloudContextIsValid(ctx)) {
-        if (!ctx->bEncrypting && freeDecryptBuffers) {
+        if (freeBuffers) {
             if (ctx->metaBuffer != NULL) {
                 ZERO(ctx->metaBuffer, ctx->metaLen);
                 XFREE(ctx->metaBuffer);
@@ -553,11 +535,11 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
             p += bytes2copy;
             bytesLeft -= bytes2copy;
         }
-
-         if (ptBufLen == 0 ) 
+        
+        if (ptBufLen == 0 )
              break;
 
-         while (ptBufLen) {
+        while (ptBufLen) {
              switch( scloudRef->state) {
                  case kSCloudState_Init:
 
@@ -565,6 +547,7 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
                      break;
 
                  case kSCloudState_Header:
+                 
                      if (sLoad32(&p1) != kSCloudContextMagic) {
                          RETERR(kSCLError_CorruptData);
                      }

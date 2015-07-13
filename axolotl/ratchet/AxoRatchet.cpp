@@ -43,14 +43,7 @@ static void hexdump(const char* title, const std::string& in)
 
 using namespace axolotl;
 
-#ifdef __APPLE__
-void Log(const char* format, ...)
-{
-    // currently dummy - add some apple specific logging?
-}
-#else
 void Log(const char* format, ...);
-#endif
 
 AxoRatchet::AxoRatchet()
 {

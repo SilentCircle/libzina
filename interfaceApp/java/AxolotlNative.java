@@ -529,4 +529,177 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      */
     public static native int deleteObject(byte[] name, byte[] eventId, byte[] objectId);
 
+    /*
+     ***************************************************************
+     * Below the native interface for the SClound crypto primitves
+     * -- these do not really belong to Axolotl, however it's simpler
+     *    to leave it in one library --
+     * *************************************************************
+     */
+
+    /**
+     * Prepare and setup a new file encryption.
+     *
+     * This function takes the data and the meta-data of a file, creates an internal context
+     * and populates it with the data.
+     *
+     * @param context  Some random bytes which the functions uses to salt the locator (the file
+     *                 name of the encrypted file). This is optional and may be {@code null}.
+     *
+     * @param data     The data to encrypt
+     *
+     * @param metadata The meta data that describes the data
+     *
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a long integer that identifies the interally created context. The call shall not
+     *         modify this long integer.
+     */
+    public static native long cloudEncryptNew (byte[] context, byte[] data, byte[] metaData, int[] errorCode);
+
+    /**
+     * Compute the encryption key, IV, and the locator for the encrypted file.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @return the result or error code
+     */
+    public static native int cloudCalculateKey (long scloudRef);  // blocksize not required
+
+    /**
+     * Get the JSON structured key information.
+     *
+     * The caller can request the computed key data. The function returns a JSON string which
+     * contains the data:
+     *
+     * {"version":2,"keySuite":0,"symkey":"0E685AC318D9D465B40416ABA4C7ACA57A2D50E0695320224DDB08B38FAD68BA"}
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a byte array (UTF-8 data) that contains the JSON string.
+     */
+    public static native byte[] cloudEncryptGetKeyBLOB(long scloudRef, int[] errorCode);
+    
+    /**
+     * Get the JSON structured segment information.
+     *
+     * The caller can request the segment data. The function returns a JSON string which
+     * contains the data:
+     *
+     * [1,"QGn3vsKDOaCels0gQGuEPlBDkPIA",{"version":2,"keySuite":0,"symkey":"0E685AC318D9D465B40416ABA4C7ACA57A2D50E0695320224DDB08B38FAD68BA"}]
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @param segNum  The number of the segment
+     
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a byte array (UTF-8 data) that contains the JSON string.
+     */
+    public static native byte[] cloudEncryptGetSegmentBLOB(long scloudRef, int segNum, int[] errorCode);
+    
+    /**
+     * Get the binary locator information.
+     *
+     * The caller can request the computed binary locator data.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a byte array that contains the data.
+     */
+    public static native byte[] cloudEncryptGetLocator(long scloudRef, int[] errorCode);
+
+    /**
+     * Get the URL Base64 encoded locator information.
+     *
+     * The caller can request a URL Base64 encode locator string.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a byte array (UTF-8 data) that contains the string.
+     */
+    public static native byte[] cloudEncryptGetLocatorREST(long scloudRef, int[] errorCode);
+    
+    /**
+     * Encrypt and return the data.
+     *
+     * The function adds a header, the meta data to the file (raw) data and encrypts this
+     * bundle. The {@code buffer} must be large enough to hold all data. Refer to
+     * {@code cloudEncryptBufferSize} to get the required buffer size.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a byte array with the formatted and encrypted data
+     */
+    public static native byte[] cloudEncryptNext(long scloudRef, int[] errorCode);
+    
+    /**
+     * Prepare and setup file decryption.
+     *
+     * @param key   the key information  to decrypt the file. Must be in JSON format
+     *              as returned by {@code cloudEncryptGetKeyBLOB}.
+     *
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     *
+     * @return a long integer that identifies the interally created context. The call shall not
+     *         modify this long integer.
+     */
+    public static native long cloudDecryptNew (byte[] key, int[] errorCode);
+
+    /**
+     * Decrypt a formatted file.
+     *
+     * Call this function to either decrypt a whole file at once or read the file in smaller
+     * parts and call this function with the data until no more data available.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @param in  a byte buffer that contains the file to or a part of the file to encrypt. The
+     *            file must be encrypted with {@code cloudEncryptNext}.
+     *
+     * @return result code
+     */
+    public static native int cloudDecryptNext(long scloudRef, byte[] in);
+    
+    /**
+     * Get the decrypted data.
+     *
+     * After the caller has no more data to decrypt it needs to call this function which returns
+     * the decrypted data.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @return  a byte buffer that contains all the decrypted data of the file or {@code null}
+     */
+    public static native byte[] cloudGetDecryptedData(long scloudRef);
+
+    /**
+     * Get the decrypted meta data.
+     *
+     * After the caller has no more data to decrypt it needs to call this function which returns
+     * the decrypted meta data.
+     *
+     * @param scloudRef the long integer context identifier
+     *
+     * @return  a byte buffer that contains all the decrypted meta data of the file or {@code null}
+     */
+    public static native byte[] cloudGetDecryptedMetaData(long scloudRef);
+    
+    /**
+     * Free the context data.
+     *
+     * The caller must call this function after all the encrypt or decrypt operations are complete.
+     * The context is invalid after this call.
+     *
+     * @param scloudRef the long integer context identifier
+     */
+    public static native void cloudFree(long scloudRef);
 }

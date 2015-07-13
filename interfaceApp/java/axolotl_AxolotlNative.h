@@ -271,6 +271,102 @@ JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadObjects
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteObject
   (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray);
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptNew
+ * Signature: ([B[B[B[I)J
+ */
+JNIEXPORT jlong JNICALL Java_axolotl_AxolotlNative_cloudEncryptNew
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudCalculateKey
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_cloudCalculateKey
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetKeyBLOB
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudEncryptGetKeyBLOB
+  (JNIEnv *, jclass, jlong, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetSegmentBLOB
+ * Signature: (JI[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudEncryptGetSegmentBLOB
+  (JNIEnv *, jclass, jlong, jint, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetLocator
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudEncryptGetLocator
+  (JNIEnv *, jclass, jlong, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptGetLocatorREST
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudEncryptGetLocatorREST
+  (JNIEnv *, jclass, jlong, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudEncryptNext
+ * Signature: (J[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudEncryptNext
+  (JNIEnv *, jclass, jlong, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudDecryptNew
+ * Signature: ([B[I)J
+ */
+JNIEXPORT jlong JNICALL Java_axolotl_AxolotlNative_cloudDecryptNew
+  (JNIEnv *, jclass, jbyteArray, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudDecryptNext
+ * Signature: (J[B)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_cloudDecryptNext
+  (JNIEnv *, jclass, jlong, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudGetDecryptedData
+ * Signature: (J)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudGetDecryptedData
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudGetDecryptedMetaData
+ * Signature: (J)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudGetDecryptedMetaData
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    cloudFree
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_cloudFree
+  (JNIEnv *, jclass, jlong);
+
 #ifdef __cplusplus
 }
 #endif

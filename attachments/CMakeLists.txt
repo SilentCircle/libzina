@@ -14,11 +14,11 @@ set (external_crypto_src
 )
 
 set(common_src
-    utilities.cpp
+    ${CMAKE_SOURCE_DIR}/attachments/utilities.cpp
 )
 set(fileHandler_src
-    fileHandler/scloud.cpp
-    fileHandler/scloudJson.cpp
+    ${CMAKE_SOURCE_DIR}/attachments/fileHandler/scloud.cpp
+    ${CMAKE_SOURCE_DIR}/attachments/fileHandler/scloudJson.cpp
 )
 
 set(attchment_src

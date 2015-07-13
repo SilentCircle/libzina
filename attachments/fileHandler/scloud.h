@@ -45,6 +45,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TRUNCATED_LOCATOR_BITS      160
 
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+
 typedef struct SCloudContext*      SCloudContextRef;
 
 /*____________________________________________________________________________
@@ -198,5 +204,10 @@ SCLError  SCloudGetVersionString(size_t bufSize, char *outString);
 void      SCloudFree (SCloudContextRef scloudRef, int freeDecryptBuffers);
 
 SCLError SCloudEncryptGetSegmentBLOB( SCloudContextRef ctx, int segNum, uint8_t **outData, size_t *outSize );
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif /* Included_scloud_h */ /* ] */

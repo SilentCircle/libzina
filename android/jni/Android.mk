@@ -29,6 +29,7 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/axolotl/crypto/ed25519 $(LOCAL_PATH)/axolotl/c
 # LOCAL_SRC_FILES += buildinfo_$(TARGET_ARCH_ABI).c
 LOCAL_SRC_FILES := @axo_src_spc@ 
 LOCAL_SRC_FILES += @crypto_src_spc@
+LOCAL_SRC_FILES += @attachment_src_spc@
 # LOCAL_SRC_FILES += $(LOCAL_PATH)/interfaceUi/java/JavaNativeImpl.cpp
 
 LOCAL_LDLIBS := -llog
