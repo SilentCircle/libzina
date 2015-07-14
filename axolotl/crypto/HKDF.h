@@ -4,6 +4,9 @@
 /**
  * @file HKDF.h
  * @brief Implementation of HKDF
+ * 
+ * Refer to RFC 5869 for detailed description of this KDF.
+ * 
  * @ingroup Axolotl++
  * @{
  */

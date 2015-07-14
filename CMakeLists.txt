@@ -106,6 +106,7 @@ set (util_src
 set (app_repo_src
     appRepository/AppRepository.cpp
 )
+
 if (STANDALONE)
     set (external_src
         ${ZRTP_BASE_DIR}/common/osSpecifics.c
