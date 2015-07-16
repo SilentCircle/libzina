@@ -7,9 +7,13 @@
 using namespace axolotl;
 using namespace std;
 
+static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
+
 TEST(AppRestore, Conversation)
 {
-    AppRepository* store = AppRepository::getStore(std::string());
+    AppRepository* store = AppRepository::getStore();
+    store->setKey(std::string((const char*)keyInData, 32));
+    store->openStore(string());
     
     ASSERT_TRUE(NULL != store);
     
@@ -35,7 +39,7 @@ TEST(AppRestore, Conversation)
 
 TEST(AppRestore, Event)
 {
-    AppRepository* store = AppRepository::getStore(std::string());
+    AppRepository* store = AppRepository::getStore();
 
     ASSERT_TRUE(NULL != store);
 
@@ -126,7 +130,9 @@ TEST(AppRestore, Event)
 
 TEST(AppRestore, Object)
 {
-    AppRepository* store = AppRepository::getStore(std::string());
+    AppRepository* store = AppRepository::getStore();
+    store->setKey(std::string((const char*)keyInData, 32));
+    store->openStore(string());
     ASSERT_TRUE(NULL != store);
 
     std::string data("This is some test data");

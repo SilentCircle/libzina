@@ -72,9 +72,9 @@ public:
 
     void storeStagedMks();
 
-    list< pair< string, string> >* loadStagedMks();
+    list<string>* loadStagedMks();
 
-    void deleteStagedMk(pair<string, string>& both);
+    void deleteStagedMk(string& mkiv);
 
     const AxoContact& getPartner()  { return partner_; }
 

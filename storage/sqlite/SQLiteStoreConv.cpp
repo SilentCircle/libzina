@@ -62,16 +62,16 @@ static const char* dropConversations = "DROP TABLE Conversations;";
 static const char* createConversations = 
     "CREATE TABLE Conversations ("
     "name VARCHAR NOT NULL, longDevId VARCHAR NOT NULL, ownName VARCHAR NOT NULL, secondName VARCHAR,"
-    "flags INTEGER, since TIMESTAMP, iv BLOB, data BLOB, checkData BLOB,"
+    "flags INTEGER, since TIMESTAMP, data BLOB, checkData BLOB,"
     "PRIMARY KEY(name, longDevId, ownName));";
 
 // Storing Session data for a name/deviceId pair first tries to update. If it succeeds then
 // the following INSERT OR IGNORE is a no-op. Otherwise the function INSERT a complete new record:
 // - Try to update any existing row
 // - Make sure it exists
-static const char* updateConversation = "UPDATE Conversations SET data=?1, iv=?2 WHERE name=?3 AND longDevId=?4 AND ownName=?5;";
-static const char* insertConversation = "INSERT OR IGNORE INTO Conversations (name, secondName, longDevId, iv, data, ownName) VALUES (?1, ?2, ?3, ?4, ?5, ?6);";
-static const char* selectConversation = "SELECT iv, data FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
+static const char* updateConversation = "UPDATE Conversations SET data=?1 WHERE name=?2 AND longDevId=?3 AND ownName=?4;";
+static const char* insertConversation = "INSERT OR IGNORE INTO Conversations (name, secondName, longDevId, data, ownName) VALUES (?1, ?2, ?3, ?4, ?5);";
+static const char* selectConversation = "SELECT data FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
 
 static const char* selectConvNames = "SELECT DISTINCT name FROM Conversations WHERE ownName=?1 ORDER BY name;";
 static const char* selectConvDevices = "SELECT longDevId FROM Conversations WHERE name=?1 AND ownName=?2;";
@@ -87,13 +87,13 @@ static const char* removeConversations = "DELETE FROM Conversations WHERE name=?
 static const char* dropStagedMk = "DROP TABLE stagedMk;";
 static const char* createStagedMk = 
     "CREATE TABLE stagedMk (name VARCHAR NOT NULL, longDevId VARCHAR NOT NULL, ownName VARCHAR NOT NULL,"
-    "since TIMESTAMP, iv BLOB, otherkey BLOB, ivkeymk BLOB, ivkeyhdr BLOB);";
+    "since TIMESTAMP, otherkey BLOB, ivkeymk BLOB, ivkeyhdr BLOB);";
 
 static const char* insertStagedMkSql = 
-    "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, iv, otherkey, ivkeymk, ivkeyhdr) "
-    "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7, ?8);";
+    "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, otherkey, ivkeymk, ivkeyhdr) "
+    "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7);";
 
-static const char* selectStagedMks = "SELECT iv, ivkeymk FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
+static const char* selectStagedMks = "SELECT ivkeymk FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
 static const char* removeStagedMk = "DELETE FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3 AND ivkeymk=?4;";
 
 static const char* removeStagedMkTime = "DELETE FROM stagedMk WHERE since < ?1;";
@@ -113,11 +113,11 @@ static const char* selectAccountLastUpdated = "SELECT strftime('%s', lastUpdated
  * SQL statements to process the Pre-key table.
  */
 static const char* dropPreKeys = "DROP TABLE PreKeys;";
-static const char* createPreKeys = "CREATE TABLE PreKeys (keyid INTEGER NOT NULL PRIMARY KEY, iv BLOB, preKeyData BLOB, checkData BLOB);";
-static const char* insertPreKey = "INSERT INTO PreKeys (keyId, iv, preKeyData) VALUES (?1, ?2, ?3);";
-static const char* selectPreKey = "SELECT iv, preKeyData FROM PreKeys WHERE keyid=?1;";
+static const char* createPreKeys = "CREATE TABLE PreKeys (keyid INTEGER NOT NULL PRIMARY KEY, preKeyData BLOB, checkData BLOB);";
+static const char* insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
+static const char* selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
 static const char* deletePreKey = "DELETE FROM PreKeys WHERE keyId=?1;";
-static const char* selectPreKeyAll = "SELECT keyId, iv, preKeyData FROM PreKeys;";
+static const char* selectPreKeyAll = "SELECT keyId, preKeyData FROM PreKeys;";
 
 
 #ifdef UNITTESTS
@@ -190,7 +190,6 @@ SQLiteStoreConv::~SQLiteStoreConv()
 {
     sqlite3_close(db);
     db = NULL;
-    memset_volatile((void*)keyData_->data(), 0, keyData_->size());
     delete keyData_; keyData_ = NULL;
 }
 
@@ -259,6 +258,10 @@ int SQLiteStoreConv::openStore(const std::string& name)
         ERRMSG;
         return(sqlCode_);
     }
+    sqlite3_key(db, keyData_->data(), keyData_->size());
+
+    memset_volatile((void*)keyData_->data(), 0, keyData_->size());
+    delete keyData_; keyData_ = NULL;
 
     int32_t version = getUserVersion(db);
     if (version != 0) {
@@ -411,6 +414,8 @@ cleanup:
 std::string* SQLiteStoreConv::loadConversation(const std::string& name, const std::string& longDevId, const std::string& ownName) const 
 { 
     sqlite3_stmt *stmt;
+    int32_t len;
+    string* data;
 
     const char* devId;
     int32_t devIdLen;
@@ -423,7 +428,7 @@ std::string* SQLiteStoreConv::loadConversation(const std::string& name, const st
         devIdLen = strlen(dummyId);
     }
 
-    // selectConversation = "SELECT iv, sessionData FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
+    // selectConversation = "SELECT sessionData FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, devId, devIdLen, SQLITE_STATIC));
@@ -435,35 +440,13 @@ std::string* SQLiteStoreConv::loadConversation(const std::string& name, const st
         sqlite3_finalize(stmt);
         return NULL;
     }
-    {
-        // Get IV
-        int32_t len = sqlite3_column_bytes(stmt, 0);
-        uint8_t* iv = new uint8_t[len];
-        memcpy(iv,  sqlite3_column_blob(stmt, 0), len);
+    // Get the session data
+    len = sqlite3_column_bytes(stmt, 0);
+    data = new string((const char*)sqlite3_column_blob(stmt, 0), len);
 
-        // Get the encrypted session data
-        len = sqlite3_column_bytes(stmt, 1);
-        uint8_t* sessionEnc = new uint8_t[len];
-        memcpy(sessionEnc,  sqlite3_column_blob(stmt, 1), len);
+    sqlite3_finalize(stmt);
 
-        sqlite3_finalize(stmt);
-
-        AESencrypt aes;
-        aes.key256((const uint8_t*)keyData_->data());
-
-        // Decrypt the session data and initialize a conversation
-        uint8_t* sessionDec = new uint8_t[len];
-        aes.cfb_decrypt(sessionEnc, sessionDec, len, iv);
-
-        std::string* data = new std::string((const char*)sessionDec, len);
-        memset_volatile(sessionDec, 0, len);
-
-        delete[] sessionDec;
-        delete[] sessionEnc;
-        delete[] iv;
-
-        return data;
-    }
+    return data;
 
 cleanup:
     sqlite3_finalize(stmt);
@@ -473,19 +456,6 @@ cleanup:
 void SQLiteStoreConv::storeConversation(const std::string& name, const std::string& longDevId, const std::string& ownName, const std::string& data)
 {
     sqlite3_stmt *stmt;
-
-    uint8_t iv[AES_BLOCK_SIZE];
-    ZrtpRandom::getRandomData(iv, AES_BLOCK_SIZE);
-
-    uint8_t ivCopy[AES_BLOCK_SIZE];
-    memcpy(ivCopy, iv, AES_BLOCK_SIZE);          // Need this copy for encryption operation
-
-    AESencrypt aes;
-    aes.key256((const uint8_t*)keyData_->data());
-
-    // Encrypt the session data
-    uint8_t* sessionEnc = new uint8_t[data.size()];
-    aes.cfb_encrypt((const uint8_t*)data.data(), sessionEnc, data.size(), ivCopy);
 
     const char* devId;
     int32_t devIdLen;
@@ -497,30 +467,27 @@ void SQLiteStoreConv::storeConversation(const std::string& name, const std::stri
         devId = dummyId;
         devIdLen = strlen(dummyId);
     }
-    // updateConversation = "UPDATE Conversations SET data=?1, iv=?2 WHERE name=?3 AND longDevId=?4 AND ownName=?5;";
+    // updateConversation = "UPDATE Conversations SET data=?1, WHERE name=?2 AND longDevId=?3 AND ownName=?4;";
     SQLITE_CHK(SQLITE_PREPARE(db, updateConversation, -1, &stmt, NULL));
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 1, sessionEnc, data.size(), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, iv, AES_BLOCK_SIZE, SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 3, name.data(), name.size(), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 4, devId, devIdLen, SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 5, ownName.data(), ownName.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 1, data.data(), data.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 3, devId, devIdLen, SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 4, ownName.data(), ownName.size(), SQLITE_STATIC));
     sqlCode_= sqlite3_step(stmt);
     ERRMSG;
     sqlite3_finalize(stmt);
 
-    // insertConversation = "INSERT OR IGNORE INTO Conversations (name, secondName, longDevId, iv, data, ownName) VALUES (?1, ?2, ?3, ?4, ?5, ?6);";
+    // insertConversation = "INSERT OR IGNORE INTO Conversations (name, secondName, longDevId, data, ownName) VALUES (?1, ?2, ?3, ?4, ?5);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_null(stmt, 2));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, devId, devIdLen, SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 4, iv, AES_BLOCK_SIZE, SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 5, sessionEnc, data.size(), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 6, ownName.data(), ownName.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 4, data.data(), data.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 5, ownName.data(), ownName.size(), SQLITE_STATIC));
     sqlCode_= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
-    delete[] sessionEnc;
     sqlite3_finalize(stmt);
 }
 
@@ -597,16 +564,11 @@ cleanup:
     sqlite3_finalize(stmt);
 }
 
-list<pair<string, string> >* SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName) const
+list<string>* SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
-    uint8_t* iv;
-    uint8_t* sessionDec;
-    string MKiv;
-
-    AESencrypt aes;
-    list<pair<string, string> >* keys = new list<pair<string, string> >;
+    list<string>* keys = new list<string>;
 
     const char* devId;
     int32_t devIdLen;
@@ -618,7 +580,7 @@ list<pair<string, string> >* SQLiteStoreConv::loadStagedMks(const string& name, 
         devId = dummyId;
         devIdLen = strlen(dummyId);
     }
-    // selectStagedMks = "SELECT iv, ivkeymk FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
+    // selectStagedMks = "SELECT ivkeymk FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectStagedMks, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, devId, devIdLen, SQLITE_STATIC));
@@ -631,31 +593,13 @@ list<pair<string, string> >* SQLiteStoreConv::loadStagedMks(const string& name, 
         delete keys;
         return NULL;
     }
-    aes.key256((const uint8_t*)keyData_->data());
-
     while (sqlCode_ == SQLITE_ROW) {
-        // Get IV
+        // Get the MK and its iv
         len = sqlite3_column_bytes(stmt, 0);
-        iv = new uint8_t[len];
-        memcpy(iv, sqlite3_column_blob(stmt, 0), len);
+        string mkivenc((const char*)sqlite3_column_blob(stmt, 0), len);
 
-        // Get the encrypted MK and its iv
-        len = sqlite3_column_bytes(stmt, 1);
-        string mkivenc((const char*)sqlite3_column_blob(stmt, 1), len);
+        keys->push_back(mkivenc);
 
-        // Decrypt the MK and iv data
-        sessionDec = new uint8_t[len];
-        aes.cfb_decrypt((const uint8_t*)sqlite3_column_blob(stmt, 1), sessionDec, len, iv);
-
-        MKiv.assign((const char*)sessionDec, len);
-        pair<string, string> both(MKiv, mkivenc);
-        keys->push_back(both);
-
-        memset_volatile(sessionDec, 0, len);
-        aes.mode_reset();
-
-        delete[] sessionDec;
-        delete[] iv;
         sqlCode_= sqlite3_step(stmt);
     }
 
@@ -668,19 +612,6 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
 {
     sqlite3_stmt *stmt;
 
-    uint8_t iv[AES_BLOCK_SIZE];
-    ZrtpRandom::getRandomData(iv, AES_BLOCK_SIZE);
-
-    uint8_t ivCopy[AES_BLOCK_SIZE];
-    memcpy(ivCopy, iv, AES_BLOCK_SIZE);          // Need this copy for encryption operation
-
-    AESencrypt aes;
-    aes.key256((const uint8_t*)keyData_->data());
-
-    // Encrypt the session data
-    uint8_t* sessionEnc = new uint8_t[MKiv.size()];
-    aes.cfb_encrypt((const uint8_t*)MKiv.data(), sessionEnc, MKiv.size(), ivCopy);
-
     const char* devId;
     int32_t devIdLen;
     if (longDevId.size() > 0) {
@@ -691,24 +622,23 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
         devId = dummyId;
         devIdLen = strlen(dummyId);
     }
-//     insertStagedMk = 
-//     "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, iv, otherkey, ivkeymk, ivkeyhdr) "
-//     "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7, ?8);";
+    
+//     insertStagedMkSql = 
+//     "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, otherkey, ivkeymk, ivkeyhdr) "
+//     "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertStagedMkSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt,  1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  2, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  3, ownName.data(), ownName.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_int64(stmt, 4, time(0)));
-    SQLITE_CHK(sqlite3_bind_blob(stmt,  5, iv, AES_BLOCK_SIZE, SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_null(stmt,  6));
-    SQLITE_CHK(sqlite3_bind_blob(stmt,  7, sessionEnc, MKiv.size(), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_null(stmt,  8));
+    SQLITE_CHK(sqlite3_bind_null(stmt,  5));
+    SQLITE_CHK(sqlite3_bind_blob(stmt,  6, MKiv.data(), MKiv.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_null(stmt,  7));
 
     sqlCode_= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
-    delete[] sessionEnc;
     sqlite3_finalize(stmt);
 }
 
@@ -758,6 +688,10 @@ cleanup:
 string* SQLiteStoreConv::loadPreKey(int32_t preKeyId) const 
 {
     sqlite3_stmt *stmt;
+    int32_t len;
+    string* preKeyData;
+
+    // selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
 
     // SELECT iv, preKeyData FROM PreKeys WHERE keyid=?1 ;
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, strlen(selectPreKey)+1, &stmt, NULL));
@@ -769,31 +703,12 @@ string* SQLiteStoreConv::loadPreKey(int32_t preKeyId) const
         sqlite3_finalize(stmt);
         return NULL;
     }
-    {
-        // Get IV
-        int32_t len = sqlite3_column_bytes(stmt, 0);
-        uint8_t* iv = new uint8_t[len];
-        memcpy(iv, sqlite3_column_blob(stmt, 0), len);
+    // Get the pre key data
+    len = sqlite3_column_bytes(stmt, 0);
+    preKeyData = new string((const char*)sqlite3_column_blob(stmt, 0), len);
+    sqlite3_finalize(stmt);
 
-        // Get the encrypted pre key data
-        len = sqlite3_column_bytes(stmt, 1);
-
-        AESencrypt aes;
-        aes.key256((const uint8_t*)keyData_->data());
-
-        // Decrypt the pre-key data
-        uint8_t* keyDec = new uint8_t[len];
-        aes.cfb_decrypt((const uint8_t*)sqlite3_column_blob(stmt, 1), keyDec, len, iv);
- 
-        std::string* preKeyData = new string((const char*)keyDec, len);
-        sqlite3_finalize(stmt);
-
-        memset_volatile(keyDec, 0, len);
-        delete[] keyDec;
-        delete[] iv;
-
-        return preKeyData;
-    }
+    return preKeyData;
 
 cleanup:
     sqlite3_finalize(stmt);
@@ -804,32 +719,14 @@ void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& data)
 {
     sqlite3_stmt *stmt;
 
-    uint8_t* keyEnc = new uint8_t[data.size()];
-    AESencrypt aes;
-    uint8_t iv[AES_BLOCK_SIZE];
-    uint8_t ivCopy[AES_BLOCK_SIZE];
-
-    // INSERT INTO PreKeys (keyId, iv, preKeyData) VALUES (?1, ?2, ?3);";
+    // insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, strlen(insertPreKey)+1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
-
-    ZrtpRandom::getRandomData(iv, AES_BLOCK_SIZE);
-
-    memcpy(ivCopy, iv, AES_BLOCK_SIZE);          // Need this copy for encryption operation
-
-    aes.key256((const uint8_t*)keyData_->data());
-
-    // Encrypt the pre-key data
-    aes.cfb_encrypt((const uint8_t*)data.data(), keyEnc, data.size(), ivCopy);
-
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, iv, AES_BLOCK_SIZE, SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 3, keyEnc, data.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, data.data(), data.size(), SQLITE_STATIC));
 
     sqlCode_ = sqlite3_step(stmt);
     if (sqlCode_ != SQLITE_DONE)
         ERRMSG;
-
-    delete[] keyEnc;
 
 cleanup:
     sqlite3_finalize(stmt);
@@ -872,7 +769,7 @@ void SQLiteStoreConv::dumpPreKeys() const
 {
     sqlite3_stmt *stmt;
 
-    // SELECT keyId, iv, preKeyData FROM PreKeys;"
+    //  selectPreKeyAll = "SELECT keyId, preKeyData FROM PreKeys;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKeyAll, -1, &stmt, NULL));
 
     while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {

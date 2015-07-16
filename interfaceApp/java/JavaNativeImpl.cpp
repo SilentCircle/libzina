@@ -482,6 +482,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     // initialize and open the persitent store singleton instance
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->setKey(dbPw);
+
     const char* db = (const char *)env->GetStringUTFChars(dbName, 0);
     store->openStore(string (db));
     env->ReleaseStringUTFChars(dbName, db);
@@ -855,7 +856,8 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
  * Method:    axoCommand
  * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL JNI_FUNCTION(axoCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
+JNIEXPORT jstring JNICALL
+JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
 {
     if (command == NULL)
         return NULL;
@@ -893,13 +895,14 @@ JNIEXPORT jstring JNICALL JNI_FUNCTION(axoCommand)(JNIEnv* env, jclass clazz, js
 
 static AppRepository* appRepository = NULL;
 
- /*
+
+/*
  * Class:     axolotl_AxolotlNative
  * Method:    repoOpenDatabase
- * Signature: (Ljava/lang/String;)I
+ * Signature: (Ljava/lang/String;[B)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName)
+JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName, jbyteArray keyData)
 {
     string nameString;
     if (dbName != NULL) {
@@ -907,9 +910,19 @@ JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName)
         nameString = name;
         env->ReleaseStringUTFChars(dbName, name);
     }
-    appRepository = AppRepository::getStore(nameString);
-    if (appRepository == NULL)
-        return -1;
+    const uint8_t* pw = (uint8_t*)env->GetByteArrayElements(keyData, 0);
+    int pwLen = env->GetArrayLength(keyData);
+    if (pw == NULL)
+        return -2;
+    if (pwLen != 32)
+        return -3;
+
+    string dbPw((const char*)pw, pwLen);
+    env->ReleaseByteArrayElements(keyData, (jbyte*)pw, 0);
+
+    appRepository = AppRepository::getStore();
+    appRepository->setKey(dbPw);
+    appRepository->openStore(nameString);
 
     return appRepository->getSqlCode();
 }
@@ -1055,7 +1068,7 @@ JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
     }
     string id;
     if (!arrayToString(env, eventId, &id) || id.empty()) {
-        return -1;
+        return -2;
     }
     string data;
     arrayToString(env, eventData, &data);

@@ -13,9 +13,9 @@
 #include <list>
 
 #ifdef ANDROID
-#include "clients/tivi/android/jni/sqlite3/sqlite3.h"
+#include "clients/tivi/android/jni/sqlcipher/sqlite3.h"
 #else
-#include <sqlite3.h>
+#include <sqlcipher/sqlite3.h>
 #endif
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
@@ -130,7 +130,7 @@ public:
     void deleteConversationsName(const string& name, const string& ownName);
 
     // ***** staged message keys store
-    list<pair<string, string> >* loadStagedMks(const string& name, const string& longDevId, const string& ownName) const;
+    list<string>* loadStagedMks(const string& name, const string& longDevId, const string& ownName) const;
 
     void insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv);
 

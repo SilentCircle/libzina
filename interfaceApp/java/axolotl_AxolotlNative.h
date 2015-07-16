@@ -130,10 +130,10 @@ JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_axoCommand
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    repoOpenDatabase
- * Signature: (Ljava/lang/String;)I
+ * Signature: (Ljava/lang/String;[B)I
  */
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_repoOpenDatabase
-  (JNIEnv *, jclass, jstring);
+  (JNIEnv *, jclass, jstring, jbyteArray);
 
 /*
  * Class:     axolotl_AxolotlNative

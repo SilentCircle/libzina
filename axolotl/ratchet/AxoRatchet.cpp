@@ -291,20 +291,20 @@ static bool decryptAndCheck(const string& MK, const string& iv, const string& en
 static bool trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac, 
                                   string* plaintext, string *supplementsPlain)
 {
-    list<pair<string, string> >* mks = conv->loadStagedMks();
+    list<string>* mks = conv->loadStagedMks();
     if (mks == NULL)
         return false;
 //    cerr << "try skipped message" << endl;
     while (!mks->empty()) {
-        pair<string, string> both = mks->front();
+        string MKiv = mks->front();
         mks->pop_front();
-        string MK = both.first.substr(0, SYMMETRIC_KEY_LENGTH);
-        string iv = both.first.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
-        string macKey = both.first.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
+        string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
+        string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
+        string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
         if (decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) {
 //            cerr << "try skipped message - true" << endl;
             // TODO: clear MK - not needed anymore (memset)
-            conv->deleteStagedMk(both);
+            conv->deleteStagedMk(MKiv);
             mks->clear();
             delete mks;
             return true;

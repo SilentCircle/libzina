@@ -63,17 +63,17 @@ void AxoConversation::storeStagedMks()
     store->deleteStagedMk(timestamp);
 }
 
-list<pair<string, string> >* AxoConversation::loadStagedMks()
+list<string>* AxoConversation::loadStagedMks()
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    list<pair<string, string> >* mks = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
+    list<string>* mks = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
     return mks;
 }
 
-void AxoConversation::deleteStagedMk(pair<string, string>& both)
+void AxoConversation::deleteStagedMk(string& mkiv)
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, both.second);
+    store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkiv);
 }
 
 /* *****************************************************************************
@@ -211,7 +211,7 @@ const std::string* AxoConversation::serialize() const
     cJSON_AddStringToObject(root, "localUser", localUser_.c_str());
 
     int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-//    Log("++++ serialize RK: b64length: %d, inLength: %d", b64Len, RK.size());
+//    Log("++++ serialize RK: b64length: %d, inLength: %d - %s", b64Len, RK.size(), b64Buffer);
     cJSON_AddStringToObject(root, "RK", b64Buffer);
 
 
