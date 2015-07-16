@@ -153,22 +153,21 @@ static int32_t enableForeignKeys(sqlite3* db)
 
 AppRepository* AppRepository::instance_ = NULL;
 
-AppRepository* AppRepository::getStore( const std::string& filename )
+AppRepository* AppRepository::getStore()
 {
     if (instance_ == NULL) {
         instance_ = new AppRepository();
-        if (instance_->openStore(filename) != SQLITE_OK)
-            return NULL;
     }
     return instance_;
 }
 
-AppRepository::AppRepository() : db(NULL) {}
+AppRepository::AppRepository() : db(NULL), keyData_(NULL) {}
 
 AppRepository::~AppRepository()
 {
     sqlite3_close(db);
     db = NULL;
+    delete keyData_; keyData_ = NULL;
 }
 
 
@@ -182,6 +181,12 @@ int AppRepository::openStore(const std::string& name)
         ERRMSG;
         return(sqlCode_);
     }
+    if (keyData_ != NULL)
+        sqlite3_key(db, keyData_->data(), keyData_->size());
+
+    memset_volatile((void*)keyData_->data(), 0, keyData_->size());
+    delete keyData_; keyData_ = NULL;
+
     enableForeignKeys(db);
 
     int32_t version = getUserVersion(db);

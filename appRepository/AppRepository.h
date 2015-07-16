@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <list>
 
-#include <sqlite3.h>
+#include <sqlcipher/sqlite3.h>
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
@@ -34,7 +34,7 @@ public:
      * 
      * @return Either a new or an already open Axolotl store.
      */
-    static AppRepository* getStore(const std::string& filename);
+    static AppRepository* getStore();
 
     /**
      * @brief Close the Axolotl store instance.
@@ -53,6 +53,19 @@ public:
      * @return an SQLite code
      */
     int openStore(const std::string& filename);
+
+    /**
+     * @brief Set key to encrypt sensitive data.
+     * 
+     * Several functions deal with senisitve data and these functions encrypt the
+     * data before they store it in the DB and decrypt it after reading. The
+     * @c string is not tread as a string but as a container that hold the
+     * key material, i.e. binary data. The length of the key must be 32 bytes
+     * 
+     * @param keyData a @c string container with the key data
+     * @return @c true is key is OK, @c false otherwise.
+     */
+    bool setKey(const string& keyData) {if (keyData.size() != OUR_KEY_LENGTH) return false; keyData_ = new string(keyData); return true; }
 
     /**
      * @brief Get the last SQLite error message.
@@ -331,6 +344,7 @@ private:
 
     static AppRepository* instance_;
     sqlite3* db;
+    string* keyData_;
 
     mutable int32_t sqlCode_;
     mutable char lastError_[DB_CACHE_ERR_BUFF_SIZE];

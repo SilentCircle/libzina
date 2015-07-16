@@ -47,16 +47,16 @@ TEST(StagedKeys, Basic)
     store->insertStagedMk(bobName, bobDev, aliceName, mkiv);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
 
-    list<pair<string, string> >* keys = store->loadStagedMks(bobName, bobDev, aliceName);
+    list<string>* keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
     ASSERT_TRUE(keys != NULL);
     ASSERT_EQ(1, keys->size());
-    pair<string, string> both = keys->front();
+    string both = keys->front();
     keys->pop_front();
-    ASSERT_EQ(mkiv, both.first);
+    ASSERT_EQ(mkiv, both);
     delete keys; keys = NULL;
 
-    store->deleteStagedMk(bobName, bobDev, aliceName, both.second);
+    store->deleteStagedMk(bobName, bobDev, aliceName, both);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
 
     keys = store->loadStagedMks(bobName, bobDev, aliceName);
@@ -80,7 +80,7 @@ TEST(StagedKeys, TimeDelete)
     store->insertStagedMk(bobName, bobDev, aliceName, mkiv_1);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
 
-    list<pair<string, string> >* keys = store->loadStagedMks(bobName, bobDev, aliceName);
+    list<string>* keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
     ASSERT_TRUE(keys != NULL);
     ASSERT_EQ(2, keys->size());

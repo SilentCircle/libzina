@@ -324,7 +324,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param databaseName The path and filename of the database file.
      * @return {@code true} if open was OK, {@code false} if not.
      */
-    public static native int repoOpenDatabase(String databaseName);
+    public static native int repoOpenDatabase(String databaseName, byte[] keyData);
 
     /**
      * Close the repository database.
