@@ -6,8 +6,10 @@ static int base64decode (const char *in, size_t inLen, unsigned char *out, size_
 
 int b64Encode(const uint8_t *binData, int32_t binLength, char *b64Data, size_t b64length)
 {
-    if (binLength == 0)
+    if (binLength == 0) {
+        b64Data[0] = 0;
         return 0;
+    }
 
     base64encode(binData, binLength, b64Data, b64length);
     return strlen(b64Data);
