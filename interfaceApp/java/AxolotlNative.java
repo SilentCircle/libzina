@@ -110,13 +110,22 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Get public part of own identity key.
      * 
+     * The returned array contains the B64 encoded data of the own public identity key, optinally
+     * followed by a colon and the device name.
+     *
      * @return public part of own identity key, {@code null} if no own identity key available
      */
      public static native byte[] getOwnIdentityKey();
 
     /**
-     * Get a list of all identity keys of a user.
+     * Get a list of all identity keys a remote parts.
      * 
+     * The remote partner may have more than one device. This function returns the identity 
+     * keys of remote user's devices that this client knows of. The client sends messages only
+     * to these known device of the remote user.
+     * 
+     * The returned arrays contain the B64 encoded data of the public identity keys
+     * of the known devices, optinally followed by a colon and the device name.
      * 
      * @param user the name of the user
      * @return array of identity keys, {@code null} if no identity keys are available for that user.
@@ -581,7 +590,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return a byte array (UTF-8 data) that contains the JSON string.
      */
     public static native byte[] cloudEncryptGetKeyBLOB(long scloudRef, int[] errorCode);
-    
+
     /**
      * Get the JSON structured segment information.
      *
@@ -593,13 +602,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param scloudRef the long integer context identifier
      *
      * @param segNum  The number of the segment
-     
      * @param errorCode A 1 element integer array that returns the result code/error code.
      *
      * @return a byte array (UTF-8 data) that contains the JSON string.
      */
     public static native byte[] cloudEncryptGetSegmentBLOB(long scloudRef, int segNum, int[] errorCode);
-    
+
     /**
      * Get the binary locator information.
      *
@@ -625,7 +633,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return a byte array (UTF-8 data) that contains the string.
      */
     public static native byte[] cloudEncryptGetLocatorREST(long scloudRef, int[] errorCode);
-    
+
     /**
      * Encrypt and return the data.
      *
@@ -640,7 +648,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return a byte array with the formatted and encrypted data
      */
     public static native byte[] cloudEncryptNext(long scloudRef, int[] errorCode);
-    
+
     /**
      * Prepare and setup file decryption.
      *
@@ -668,7 +676,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return result code
      */
     public static native int cloudDecryptNext(long scloudRef, byte[] in);
-    
+
     /**
      * Get the decrypted data.
      *
@@ -692,7 +700,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return  a byte buffer that contains all the decrypted meta data of the file or {@code null}
      */
     public static native byte[] cloudGetDecryptedMetaData(long scloudRef);
-    
+
     /**
      * Free the context data.
      *

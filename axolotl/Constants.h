@@ -8,7 +8,7 @@
  * @{
  * 
  * This file contains constants like error codes, return codes, fixed strings
- * and global C macros. This file should no have any dependcies on other includes
+ * and global C macros. This file should not have any dependcies on other includes
  * or modules other then system includes.
  * 
  */
@@ -46,11 +46,9 @@ namespace axolotl {
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported
     static const int32_t KEY_TYPE_MISMATCH = -101;    //!< Private and public key use different curves
-    static const int32_t SIGNING_FAILED    = -102;    //!< curve25519_sign call failed
-    static const int32_t VERIFICATION_FAILED = -103;  //!< Signatur verification of a signed pre-key failed
 
     // Error codes for Ratcheting Session
-    static const int32_t IDENTY_KEY_TYPE_MISMATCH = -200;  //!< Their identity key and out identity key use different curve types
+    static const int32_t IDENTITY_KEY_TYPE_MISMATCH = -200;  //!< Their identity key and our identity key use different curve types
 
     // Error codes for encryption/decryption, HMAC
     static const int32_t WRONG_BLK_SIZE = -300;         //!< The IV or other data length did not match the cipher's blocksize

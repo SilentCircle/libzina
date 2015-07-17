@@ -175,9 +175,9 @@ public:
     /**
      * @brief Get public part of own identity key.
      * 
-     * The returned string is not a real strings but is a container that
-     * hold the binary data of the public identity key.
-     * 
+     * The returned strings is the B64 encoded data of the own public identity key, optinally
+     * followed by a colon and the device name.
+     *
      * @return public part of own identity key
      */
     virtual string getOwnIdentityKey() const = 0;
@@ -185,8 +185,12 @@ public:
     /**
      * @brief Get a list of all identity keys of a user.
      * 
-     * The returned strings in the list are not real strings but are containers that
-     * hold the binary data of the public identity keys of that user.
+     * The remote partner may have more than one device. This function returns the identity 
+     * keys of remote user's devices that this client knows of. The client sends messages only
+     * to these known device of the remote user.
+     * 
+     * The returned strings in the list contain the B64 encoded data of the public identity keys
+     * of the known devices, optinally followed by a colon and the device name.
      * 
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.

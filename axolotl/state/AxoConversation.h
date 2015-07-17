@@ -82,8 +82,11 @@ public:
 
     const string& getDeviceId()     { return deviceId_; }
 
-    void setErrorCode(int32_t code) { errorCode_ = code; } 
-    int32_t getErrorCode()          { return errorCode_; }
+    void setDeviceName(const string& name)  { deviceName_ = name; }
+    const string getDeviceName()            { return deviceName_; }
+
+    void setErrorCode(int32_t code)         { errorCode_ = code; } 
+    int32_t getErrorCode()                  { return errorCode_; }
 
     void setRK(const std::string& key)      { RK = key; }
     const std::string& getRK() const        { return RK; }
@@ -137,9 +140,10 @@ private:
     const std::string* serialize() const;
 
     // The following data goes to persistant store
-    AxoContact   partner_;
-    std::string  deviceId_;
-    std::string  localUser_;
+    AxoContact partner_;
+    string  deviceId_;
+    string  deviceName_;
+    string  localUser_;
 
     // The std::string variables below are not strings, used as data containers. May be helpful if
     // some data/key lengths change

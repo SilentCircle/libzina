@@ -134,7 +134,7 @@ private:
 
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
 
-    int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& message, 
+    int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& recipientDeviceName, const string& message, 
                             const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
     char* tempBuffer_;
     size_t tempBufferSize_;

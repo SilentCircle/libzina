@@ -87,8 +87,12 @@ void AxoConversation::deserialize(const std::string& data)
     cJSON* root = cJSON_Parse(data.c_str());
 
     cJSON* jsonItem = cJSON_GetObjectItem(root, "partner");
-    std::string alias(cJSON_GetObjectItem(jsonItem, "alias")->valuestring);
+    string alias(cJSON_GetObjectItem(jsonItem, "alias")->valuestring);
     partner_.setAlias(alias);
+
+    jsonItem = jsonItem = cJSON_GetObjectItem(root, "deviceName");
+    if (jsonItem != NULL)
+        deviceName_ = jsonItem->valuestring;
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2] = {0};   // Twice the max. size on binary data - b64 is times 1.5
     uint8_t binBuffer[MAX_KEY_BYTES_ENCODED];  // Twice the max. size on binary data - b64 is times 1.5
@@ -209,6 +213,7 @@ const std::string* AxoConversation::serialize() const
 
     cJSON_AddStringToObject(root, "deviceId", deviceId_.c_str());
     cJSON_AddStringToObject(root, "localUser", localUser_.c_str());
+    cJSON_AddStringToObject(root, "deviceName", deviceName_.c_str());
 
     int32_t b64Len = b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 //    Log("++++ serialize RK: b64length: %d, inLength: %d - %s", b64Len, RK.size(), b64Buffer);

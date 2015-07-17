@@ -35,7 +35,6 @@ TEST(Conversation, BasicEmpty)
 
     // localUser, remote user, remote dev id
     AxoConversation conv(aliceName, bobName, bobDev);
-    const string* dmp = conv.dump();
 
     conv.storeConversation();
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();    
@@ -143,6 +142,8 @@ TEST(Conversation, SimpleFields)
     conv.setNs(7);
     conv.setPNs(11);
     conv.setPreKeyId(13);
+    string tst("test");
+    conv.setDeviceName(tst);
 
     conv.storeConversation();
     AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
@@ -155,5 +156,6 @@ TEST(Conversation, SimpleFields)
     ASSERT_EQ(7, conv1->getNs());
     ASSERT_EQ(11, conv1->getPNs());
     ASSERT_EQ(13, conv1->getPreKeyId());
+    ASSERT_TRUE(tst == conv1->getDeviceName());
     delete conv1;
 }

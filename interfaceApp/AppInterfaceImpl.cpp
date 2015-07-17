@@ -410,6 +410,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
 
     while (!devices->empty()) {
         string deviceId = devices->front().first;
+        string deviceName = devices->front().second;
         devices->pop_front();
 
         // If we already have a conversation for this device skip further processing
@@ -420,7 +421,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         uuid_unparse(pingUuid, uuidString);
         string msgId(uuidString);
 
-        int32_t result = createPreKeyMsg(userName, deviceId, Empty, supplements, msgId, msgPairs);
+        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs);
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
 
@@ -571,6 +572,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
     convLock.Lock();
     while (!devices->empty()) {
         string recipientDeviceId = devices->front().first;
+        string recipientDeviceName = devices->front().second;
         devices->pop_front();
 
         // Don't send this to sender device, even when sending to my sibbling devices
@@ -578,7 +580,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
             continue;
         }
 
-        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, message, supplements, msgId, msgPairs);
+        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, recipientDeviceName, message, supplements, msgId, msgPairs);
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
 
@@ -649,7 +651,7 @@ cleanup:
 }
 
 
-int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string& recipientDeviceId,
+int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string& recipientDeviceId, const string& recipientDeviceName,
                                           const string& message, const string& supplements,
                                           const string& msgId, vector<pair<string, string> >* msgPairs)
 {
@@ -667,6 +669,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         return buildResult;
     }
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
+    axoConv->setDeviceName(recipientDeviceName);
 
     string supplementsEncrypted;
 
@@ -717,19 +720,27 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
 
 string AppInterfaceImpl::getOwnIdentityKey() const
 {
+    char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     AxoConversation* axoConv = AxoConversation::loadLocalConversation(ownUser_);
     if (axoConv == NULL)
         return Empty;
 
     const DhKeyPair* keyPair = axoConv->getDHIs();
     const DhPublicKey& pubKey = keyPair->getPublicKey();
-    string idKey((const char*)pubKey.getPublicKeyPointer(), pubKey.getSize());
+
+    int b64Len = b64Encode((const uint8_t*)pubKey.getPublicKeyPointer(), pubKey.getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+
+    string idKey((const char*)b64Buffer);
+    if (!axoConv->getDeviceName().empty()) {
+        idKey.append(":").append(axoConv->getDeviceName());
+    }
     delete axoConv;
     return idKey;
 }
 
 list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
 {
+    char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     list<string>* idKeys = new list<string>;
 
     list<string>* devices = store_->getLongDeviceIds(user, ownUser_);
@@ -740,7 +751,13 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         devices->pop_front();
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, user, recipientDeviceId);
         const DhPublicKey* idKey = axoConv->getDHIr();
-        string id((const char*)idKey->getPublicKeyPointer(), idKey->getSize());
+
+        int b64Len = b64Encode((const uint8_t*)idKey->getPublicKeyPointer(), idKey->getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+
+        string id((const char*)b64Buffer);
+        if (!axoConv->getDeviceName().empty()) {
+            id.append(":").append(axoConv->getDeviceName());
+        }
         idKeys->push_back(id);
         delete axoConv;
     }
