@@ -13,7 +13,7 @@
 #include <list>
 
 #ifdef ANDROID
-#include "clients/tivi/android/jni/sqlcipher/sqlite3.h"
+#include "android/jni/sqlcipher/sqlite3.h"
 #else
 #include <sqlcipher/sqlite3.h>
 #endif
