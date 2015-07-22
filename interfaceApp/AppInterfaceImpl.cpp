@@ -102,7 +102,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
     return sendMessageInternal(ownUser_, msgId, message, attachementDescriptor, messageAttributes);
 }
 
-static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgEnvelope)
+static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, const string& msgEnvelope)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -113,6 +113,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "name", sender.c_str());
     cJSON_AddStringToObject(details, "scClientDevId", senderScClientDevId.c_str());
     cJSON_AddStringToObject(details, "otherInfo", msgEnvelope.c_str());    // App may use this to retry after fixing the problem
+    cJSON_AddStringToObject(details, "msgId", msgId.c_str());              // May help to diganose the issue
 
     char *out = cJSON_PrintUnformatted(root);
     string retVal(out);
@@ -160,7 +161,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
-        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, messageEnvelope));
+        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope));
         return errorCode_;
     }
 
