@@ -4,33 +4,37 @@
 #include "crypto/EcCurveTypes.h"
 #include "crypto/HKDF.h"
 #include "Constants.h"
+#include "../interfaceApp/AppInterface.h"
 
 #include <common/Thread.h>
 #include <iostream>
 #include <map>
 #include <utility>
 
-#ifdef UNITTESTS
+//#ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
+static char hexBuffer[2000] = {0};
 static void hexdump(const char* title, const unsigned char *s, int l) {
     int n=0;
+//sprintf(char *str, const char *format, ...);
 
     if (s == NULL) return;
 
-    fprintf(stderr, "%s",title);
+    memset(hexBuffer, 0, 2000);
+    int len = sprintf(hexBuffer, "%s",title);
     for( ; n < l ; ++n)
     {
         if((n%16) == 0)
-            fprintf(stderr, "\n%04x",n);
-        fprintf(stderr, " %02x",s[n]);
+            len += sprintf(hexBuffer+len, "\n%04x",n);
+        len += sprintf(hexBuffer+len, " %02x",s[n]);
     }
-    fprintf(stderr, "\n");
+    sprintf(hexBuffer+len, "\n");
 }
 static void hexdump(const char* title, const std::string& in)
 {
     hexdump(title, (uint8_t*)in.data(), in.size());
 }
-#endif
+//#endif
 
 static CMutexClass sessionLock;
 
@@ -190,3 +194,84 @@ void setAxoExportedKey(const std::string& localUser, const std::string& user, co
     delete staging; staging = NULL;
     sessionLock.Unlock();
 }
+
+typedef AppInterface* (*GET_APP_IF)();
+
+#ifdef ANDROID_NDK
+AppInterface* j_getAxoAppInterface();
+static GET_APP_IF getAppIf = j_getAxoAppInterface;
+#elif defined __APPLE__
+AppInterface* t_getAxoAppInterface();
+static GET_APP_IF getAppIf = t_getAxoAppInterface;
+#else
+#warning Get application interface call not initialized - ZRTP connection may not work
+static GET_APP_IF getAppIf = NULL;
+#endif
+
+static string extractNameFromUri(const string sipUri)
+{
+    size_t colon = sipUri.find_first_of(':');
+    if (colon == string::npos)
+        colon = 0;
+    else
+        colon++;
+    size_t atSign = sipUri.find_first_of('@', colon);
+    if (atSign == string::npos)
+        atSign = sipUri.size();
+    string name = sipUri.substr(colon, atSign-colon);
+    return name;
+}
+
+const string getOwnAxoIdKey() 
+{
+    if (getAppIf == NULL)
+        return string();
+    AppInterface* appIf = getAppIf();
+
+    const string& localUser = appIf->getOwnUser();
+    AxoConversation* local = AxoConversation::loadLocalConversation(localUser);
+    if (local = NULL)
+        return string();
+
+    const DhKeyPair* keyPair = local->getDHIs();
+    const DhPublicKey& pubKey = keyPair->getPublicKey();
+
+    string key((const char*)pubKey.getPublicKeyPointer(), pubKey.getSize());
+
+//    hexdump("+++ own key", key); Log("%s", hexBuffer);
+    delete local;
+    return key;
+}
+
+void checkRemoteAxoIdKey(const string user, const string deviceId, const string pubKey, int32_t verifyState)
+{
+    if (getAppIf == NULL)
+        return;
+    AppInterface* appIf = getAppIf();
+    const string& localUser = appIf->getOwnUser();
+
+    string remoteName = extractNameFromUri(user);
+    AxoConversation* remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
+
+    if (remote == NULL) {
+        Log("Remote conversation for user %s (%s) not found", remoteName.c_str(), deviceId.c_str());
+        return;
+    }
+    const DhPublicKey* remoteId = remote->getDHIr();
+    const string remoteIdKey = remoteId->getPublicKey();
+
+//     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
+//     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
+    if (pubKey.compare(remoteIdKey) != 0) {
+        Log("Messaging keys of user %s (%s) do not match", user.c_str(), deviceId.c_str());
+        return;
+    }
+    // if verifyState is 1 then both users verfied their SAS and thus set the Axolotl conversation
+    // to fully verified, otherwise at least the identity keys are equal and we proved that via
+    // a ZRTP session.
+    int32_t verify = (verifyState == 1) ? 2 : 1;
+    remote->setZrtpVerifyState(verify);
+    remote->storeConversation();
+    delete remote;
+}
+

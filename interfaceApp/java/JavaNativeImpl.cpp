@@ -61,6 +61,9 @@ static jmethodID javaNotifyCallback = NULL;
 
 static int32_t debugLevel = 1;
 
+// Plain public API without a class
+AppInterface* j_getAxoAppInterface() { return axoAppInterface; }
+
 static void Log(char const *format, va_list arg) {
 #ifdef ANDROID
     LOG(if (debugLevel > 0) __android_log_vprint(ANDROID_LOG_DEBUG, "axolotl", format, arg);)

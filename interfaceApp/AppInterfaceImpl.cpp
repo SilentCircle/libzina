@@ -756,9 +756,15 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         int b64Len = b64Encode((const uint8_t*)idKey->getPublicKeyPointer(), idKey->getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
         string id((const char*)b64Buffer);
+        id.append(":");
         if (!axoConv->getDeviceName().empty()) {
-            id.append(":").append(axoConv->getDeviceName());
+            id.append(axoConv->getDeviceName());
         }
+        id.append(":").append(recipientDeviceId);
+        snprintf(b64Buffer, 5, ":%d", axoConv->getZrtpVerifyState());
+        b64Buffer[4] = '\0';          // make sure it's terminated
+        id.append(b64Buffer);
+
         idKeys->push_back(id);
         delete axoConv;
     }

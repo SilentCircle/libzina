@@ -124,8 +124,9 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * keys of remote user's devices that this client knows of. The client sends messages only
      * to these known device of the remote user.
      * 
-     * The returned arrays contain the B64 encoded data of the public identity keys
-     * of the known devices, optinally followed by a colon and the device name.
+     * The returned strings in the list contain the B64 encoded data of the public identity keys
+     * of the known devices, followed by a colon and the device name, followed by a colon and the
+     * ZRTP verify state.
      * 
      * @param user the name of the user
      * @return array of identity keys, {@code null} if no identity keys are available for that user.

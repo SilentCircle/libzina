@@ -196,6 +196,10 @@ void AxoConversation::deserialize(const std::string& data)
     preKeyId = cJSON_GetObjectItem(root, "preKyId")->valueint;
     ratchetFlag = (cJSON_GetObjectItem(root, "ratchet")->valueint == 0) ? false : true;
 
+    jsonItem = cJSON_GetObjectItem(root, "zrtpState");
+    if (jsonItem != NULL)
+        zrtpVerifyState = jsonItem->valueint;
+
     cJSON_Delete(root); 
 }
 
@@ -293,6 +297,7 @@ const std::string* AxoConversation::serialize() const
     cJSON_AddNumberToObject(root, "PNs", PNs);
     cJSON_AddNumberToObject(root, "preKyId", preKeyId);
     cJSON_AddNumberToObject(root, "ratchet", (ratchetFlag) ? 1 : 0);
+    cJSON_AddNumberToObject(root, "zrtpState", zrtpVerifyState);
 
     char *out = cJSON_Print(root);
     std::string* data = new std::string(out);

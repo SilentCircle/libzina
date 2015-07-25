@@ -67,6 +67,11 @@ void setAxoPublicKeyData(const std::string& localUser, const std::string& user, 
  */
 void setAxoExportedKey( const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& exportedKey );
 
+
+const string getOwnIdKey();
+
+void checkRemoteIdKey( const string user, const string deviceId, const string pubKey, int32_t verifyState );
+
 /*
  * To get some information from the SIP engine we need to something like this:
 

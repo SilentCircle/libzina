@@ -41,7 +41,7 @@ class AxoConversation
 public:
     AxoConversation(const string& localUser, const string& user, const string& deviceId) : partner_(user, emptyString), 
                     deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0), 
-                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false)
+                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0)
                     { }
 
 
@@ -127,6 +127,9 @@ public:
     void setRatchetFlag(bool flag)          { ratchetFlag = flag; }
     bool getRatchetFlag() const             { return ratchetFlag; }
 
+    void setZrtpVerifyState(int32_t state)  { zrtpVerifyState = state; }
+    int32_t getZrtpVerifyState() const      { return zrtpVerifyState; }
+
     list<string>* stagedMk;
 
     void reset();
@@ -167,6 +170,7 @@ private:
 
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
+    int32_t   zrtpVerifyState;
     // ***** end of persitent data
     /*
     skipped_HK_MK : A list of stored message keys and associated header keys
