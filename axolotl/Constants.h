@@ -21,6 +21,9 @@ namespace axolotl {
 
     static const int MK_STORE_TIME      = 2*86400;    //!< cleanup stored MKs after two days
 
+    static const int NUM_PRE_KEYS          = 100;
+    static const int MIN_NUM_PRE_KEYS      = 30;
+
     static const std::string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
     static const std::string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");
     static const std::string SILENT_MESSAGE("SilentCircleMessage");

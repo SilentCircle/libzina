@@ -14,6 +14,7 @@
 
 #include "../axolotl/crypto/DhKeyPair.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
+#include "../axolotl/Constants.h"
 
 using namespace std;
 namespace axolotl {
@@ -44,7 +45,7 @@ public:
      * @param store The persitent Axolotl store to store and retrieve state information.
      * @return a list of the generated new pre-key.
      */
-    static list< pair< int32_t, const DhKeyPair* > >* generatePreKeys(SQLiteStoreConv* store, int32_t num = 100);
+    static list< pair< int32_t, const DhKeyPair* > >* generatePreKeys(SQLiteStoreConv* store, int32_t num = NUM_PRE_KEYS);
 
     /**
      * @brief Parse pre-key JSON data and return the keys

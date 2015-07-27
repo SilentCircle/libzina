@@ -302,7 +302,6 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
         return NO_OWN_ID;
     }
     string data = myIdPair->getPublicKey().serialize();
-    delete ownConv;
 
     int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identity_key", b64Buffer);
@@ -311,7 +310,14 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair<int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
+
+    // Update number of avaialble pre-keys on server
     int32_t size = preList->size();
+    int32_t numPreKeys = ownConv->getPreKeysAvail() + size;
+    ownConv->setPreKeysAvail(numPreKeys);
+    ownConv->storeConversation();
+    delete ownConv;
+
     for (int32_t i = 0; i < size; i++) {
         pair< int32_t, const DhKeyPair* >pkPair = preList->front();
         preList->pop_front();
@@ -458,6 +464,23 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, const string& msgId, const string& message,
                                                        const string& attachementDescriptor, const string& messageAttributes)
 {
+    // We got a message with embedded pre-key, thus the partner fetched one of our pre-keys from
+    // the server. Countdown available pre keys.
+    AxoConversation* localConv = AxoConversation::loadLocalConversation(ownUser_);
+    if (localConv != NULL) {
+        int32_t numPreKeys = localConv->getPreKeysAvail();
+        if (numPreKeys < MIN_NUM_PRE_KEYS) {
+            string result;
+            int32_t code = Provisioning::newPreKeys(store_, scClientDevId_, authorization_, NUM_PRE_KEYS, &result);
+            if (code == 200) {
+                numPreKeys += NUM_PRE_KEYS;
+                localConv->setPreKeysAvail(numPreKeys);
+                localConv->storeConversation();
+            }
+        }
+        delete localConv;
+    }
+
     list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
     int32_t numDevices = devices->size();
 

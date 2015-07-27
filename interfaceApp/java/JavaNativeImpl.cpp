@@ -881,6 +881,9 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
         if (SQL_FAIL(store->getSqlCode())) {
             jstring result = env->NewStringUTF(store->getLastError());
         }
+        else {
+            axoAppInterface->rescanUserDevices(dataContainer);
+        }
     }
     if (strcmp("rescanUserDevices", cmd) == 0 && !dataContainer.empty()) {
         axoAppInterface->rescanUserDevices(dataContainer);

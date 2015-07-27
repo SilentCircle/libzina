@@ -397,6 +397,16 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     // Axolotl conversation first. According to the optimized pre-key handling this
     // client takes the Axolotl 'Bob' role.
     if (msgStruct.msgType == 2) {
+        // We got a message with embedded pre-key, thus the partner fetched one of our pre-keys from
+        // the server. Countdown available pre keys.
+        AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+        if (localConv != NULL) {
+            int32_t numPreKeys = localConv->getPreKeysAvail();
+            numPreKeys--;
+            localConv->setPreKeysAvail(numPreKeys);
+            localConv->storeConversation();
+            delete localConv;
+        }
         const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
         int32_t result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
