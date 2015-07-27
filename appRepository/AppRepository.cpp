@@ -78,9 +78,13 @@ static const char *createEvents =
     "CREATE TABLE events (eventid VARCHAR NOT NULL, inserted TIMESTAMP, msgNumber UNSIGNED INTEGER, state INTEGER, data BLOB,"
     "convName VARCHAR NOT NULL, PRIMARY KEY(eventid, convName), FOREIGN KEY(convName) REFERENCES conversations(name));";
 
-static const char* updateEvent = "UPDATE events SET data=?1 WHERE eventid=?2;";
+static const char* updateEventSql = "UPDATE events SET data=?1 WHERE eventid=?2 AND convName=?3;";
+// static const char* insertEventSql =
+//     "INSERT OR REPLACE INTO events (eventid, inserted, msgNumber, state, data, convName)"
+//     "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5, ?6);";
+
 static const char* insertEventSql =
-    "INSERT OR REPLACE INTO events (eventid, inserted, msgNumber, state, data, convName)"
+    "INSERT INTO events (eventid, inserted, msgNumber, state, data, convName)"
     "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5, ?6);";
 
 static const char* selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 and convName=?2;";
@@ -97,7 +101,7 @@ static const char *createObjects =
     "event VARCHAR NOT NULL, conv VARCHAR NOT NULL, PRIMARY KEY(objectid, event), FOREIGN KEY(event, conv) REFERENCES events(eventid, convName));";
 
 static const char* insertObjectSql =
-    "INSERT INTO objects (objectid, inserted,  state, data, event, conv)"
+    "INSERT OR REPLACE INTO objects (objectid, inserted,  state, data, event, conv)"
     "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5, ?6);";
 
 static const char* selectObject = "SELECT data FROM objects WHERE objectid=?1 AND event=?2 AND conv=?3;";
@@ -381,6 +385,9 @@ int32_t AppRepository::insertEvent(const std::string& name, const std::string& e
     sqlite3_stmt *stmt;
     int32_t msgNumber;
 
+    if (existEvent(name, eventId))
+        return updateEvent(name, eventId, event);
+
     beginTransaction();
     msgNumber = getNextSequenceNum(name);
 
@@ -405,6 +412,24 @@ int32_t AppRepository::insertEvent(const std::string& name, const std::string& e
 cleanup:
     sqlite3_finalize(stmt);
     return sqlCode_;
+}
+
+int32_t AppRepository::updateEvent(const std::string& name, const std::string& eventId, const std::string& event)
+{
+    sqlite3_stmt *stmt;
+
+    // updateEventSql = "UPDATE events SET data=?1 WHERE eventid=?2 AND convName=?3;";
+    SQLITE_CHK(SQLITE_PREPARE(db, updateEventSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt,  1, event.data(), event.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt,  2, eventId.data(), eventId.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt,  3, name.data(), name.size(), SQLITE_STATIC));
+    sqlCode_= sqlite3_step(stmt);
+    ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+
 }
 
 int32_t AppRepository::loadEvent(const std::string& name, const std::string& eventId, std::string* event, int32_t *msgNumber) const

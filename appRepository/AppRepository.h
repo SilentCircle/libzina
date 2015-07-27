@@ -149,6 +149,18 @@ public:
     int32_t insertEvent(const std::string& name, const std::string& eventId, const std::string& event);
 
     /**
+     * @brief Update serialized event/message data.
+     * 
+     * The functions update the event/message data.
+     * 
+     * @param name The conversation partner's name
+     * @param eventId The event id, unique inside partner's conversation
+     * @param event The serialized data of the event data structure
+     * @return A SQLITE code.
+     */
+    int32_t updateEvent(const std::string& name, const std::string& eventId, const std::string& event);
+
+    /**
      * @brief Get the highest event/message sequence number.
      * 
      * @param name The conversation partner's name
