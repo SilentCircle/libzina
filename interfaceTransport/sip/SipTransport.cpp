@@ -63,8 +63,6 @@ static string Zeros("00000000000000000000000000000000");
 void SipTransport::notifyAxo(uint8_t* data, size_t length)
 {
     string info((const char*)data, length);
-
-    Log("++++ Notify from SIP transport: %s", info.c_str());
     /*
      * notify call back from SIP:
      *   - parse data from SIP, get name and devices
