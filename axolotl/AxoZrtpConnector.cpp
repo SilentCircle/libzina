@@ -11,7 +11,7 @@
 #include <map>
 #include <utility>
 
-//#ifdef UNITTESTS
+#ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
 static char hexBuffer[2000] = {0};
 static void hexdump(const char* title, const unsigned char *s, int l) {
@@ -34,7 +34,7 @@ static void hexdump(const char* title, const std::string& in)
 {
     hexdump(title, (uint8_t*)in.data(), in.size());
 }
-//#endif
+#endif
 
 static CMutexClass sessionLock;
 
@@ -229,8 +229,9 @@ const string getOwnAxoIdKey()
     AppInterface* appIf = getAppIf();
 
     const string& localUser = appIf->getOwnUser();
+
     AxoConversation* local = AxoConversation::loadLocalConversation(localUser);
-    if (local = NULL)
+    if (local == NULL)
         return string();
 
     const DhKeyPair* keyPair = local->getDHIs();
