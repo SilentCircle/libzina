@@ -1486,13 +1486,13 @@ JNI_FUNCTION(cloudEncryptGetSegmentBLOB) (JNIEnv* env, jclass clazz, jlong cloud
     SCLError err;
     uint8_t* blob = NULL;
     size_t blobSize = 0;
-    
+
     setReturnCode(env, code, kSCLError_NoErr);
-    
+
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
-    
+
     err = SCloudEncryptGetSegmentBLOB(scCtxEnc, segNum, &blob, &blobSize);
-    
+
     if (err != kSCLError_NoErr) {
         setReturnCode(env, code, err);
         if (blob != NULL)
@@ -1515,11 +1515,11 @@ JNI_FUNCTION(cloudEncryptGetLocator) (JNIEnv* env, jclass clazz, jlong cloudRef,
     SCLError err;
     uint8_t buffer[1024];
     size_t bufSize = 1024;
-    
+
     setReturnCode(env, code, kSCLError_NoErr);
-    
+
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
-    
+
     err = SCloudEncryptGetLocator(scCtxEnc, buffer, &bufSize);
     if (err != kSCLError_NoErr) {
         setReturnCode(env, code, err);
@@ -1540,11 +1540,11 @@ JNI_FUNCTION(cloudEncryptGetLocatorREST) (JNIEnv* env, jclass clazz, jlong cloud
     SCLError err;
     uint8_t buffer[1024];
     size_t bufSize = 1024;
-    
+
     setReturnCode(env, code, kSCLError_NoErr);
-    
+
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
-    
+
     err = SCloudEncryptGetLocatorREST(scCtxEnc, buffer, &bufSize);
     if (err != kSCLError_NoErr) {
         setReturnCode(env, code, err);
@@ -1576,7 +1576,7 @@ JNI_FUNCTION(cloudEncryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jintA
     uint8_t* bigBuffer = (uint8_t*)env->GetByteArrayElements(data, 0);
     err = SCloudEncryptNext(scCtxEnc, bigBuffer, &required);
     setReturnCode(env, code, err);
-    
+
     env->ReleaseByteArrayElements(data, (jbyte*)bigBuffer, 0);
     return data;
 }
@@ -1638,12 +1638,11 @@ JNI_FUNCTION(cloudGetDecryptedData) (JNIEnv* env, jclass clazz, jlong cloudRef)
 
     uint8_t* dataBuffer = NULL;
     uint8_t* metaBuffer = NULL;
-    
     size_t dataLen;
     size_t metaLen;
-    
+
     SCloudDecryptGetData(scCtxDec, &dataBuffer, &dataLen, &metaBuffer, &metaLen);
-    
+
     jbyteArray retval = cArrayToJArray(env, dataBuffer, dataLen);
     return retval;
 }
@@ -1658,15 +1657,14 @@ JNI_FUNCTION(cloudGetDecryptedMetaData) (JNIEnv* env, jclass clazz, jlong cloudR
 {
     SCLError err;
     SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
-    
+
     uint8_t* dataBuffer = NULL;
     uint8_t* metaBuffer = NULL;
-    
     size_t dataLen;
     size_t metaLen;
-    
+
     SCloudDecryptGetData(scCtxDec, &dataBuffer, &dataLen, &metaBuffer, &metaLen);
-    
+
     jbyteArray retval = cArrayToJArray(env, metaBuffer, metaLen);
     return retval;
 }
@@ -1681,6 +1679,5 @@ JNI_FUNCTION(cloudFree) (JNIEnv* env, jclass clazz, jlong cloudRef)
 {
     SCloudContextRef scCtx = (SCloudContextRef)cloudRef;
     SCloudFree(scCtx, 1);
- 
 }
 
