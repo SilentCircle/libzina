@@ -147,7 +147,7 @@ return( kSCLError_BadParams );\
 ValidateParam( (ptr) != NULL )
 
 
-enum SCLError
+typedef enum s_SCLError
 {
     kSCLError_NoErr = 0,
     kSCLError_NOP,                      // 1
@@ -186,7 +186,7 @@ enum SCLError
     kSCLError_OtherError,               // 27
     kSCLError_PubPrivKeyNotFound        // 28
 
-};
+} SCLError;
 
 
 
