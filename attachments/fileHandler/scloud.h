@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SCLOUD_BUILD_NUMBER             2
 #define SCLOUD_SHORT_VERSION_STRING     "0.2.0"
 
+// Must be <= the hash size used. Currently we use Skein256 which is also 32 bytes
 #define SCLOUD_LOCATOR_LEN          32
 #define SCLOUD_MIN_BUF_SIZE         32
 

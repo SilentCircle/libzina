@@ -1357,21 +1357,23 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 
 static uint8_t* jarrayToCarray(JNIEnv* env, jbyteArray array, size_t* len)
 {
+    *len = 0;
     if (array == NULL)
         return NULL;
-    
+
     int dataLen = env->GetArrayLength(array);
-    *len = dataLen;
     if (dataLen <= 0)
         return NULL;
-    
+
     const uint8_t* tmp = (uint8_t*)env->GetByteArrayElements(array, 0);
     if (tmp == NULL)
         return NULL;
-    
+
     uint8_t* buffer = (uint8_t*)malloc(dataLen);
     if (buffer == NULL)
         return NULL;
+
+    *len = dataLen;
     memcpy(buffer, tmp, dataLen);
     env->ReleaseByteArrayElements(array, (jbyte*)tmp, 0);
     return buffer;
@@ -1389,26 +1391,26 @@ JNIEXPORT jlong JNICALL
 JNI_FUNCTION(cloudEncryptNew) (JNIEnv* env, jclass clazz, jbyteArray context, jbyteArray data, jbyteArray metaData, jintArray code)
 {
     SCloudContextRef scCtxEnc;
-    
+
     setReturnCode(env, code, kSCLError_NoErr);
-    
+
+    // cloudFree calls free() to return the malloc'd data buffers created by jarrayToCarray
     size_t ctxLen;
     uint8_t* ctx = jarrayToCarray(env, context, &ctxLen);
-    
+
     size_t dataLen;
     uint8_t* inData = jarrayToCarray(env, data, &dataLen);
     if (inData == NULL || dataLen == 0) {
         setReturnCode(env, code, kSCLError_BadParams);
         return 0L;
     }
-    
     size_t metaLen;
     uint8_t* inMetaData = jarrayToCarray(env, metaData, &metaLen);
     if (inMetaData == NULL || metaLen == 0) {
         setReturnCode(env, code, kSCLError_BadParams);
         return 0L;
     }
-    SCLError err = SCloudEncryptNew(NULL, 0, (void*)inData, dataLen, (void*)inMetaData, metaLen,
+    SCLError err = SCloudEncryptNew(ctx, ctxLen, (void*)inData, dataLen, (void*)inMetaData, metaLen,
                                     NULL, NULL, &scCtxEnc);
     if (err != kSCLError_NoErr) {
         setReturnCode(env, code, err);
@@ -1457,9 +1459,9 @@ JNI_FUNCTION(cloudEncryptGetKeyBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef,
     size_t blobSize = 0;
 
     setReturnCode(env, code, kSCLError_NoErr);
-    
+
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
- 
+
     err = SCloudEncryptGetKeyBLOB( scCtxEnc, &blob, &blobSize);
 
     if (err != kSCLError_NoErr) {

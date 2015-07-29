@@ -20,7 +20,9 @@ public class CloudTester {
             byte[] metadata = metadataBig.getBytes("UTF-8");
 
             int[] code = new int[1];
-            cloudRef = AxolotlNative.cloudEncryptNew(null, bigData, metadata, code);
+            byte[] someRandom = {0,1,2,3,4,5,6,7,8,9};
+            cloudRef = AxolotlNative.cloudEncryptNew(someRandom, bigData, metadata, code);
+
             if (code[0] != 0) {
                 System.out.println("cloudEncryptNew code: " + code[0]);
                 return;
@@ -65,6 +67,55 @@ public class CloudTester {
             // OK, release the context
             AxolotlNative.cloudFree(cloudRef);
             
+
+            // Without randome data to re-hash the locator
+            cloudRef = AxolotlNative.cloudEncryptNew(null, bigData, metadata, code);
+
+            if (code[0] != 0) {
+                System.out.println("cloudEncryptNew code: " + code[0]);
+                return;
+            }
+            System.out.println("cloudEncryptNew done.");
+            
+            code[0] = AxolotlNative.cloudCalculateKey(cloudRef);
+            if (code[0] != 0) {
+                System.out.println("cloudCalculateKey code: " + code[0]);
+                return;
+            }
+            System.out.println("cloudCalculateKey done.");
+            
+            locatorRest = AxolotlNative.cloudEncryptGetLocatorREST(cloudRef, code);
+            if (code[0] != 0) {
+                System.out.println("cloudEncryptGetLocatorREST code: " + code[0]);
+                return;
+            }
+            System.out.println("cloudEncryptGetLocatorREST done: " + new String(locatorRest));
+            
+            keyInfo = AxolotlNative.cloudEncryptGetKeyBLOB(cloudRef, code);
+            if (code[0] != 0) {
+                System.out.println("cloudEncryptGetKeyBLOB code: " + code[0]);
+                return;
+            }
+            System.out.println("cloudEncryptGetKeyBLOB done: " + new String(keyInfo));
+
+            segmentInfo = AxolotlNative.cloudEncryptGetSegmentBLOB(cloudRef, 1, code);
+            if (code[0] != 0) {
+                System.out.println("cloudEncryptGetSegmentBLOB code: " + code[0]);
+                return;
+            }
+            System.out.println("cloudEncryptGetSegmentBLOB done: " + new String(segmentInfo));
+            
+            encryptedChunk = AxolotlNative.cloudEncryptNext(cloudRef, code);
+            if (code[0] != 0) {
+                System.out.println("cloudEncryptNext code: " + code[0]);
+                return;
+            }
+            System.out.println("cloudEncryptNext done, length: " + encryptedChunk.length);
+
+            // OK, release the context
+            AxolotlNative.cloudFree(cloudRef);
+
+
             /* ****  Decrypt the data  */
             
             cloudRef = AxolotlNative.cloudDecryptNew (keyInfo, code);

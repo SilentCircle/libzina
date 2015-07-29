@@ -179,14 +179,21 @@ SCLError SCloudCalculateKey(SCloudContextRef ctx, size_t blocksize)
     COPY((ctx->key.symKey+symKeyLen), ctx->iv, blockLen);
 
     // Copy the locator 
-    COPY((derivedData+symKeyLen+blockLen), ctx->locator, SCLOUD_LOCATOR_LEN);
+    if (ctx->contextStr != NULL) {
+        uint8_t hashedLocator[SKEIN256_DIGEST_LENGTH];
+        data[0] = derivedData+symKeyLen+blockLen; dataLen[0] = SCLOUD_LOCATOR_LEN;
+        data[1] = ctx->contextStr; dataLen[1] = ctx->contextStrLen;
+        data[2] = NULL; dataLen[2] = 0;
+        skein256(data, dataLen, hashedLocator);
+        COPY(hashedLocator, ctx->locator, SCLOUD_LOCATOR_LEN);
+    }
+    else {
+        COPY((derivedData+symKeyLen+blockLen), ctx->locator, SCLOUD_LOCATOR_LEN);
+    }
 
     if (ctx->key.keySuite == kSCloudKeySuite_AES128) {
         aes_encrypt_key128(ctx->key.symKey, &ctx->aes_enc);
     }
-
-//     err = CBC_Init(ctx->key.algorithm, symKey, symKey + (symKeyLen>>1),  &ctx->cbc);CKERR;
-
     ctx->state = kSCloudState_Hashed;
 
 done:
@@ -197,6 +204,10 @@ done:
 void SCloudFree(SCloudContextRef ctx, int freeBuffers) 
 {
     if(scloudContextIsValid(ctx)) {
+        if (ctx->contextStr != NULL) {
+            ZERO(ctx->contextStr, ctx->contextStrLen);
+            XFREE(ctx->contextStr);
+        }
         if (freeBuffers) {
             if (ctx->metaBuffer != NULL) {
                 ZERO(ctx->metaBuffer, ctx->metaLen);
@@ -431,15 +442,6 @@ SCLError SCloudDecryptNew(uint8_t* key, size_t keyLen,
     ValidateParam(key);
     ValidateParam(keyLen > 31);
 
-    // handle old keys
-//     if(keyLen == 32) {
-//         COPY(key, keyData, keyLen);
-//         keyDataLen = keyLen;
-//     }
-//     else if(key[0] != '{' ) {
-//         err =  URL64_decode(key, keyLen, keyData, &keyDataLen); CKERR;
-//     }
-//
     ctx = (SCloudContext*)XMALLOC(sizeof (SCloudContext)); CKNULL(ctx);
 
     ZERO(ctx, sizeof(SCloudContext));
@@ -453,7 +455,6 @@ SCLError SCloudDecryptNew(uint8_t* key, size_t keyLen,
     ctx->userValue      = userValue;
     ctx->metaBuffer = ctx->dataBuffer = NULL;
 
-    // version 2 JSON key
     err =  scloudDeserializeKey(key, keyLen, &ctx->key); CKERR;
 
     if (ctx->key.keySuite == kSCloudKeySuite_AES128) {
@@ -465,8 +466,6 @@ SCLError SCloudDecryptNew(uint8_t* key, size_t keyLen,
 
     if (ctx->key.keySuite == kSCloudKeySuite_AES128)
         aes_decrypt_key128(ctx->key.symKey, &ctx->aes_dec);
-
-//    err = CBC_Init(ctx->key.algorithm, ctx->key.symKey, ctx->key.symKey + (ctx->key.symKeyLen >>1),  &ctx->cbc);CKERR;
 
     *cloudRefOut = ctx; 
 
@@ -517,7 +516,6 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
             if (scloudRef->tmpCnt == bytes2Store) {
                 if (scloudRef->key.keySuite == kSCloudKeySuite_AES128)
                     aes_cbc_decrypt(scloudRef->tmpBuf, ptBuf, bytes2Store, scloudRef->iv, &scloudRef->aes_dec);
-//                err = CBC_Decrypt(ctx->cbc, ctx->tmpBuf, bytes2Store, ptBuf); CKERR; 
                 ptBufLen += bytes2Store;
                 scloudRef->tmpCnt = 0;
             }
@@ -530,12 +528,11 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
             if (scloudRef->key.keySuite == kSCloudKeySuite_AES128) {
                 aes_cbc_decrypt(p, ptBuf+ptBufLen, bytes2copy, scloudRef->iv, &scloudRef->aes_dec);
             }
-//            err = CBC_Decrypt(ctx->cbc, p, bytes2copy, ptBuf+ptBufLen); CKERR; 
             ptBufLen += bytes2copy;
             p += bytes2copy;
             bytesLeft -= bytes2copy;
         }
-        
+
         if (ptBufLen == 0 )
              break;
 
@@ -547,7 +544,7 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
                      break;
 
                  case kSCloudState_Header:
-                 
+
                      if (sLoad32(&p1) != kSCloudContextMagic) {
                          RETERR(kSCLError_CorruptData);
                      }
@@ -619,9 +616,6 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
     }
 
 done:
-//     if (inSize) 
-//         ZERO(ptBuf, SCLOUD_DECRYPT_BUF_SIZE);
-// 
     return err;
 }
 
