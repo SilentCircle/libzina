@@ -487,7 +487,7 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
 
     uint8_t ptBuf[SCLOUD_DECRYPT_BUF_SIZE];
     size_t  ptBufLen    = 0;
-    size_t  metaDataTotalLen = scloudRef->metaBufferOffset ;
+    size_t  metaDataTotalLen = 0;
 
     validateSCloudContext(scloudRef);
     ValidateParam(in);
@@ -566,7 +566,6 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
                          COPY(p1, scloudRef->metaBuffer+metaDataTotalLen, metaBytes);
                          p1 += metaBytes;
                          metaDataTotalLen += metaBytes;
-                         scloudRef->metaBufferOffset = metaDataTotalLen;
                          scloudRef->metaDecryptLen -= metaBytes;
                          ptBufLen -= metaBytes;
                      }

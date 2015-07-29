@@ -113,7 +113,7 @@ TEST(SCloud, Basic)
 
 //    hexdump("Decrypted", dataBuffer, dataLen);
 
-    SCloudFree(scCtxEnc, 1);
+    SCloudFree(scCtxEnc, 0);
     SCloudFree(scCtxDec, 1);
 }
 
@@ -196,7 +196,7 @@ TEST(SCloud, BigBuffer)
 
 //    hexdump("Decrypted", dataBuffer, dataLen);
 
-    SCloudFree(scCtxEnc, 1);
+    SCloudFree(scCtxEnc, 0);
     SCloudFree(scCtxDec, 1);
 
 }

@@ -115,6 +115,7 @@ struct SCloudContext
     uint8_t                 *metaBuffer;
     size_t                  metaLen;
     size_t                  metaDecryptLen;
+    size_t                  metaBufferOffset;
 
     /* for encrypting */
     uint8_t                 *buffPtr;
