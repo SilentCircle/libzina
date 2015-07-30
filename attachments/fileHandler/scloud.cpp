@@ -204,11 +204,11 @@ done:
 void SCloudFree(SCloudContextRef ctx, int freeBuffers) 
 {
     if(scloudContextIsValid(ctx)) {
-        if (ctx->contextStr != NULL) {
-            ZERO(ctx->contextStr, ctx->contextStrLen);
-            XFREE(ctx->contextStr);
-        }
         if (freeBuffers) {
+            if (ctx->contextStr != NULL) {
+                ZERO(ctx->contextStr, ctx->contextStrLen);
+                XFREE(ctx->contextStr);
+            }
             if (ctx->metaBuffer != NULL) {
                 ZERO(ctx->metaBuffer, ctx->metaLen);
                 XFREE(ctx->metaBuffer);
