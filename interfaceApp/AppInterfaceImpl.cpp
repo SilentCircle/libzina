@@ -422,6 +422,15 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
 
         // If we already have a conversation for this device skip further processing
         if (store->hasConversation(userName, deviceId, ownUser_)) {
+            AxoConversation* conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
+            if (conv != NULL) {
+                const string& convDevName = conv->getDeviceName();
+                if (convDevName.empty()) {
+                    conv->setDeviceName(deviceName);
+                    conv->storeConversation();
+                }
+                delete conv;
+            }
             continue;
         }
         uuid_generate_time(pingUuid);

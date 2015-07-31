@@ -83,7 +83,7 @@ public:
     const string& getDeviceId()     { return deviceId_; }
 
     void setDeviceName(const string& name)  { deviceName_ = name; }
-    const string getDeviceName()            { return deviceName_; }
+    const string& getDeviceName()           { return deviceName_; }
 
     void setErrorCode(int32_t code)         { errorCode_ = code; } 
     int32_t getErrorCode()                  { return errorCode_; }
