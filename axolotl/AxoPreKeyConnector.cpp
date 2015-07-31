@@ -55,7 +55,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 {
     AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
     if (conv != NULL) {              // Already a conversation available, no setup necessary
-        return GENERIC_ERROR;
+        return AXO_CONV_EXISTS;
     }
     AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
     if (localConv == NULL)

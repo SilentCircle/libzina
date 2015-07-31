@@ -43,7 +43,8 @@ namespace axolotl {
     static const int32_t NO_SESSION_USER  = -18;      //!< No session for this user found
     static const int32_t SESSION_NOT_INITED  = -19;   //!< Session not initialized
     static const int32_t OLD_MESSAGE  = -20;          //!< Old message received (already processed)
-    static const int32_t CORRUPT_DATA = -21;          //!< Incoming data corrupt
+    static const int32_t CORRUPT_DATA = -21;          //!< Incoming data CORRUPT_DATA
+    static const int32_t AXO_CONV_EXISTS = -22;       //!< Axolotl conversation exsists while tyring to setup new one
 
 
     // Error codes for public key modules, between -100 and -199
