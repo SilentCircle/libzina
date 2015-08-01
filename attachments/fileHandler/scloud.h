@@ -36,8 +36,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma mark SCloud Public Defines
 #endif
 
-#define SCLOUD_BUILD_NUMBER             2
-#define SCLOUD_SHORT_VERSION_STRING     "0.2.0"
+#define SCLOUD_BUILD_NUMBER             3
+#define SCLOUD_SHORT_VERSION_STRING     "1.0.0"
 
 // Must be <= the hash size used. Currently we use Skein256 which is also 32 bytes
 #define SCLOUD_LOCATOR_LEN          32
@@ -69,16 +69,6 @@ typedef struct SCloudContext*      SCloudContextRef;
 
 #define SCloudContextRefIsValid( ref )      ( (ref) != kInvalidSCloudContextRef )
 
-enum Cipher_Algorithm
-{
-    kCipher_Algorithm_Invalid        = 0,
-    kCipher_Algorithm_AES128         = 1,
-    kCipher_Algorithm_AES192         = 2,
-    kCipher_Algorithm_AES256         = 3,
-    kCipher_Algorithm_2FISH256       = 4,
-
-  };
-
 
 #ifdef __clang__
 #pragma mark
@@ -102,58 +92,58 @@ enum SCloudEventType_
 ENUM_TYPEDEF( SCloudEventType_, SCloudEventType  );
 
 
-typedef struct SCloudEventDecryptData_
-{
-    uint8_t*            data;
-    size_t              length;
-} SCloudEventDecryptData;
-
-typedef struct SCloudEventDecryptMetaData_
-{
-    uint8_t*            data;
-    size_t              length;
-} SCloudEventDecryptMetaData;
-
-
-typedef struct SCloudEventErrorData_
-{
-    SCLError    error;
-} SCloudEventErrorData;
-
-
-typedef struct SCloudEventProgressData_
-{
-    size_t          bytesProcessed;
-    size_t          bytesTotal;
-} SCloudEventProgressData;
-
-typedef struct SCloudEventDecryptedHeaderData_
-{
-    size_t          metaDataBytes;
-    size_t          dataBytes;
-} SCloudEventDecryptedHeaderData;
-
-typedef union SCloudEventData
-{
-    SCloudEventErrorData         errorData;
-    SCloudEventDecryptMetaData   metaData;
-    SCloudEventDecryptData       decryptData;
-    SCloudEventProgressData      progress;
-    SCloudEventDecryptedHeaderData        header;
-    
-} SCloudEventData;
-
-struct SCloudEvent
-{
-    SCloudEventType           type;         /**< Type of event */
-    SCloudEventData          data;          /**< Event specific data */
-    
-};
-typedef struct SCloudEvent SCloudEvent;
+// typedef struct SCloudEventDecryptData_
+// {
+//     uint8_t*            data;
+//     size_t              length;
+// } SCloudEventDecryptData;
+// 
+// typedef struct SCloudEventDecryptMetaData_
+// {
+//     uint8_t*            data;
+//     size_t              length;
+// } SCloudEventDecryptMetaData;
+// 
+// 
+// typedef struct SCloudEventErrorData_
+// {
+//     SCLError    error;
+// } SCloudEventErrorData;
+// 
+// 
+// typedef struct SCloudEventProgressData_
+// {
+//     size_t          bytesProcessed;
+//     size_t          bytesTotal;
+// } SCloudEventProgressData;
+// 
+// typedef struct SCloudEventDecryptedHeaderData_
+// {
+//     size_t          metaDataBytes;
+//     size_t          dataBytes;
+// } SCloudEventDecryptedHeaderData;
+// 
+// typedef union SCloudEventData
+// {
+//     SCloudEventErrorData         errorData;
+//     SCloudEventDecryptMetaData   metaData;
+//     SCloudEventDecryptData       decryptData;
+//     SCloudEventProgressData      progress;
+//     SCloudEventDecryptedHeaderData        header;
+//     
+// } SCloudEventData;
+// 
+// struct SCloudEvent
+// {
+//     SCloudEventType           type;         /**< Type of event */
+//     SCloudEventData          data;          /**< Event specific data */
+//     
+// };
+// typedef struct SCloudEvent SCloudEvent;
 
 typedef int (*SCloudEventHandler)(SCloudContextRef      scloudRef,
-SCloudEvent*            event,
-void*                  uservalue);
+void*            event,
+void*            uservalue);
 
 
 #ifdef __clang__
