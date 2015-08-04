@@ -1354,6 +1354,97 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
     return appRepository->deleteObject(name, event, id);
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    storeAttachmentStatus
+ * Signature: ([BI)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jint status)
+{
+    string messageId;
+    if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
+        return 1;    // 1 is the generic SQL error code
+    }
+    return appRepository->storeAttachmentStatus(messageId, status);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    deleteAttachmentStatus
+ * Signature: ([B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId)
+{
+    string messageId;
+    if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
+        return 1;    // 1 is the generic SQL error code
+    }
+    return appRepository->deleteAttachmentStatus(messageId);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    deleteWithAttachmentStatus
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(deleteWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status)
+{
+    return appRepository->deleteWithAttachmentStatus(status);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    loadAttachmentStatus
+ * Signature: ([B[I)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jintArray code)
+{
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return -1;
+
+    string messageId;
+    if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
+        setReturnCode(env, code, 1);   // 1 is the generic SQL error code
+        return -1;
+    }
+    int32_t status;
+    int32_t result = appRepository->loadAttachmentStatus(messageId, &status);
+    setReturnCode(env, code, result);
+    return status;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    loadMsgIdsWithAttachmentStatus
+ * Signature: (I[I)[Ljava/lang/String;
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(loadMsgIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status, jintArray code)
+{
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    list<string> msgIds;
+    int32_t result = appRepository->loadMsgIdsWithAttachmentStatus(status, &msgIds);
+
+    jclass stringArrayClass = env->FindClass("java/lang/String");
+    jobjectArray retArray = env->NewObjectArray(msgIds.size(), stringArrayClass, NULL);
+
+    int32_t index = 0;
+    while (!msgIds.empty()) {
+        string s = msgIds.front();
+        msgIds.pop_front();
+        jstring stringData = env->NewStringUTF(s.c_str());
+        env->SetObjectArrayElement(retArray, index++, stringData);
+    }
+    setReturnCode(env, code, result);
+    return retArray;
+}
+
 
 static uint8_t* jarrayToCarray(JNIEnv* env, jbyteArray array, size_t* len)
 {

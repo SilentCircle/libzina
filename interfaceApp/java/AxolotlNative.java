@@ -126,7 +126,9 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * 
      * The returned strings in the list contain the B64 encoded data of the public identity keys
      * of the known devices, followed by a colon and the device name, followed by a colon and the
-     * ZRTP verify state.
+     * the device id, followed by a colon and the ZRTP verify state.
+     * 
+     * identityKey:device name:device id:verify state
      * 
      * @param user the name of the user
      * @return array of identity keys, {@code null} if no identity keys are available for that user.
@@ -481,13 +483,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native int deleteEvent(byte[] name, byte[] eventId);
 
     /**
-     * Insert serialized event/message data.
-     *
-     * The functions inserts the event/message data and assigns a sequence number to this
-     * record. The sequence number is unique inside the set of messages of a conversation.
-     *
-     * The functions returns and error in case a record with the same event id for this
-     * conversation already exists.
+     * Insert serialized Object (attachment) data.
      *
      * @param name The conversation partner's name
      * @param eventId The event id, unique inside partner's conversation
@@ -538,6 +534,57 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return A SQLITE code.
      */
     public static native int deleteObject(byte[] name, byte[] eventId, byte[] objectId);
+
+    /**
+     * Insert or update the attachment status.
+     *
+     * If no entry exists for the msgId then insert a new entry and set its
+     * status to 'status'. If an entry already exists then update the status
+     * only.
+     * 
+     * @param mesgId the message identifier of the attachment status entry.
+     * @param status the new attchment status
+     * @return the SQL code
+     */
+    public static native int storeAttachmentStatus(byte[] mesgId, int status);
+
+    /**
+     * Delete the attachment status entry.
+     *
+     * @param mesgId the message identifier of the attachment status entry.
+     * @return the SQL code
+     */
+    public static native int deleteAttachmentStatus(byte[] mesgId);
+
+    /**
+     * Delete all attachment status entries with a given status.
+     *
+     * @param the status code
+     * @return the SQL code
+     */
+    public static native int deleteWithAttachmentStatus(int status);
+
+    /**
+     * Return attachment status for msgId.
+     *
+     * @param mesgId the message identifier of the attachment status entry.
+     * @param code is an array with a minimum  length of 1, index 0 contains 
+     *        the SQL code on return
+     * @return the attachment status or -1 in case of error
+     */
+    public static native int loadAttachmentStatus(byte[] mesgId, int[] code);
+
+    /**
+     * Return all message ids with a give status.
+     *
+     * @param status fins all attachment message ids with this status.
+     * @param code is an array with a minimum  length of 1, index 0 contains 
+     *        the SQL code on return
+     * @return a String array with the found message ids (UUID) or {@code null}
+     *         in case of error
+     */
+    public static native String[] loadMsgIdsWithAttachmentStatus(int status, int[] code);
+
 
     /*
      ***************************************************************

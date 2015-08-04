@@ -191,7 +191,9 @@ public:
      * 
      * The returned strings in the list contain the B64 encoded data of the public identity keys
      * of the known devices, followed by a colon and the device name, followed by a colon and the
-     * ZRTP verify state.
+     * the device id, followed by a colon and the ZRTP verify state.
+     * 
+     * identityKey:device name:device id:verify state
      * 
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.

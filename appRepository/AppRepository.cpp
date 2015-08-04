@@ -53,7 +53,7 @@ static const char* dropConversations = "DROP TABLE conversations;";
 
 /* SQLite doesn't care about the VARCHAR length. */
 static const char* createConversations =
-    "CREATE TABLE conversations(name VARCHAR NOT NULL PRIMARY KEY, since TIMESTAMP, nextMsgNumber UNSIGNED INTEGER, state INTEGER, data BLOB);";
+    "CREATE TABLE IF NOT EXISTS conversations(name VARCHAR NOT NULL PRIMARY KEY, since TIMESTAMP, nextMsgNumber UNSIGNED INTEGER, state INTEGER, data BLOB);";
 
 // Storing Session data for a name/deviceId pair first tries to update. If it succeeds then
 // the following INSERT OR IGNORE is a no-op. Otherwise the function INSERT a complete new record:
@@ -75,7 +75,7 @@ static const char* deleteConversationSql = "DELETE FROM conversations WHERE name
  */
 static const char *dropEvents = "DROP TABLE events;";
 static const char *createEvents =
-    "CREATE TABLE events (eventid VARCHAR NOT NULL, inserted TIMESTAMP, msgNumber UNSIGNED INTEGER, state INTEGER, data BLOB,"
+    "CREATE TABLE IF NOT EXISTS events (eventid VARCHAR NOT NULL, inserted TIMESTAMP, msgNumber UNSIGNED INTEGER, state INTEGER, data BLOB,"
     "convName VARCHAR NOT NULL, PRIMARY KEY(eventid, convName), FOREIGN KEY(convName) REFERENCES conversations(name));";
 
 static const char* updateEventSql = "UPDATE events SET data=?1 WHERE eventid=?2 AND convName=?3;";
@@ -97,7 +97,7 @@ static const char* deleteEventNameSql = "DELETE FROM events WHERE convName=?1;";
  */
 static const char *dropObjects = "DROP TABLE objects;";
 static const char *createObjects =
-    "CREATE TABLE objects (objectid VARCHAR NOT NULL, inserted TIMESTAMP, state INTEGER, data BLOB,"
+    "CREATE TABLE IF NOT EXISTS objects (objectid VARCHAR NOT NULL, inserted TIMESTAMP, state INTEGER, data BLOB,"
     "event VARCHAR NOT NULL, conv VARCHAR NOT NULL, PRIMARY KEY(objectid, event), FOREIGN KEY(event, conv) REFERENCES events(eventid, convName));";
 
 static const char* insertObjectSql =
@@ -110,6 +110,21 @@ static const char* selectObjectsMsg = "SELECT data FROM objects WHERE event=?1 A
 static const char* deleteObjectSql = "DELETE FROM objects WHERE objectid=?1 AND event=?2 AND conv=?3;";
 static const char* deleteObjectMsgSql = "DELETE FROM objects WHERE event=?1 and conv=?2;";
 
+
+/* *****************************************************************************
+ * SQL statements to process the attahcment status table.
+ */
+static const char *dropAttachmentStatus = "DROP TABLE attachmentStatus;";
+static const char *createAttachmentStatus = 
+    "CREATE TABLE IF NOT EXISTS attachmentStatus (msgId VARCHAR NOT NULL, status INTEGER, PRIMARY KEY(msgId));";
+
+static const char* insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status) VALUES (?1, ?2);"; 
+
+static const char* selectAttachmentStatus = "SELECT status FROM attachmentStatus WHERE msgId=?1;";
+static const char* selectMsgIdsWithStatus = "SELECT msgId FROM attachmentStatus WHERE status=?1;";
+
+static const char* deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
+static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
 
 using namespace axolotl;
 
@@ -193,6 +208,9 @@ int AppRepository::openStore(const std::string& name)
 
     enableForeignKeys(db);
 
+    if (createTables() != SQLITE_OK)
+        return sqlCode_;
+
     int32_t version = getUserVersion(db);
     if (version != 0) {
         beginTransaction();
@@ -201,10 +219,6 @@ int AppRepository::openStore(const std::string& name)
             return SQLITE_ERROR;
         }
         commitTransaction();
-    }
-    else {
-        if (createTables() != SQLITE_OK)
-            return sqlCode_;
     }
     setUserVersion(db, DB_VERSION);
     return SQLITE_OK;
@@ -237,10 +251,18 @@ int AppRepository::createTables()
         goto cleanup;
     }
     sqlite3_finalize(stmt);
+
+    sqlCode_ = SQLITE_PREPARE(db, createAttachmentStatus, -1, &stmt, NULL);
+    sqlCode_ = sqlite3_step(stmt);
+    if (sqlCode_ != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
     return SQLITE_OK;
 
 cleanup:
-    std::cerr << lastError_;
     sqlite3_finalize(stmt);
     return sqlCode_;
 
@@ -668,6 +690,92 @@ int32_t AppRepository::deleteObjectMsg(const std::string& name, const std::strin
     sqlCode_= sqlite3_step(stmt);
 //    std::cerr << "Deleted records: " << sqlite3_changes(db) << std::endl;
     ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+}
+
+int32_t AppRepository::storeAttachmentStatus(const string& mesgId, int32_t status)
+{
+    sqlite3_stmt *stmt;
+
+    // insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status) VALUES (?1, ?2);"; 
+    SQLITE_CHK(SQLITE_PREPARE(db, insertAttachmentStatusSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, mesgId.data(), mesgId.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_int(stmt,  2, status));
+
+    sqlCode_= sqlite3_step(stmt);
+    ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+}
+
+int32_t AppRepository::deleteAttachmentStatus(const string&  mesgId)
+{
+    sqlite3_stmt *stmt;
+    // deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusMsgIdSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, mesgId.data(), mesgId.size(), SQLITE_STATIC));
+
+    sqlCode_= sqlite3_step(stmt);
+    ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+}
+
+int32_t AppRepository::deleteWithAttachmentStatus(int32_t status)
+{
+    sqlite3_stmt *stmt;
+    // static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusWithStatusSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int(stmt, 1, status));
+
+    sqlCode_= sqlite3_step(stmt);
+    ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+}
+
+int32_t AppRepository::loadAttachmentStatus(const string& mesgId, int32_t* status)
+{
+    sqlite3_stmt *stmt;
+    *status = -1;
+    // selectAttachmentStatus = "SELECT status FROM attachmentStatus WHERE msgId=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectAttachmentStatus, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, mesgId.data(), mesgId.size(), SQLITE_STATIC));
+
+    sqlCode_= sqlite3_step(stmt);
+    if (sqlCode_ != SQLITE_ROW) {
+        ERRMSG;
+        sqlite3_finalize(stmt);
+        return sqlCode_;
+    }
+    *status = sqlite3_column_int(stmt, 0);
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+}
+
+int32_t AppRepository::loadMsgIdsWithAttachmentStatus(int32_t status, list<string>* msgIds)
+{
+    sqlite3_stmt *stmt;
+    // selectMsgIdsWithStatus = "SELECT msgId FROM attachmentStatus WHERE status=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectMsgIdsWithStatus, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int(stmt, 1, status));
+
+    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int32_t len = sqlite3_column_bytes(stmt, 0);
+        string data((const char*)sqlite3_column_blob(stmt, 0), len);
+        msgIds->push_back(data);
+    }
 
 cleanup:
     sqlite3_finalize(stmt);

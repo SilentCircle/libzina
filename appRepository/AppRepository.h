@@ -318,6 +318,54 @@ public:
      */
     int32_t deleteObjectMsg(const std::string& name, const std::string& eventId);
 
+    /**
+     * Insert or update the attachment status.
+     *
+     * If no entry exists for the msgId then insert a new entry and set its
+     * status to 'status'. If an entry already exists then update the status
+     * only.
+     * 
+     * @param mesgId the message identifier of the attachment status entry.
+     * @param status the new attchment status
+     * @return the SQL code
+     */
+    int32_t storeAttachmentStatus(const string& mesgId, int32_t status);
+
+    /**
+     * Delete the attachment status entry.
+     *
+     * @param mesgId the message identifier of the attachment status entry.
+     * @return the SQL code
+     */
+    int32_t deleteAttachmentStatus(const string&  mesgId);
+
+    /**
+     * Delete all attachment status entries with a given status.
+     *
+     * @param the status code
+     * @return the SQL code
+     */
+    int32_t deleteWithAttachmentStatus(int32_t status);
+
+    /**
+     * Return attachment status for msgId.
+     *
+     * @param mesgId the message identifier of the attachment status entry.
+     * @param status contains the attachment status on return
+     * @return the SQL code
+     */
+    int32_t loadAttachmentStatus(const string& mesgId, int32_t* status);
+
+    /**
+     * Return all message ids with a give status.
+     *
+     * @param status finds all attachment message ids with this status.
+     * @param msgIds pointer to a (empty) list of strings to store the found message ids
+     * @return the SQL code
+     */
+    int32_t loadMsgIdsWithAttachmentStatus(int32_t status, list<string>* msgIds);
+
+
 private:
     AppRepository();
     ~AppRepository();

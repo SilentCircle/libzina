@@ -184,3 +184,81 @@ TEST(AppRestore, Object)
     sqlCode = store->deleteEvent(name, msgId);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
 }
+
+TEST(AppRestore, AttachmentStatus)
+{
+    AppRepository* store = AppRepository::getStore();
+    store->setKey(string((const char*)keyInData, 32));
+    int32_t sqlCode = store->openStore(string());
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_TRUE(NULL != store);
+
+    string msgId_1("msgid_1");
+    string msgId_2("msgid_2");
+    string msgId_3("msgid_3");
+    string msgId_4("msgid_4");
+    string msgId_5("msgid_5");
+
+    sqlCode = store->storeAttachmentStatus(msgId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+
+    int32_t status;
+    sqlCode = store->loadAttachmentStatus(msgId_1, &status);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(1, status) << "status mistmatch";
+
+    // Update the message status to 2
+    sqlCode = store->storeAttachmentStatus(msgId_1, 2);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+
+    // Check the new status
+    sqlCode = store->loadAttachmentStatus(msgId_1, &status);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(2, status) << "status mistmatch";
+
+    // Delete the msg id and check, non existent id returns -1 as status
+    sqlCode = store->deleteAttachmentStatus(msgId_1);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+
+    sqlCode = store->loadAttachmentStatus(msgId_1, &status);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(-1, status) << "status mistmatch" << store->getLastError();
+
+    // Add 4 different msg ids with the same status
+    sqlCode = store->storeAttachmentStatus(msgId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    sqlCode = store->storeAttachmentStatus(msgId_2, 1);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    sqlCode = store->storeAttachmentStatus(msgId_3, 1);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    sqlCode = store->storeAttachmentStatus(msgId_4, 1);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+
+    list<string> msgids;
+    sqlCode = store->loadMsgIdsWithAttachmentStatus(1, &msgids);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(4, msgids.size()) << "msg id list not correct size" << store->getLastError();
+    msgids.clear();
+
+    // Update 2 msg ids with a new status
+    sqlCode = store->storeAttachmentStatus(msgId_3, 2);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    sqlCode = store->storeAttachmentStatus(msgId_4, 2);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+
+    // delete the msg ids with status 2
+    sqlCode = store->deleteWithAttachmentStatus(2);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+
+    // No entries with status 2
+    sqlCode = store->loadMsgIdsWithAttachmentStatus(2, &msgids);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(0, msgids.size()) << "msg id list not correct size after delete (status 2)" << store->getLastError();
+    msgids.clear();
+
+    // No entries with status 2
+    sqlCode = store->loadMsgIdsWithAttachmentStatus(1, &msgids);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(2, msgids.size()) << "msg id list not correct size after delete (status 1)" << store->getLastError();
+    msgids.clear();
+}

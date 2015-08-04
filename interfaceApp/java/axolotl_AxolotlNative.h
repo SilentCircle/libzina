@@ -273,6 +273,46 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteObject
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    storeAttachmentStatus
+ * Signature: ([BI)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_storeAttachmentStatus
+  (JNIEnv *, jclass, jbyteArray, jint);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    deleteAttachmentStatus
+ * Signature: ([B)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteAttachmentStatus
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    deleteWithAttachmentStatus
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteWithAttachmentStatus
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    loadAttachmentStatus
+ * Signature: ([B[I)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_loadAttachmentStatus
+  (JNIEnv *, jclass, jbyteArray, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    loadMsgIdsWithAttachmentStatus
+ * Signature: (I[I)[Ljava/lang/String;
+ */
+JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadMsgIdsWithAttachmentStatus
+  (JNIEnv *, jclass, jint, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    cloudEncryptNew
  * Signature: ([B[B[B[I)J
  */
