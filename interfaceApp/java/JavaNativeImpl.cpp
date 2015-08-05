@@ -479,7 +479,12 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     if (pwLen != 32)
         return -15;
 
+    if (dbName == NULL)
+        return -16;
+
     string dbPw((const char*)pw, pwLen);
+
+    memset_volatile((void*)pw, 0, pwLen);
     env->ReleaseByteArrayElements(dbPassphrase, (jbyte*)pw, 0);
 
     // initialize and open the persitent store singleton instance
@@ -489,6 +494,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     const char* db = (const char *)env->GetStringUTFChars(dbName, 0);
     store->openStore(string (db));
     env->ReleaseStringUTFChars(dbName, db);
+
+    memset_volatile((void*)dbPw.data(), 0, dbPw.size());
 
     int32_t retVal = 1;
     AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
@@ -924,11 +931,15 @@ JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName, jbyte
         return -3;
 
     string dbPw((const char*)pw, pwLen);
+
+    memset_volatile((void*)pw, 0, pwLen);
     env->ReleaseByteArrayElements(keyData, (jbyte*)pw, 0);
 
     appRepository = AppRepository::getStore();
     appRepository->setKey(dbPw);
     appRepository->openStore(nameString);
+
+    memset_volatile((void*)dbPw.data(), 0, dbPw.size());
 
     return appRepository->getSqlCode();
 }
