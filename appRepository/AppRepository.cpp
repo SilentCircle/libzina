@@ -87,7 +87,8 @@ static const char* insertEventSql =
     "INSERT INTO events (eventid, inserted, msgNumber, state, data, convName)"
     "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5, ?6);";
 
-static const char* selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 and convName=?2;";
+static const char* selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 AND convName=?2;";
+static const char* selectEventWithId = "SELECT data FROM events WHERE eventid=?1;";
 
 static const char* deleteEventSql = "DELETE FROM events WHERE eventid=?1 AND convName=?2;";
 static const char* deleteEventNameSql = "DELETE FROM events WHERE convName=?1;";
@@ -108,7 +109,7 @@ static const char* selectObject = "SELECT data FROM objects WHERE objectid=?1 AN
 static const char* selectObjectsMsg = "SELECT data FROM objects WHERE event=?1 AND conv=?2;";
 
 static const char* deleteObjectSql = "DELETE FROM objects WHERE objectid=?1 AND event=?2 AND conv=?3;";
-static const char* deleteObjectMsgSql = "DELETE FROM objects WHERE event=?1 and conv=?2;";
+static const char* deleteObjectMsgSql = "DELETE FROM objects WHERE event=?1 AND conv=?2;";
 
 
 /* *****************************************************************************
@@ -474,6 +475,30 @@ int32_t AppRepository::loadEvent(const std::string& name, const std::string& eve
     len = sqlite3_column_bytes(stmt, 0);
     event->assign((const char*)sqlite3_column_blob(stmt, 0), len);
     *msgNumber = sqlite3_column_int(stmt, 1);
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlCode_;
+}
+
+int32_t AppRepository::loadEventWithMsgId(const string& eventId,  string* event)
+{
+    sqlite3_stmt *stmt;
+    int32_t len;
+
+    // selectEventWithId = "SELECT data FROM events WHERE eventid=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectEventWithId, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
+
+    sqlCode_= sqlite3_step(stmt);
+    ERRMSG;
+    if (sqlCode_ != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        return sqlCode_;
+    }
+    // Get the conversation data
+    len = sqlite3_column_bytes(stmt, 0);
+    event->assign((const char*)sqlite3_column_blob(stmt, 0), len);
 
 cleanup:
     sqlite3_finalize(stmt);

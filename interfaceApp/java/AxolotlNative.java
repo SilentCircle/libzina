@@ -430,6 +430,19 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native byte[] loadEvent(byte[] name, byte[]eventId, int[] code);
 
     /**
+     * Load a message with a defined message id.
+     *
+     * Lookup and load a message based on the unique message id (UUID). The function does
+     * not restcrit the lookup to a particular conversation.
+     *
+     * @param msgId The message id
+     * @param code An int array with a minimum length of 1. Index 0 has the SQL code
+     *        on return
+     * @return the message or {@code null} if no message found
+     */
+    public static native byte[] loadEventWithMsgId(byte[] eventId, int[] code);
+
+    /**
      * Checks if an event exists.
      *
      * @param name Name of conversation

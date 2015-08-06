@@ -43,23 +43,29 @@ TEST(AppRestore, Event)
 
     ASSERT_TRUE(NULL != store);
 
-    std::string data("This is some test data");
-    std::string name("partner");
-    
-    std::string msg("some message data");
-    std::string msgId("first");
+    string data("This is some test data");
+    string name("partner");
+
+    string msg("some message data");
+    string msgId("first");
     int32_t sqlCode = store->insertEvent(name, msgId, msg);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
 
     int32_t msgNumber;
-    std::string readData;
+    string readData;
     sqlCode = store->loadEvent(name, msgId, &readData, &msgNumber);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
     ASSERT_EQ(msg, readData) << "data mistmatch";
 
     int32_t msgNum = store->getHighestMsgNum(name);
     ASSERT_EQ(1, msgNum);
-    
+
+    // Read with msg id only
+    readData.clear();
+    sqlCode = store->loadEventWithMsgId(msgId, &readData);
+    ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
+    ASSERT_EQ(msg, readData) << "data mistmatch";
+
     for (int32_t i = 0; i < 10; i++) {
         char c = i + 0x30;
         std::string id = msgId;

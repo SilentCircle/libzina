@@ -209,6 +209,14 @@ JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_loadEvent
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    loadEventWithMsgId
+ * Signature: ([B[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_loadEventWithMsgId
+  (JNIEnv *, jclass, jbyteArray, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    existEvent
  * Signature: ([B[B)Z
  */

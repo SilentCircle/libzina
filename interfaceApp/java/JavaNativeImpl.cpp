@@ -1127,6 +1127,34 @@ JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArra
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    loadEventWithMsgId
+ * Signature: ([B[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL 
+JNI_FUNCTION(loadEventWithMsgId) (JNIEnv* env, jclass clazz, jbyteArray eventId, jintArray code)
+{
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    string id;
+    if (!arrayToString(env, eventId, &id) || id.empty()) {
+        setReturnCode(env, code, -1);
+        return NULL;
+    }
+    string data;
+    int32_t result = appRepository->loadEventWithMsgId(id, &data);
+    if (SQL_FAIL(result)) {
+        setReturnCode(env, code, result);
+        return NULL;
+    }
+    setReturnCode(env, code, result);
+    jbyteArray retData = stringToArray(env, data);
+    return retData;
+}
+
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    existEvent
  * Signature: ([B[B)Z
  */

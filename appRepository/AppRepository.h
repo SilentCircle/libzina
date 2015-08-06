@@ -170,10 +170,9 @@ public:
 
     /**
      * @brief Load and returns one serialized event/message data.
-     * 
-     * 
+     *
      * The functions returns the sequence number of the loaded event record.
-     * 
+     *
      * @param name The conversation partner's name
      * @param eventId The event id, unique inside partner's conversation
      * @param event The serialized data of the event data structure
@@ -182,6 +181,18 @@ public:
      * @return A SQLITE code.
      */
     int32_t loadEvent(const std::string& name, const std::string& eventId, std::string* event, int32_t *msgNumber) const;
+
+    /**
+     * @brief Load a message with a defined message id.
+     *
+     * Lookup and load a message based on the unique message id (UUID). The function does
+     * not restcrit the lookup to a particular conversation.
+     *
+     * @param msgId The message id
+     * @param event The serialized data of the event data structure
+     * @return A SQLITE code.
+     */
+    int32_t loadEventWithMsgId(const string& eventId, string* event);
 
     /**
      * @brief Checks if a event exists.
