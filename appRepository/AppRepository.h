@@ -336,19 +336,28 @@ public:
      * status to 'status'. If an entry already exists then update the status
      * only.
      * 
+     * If the caller provides a @c partnerName then the function stores it together
+     * with the message id.
+     * 
      * @param mesgId the message identifier of the attachment status entry.
+     * @param partnerName Name of the conversation partner, maybe an empty string
      * @param status the new attchment status
      * @return the SQL code
      */
-    int32_t storeAttachmentStatus(const string& mesgId, int32_t status);
+    int32_t storeAttachmentStatus(const string& mesgId, const string& partnerName, int32_t status);
 
     /**
      * Delete the attachment status entry.
      *
+     * If the partner name is @c NULL then the function uses only the message id to
+     * perform the delete request. Otherwise it requires full match, message id and
+     * partner name to delete the status entry.
+     * 
      * @param mesgId the message identifier of the attachment status entry.
+     * @param partnerName Name of the conversation partner, maybe an empty string
      * @return the SQL code
      */
-    int32_t deleteAttachmentStatus(const string&  mesgId);
+    int32_t deleteAttachmentStatus(const string&  mesgId, const string& partnerName);
 
     /**
      * Delete all attachment status entries with a given status.
@@ -359,22 +368,31 @@ public:
     int32_t deleteWithAttachmentStatus(int32_t status);
 
     /**
-     * Return attachment status for msgId.
+     * Return attachment status for message id.
      *
+     * If the partner name is @c NULL then the function uses only the message id to
+     * perform the load request. Otherwise it requires full match, message id and
+     * partner name to load the status entry.
+     * 
      * @param mesgId the message identifier of the attachment status entry.
+     * @param partnerName Name of the conversation partner, maybe an empty string
      * @param status contains the attachment status on return
      * @return the SQL code
      */
-    int32_t loadAttachmentStatus(const string& mesgId, int32_t* status);
+    int32_t loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* status);
 
     /**
      * Return all message ids with a give status.
+     *
+     * Returns a string array that contains the message identifier as UUID string.
+     * If a partner name was set then the functions appends a colon (:) and the
+     * partner name to the UUID string.
      *
      * @param status finds all attachment message ids with this status.
      * @param msgIds pointer to a (empty) list of strings to store the found message ids
      * @return the SQL code
      */
-    int32_t loadMsgIdsWithAttachmentStatus(int32_t status, list<string>* msgIds);
+    int32_t loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* msgIds);
 
 
 private:
@@ -409,7 +427,7 @@ private:
      * @param newVersion the target version for the database
      * @return @c SQLITE_OK to commit any changes, any other code closes the database with rollback.
      */
-    int32_t updateDb(int32_t oldVersion, int32_t newVersion) {return SQLITE_OK; }
+    int32_t updateDb(int32_t oldVersion, int32_t newVersion);
 
     int32_t getNextSequenceNum(const std::string& name);
 

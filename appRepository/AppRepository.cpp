@@ -40,7 +40,9 @@
 #define SQLITE_PREPARE sqlite3_prepare
 #endif
 
-#define DB_VERSION 1
+#define DB_VERSION 2
+
+void Log(const char* format, ...);
 
 static const char *beginTransactionSql  = "BEGIN TRANSACTION;";
 static const char *commitTransactionSql = "COMMIT;";
@@ -117,14 +119,16 @@ static const char* deleteObjectMsgSql = "DELETE FROM objects WHERE event=?1 AND 
  */
 static const char *dropAttachmentStatus = "DROP TABLE attachmentStatus;";
 static const char *createAttachmentStatus = 
-    "CREATE TABLE IF NOT EXISTS attachmentStatus (msgId VARCHAR NOT NULL, status INTEGER, PRIMARY KEY(msgId));";
+    "CREATE TABLE IF NOT EXISTS attachmentStatus (msgId VARCHAR NOT NULL, partnerName VARCHAR, status INTEGER, PRIMARY KEY(msgId));";
 
-static const char* insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status) VALUES (?1, ?2);"; 
+static const char* insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status, partnerName) VALUES (?1, ?2, ?3);"; 
 
 static const char* selectAttachmentStatus = "SELECT status FROM attachmentStatus WHERE msgId=?1;";
-static const char* selectMsgIdsWithStatus = "SELECT msgId FROM attachmentStatus WHERE status=?1;";
+static const char* selectAttachmentStatus2 = "SELECT status FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
+static const char* selectMsgIdsWithStatus = "SELECT msgId, partnerName FROM attachmentStatus WHERE status=?1;";
 
 static const char* deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
+static const char* deleteAttachmentStatusMsgIdSql2 = "DELETE FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
 static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
 
 using namespace axolotl;
@@ -222,6 +226,23 @@ int AppRepository::openStore(const std::string& name)
         commitTransaction();
     }
     setUserVersion(db, DB_VERSION);
+    return SQLITE_OK;
+}
+
+int32_t AppRepository::updateDb(int32_t oldVersion, int32_t newVersion) 
+{
+    sqlite3_stmt* stmt;
+
+    if (oldVersion < 2) {
+        const char* addColumn = "ALTER TABLE attachmentStatus ADD partnerName VARCHAR;";
+        sqlCode_ = SQLITE_PREPARE(db, addColumn, -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        if (sqlCode_ != SQLITE_DONE)
+            return sqlCode_;
+        oldVersion = 2;
+    }
+    if (oldVersion != newVersion)
+        return SQLITE_ERROR;
     return SQLITE_OK;
 }
 
@@ -721,15 +742,20 @@ cleanup:
     return sqlCode_;
 }
 
-int32_t AppRepository::storeAttachmentStatus(const string& mesgId, int32_t status)
+int32_t AppRepository::storeAttachmentStatus(const string& mesgId, const string& partnerName, int32_t status)
 {
     sqlite3_stmt *stmt;
 
-    // insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status) VALUES (?1, ?2);"; 
+    // insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status, partnerName) VALUES (?1, ?2, ?3);"; 
     SQLITE_CHK(SQLITE_PREPARE(db, insertAttachmentStatusSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, mesgId.data(), mesgId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_int(stmt,  2, status));
-
+    if (partnerName.empty()) {
+        SQLITE_CHK(sqlite3_bind_null(stmt, 3));
+    }
+    else {
+        SQLITE_CHK(sqlite3_bind_text(stmt, 3, partnerName.data(), partnerName.size(), SQLITE_STATIC));
+    }
     sqlCode_= sqlite3_step(stmt);
     ERRMSG;
 
@@ -738,13 +764,22 @@ cleanup:
     return sqlCode_;
 }
 
-int32_t AppRepository::deleteAttachmentStatus(const string&  mesgId)
+int32_t AppRepository::deleteAttachmentStatus(const string& mesgId, const string& partnerName)
 {
     sqlite3_stmt *stmt;
     // deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
-    SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusMsgIdSql, -1, &stmt, NULL));
+    // deleteAttachmentStatusMsgIdSql2 = "DELETE FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
+    
+    if (partnerName.empty()) {
+        SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusMsgIdSql, -1, &stmt, NULL));
+    }
+    else {
+        SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusMsgIdSql2, -1, &stmt, NULL));
+    }
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, mesgId.data(), mesgId.size(), SQLITE_STATIC));
-
+    if (!partnerName.empty()) {
+        SQLITE_CHK(sqlite3_bind_text(stmt, 2, partnerName.data(), partnerName.size(), SQLITE_STATIC));
+    }
     sqlCode_= sqlite3_step(stmt);
     ERRMSG;
 
@@ -768,14 +803,22 @@ cleanup:
     return sqlCode_;
 }
 
-int32_t AppRepository::loadAttachmentStatus(const string& mesgId, int32_t* status)
+int32_t AppRepository::loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* status)
 {
     sqlite3_stmt *stmt;
     *status = -1;
     // selectAttachmentStatus = "SELECT status FROM attachmentStatus WHERE msgId=?1;";
-    SQLITE_CHK(SQLITE_PREPARE(db, selectAttachmentStatus, -1, &stmt, NULL));
+    // selectAttachmentStatus2 = "SELECT status FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
+    if (partnerName.empty()) {
+        SQLITE_CHK(SQLITE_PREPARE(db, selectAttachmentStatus, -1, &stmt, NULL));
+    }
+    else {
+        SQLITE_CHK(SQLITE_PREPARE(db, selectAttachmentStatus2, -1, &stmt, NULL));
+    }
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, mesgId.data(), mesgId.size(), SQLITE_STATIC));
-
+    if (!partnerName.empty()) {
+        SQLITE_CHK(sqlite3_bind_text(stmt, 2, partnerName.data(), partnerName.size(), SQLITE_STATIC));
+    }
     sqlCode_= sqlite3_step(stmt);
     if (sqlCode_ != SQLITE_ROW) {
         ERRMSG;
@@ -789,16 +832,21 @@ cleanup:
     return sqlCode_;
 }
 
-int32_t AppRepository::loadMsgIdsWithAttachmentStatus(int32_t status, list<string>* msgIds)
+int32_t AppRepository::loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* msgIds)
 {
     sqlite3_stmt *stmt;
-    // selectMsgIdsWithStatus = "SELECT msgId FROM attachmentStatus WHERE status=?1;";
+    const unsigned char* pn;
+    // selectMsgIdsWithStatus = "SELECT msgId, partnerName FROM attachmentStatus WHERE status=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectMsgIdsWithStatus, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, status));
 
     while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
         int32_t len = sqlite3_column_bytes(stmt, 0);
-        string data((const char*)sqlite3_column_blob(stmt, 0), len);
+        string data((const char*)sqlite3_column_text(stmt, 0), len);
+        pn = sqlite3_column_text(stmt, 1);
+        if (pn != NULL) {
+            data.append(":").append((const char*)pn);
+        }
         msgIds->push_back(data);
     }
 

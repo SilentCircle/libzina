@@ -164,7 +164,7 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
     int32_t msgLength = 4 + 4 + 4 + 4 + 8 + keyLength;   // at least a msg type, Ns, PNs, and message length
 
     if (msgType == 2) {
-            msgLength += 4 + keyLength + keyLength;        // add remote pre-key id, local generated pre-key, identity key
+        msgLength += 4 + keyLength + keyLength;          // add remote pre-key id, local generated pre-key, identity key
     }
     msgLength += message.size();
 

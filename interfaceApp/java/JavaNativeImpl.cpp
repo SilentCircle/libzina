@@ -1396,31 +1396,39 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    storeAttachmentStatus
- * Signature: ([BI)I
+ * Signature: ([B[BI)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jint status)
+JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName, jint status)
 {
     string messageId;
     if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
         return 1;    // 1 is the generic SQL error code
     }
-    return appRepository->storeAttachmentStatus(messageId, status);
+    string pn;
+    if (partnerName != NULL) {
+        arrayToString(env, partnerName, &pn);
+    }
+    return appRepository->storeAttachmentStatus(messageId, pn, status);
 }
 
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    deleteAttachmentStatus
- * Signature: ([B)I
+ * Signature: ([B[B)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId)
+JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName)
 {
     string messageId;
     if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
         return 1;    // 1 is the generic SQL error code
     }
-    return appRepository->deleteAttachmentStatus(messageId);
+    string pn;
+    if (partnerName != NULL) {
+        arrayToString(env, partnerName, &pn);
+    }
+    return appRepository->deleteAttachmentStatus(messageId, pn);
 }
 
 /*
@@ -1437,10 +1445,10 @@ JNI_FUNCTION(deleteWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    loadAttachmentStatus
- * Signature: ([B[I)I
+ * Signature: ([B[B[I)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jintArray code)
+JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName, jintArray code)
 {
     if (code == NULL || env->GetArrayLength(code) < 1)
         return -1;
@@ -1450,25 +1458,29 @@ JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId,
         setReturnCode(env, code, 1);   // 1 is the generic SQL error code
         return -1;
     }
+    string pn;
+    if (partnerName != NULL) {
+        arrayToString(env, partnerName, &pn);
+    }
     int32_t status;
-    int32_t result = appRepository->loadAttachmentStatus(messageId, &status);
+    int32_t result = appRepository->loadAttachmentStatus(messageId, pn, &status);
     setReturnCode(env, code, result);
     return status;
 }
 
 /*
  * Class:     axolotl_AxolotlNative
- * Method:    loadMsgIdsWithAttachmentStatus
+ * Method:    loadMsgsIdsWithAttachmentStatus
  * Signature: (I[I)[Ljava/lang/String;
  */
 JNIEXPORT jobjectArray JNICALL
-JNI_FUNCTION(loadMsgIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status, jintArray code)
+JNI_FUNCTION(loadMsgsIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status, jintArray code)
 {
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
     list<string> msgIds;
-    int32_t result = appRepository->loadMsgIdsWithAttachmentStatus(status, &msgIds);
+    int32_t result = appRepository->loadMsgsIdsWithAttachmentStatus(status, &msgIds);
 
     jclass stringArrayClass = env->FindClass("java/lang/String");
     jobjectArray retArray = env->NewObjectArray(msgIds.size(), stringArrayClass, NULL);

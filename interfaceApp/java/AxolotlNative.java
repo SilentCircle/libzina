@@ -433,7 +433,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * Load a message with a defined message id.
      *
      * Lookup and load a message based on the unique message id (UUID). The function does
-     * not restcrit the lookup to a particular conversation.
+     * not restrict the lookup to a particular conversation.
      *
      * @param msgId The message id
      * @param code An int array with a minimum length of 1. Index 0 has the SQL code
@@ -555,19 +555,28 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * status to 'status'. If an entry already exists then update the status
      * only.
      * 
+     * If the caller provides a {@code partnerName} then the function stores it together
+     * with the message id.
+     * 
      * @param mesgId the message identifier of the attachment status entry.
+     * @param partnerName Name of the conversation partner, maybe {@code null}
      * @param status the new attchment status
      * @return the SQL code
      */
-    public static native int storeAttachmentStatus(byte[] mesgId, int status);
+    public static native int storeAttachmentStatus(byte[] mesgId, byte[] partnerName, int status);
 
     /**
      * Delete the attachment status entry.
      *
+     * If the partner name is {@code null} then the function uses only the message id to
+     * perform the delete request. Otherwise it requires full match, message id and
+     * partner name to delete the status entry.
+     * 
      * @param mesgId the message identifier of the attachment status entry.
+     * @param partnerName Name of the conversation partner, maybe {@code null}
      * @return the SQL code
      */
-    public static native int deleteAttachmentStatus(byte[] mesgId);
+    public static native int deleteAttachmentStatus(byte[] mesgId, byte[] partnerName);
 
     /**
      * Delete all attachment status entries with a given status.
@@ -580,23 +589,32 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Return attachment status for msgId.
      *
+     * If the partner name is {@code null} then the function uses only the message id to
+     * perform the load request. Otherwise it requires full match, message id and
+     * partner name to load the status entry.
+     * 
      * @param mesgId the message identifier of the attachment status entry.
+     * @param partnerName Name of the conversation partner, maybe {@code null}
      * @param code is an array with a minimum  length of 1, index 0 contains 
      *        the SQL code on return
      * @return the attachment status or -1 in case of error
      */
-    public static native int loadAttachmentStatus(byte[] mesgId, int[] code);
+    public static native int loadAttachmentStatus(byte[] mesgId, byte[] partnerName, int[] code);
 
     /**
      * Return all message ids with a give status.
+     * 
+     * Returns a string array that contains the message identifier as UUID string.
+     * If a partner name was set then the functions appends a colon (:) and the
+     * partner name to the UUID string.
      *
-     * @param status fins all attachment message ids with this status.
+     * @param status finds all attachment message ids with this status.
      * @param code is an array with a minimum  length of 1, index 0 contains 
      *        the SQL code on return
      * @return a String array with the found message ids (UUID) or {@code null}
      *         in case of error
      */
-    public static native String[] loadMsgIdsWithAttachmentStatus(int status, int[] code);
+    public static native String[] loadMsgsIdsWithAttachmentStatus(int status, int[] code);
 
 
     /*

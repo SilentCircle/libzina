@@ -282,18 +282,18 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteObject
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    storeAttachmentStatus
- * Signature: ([BI)I
+ * Signature: ([B[BI)I
  */
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_storeAttachmentStatus
-  (JNIEnv *, jclass, jbyteArray, jint);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jint);
 
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    deleteAttachmentStatus
- * Signature: ([B)I
+ * Signature: ([B[B)I
  */
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteAttachmentStatus
-  (JNIEnv *, jclass, jbyteArray);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray);
 
 /*
  * Class:     axolotl_AxolotlNative
@@ -306,17 +306,17 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_deleteWithAttachmentStatus
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    loadAttachmentStatus
- * Signature: ([B[I)I
+ * Signature: ([B[B[I)I
  */
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_loadAttachmentStatus
-  (JNIEnv *, jclass, jbyteArray, jintArray);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jintArray);
 
 /*
  * Class:     axolotl_AxolotlNative
- * Method:    loadMsgIdsWithAttachmentStatus
+ * Method:    loadMsgsIdsWithAttachmentStatus
  * Signature: (I[I)[Ljava/lang/String;
  */
-JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadMsgIdsWithAttachmentStatus
+JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadMsgsIdsWithAttachmentStatus
   (JNIEnv *, jclass, jint, jintArray);
 
 /*
