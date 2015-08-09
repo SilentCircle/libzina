@@ -447,31 +447,6 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     if (!arrayToString(env, scClientDeviceId, &devId) || devId.empty())
         return -12;
 
-    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback);
-    Transport* sipTransport = new SipTransport(axoAppInterface);
-
-    /* ***********************************************************************************
-     * Initialize pointers/callback to the send/receive SIP data functions (network layer) 
-     */
-#ifdef UNITTESTS
-    sipTransport->setSendDataFunction(sendDataFuncTesting);
-#elif defined (EMBEDDED)
-    // Functions defined in t_a_main module of silentphone library, this sends the data
-    // via SIP message
-    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
-    void t_setAxoTransport(Transport *transport);
-
-    sipTransport->setSendDataFunction(g_sendDataFuncAxo);
-    t_setAxoTransport(sipTransport);
-#else
-#error "***** Missing initialization."
-#endif
-    /* set sipTransport class to SIP network handler, sipTransport contains callback
-     * functions 'receiveAxoData' and 'stateReportAxo'
-     *********************************************************************************** */
-    axoAppInterface->setTransport(sipTransport);
-    axoAppInterface->setHttpHelper(httpHelper);
-
     const uint8_t* pw = (uint8_t*)env->GetByteArrayElements(dbPassphrase, 0);
     int pwLen = env->GetArrayLength(dbPassphrase);
     if (pw == NULL)
@@ -507,6 +482,32 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         retVal = 2;
     }
     delete ownAxoConv;    // Not needed anymore here
+
+    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback);
+    Transport* sipTransport = new SipTransport(axoAppInterface);
+
+    /* ***********************************************************************************
+     * Initialize pointers/callback to the send/receive SIP data functions (network layer) 
+     */
+#ifdef UNITTESTS
+    sipTransport->setSendDataFunction(sendDataFuncTesting);
+#elif defined (EMBEDDED)
+    // Functions defined in t_a_main module of silentphone library, this sends the data
+    // via SIP message
+    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+    void t_setAxoTransport(Transport *transport);
+
+    sipTransport->setSendDataFunction(g_sendDataFuncAxo);
+    t_setAxoTransport(sipTransport);
+#else
+#error "***** Missing initialization."
+#endif
+    /* *********************************************************************************
+     * set sipTransport class to SIP network handler, sipTransport contains callback
+     * functions 'receiveAxoData' and 'stateReportAxo'
+     *********************************************************************************** */
+    axoAppInterface->setHttpHelper(httpHelper);
+    axoAppInterface->setTransport(sipTransport);
 
     return retVal;
 }
