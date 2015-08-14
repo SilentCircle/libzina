@@ -965,7 +965,7 @@ JNI_FUNCTION(repoCloseDatabase) (JNIEnv* env, jclass clazz) {
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(repoIsOpen) (JNIEnv* env, jclass clazz)
 {
-    return appRepository != NULL;
+    return appRepository != NULL && appRepository->isReady();
 }
 
 

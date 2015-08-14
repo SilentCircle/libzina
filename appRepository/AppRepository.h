@@ -394,6 +394,10 @@ public:
      */
     int32_t loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* msgIds);
 
+    /**
+     * @brief Return ready status
+     */
+    bool isReady() { return ready; }
 
 private:
     AppRepository();
@@ -434,6 +438,7 @@ private:
     static AppRepository* instance_;
     sqlite3* db;
     string* keyData_;
+    bool ready;
 
     mutable int32_t sqlCode_;
     mutable char lastError_[DB_CACHE_ERR_BUFF_SIZE];

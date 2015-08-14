@@ -185,7 +185,7 @@ AppRepository* AppRepository::getStore()
     return instance_;
 }
 
-AppRepository::AppRepository() : db(NULL), keyData_(NULL) {}
+AppRepository::AppRepository() : db(NULL), keyData_(NULL), ready(false) {}
 
 AppRepository::~AppRepository()
 {
@@ -226,6 +226,7 @@ int AppRepository::openStore(const std::string& name)
         commitTransaction();
     }
     setUserVersion(db, DB_VERSION);
+    ready = true;
     return SQLITE_OK;
 }
 
