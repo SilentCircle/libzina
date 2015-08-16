@@ -258,7 +258,7 @@ static void parseWireMsg(const string& wire, ParsedMessage* msgStruct)
     }
 }
 
-static bool decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
+static int32_t decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
                             const string& mac, string* decrypted, string* supplementsPlain)
 {
 
@@ -274,47 +274,50 @@ static bool decryptAndCheck(const string& MK, const string& iv, const string& en
 //     hexdump("expected mac", mac); Log("%s", hexBuffer);
 //     hexdump("computed mac", computedMac, 8); Log("%s", hexBuffer);
     if (result != 0)
-        return false;
+        return MAC_CHECK_FAILED;
 
     aesCbcDecrypt(MK, iv, encrypted, decrypted);
     if (!checkAndRemovePadding(*decrypted))
-        return false;
+        return MSG_PADDING_FAILED;
 
     if (supplements.size() > 0 && supplementsPlain != NULL) {
         aesCbcDecrypt(MK, iv, supplements, supplementsPlain);
-        checkAndRemovePadding(*supplementsPlain);
+        if (!checkAndRemovePadding(*supplementsPlain))
+            return SUP_PADDING_FAILED;
     }
 
-    return true;
+    return 0;
 }
 
-static bool trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac, 
+static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac, 
                                   string* plaintext, string *supplementsPlain)
 {
+    int32_t retVal = 0;
     list<string>* mks = conv->loadStagedMks();
     if (mks == NULL)
-        return false;
-//    cerr << "try skipped message" << endl;
+        return NO_STAGED_KEYS;
+
+    //    cerr << "try skipped message" << endl;
     while (!mks->empty()) {
         string MKiv = mks->front();
         mks->pop_front();
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
-        if (decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) {
+        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) >= 0) {
 //            cerr << "try skipped message - true" << endl;
             // TODO: clear MK - not needed anymore (memset)
             conv->deleteStagedMk(MKiv);
             mks->clear();
             delete mks;
-            return true;
+            return retVal;
         }
     // TODO: clear MK - not needed anymore (memset)
     }
 //    cerr << "try skipped message - false" << endl;
     mks->clear();
     delete mks;
-    return false;
+    return retVal;
 }
 
 static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp, pair<string, string>* MKp, string* macKey)
@@ -422,8 +425,10 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     string* decrypted = new string();
 
     string mac((const char*)msgStruct.mac, 8);
-    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain))
+    int32_t tryVal;
+    if ((tryVal = trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain)) >= 0) {
         return decrypted;
+    }
 
     const DhPublicKey* DHRp = new Ec255PublicKey(msgStruct.ratchet);
     bool newRatchet = conv->getDHRr() == NULL || !(*DHRp == *(conv->getDHRr()));
@@ -436,10 +441,10 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
 
     if (!newRatchet) {
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
-        bool success = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
-        if (!success) {
+        int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
+        if (status < 0) {
             delete decrypted;
-            conv->setErrorCode(NOT_DECRYPTABLE);
+            conv->setErrorCode(status);
             return NULL;
         }
     }
@@ -463,12 +468,12 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         // compute the chain key starting with the puported chain key computed above
         stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &MK, &macKey);
 
-        bool success = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted, supplementsPlain);
-        if (!success) {
+        int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted, supplementsPlain);
+        if (status < 0) {
             conv->setDHRr(saveDHRr);
             delete DHRp;
             delete decrypted;
-            conv->setErrorCode(NOT_DECRYPTABLE);
+            conv->setErrorCode(status);
             return NULL;
         }
         conv->setRK(RKp);

@@ -19,7 +19,7 @@ namespace axolotl {
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
     static const int SYMMETRIC_KEY_LENGTH  = 32;      //!< Use 256 bit keys for symmetric crypto
 
-    static const int MK_STORE_TIME      = 2*86400;    //!< cleanup stored MKs after two days
+    static const int MK_STORE_TIME      = 100*86400;    //!< cleanup stored MKs after 100 days
 
     static const int NUM_PRE_KEYS          = 100;
     static const int MIN_NUM_PRE_KEYS      = 30;
@@ -45,7 +45,10 @@ namespace axolotl {
     static const int32_t OLD_MESSAGE  = -20;          //!< Old message received (already processed)
     static const int32_t CORRUPT_DATA = -21;          //!< Incoming data CORRUPT_DATA
     static const int32_t AXO_CONV_EXISTS = -22;       //!< Axolotl conversation exsists while tyring to setup new one
-
+    static const int32_t MAC_CHECK_FAILED = -23;      //!< HMAC check of encrypted message faild
+    static const int32_t MSG_PADDING_FAILED = -24;    //!< Incorrect padding of decrypted message
+    static const int32_t SUP_PADDING_FAILED = -25;    //!< Incorrect padding of decrypted supplemntary data
+    static const int32_t NO_STAGED_KEYS = -26;        //!< Not a real error, just to report that no staged keys available
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported
