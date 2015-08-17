@@ -175,6 +175,29 @@ static int32_t enableForeignKeys(sqlite3* db)
     return rc;
 }
 
+static bool checkForFieldInTable(sqlite3* dbp, const char* table, const char* field)
+{
+    sqlite3_stmt* stmt;
+
+    string pragma("PRAGMA table_info(");
+    pragma.append(table).append(")");
+
+    int32_t sqlCode = SQLITE_PREPARE(dbp, pragma.c_str(), -1, &stmt, NULL);
+    if (sqlCode != SQLITE_OK)
+        return false;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const unsigned char* fieldName = sqlite3_column_text(stmt, 1);
+        Log("++++ fieldname: %s", fieldName);
+        if (strcmp((const char*)fieldName, field) == 0) {
+            sqlite3_finalize(stmt);
+            return true;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return false;
+}
+
 AppRepository* AppRepository::instance_ = NULL;
 
 AppRepository* AppRepository::getStore()
@@ -235,11 +258,13 @@ int32_t AppRepository::updateDb(int32_t oldVersion, int32_t newVersion)
     sqlite3_stmt* stmt;
 
     if (oldVersion < 2) {
-        const char* addColumn = "ALTER TABLE attachmentStatus ADD partnerName VARCHAR;";
-        sqlCode_ = SQLITE_PREPARE(db, addColumn, -1, &stmt, NULL);
-        sqlCode_ = sqlite3_step(stmt);
-        if (sqlCode_ != SQLITE_DONE)
-            return sqlCode_;
+        if (!checkForFieldInTable(db, "attachmentStatus", "partnerName")) {
+            const char* addColumn = "ALTER TABLE attachmentStatus ADD partnerName VARCHAR;";
+            sqlCode_ = SQLITE_PREPARE(db, addColumn, -1, &stmt, NULL);
+            sqlCode_ = sqlite3_step(stmt);
+            if (sqlCode_ != SQLITE_DONE)
+                return sqlCode_;
+        }
         oldVersion = 2;
     }
     if (oldVersion != newVersion)
