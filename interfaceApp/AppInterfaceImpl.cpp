@@ -87,7 +87,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, 
     return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes);
 }
 
-vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes)
+vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, 
+                                                         const string& messageAttributes)
 {
 
     string recipient;
@@ -102,7 +103,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
     return sendMessageInternal(ownUser_, msgId, message, attachementDescriptor, messageAttributes);
 }
 
-static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, const string& msgEnvelope)
+static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, 
+                               const string& msgEnvelope, int32_t errorCode)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -114,6 +116,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "scClientDevId", senderScClientDevId.c_str());
     cJSON_AddStringToObject(details, "otherInfo", msgEnvelope.c_str());    // App may use this to retry after fixing the problem
     cJSON_AddStringToObject(details, "msgId", msgId.c_str());              // May help to diganose the issue
+    cJSON_AddNumberToObject(details, "errorCode", errorCode);
 
     char *out = cJSON_PrintUnformatted(root);
     string retVal(out);
@@ -161,7 +164,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
-        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope));
+        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope, errorCode_));
         return errorCode_;
     }
 
