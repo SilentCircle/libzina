@@ -49,6 +49,8 @@ namespace axolotl {
     static const int32_t MSG_PADDING_FAILED = -24;    //!< Incorrect padding of decrypted message
     static const int32_t SUP_PADDING_FAILED = -25;    //!< Incorrect padding of decrypted supplemntary data
     static const int32_t NO_STAGED_KEYS = -26;        //!< Not a real error, just to report that no staged keys available
+    static const int32_t RECEIVE_ID_WRONG = -27;      //!< Receiver's long term id key hash mismatch
+    static const int32_t SENDER_ID_WRONG = -28;       //!< Sender''s long term id key hash mismatch
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported

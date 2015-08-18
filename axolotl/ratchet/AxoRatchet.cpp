@@ -354,7 +354,27 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
     CKp->assign((const char*)mac, macLen);
 }
 
+static void computeIdHash(const string& id, string* idHash)
+{
+    uint8_t hash[SHA256_DIGEST_LENGTH];
 
+    sha256((uint8_t*)id.data(), id.size(), hash);
+    idHash->assign((const char*)hash, SHA256_DIGEST_LENGTH);
+}
+
+static int32_t compareHashes(pair<string, string>* idHashes, string& recvIdHash, string& senderIdHash)
+{
+    string id = idHashes->first;
+    if (id.compare(0, id.size(), recvIdHash, 0, id.size()) != 0) {
+        return RECEIVE_ID_WRONG;
+    }
+
+    id = idHashes->second;
+    if (id.compare(0, id.size(), senderIdHash, 0, id.size()) != 0) {
+        return SENDER_ID_WRONG;
+    }
+    return OK;
+}
 /*
 if (plaintext = try_skipped_header_and_message_keys()):
   return plaintext
@@ -386,7 +406,8 @@ commit_skipped_header_and_message_keys()
 Nr = Np + 1
 CKr = CKp
 return read()*/
-string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements, string* supplementsPlain)
+string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements, 
+                            string* supplementsPlain, pair<string, string>* idHashes)
 {
     ParsedMessage msgStruct;
     parseWireMsg(wire, &msgStruct);
@@ -396,31 +417,52 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         return NULL;
     }
 
+    int32_t result = OK;
+    string recvIdHash;
+
+    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+    if (localConv != NULL && idHashes != NULL) {
+        const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
+        computeIdHash(idPub, &recvIdHash);
+    }
+
     // This is a message with embedded pre-key and identity key. Need to setup the
     // Axolotl conversation first. According to the optimized pre-key handling this
     // client takes the Axolotl 'Bob' role.
     if (msgStruct.msgType == 2) {
         // We got a message with embedded pre-key, thus the partner fetched one of our pre-keys from
         // the server. Countdown available pre keys.
-        AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
         if (localConv != NULL) {
             int32_t numPreKeys = localConv->getPreKeysAvail();
             numPreKeys--;
             localConv->setPreKeysAvail(numPreKeys);
             localConv->storeConversation();
-            delete localConv;
         }
         const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
-        int32_t result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
-        if (result < 0)
-            return NULL;
+        result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
     }
+    delete localConv;
+    if (result < 0)
+        return NULL;
+
     // Check if conversation is really setup - identity key must be available in any case
     if (conv->getDHIr() == NULL) {
         conv->setErrorCode(SESSION_NOT_INITED);
         return NULL;
     }
+
+    if (idHashes != NULL) {
+        string senderIdHash;
+        const string idPub = conv->getDHIr()->getPublicKey();
+        computeIdHash(idPub, &senderIdHash);
+        result = compareHashes(idHashes, recvIdHash, senderIdHash);
+        if (result < 0) {
+            conv->setErrorCode(result);
+            return NULL;
+        }
+    }
+
     string encrypted((const char*)msgStruct.encryptedMsg, msgStruct.encryptedMsgLen);
     string* decrypted = new string();
 
@@ -515,11 +557,29 @@ return msg
  *
  * This implementation does not use header keys.
  */
-const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, const std::string& supplements, std::string* encryptedSupplements)
+const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements, 
+                                  string* encryptedSupplements, pair<string, string>* idHashes)
 {
     if (conv.getRK().empty()) {
         conv.setErrorCode(SESSION_NOT_INITED);
         return NULL;
+    }
+
+    if (idHashes != NULL) {
+        string senderIdHash;
+
+        AxoConversation* localConv = AxoConversation::loadLocalConversation(conv.getLocalUser());
+        if (localConv != NULL) {
+            const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
+            computeIdHash(idPub, &senderIdHash);
+            delete localConv;
+        }
+
+        string recvIdHash;
+        const string idPub = conv.getDHIr()->getPublicKey();
+        computeIdHash(idPub, &recvIdHash);
+        idHashes->first = recvIdHash;
+        idHashes->second = senderIdHash;
     }
 
     bool ratchetSave = conv.getRatchetFlag();

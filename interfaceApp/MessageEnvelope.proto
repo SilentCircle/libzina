@@ -9,4 +9,6 @@ message MessageEnvelope {
   optional bytes  supplement     = 4;
   optional bytes  message        = 5;
   optional string msgId          = 6;
+  optional bytes  recvIdHash     = 7;
+  optional bytes  senderIdHash   = 8;
 }

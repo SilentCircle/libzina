@@ -164,6 +164,30 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_msgid();
   inline void set_allocated_msgid(::std::string* msgid);
 
+  // optional bytes recvIdHash = 7;
+  inline bool has_recvidhash() const;
+  inline void clear_recvidhash();
+  static const int kRecvIdHashFieldNumber = 7;
+  inline const ::std::string& recvidhash() const;
+  inline void set_recvidhash(const ::std::string& value);
+  inline void set_recvidhash(const char* value);
+  inline void set_recvidhash(const void* value, size_t size);
+  inline ::std::string* mutable_recvidhash();
+  inline ::std::string* release_recvidhash();
+  inline void set_allocated_recvidhash(::std::string* recvidhash);
+
+  // optional bytes senderIdHash = 8;
+  inline bool has_senderidhash() const;
+  inline void clear_senderidhash();
+  static const int kSenderIdHashFieldNumber = 8;
+  inline const ::std::string& senderidhash() const;
+  inline void set_senderidhash(const ::std::string& value);
+  inline void set_senderidhash(const char* value);
+  inline void set_senderidhash(const void* value, size_t size);
+  inline ::std::string* mutable_senderidhash();
+  inline ::std::string* release_senderidhash();
+  inline void set_allocated_senderidhash(::std::string* senderidhash);
+
   // @@protoc_insertion_point(class_scope:axolotl.MessageEnvelope)
  private:
   inline void set_has_name();
@@ -178,6 +202,10 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline void clear_has_message();
   inline void set_has_msgid();
   inline void clear_has_msgid();
+  inline void set_has_recvidhash();
+  inline void clear_has_recvidhash();
+  inline void set_has_senderidhash();
+  inline void clear_has_senderidhash();
 
   ::std::string _unknown_fields_;
 
@@ -188,6 +216,8 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   ::std::string* supplement_;
   ::std::string* message_;
   ::std::string* msgid_;
+  ::std::string* recvidhash_;
+  ::std::string* senderidhash_;
   ::google::protobuf::uint32 device_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
@@ -609,6 +639,158 @@ inline void MessageEnvelope::set_allocated_msgid(::std::string* msgid) {
     msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.msgId)
+}
+
+// optional bytes recvIdHash = 7;
+inline bool MessageEnvelope::has_recvidhash() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void MessageEnvelope::set_has_recvidhash() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void MessageEnvelope::clear_has_recvidhash() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void MessageEnvelope::clear_recvidhash() {
+  if (recvidhash_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvidhash_->clear();
+  }
+  clear_has_recvidhash();
+}
+inline const ::std::string& MessageEnvelope::recvidhash() const {
+  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.recvIdHash)
+  return *recvidhash_;
+}
+inline void MessageEnvelope::set_recvidhash(const ::std::string& value) {
+  set_has_recvidhash();
+  if (recvidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvidhash_ = new ::std::string;
+  }
+  recvidhash_->assign(value);
+  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.recvIdHash)
+}
+inline void MessageEnvelope::set_recvidhash(const char* value) {
+  set_has_recvidhash();
+  if (recvidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvidhash_ = new ::std::string;
+  }
+  recvidhash_->assign(value);
+  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.recvIdHash)
+}
+inline void MessageEnvelope::set_recvidhash(const void* value, size_t size) {
+  set_has_recvidhash();
+  if (recvidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvidhash_ = new ::std::string;
+  }
+  recvidhash_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.recvIdHash)
+}
+inline ::std::string* MessageEnvelope::mutable_recvidhash() {
+  set_has_recvidhash();
+  if (recvidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvidhash_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.recvIdHash)
+  return recvidhash_;
+}
+inline ::std::string* MessageEnvelope::release_recvidhash() {
+  clear_has_recvidhash();
+  if (recvidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = recvidhash_;
+    recvidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void MessageEnvelope::set_allocated_recvidhash(::std::string* recvidhash) {
+  if (recvidhash_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete recvidhash_;
+  }
+  if (recvidhash) {
+    set_has_recvidhash();
+    recvidhash_ = recvidhash;
+  } else {
+    clear_has_recvidhash();
+    recvidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.recvIdHash)
+}
+
+// optional bytes senderIdHash = 8;
+inline bool MessageEnvelope::has_senderidhash() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void MessageEnvelope::set_has_senderidhash() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void MessageEnvelope::clear_has_senderidhash() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void MessageEnvelope::clear_senderidhash() {
+  if (senderidhash_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    senderidhash_->clear();
+  }
+  clear_has_senderidhash();
+}
+inline const ::std::string& MessageEnvelope::senderidhash() const {
+  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.senderIdHash)
+  return *senderidhash_;
+}
+inline void MessageEnvelope::set_senderidhash(const ::std::string& value) {
+  set_has_senderidhash();
+  if (senderidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    senderidhash_ = new ::std::string;
+  }
+  senderidhash_->assign(value);
+  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.senderIdHash)
+}
+inline void MessageEnvelope::set_senderidhash(const char* value) {
+  set_has_senderidhash();
+  if (senderidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    senderidhash_ = new ::std::string;
+  }
+  senderidhash_->assign(value);
+  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.senderIdHash)
+}
+inline void MessageEnvelope::set_senderidhash(const void* value, size_t size) {
+  set_has_senderidhash();
+  if (senderidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    senderidhash_ = new ::std::string;
+  }
+  senderidhash_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.senderIdHash)
+}
+inline ::std::string* MessageEnvelope::mutable_senderidhash() {
+  set_has_senderidhash();
+  if (senderidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    senderidhash_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.senderIdHash)
+  return senderidhash_;
+}
+inline ::std::string* MessageEnvelope::release_senderidhash() {
+  clear_has_senderidhash();
+  if (senderidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = senderidhash_;
+    senderidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void MessageEnvelope::set_allocated_senderidhash(::std::string* senderidhash) {
+  if (senderidhash_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete senderidhash_;
+  }
+  if (senderidhash) {
+    set_has_senderidhash();
+    senderidhash_ = senderidhash;
+  } else {
+    clear_has_senderidhash();
+    senderidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.senderIdHash)
 }
 
 

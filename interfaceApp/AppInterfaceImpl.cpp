@@ -145,7 +145,16 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
     const string& message = envelope.message();
     const string& msgId = envelope.msgid();
-
+    
+    pair<string, string> idHashes;
+    bool hasIdHashes = false;
+    if (envelope.has_recvidhash() && envelope.has_senderidhash()) {
+        hasIdHashes = true;
+        const string& recvIdHash = envelope.recvidhash();
+        const string& senderIdHash = envelope.senderidhash();
+        idHashes.first = recvIdHash;
+        idHashes.second = senderIdHash;
+    }
     convLock.Lock();
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
@@ -157,7 +166,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     string supplementsPlain;
     string* messagePlain;
 
-    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain);
+    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain, hasIdHashes ? &idHashes : NULL);
     errorCode_ = axoConv->getErrorCode();
     delete axoConv;
     convLock.Unlock();
@@ -534,11 +543,13 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         string supplementsEncrypted;
 
         // Encrypt the user's message and the supplementary data if necessary
-        const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
+        pair<string, string> idHashes;
+        const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted, &idHashes);
         axoConv->storeConversation();
         delete axoConv;
         if (wireMessage == NULL)
             continue;
+        bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
         /*
          * Create the message envelope:
          {
@@ -556,6 +567,10 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         if (!supplementsEncrypted.empty())
             envelope.set_supplement(supplementsEncrypted);
         envelope.set_message(*wireMessage);
+        if (hasIdHashes) {
+            envelope.set_recvidhash(idHashes.first.data(), 4);
+            envelope.set_senderidhash(idHashes.second.data(), 4);
+        }
         string serialized = envelope.SerializeAsString();
 
         // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
@@ -710,12 +725,14 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     string supplementsEncrypted;
 
     // Encrypt the user's message and the supplementary data if necessary
-    const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted);
+    pair<string, string> idHashes;
+    const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted, &idHashes);
     axoConv->storeConversation();
     delete axoConv;
 
     if (wireMessage == NULL)
         return 0;
+    bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
     /*
      * Create the message envelope:
      {
@@ -732,6 +749,10 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     if (!supplementsEncrypted.empty())
         envelope.set_supplement(supplementsEncrypted);
     envelope.set_message(*wireMessage);
+    if (hasIdHashes) {
+        envelope.set_recvidhash(idHashes.first.data(), 4);
+        envelope.set_senderidhash(idHashes.second.data(), 4);
+    }
     delete wireMessage;
 
     string serialized = envelope.SerializeAsString();

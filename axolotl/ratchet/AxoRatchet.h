@@ -27,9 +27,12 @@ public:
      * @param conv The Axolotl conversation
      * @param message The plaintext message bytes.
      * @param supplements Additional data for the message, will be encrypted with the message key
+     * @param idHashes The sender's and receiver's id hashes to send with the message, can be @c NULL if
+     *                 not required
      * @return An encrypted wire message, ready to send to the recipient+device tuple.
      */
-    static const string* encrypt(AxoConversation& conv, const string& message, const string& supplements, string* supplementsEncrypted);
+    static const string* encrypt(AxoConversation& conv, const string& message, const string& supplements, 
+                                 string* supplementsEncrypted, pair<string, string>* idHashes = NULL);
 
     /**
      * @brief Parse a wire message and decrypt the payload.
@@ -38,9 +41,12 @@ public:
      * @param wire The wire message.
      * @param supplements Encrypted additional data for the message
      * @param supplementsPlain Additional data for the message if available and decryption was successful.
+     * @param idHashes The sender's and receiver's id hashes contained in the message, can be @c NULL if
+     *                 not available
      * @return Plaintext or @c NULL if decryption failed
      */
-    static string* decrypt( axolotl::AxoConversation* conv, const string& wire, const string& supplements, string* supplementsPlain );
+    static string* decrypt( axolotl::AxoConversation* conv, const string& wire, const string& supplements, 
+                            string* supplementsPlain, pair<string, string>* idHashes = NULL);
 };
 }
 /**
