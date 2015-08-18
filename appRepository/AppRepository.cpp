@@ -236,9 +236,6 @@ int AppRepository::openStore(const std::string& name)
 
     enableForeignKeys(db);
 
-    if (createTables() != SQLITE_OK)
-        return sqlCode_;
-
     int32_t version = getUserVersion(db);
     if (version != 0) {
         beginTransaction();
@@ -248,17 +245,41 @@ int AppRepository::openStore(const std::string& name)
         }
         commitTransaction();
     }
+    else {
+        if (createTables() != SQLITE_OK)
+            return sqlCode_;
+    }
+
     setUserVersion(db, DB_VERSION);
     ready = true;
     return SQLITE_OK;
 }
+
+/* *****************************************************************************
+ * The SQLite master table.
+ *
+ * Used to check if we have valid attachmentStatus table.
+ */
+static const char *lookupTables = "SELECT name FROM sqlite_master WHERE type='table' AND name='attachmentStatus';";
 
 int32_t AppRepository::updateDb(int32_t oldVersion, int32_t newVersion) 
 {
     sqlite3_stmt* stmt;
 
     if (oldVersion < 2) {
-        if (!checkForFieldInTable(db, "attachmentStatus", "partnerName")) {
+        // check if attachmentStatus table is already available
+        SQLITE_PREPARE(db, lookupTables, -1, &stmt, NULL);
+        int32_t rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        if (rc != SQLITE_ROW) {
+            sqlCode_ = SQLITE_PREPARE(db, createAttachmentStatus, -1, &stmt, NULL);
+            sqlCode_ = sqlite3_step(stmt);
+            if (sqlCode_ != SQLITE_DONE)
+                return sqlCode_;
+        }
+        // If table exists check if we need to update it
+        else if (!checkForFieldInTable(db, "attachmentStatus", "partnerName")) {
             const char* addColumn = "ALTER TABLE attachmentStatus ADD partnerName VARCHAR;";
             sqlCode_ = SQLITE_PREPARE(db, addColumn, -1, &stmt, NULL);
             sqlCode_ = sqlite3_step(stmt);
@@ -330,7 +351,7 @@ int32_t AppRepository::storeConversation(const std::string& name, const std::str
     sqlite3_finalize(stmt);
 
     // "INSERT OR IGNORE INTO conversations (name, since, nextMsgNumber, state, data)"
-//     // "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5);";
+    // "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt,  1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_int64(stmt, 2, (int64_t)time(NULL)));
