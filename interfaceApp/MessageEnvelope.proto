@@ -11,4 +11,5 @@ message MessageEnvelope {
   optional string msgId          = 6;
   optional bytes  recvIdHash     = 7;
   optional bytes  senderIdHash   = 8;
+  optional string recvDeviceId   = 9;
 }

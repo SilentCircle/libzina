@@ -129,6 +129,9 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 }
 
 
+#define FIXED_TYPE1_OVERHEAD  (4 + 4 + 4 + 4 + 8)
+#define ADD_TYPE2_OVERHEAD    (4)
+
 static void createWireMessage(AxoConversation& conv, string& message, string& mac, string* wire)
 {
     // Determine the wire message type:
@@ -161,10 +164,10 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
        encryptedMsg: variable number of bytes
      */
     int32_t keyLength = EcCurveTypes::Curve25519KeyLength;  // fixed for curve 25519
-    int32_t msgLength = 4 + 4 + 4 + 4 + 8 + keyLength;   // at least a msg type, Ns, PNs, and message length
+    int32_t msgLength = FIXED_TYPE1_OVERHEAD + keyLength;   // at least a msg type, Ns, PNs, and message length
 
     if (msgType == 2) {
-        msgLength += 4 + keyLength + keyLength;          // add remote pre-key id, local generated pre-key, identity key
+        msgLength += ADD_TYPE2_OVERHEAD + keyLength + keyLength;          // add remote pre-key id, local generated pre-key, identity key
     }
     msgLength += message.size();
 
@@ -211,7 +214,7 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
 
 // Parse a wire message and setup a structure with data from and pointers into wire message.
 //
-static void parseWireMsg(const string& wire, ParsedMessage* msgStruct) 
+static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct) 
 {
 //    hexdump("parse wire", wire); Log("%s", hexBuffer);
 
@@ -221,6 +224,8 @@ static void parseWireMsg(const string& wire, ParsedMessage* msgStruct)
     int32_t intIndex = 0;
 
     int32_t keyDataLength = EcCurveTypes::Curve25519KeyLength;
+    size_t expectedLength = FIXED_TYPE1_OVERHEAD + keyDataLength;
+
     msgStruct->msgType = data[byteIndex++] & 0xff;
     msgStruct->curveType = data[byteIndex++] & 0xff;
     msgStruct->version = data[byteIndex++] & 0xff;
@@ -237,6 +242,7 @@ static void parseWireMsg(const string& wire, ParsedMessage* msgStruct)
     intIndex += 8/sizeof(int32_t); byteIndex += 8;
 
     if (msgStruct->msgType == 2) {
+        expectedLength += ADD_TYPE2_OVERHEAD + keyDataLength + keyDataLength;
         msgStruct->localPreKeyId = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(int32_t);
 
         msgStruct->remoteIdKey = &data[byteIndex];
@@ -256,6 +262,10 @@ static void parseWireMsg(const string& wire, ParsedMessage* msgStruct)
         msgStruct->encryptedMsg = NULL;
         msgStruct->encryptedMsgLen = 0;
     }
+    expectedLength += msgStruct->encryptedMsgLen;
+    if (expectedLength != wire.size())
+        return RECV_DATA_LENGTH;
+    return OK;
 }
 
 static int32_t decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
@@ -285,8 +295,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
         if (!checkAndRemovePadding(*supplementsPlain))
             return SUP_PADDING_FAILED;
     }
-
-    return 0;
+    return OK;
 }
 
 static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac, 
@@ -297,7 +306,7 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
     if (mks == NULL)
         return NO_STAGED_KEYS;
 
-    //    cerr << "try skipped message" << endl;
+//    cerr << "try skipped message" << endl;
     while (!mks->empty()) {
         string MKiv = mks->front();
         mks->pop_front();
@@ -306,13 +315,13 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
         if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) >= 0) {
 //            cerr << "try skipped message - true" << endl;
-            // TODO: clear MK - not needed anymore (memset)
+            memset_volatile((void*)MK.data(), 0, MK.size());
             conv->deleteStagedMk(MKiv);
             mks->clear();
             delete mks;
             return retVal;
         }
-    // TODO: clear MK - not needed anymore (memset)
+        memset_volatile((void*)MK.data(), 0, MK.size());
     }
 //    cerr << "try skipped message - false" << endl;
     mks->clear();
@@ -410,14 +419,19 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
                             string* supplementsPlain, pair<string, string>* idHashes)
 {
     ParsedMessage msgStruct;
-    parseWireMsg(wire, &msgStruct);
+    int32_t result = OK;
+
+    result = parseWireMsg(wire, &msgStruct);
 
     if (msgStruct.encryptedMsg == NULL) {
         conv->setErrorCode(CORRUPT_DATA);
         return NULL;
     }
+    if (result < 0) {
+        conv->setErrorCode(result);
+        return NULL;
+    }
 
-    int32_t result = OK;
     string recvIdHash;
 
     AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());

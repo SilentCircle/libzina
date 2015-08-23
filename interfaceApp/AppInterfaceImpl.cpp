@@ -145,7 +145,27 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
     const string& message = envelope.message();
     const string& msgId = envelope.msgid();
-    
+
+    string recvClientDevId;
+    if (envelope.has_recvdeviceid())
+        recvClientDevId = envelope.recvdeviceid();
+
+    bool wrongDeviceId = false; 
+    if (!recvClientDevId.empty()) {
+        wrongDeviceId = (!recvClientDevId.empty() && recvClientDevId.compare(scClientDevId_) != 0);
+        Log("Messge is for device id: %s, my device id: %s", recvClientDevId.c_str(), scClientDevId_.c_str());
+    }
+    uuid_t uu;
+    uuid_parse(msgId.c_str(), uu);
+    time_t msgTime = uuid_time(uu, NULL);
+    time_t currentTime = time(NULL);
+    time_t timeDiff = currentTime - msgTime;
+
+    bool oldMessage = (timeDiff > 0 && timeDiff >= MK_STORE_TIME);
+
+//     Log("Message send time: %d, current receiver time: %d, difference: %d, oldMessge: %s",
+//         msgTime, currentTime, timeDiff, oldMessage? "TRUE": "FALSE");
+
     pair<string, string> idHashes;
     bool hasIdHashes = false;
     if (envelope.has_recvidhash() && envelope.has_senderidhash()) {
@@ -173,6 +193,10 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
+        if (oldMessage)
+            errorInfo_ = OLD_MESSAGE;
+        if (wrongDeviceId)
+            errorInfo_ = WRONG_RECV_DEV_ID;
         messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope, errorCode_));
         return errorCode_;
     }
@@ -571,6 +595,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
             envelope.set_recvidhash(idHashes.first.data(), 4);
             envelope.set_senderidhash(idHashes.second.data(), 4);
         }
+        envelope.set_recvdeviceid(recipientDeviceId);
+
         string serialized = envelope.SerializeAsString();
 
         // We need to have them in b64 encoding, check if buffer is large enough. Allocate twice
@@ -753,6 +779,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         envelope.set_recvidhash(idHashes.first.data(), 4);
         envelope.set_senderidhash(idHashes.second.data(), 4);
     }
+    envelope.set_recvdeviceid(recipientDeviceId);
     delete wireMessage;
 
     string serialized = envelope.SerializeAsString();

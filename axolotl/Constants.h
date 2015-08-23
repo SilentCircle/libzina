@@ -42,7 +42,7 @@ namespace axolotl {
     static const int32_t NO_PRE_KEY_FOUND  = -17;     //!< No more pre-keys for user's devices
     static const int32_t NO_SESSION_USER  = -18;      //!< No session for this user found
     static const int32_t SESSION_NOT_INITED  = -19;   //!< Session not initialized
-    static const int32_t OLD_MESSAGE  = -20;          //!< Old message received (already processed)
+    static const int32_t OLD_MESSAGE  = -20;          //!< Message too old to decrypt
     static const int32_t CORRUPT_DATA = -21;          //!< Incoming data CORRUPT_DATA
     static const int32_t AXO_CONV_EXISTS = -22;       //!< Axolotl conversation exsists while tyring to setup new one
     static const int32_t MAC_CHECK_FAILED = -23;      //!< HMAC check of encrypted message faild
@@ -51,6 +51,8 @@ namespace axolotl {
     static const int32_t NO_STAGED_KEYS = -26;        //!< Not a real error, just to report that no staged keys available
     static const int32_t RECEIVE_ID_WRONG = -27;      //!< Receiver's long term id key hash mismatch
     static const int32_t SENDER_ID_WRONG = -28;       //!< Sender''s long term id key hash mismatch
+    static const int32_t RECV_DATA_LENGTH = -29;      //!< Expected length of data does not match received length
+    static const int32_t WRONG_RECV_DEV_ID = -30;     //!< Expected device id does not match actual device id
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported

@@ -673,11 +673,14 @@ cleanup:
 void SQLiteStoreConv::deleteStagedMk(time_t timestamp)
 {
     sqlite3_stmt *stmt;
+    int32_t cleaned;
     // removeStagedMkTime = "DELETE FROM stagedMk WHERE since < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeStagedMkTime, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
 
     sqlCode_= sqlite3_step(stmt);
+//    cleaned = sqlite3_changes(db);
+//    Log("Number of removed old MK: %d", cleaned);
     ERRMSG;
 
 cleanup:
