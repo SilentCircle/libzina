@@ -104,7 +104,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
 }
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, 
-                               const string& msgEnvelope, int32_t errorCode)
+                               const string& msgEnvelope, int32_t errorCode, const string& sentToId)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -117,6 +117,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "otherInfo", msgEnvelope.c_str());    // App may use this to retry after fixing the problem
     cJSON_AddStringToObject(details, "msgId", msgId.c_str());              // May help to diganose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
+    cJSON_AddStringToObject(details, "sentToId", errorCode == WRONG_RECV_DEV_ID ? sentToId.c_str() : "NA");
 
     char *out = cJSON_PrintUnformatted(root);
     string retVal(out);
@@ -146,14 +147,14 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     const string& message = envelope.message();
     const string& msgId = envelope.msgid();
 
-    string recvClientDevId;
+    string sentToId;
     if (envelope.has_recvdeviceid())
-        recvClientDevId = envelope.recvdeviceid();
+        sentToId = envelope.recvdeviceid();
 
     bool wrongDeviceId = false; 
-    if (!recvClientDevId.empty()) {
-        wrongDeviceId = (!recvClientDevId.empty() && recvClientDevId.compare(scClientDevId_) != 0);
-        Log("Messge is for device id: %s, my device id: %s", recvClientDevId.c_str(), scClientDevId_.c_str());
+    if (!sentToId.empty()) {
+        wrongDeviceId = (!sentToId.empty() && sentToId.compare(scClientDevId_) != 0);
+        Log("Messge is for device id: %s, my device id: %s", sentToId.c_str(), scClientDevId_.c_str());
     }
     uuid_t uu;
     uuid_parse(msgId.c_str(), uu);
@@ -197,7 +198,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
             errorInfo_ = OLD_MESSAGE;
         if (wrongDeviceId)
             errorInfo_ = WRONG_RECV_DEV_ID;
-        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope, errorCode_));
+        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope, errorCode_, sentToId));
         return errorCode_;
     }
 
