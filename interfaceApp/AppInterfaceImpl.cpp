@@ -153,8 +153,8 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 
     bool wrongDeviceId = false; 
     if (!sentToId.empty()) {
-        wrongDeviceId = (!sentToId.empty() && sentToId.compare(scClientDevId_) != 0);
-        Log("Messge is for device id: %s, my device id: %s", sentToId.c_str(), scClientDevId_.c_str());
+        wrongDeviceId = sentToId.compare(scClientDevId_) != 0;
+        Log("Messge is for device id: %s, my device id: %s (%s)", sentToId.c_str(), scClientDevId_.c_str(), wrongDeviceId?"True" : "False");
     }
     uuid_t uu;
     uuid_parse(msgId.c_str(), uu);
