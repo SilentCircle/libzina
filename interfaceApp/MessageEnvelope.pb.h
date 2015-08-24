@@ -200,6 +200,18 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_recvdeviceid();
   inline void set_allocated_recvdeviceid(::std::string* recvdeviceid);
 
+  // optional bytes recvDevIdBin = 10;
+  inline bool has_recvdevidbin() const;
+  inline void clear_recvdevidbin();
+  static const int kRecvDevIdBinFieldNumber = 10;
+  inline const ::std::string& recvdevidbin() const;
+  inline void set_recvdevidbin(const ::std::string& value);
+  inline void set_recvdevidbin(const char* value);
+  inline void set_recvdevidbin(const void* value, size_t size);
+  inline ::std::string* mutable_recvdevidbin();
+  inline ::std::string* release_recvdevidbin();
+  inline void set_allocated_recvdevidbin(::std::string* recvdevidbin);
+
   // @@protoc_insertion_point(class_scope:axolotl.MessageEnvelope)
  private:
   inline void set_has_name();
@@ -220,6 +232,8 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline void clear_has_senderidhash();
   inline void set_has_recvdeviceid();
   inline void clear_has_recvdeviceid();
+  inline void set_has_recvdevidbin();
+  inline void clear_has_recvdevidbin();
 
   ::std::string _unknown_fields_;
 
@@ -233,6 +247,7 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   ::std::string* recvidhash_;
   ::std::string* senderidhash_;
   ::std::string* recvdeviceid_;
+  ::std::string* recvdevidbin_;
   ::google::protobuf::uint32 device_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
@@ -882,6 +897,82 @@ inline void MessageEnvelope::set_allocated_recvdeviceid(::std::string* recvdevic
     recvdeviceid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.recvDeviceId)
+}
+
+// optional bytes recvDevIdBin = 10;
+inline bool MessageEnvelope::has_recvdevidbin() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void MessageEnvelope::set_has_recvdevidbin() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void MessageEnvelope::clear_has_recvdevidbin() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void MessageEnvelope::clear_recvdevidbin() {
+  if (recvdevidbin_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvdevidbin_->clear();
+  }
+  clear_has_recvdevidbin();
+}
+inline const ::std::string& MessageEnvelope::recvdevidbin() const {
+  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.recvDevIdBin)
+  return *recvdevidbin_;
+}
+inline void MessageEnvelope::set_recvdevidbin(const ::std::string& value) {
+  set_has_recvdevidbin();
+  if (recvdevidbin_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvdevidbin_ = new ::std::string;
+  }
+  recvdevidbin_->assign(value);
+  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.recvDevIdBin)
+}
+inline void MessageEnvelope::set_recvdevidbin(const char* value) {
+  set_has_recvdevidbin();
+  if (recvdevidbin_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvdevidbin_ = new ::std::string;
+  }
+  recvdevidbin_->assign(value);
+  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.recvDevIdBin)
+}
+inline void MessageEnvelope::set_recvdevidbin(const void* value, size_t size) {
+  set_has_recvdevidbin();
+  if (recvdevidbin_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvdevidbin_ = new ::std::string;
+  }
+  recvdevidbin_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.recvDevIdBin)
+}
+inline ::std::string* MessageEnvelope::mutable_recvdevidbin() {
+  set_has_recvdevidbin();
+  if (recvdevidbin_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    recvdevidbin_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.recvDevIdBin)
+  return recvdevidbin_;
+}
+inline ::std::string* MessageEnvelope::release_recvdevidbin() {
+  clear_has_recvdevidbin();
+  if (recvdevidbin_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = recvdevidbin_;
+    recvdevidbin_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void MessageEnvelope::set_allocated_recvdevidbin(::std::string* recvdevidbin) {
+  if (recvdevidbin_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete recvdevidbin_;
+  }
+  if (recvdevidbin) {
+    set_has_recvdevidbin();
+    recvdevidbin_ = recvdevidbin;
+  } else {
+    clear_has_recvdevidbin();
+    recvdevidbin_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.recvDevIdBin)
 }
 
 

@@ -1,5 +1,6 @@
 #include "../utilities.h"
 #include "../../util/cJSON.h"
+#include "../../util/b64helper.h"
 #include "scloud.h"
 #include "scloudPriv.h"
 
@@ -7,20 +8,6 @@
 static const char* kVersionStr      = "version";
 static const char* kKeySuiteStr     = "keySuite";
 static const char* kSymKeyStr       = "symkey";
-
-
-static void bin2hex(uint8_t* inBuf, size_t inLen, uint8_t* outBuf, size_t* outLen)
-{
-    static          char hexDigit[] = "0123456789ABCDEF";
-    register        int    i;
-    register        uint8_t* p = outBuf;
-
-    for (i = 0; i < inLen; i++) {
-        *p++  = hexDigit[ inBuf[i] >>4];
-        *p++ =  hexDigit[ inBuf[i]  &0xF];
-    }
-    *outLen = p-outBuf;
-}
 
 
 #define _base(x) ((x >= '0' && x <= '9') ? '0' : \
@@ -110,7 +97,7 @@ SCLError SCloudEncryptGetKeyBLOB(SCloudContextRef ctx, uint8_t **outData, size_t
     cJSON_AddNumberToObject(root, kKeySuiteStr, ctx->key.keySuite);
 
     // Convert the symmetric key and the initial IV and store it
-    bin2hex(ctx->key.symKey, ctx->key.symKeyLen + ctx->key.blockLength, (uint8_t*)tempBuf, &tempLen);
+    bin2hex(ctx->key.symKey, ctx->key.symKeyLen + ctx->key.blockLength, tempBuf, &tempLen);
     tempBuf[tempLen] = '\0';
     cJSON_AddStringToObject(root, kSymKeyStr, tempBuf);
 
@@ -142,7 +129,7 @@ SCLError SCloudEncryptGetSegmentBLOB(SCloudContextRef ctx, int segNum, uint8_t *
     cJSON_AddNumberToObject(root, kKeySuiteStr, ctx->key.keySuite);
 
     // Convert the symmetric key and the initial IV and store it
-    bin2hex(ctx->key.symKey, ctx->key.symKeyLen  + ctx->key.blockLength, (uint8_t*)tempBuf, &tempLen);
+    bin2hex(ctx->key.symKey, ctx->key.symKeyLen  + ctx->key.blockLength, tempBuf, &tempLen);
     tempBuf[tempLen] = '\0';
     cJSON_AddStringToObject(root, kSymKeyStr, tempBuf);
 

@@ -33,7 +33,7 @@ void Log(const char* format, ...);
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback):
                                    AppInterface(receiveCallback, stateReportCallback, notifyCallback), tempBuffer_(NULL), tempBufferSize_(0),
-                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), flags_(0)
+                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), flags_(0), ownChecked_(false)
 {
     store_ = SQLiteStoreConv::getStore();
 }
@@ -148,13 +148,20 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     const string& msgId = envelope.msgid();
 
     string sentToId;
-    if (envelope.has_recvdeviceid())
-        sentToId = envelope.recvdeviceid();
+    if (envelope.has_recvdevidbin())
+        sentToId = envelope.recvdevidbin();
 
     bool wrongDeviceId = false; 
     if (!sentToId.empty()) {
-        wrongDeviceId = sentToId.compare(scClientDevId_) != 0;
-        Log("Messge is for device id: %s, my device id: %s (%s)", sentToId.c_str(), scClientDevId_.c_str(), wrongDeviceId?"True" : "False");
+        uint8_t binDevId[20];
+        int32_t res = hex2bin(scClientDevId_.c_str(), binDevId);
+
+        wrongDeviceId = memcmp((void*)sentToId.data(), binDevId, sentToId.size()) != 0;
+
+        char recv[16] = {0};
+        size_t len;
+        bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), recv, &len);
+        Log("Messge is for device id: %s, my device id: %s (%s)", recv, scClientDevId_.c_str(), wrongDeviceId? "True" : "False");
     }
     uuid_t uu;
     uuid_parse(msgId.c_str(), uu);
@@ -195,9 +202,9 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
         if (oldMessage)
-            errorInfo_ = OLD_MESSAGE;
+            errorCode_ = OLD_MESSAGE;
         if (wrongDeviceId)
-            errorInfo_ = WRONG_RECV_DEV_ID;
+            errorCode_ = WRONG_RECV_DEV_ID;
         messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope, errorCode_, sentToId));
         return errorCode_;
     }
@@ -512,6 +519,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 {
     // We got a message with embedded pre-key, thus the partner fetched one of our pre-keys from
     // the server. Countdown available pre keys.
+    errorCode_ = OK;
     AxoConversation* localConv = AxoConversation::loadLocalConversation(ownUser_);
     if (localConv != NULL) {
         int32_t numPreKeys = localConv->getPreKeysAvail();
@@ -526,6 +534,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         }
         delete localConv;
     }
+    bool toSibling = recipient == ownUser_;
 
     list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
     int32_t numDevices = devices->size();
@@ -539,8 +548,6 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         delete msgPairs;
         return returnMsgIds;
     }
-
-    bool toSibling = recipient == ownUser_;
 
     string supplements;
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
@@ -596,7 +603,12 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
             envelope.set_recvidhash(idHashes.first.data(), 4);
             envelope.set_senderidhash(idHashes.second.data(), 4);
         }
-        envelope.set_recvdeviceid(recipientDeviceId);
+
+        uint8_t binDevId[20];
+        int32_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
+        if (res >= 0)
+            envelope.set_recvdevidbin(binDevId, 4);
+//        envelope.set_recvdeviceid(recipientDeviceId);
 
         string serialized = envelope.SerializeAsString();
 
@@ -634,15 +646,18 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
     string supplements;
     createSupplementString(attachementDescriptor, messageAttributes, &supplements);
 
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(recipient, authorization_);
+    bool toSibling = recipient == ownUser_;
+
+    list<pair<string, string> >* devices = NULL;
+    if (!toSibling || !ownChecked_) {
+        devices = Provisioning::getAxoDeviceIds(recipient, authorization_);
+    }
     if (devices == NULL || devices->empty()) {
         errorCode_ = NO_DEVS_FOUND;
         errorInfo_ = recipient;
         delete devices;
         return NULL;
     }
-
-    bool toSibling = recipient == ownUser_;
 
     // Prepare the messages for all known devices of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
@@ -677,8 +692,13 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
 
     if (msgPairs->empty()) {
         delete msgPairs;
-        errorCode_ = NO_PRE_KEY_FOUND;
-        errorInfo_ = recipient;
+        if (!toSibling) {
+            errorCode_ = NO_PRE_KEY_FOUND;
+            errorInfo_ = recipient;
+        }
+        else {
+            ownChecked_ = true;
+        }
         return NULL;
     }
     return msgPairs;
@@ -780,7 +800,12 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         envelope.set_recvidhash(idHashes.first.data(), 4);
         envelope.set_senderidhash(idHashes.second.data(), 4);
     }
-    envelope.set_recvdeviceid(recipientDeviceId);
+
+    uint8_t binDevId[20];
+    int32_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
+    if (res >= 0)
+        envelope.set_recvdevidbin(binDevId, 4);
+//    envelope.set_recvdeviceid(recipientDeviceId);
     delete wireMessage;
 
     string serialized = envelope.SerializeAsString();

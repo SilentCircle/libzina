@@ -30,7 +30,7 @@ public:
     AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
     AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
                     AppInterface(), tempBuffer_(NULL), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), 
-                    store_(store), transport_(NULL) {}
+                    store_(store), transport_(NULL), ownChecked_(false) {}
 #endif
     AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
                      RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback);
@@ -147,6 +147,10 @@ private:
     SQLiteStoreConv* store_;
     Transport* transport_;
     int32_t flags_;
+    // If this is true then we checked own device and see only one device for
+    // this account. If another device registeres for this account it sends out
+    // a sync message, the client receives this and we have a second device
+    bool ownChecked_;
 };
 } // namespace
 

@@ -162,3 +162,41 @@ static int base64decode (const char *in, size_t inLen, unsigned char *out, size_
     *outLen = len; /* modify to reflect the actual output size */
     return 0;
 }
+
+static int32_t char2int(char input)
+{
+  if(input >= '0' && input <= '9')
+    return input - '0';
+  if(input >= 'A' && input <= 'F')
+    return input - 'A' + 10;
+  if(input >= 'a' && input <= 'f')
+    return input - 'a' + 10;
+  return -1;
+}
+
+void bin2hex(const uint8_t* inBuf, size_t inLen, char* outBuf, size_t* outLen)
+{
+    static char hexDigit[] = "0123456789ABCDEF";
+    int32_t i;
+    char* p = outBuf;
+
+    for (i = 0; i < inLen; i++) {
+        *p++  = hexDigit[inBuf[i] >>4];
+        *p++ =  hexDigit[inBuf[i]  &0xF];
+    }
+    *outLen = p-outBuf;
+}
+
+
+int32_t hex2bin(const char* src, uint8_t* target)
+{
+    while (*src && src[1]) {
+        int32_t dh = char2int(*src);
+        int32_t dl = char2int(src[1]);
+        if (dh == -1 || dl == -1)
+            return -1;
+        *(target++) = dh << 4 | (dl & 0xf);
+        src += 2;
+    }
+    return 0;
+}

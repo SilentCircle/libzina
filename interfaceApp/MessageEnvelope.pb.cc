@@ -63,6 +63,7 @@ const int MessageEnvelope::kMsgIdFieldNumber;
 const int MessageEnvelope::kRecvIdHashFieldNumber;
 const int MessageEnvelope::kSenderIdHashFieldNumber;
 const int MessageEnvelope::kRecvDeviceIdFieldNumber;
+const int MessageEnvelope::kRecvDevIdBinFieldNumber;
 #endif  // !_MSC_VER
 
 MessageEnvelope::MessageEnvelope()
@@ -93,6 +94,7 @@ void MessageEnvelope::SharedCtor() {
   recvidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   senderidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   recvdeviceid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  recvdevidbin_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -125,6 +127,9 @@ void MessageEnvelope::SharedDtor() {
   }
   if (recvdeviceid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete recvdeviceid_;
+  }
+  if (recvdevidbin_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete recvdevidbin_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -193,9 +198,16 @@ void MessageEnvelope::Clear() {
       }
     }
   }
-  if (has_recvdeviceid()) {
-    if (recvdeviceid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      recvdeviceid_->clear();
+  if (_has_bits_[8 / 32] & 768) {
+    if (has_recvdeviceid()) {
+      if (recvdeviceid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        recvdeviceid_->clear();
+      }
+    }
+    if (has_recvdevidbin()) {
+      if (recvdevidbin_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        recvdevidbin_->clear();
+      }
     }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -330,6 +342,19 @@ bool MessageEnvelope::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(82)) goto parse_recvDevIdBin;
+        break;
+      }
+
+      // optional bytes recvDevIdBin = 10;
+      case 10: {
+        if (tag == 82) {
+         parse_recvDevIdBin:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
+                input, this->mutable_recvdevidbin()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -412,6 +437,12 @@ void MessageEnvelope::SerializeWithCachedSizes(
       9, this->recvdeviceid(), output);
   }
 
+  // optional bytes recvDevIdBin = 10;
+  if (has_recvdevidbin()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
+      10, this->recvdevidbin(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:axolotl.MessageEnvelope)
@@ -486,6 +517,13 @@ int MessageEnvelope::ByteSize() const {
           this->recvdeviceid());
     }
 
+    // optional bytes recvDevIdBin = 10;
+    if (has_recvdevidbin()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::BytesSize(
+          this->recvdevidbin());
+    }
+
   }
   total_size += unknown_fields().size();
 
@@ -532,6 +570,9 @@ void MessageEnvelope::MergeFrom(const MessageEnvelope& from) {
     if (from.has_recvdeviceid()) {
       set_recvdeviceid(from.recvdeviceid());
     }
+    if (from.has_recvdevidbin()) {
+      set_recvdevidbin(from.recvdevidbin());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -558,6 +599,7 @@ void MessageEnvelope::Swap(MessageEnvelope* other) {
     std::swap(recvidhash_, other->recvidhash_);
     std::swap(senderidhash_, other->senderidhash_);
     std::swap(recvdeviceid_, other->recvdeviceid_);
+    std::swap(recvdevidbin_, other->recvdevidbin_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
