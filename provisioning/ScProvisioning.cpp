@@ -176,7 +176,7 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
 
     cJSON* root = cJSON_Parse(response.c_str());
     if (root == NULL)
-        return 1;
+        return -1;
 
     cJSON* axolotl = cJSON_GetObjectItem(root, "axolotl");
     if (axolotl == NULL) {
