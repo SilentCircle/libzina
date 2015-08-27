@@ -76,12 +76,10 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
         return;
 
     string name = info.substr(0, found);
-    Log("name before domain check: %s", name.c_str());
     size_t foundAt = name.find('@');
     if (foundAt != string::npos) {
         name = name.substr(0, foundAt);
     }
-    Log("name after domain check: %s", name.c_str());
 
     string devIds = info.substr(found + 1);
     string devIdsSave(devIds);
