@@ -611,6 +611,7 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
 
                  default:
                      err = kSCLError_UnknownError;
+                     CKERR;
                      break;
              }
          }
