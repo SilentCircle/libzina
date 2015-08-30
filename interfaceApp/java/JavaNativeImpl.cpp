@@ -663,6 +663,7 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
         idKeys->pop_front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
     }
     delete idKeys;
     return retArray;
@@ -1068,6 +1069,7 @@ JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
         convNames->pop_front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
     }
     return retArray;
 }
@@ -1213,6 +1215,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
         events.pop_front();
         jbyteArray retData = stringToArray(env, *s);
         env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
         delete s;
     }
     setReturnCode(env, code, result, msgNumber);
@@ -1365,6 +1368,7 @@ JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
         objects.pop_front();
         jbyteArray retData = stringToArray(env, *s);
         env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
         delete s;
     }
     setReturnCode(env, code, result);
@@ -1492,6 +1496,7 @@ JNI_FUNCTION(loadMsgsIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint s
         msgIds.pop_front();
         jstring stringData = env->NewStringUTF(s.c_str());
         env->SetObjectArrayElement(retArray, index++, stringData);
+        env->DeleteLocalRef(stringData);
     }
     setReturnCode(env, code, result);
     return retArray;
@@ -1706,9 +1711,9 @@ JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudEncryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
 {
     SCLError err;
-    
+
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
-    
+
     size_t required = SCloudEncryptBufferSize(scCtxEnc);
     jbyteArray data = env->NewByteArray(required);
     if (data == NULL) {
@@ -1738,7 +1743,7 @@ JNI_FUNCTION(cloudDecryptNew) (JNIEnv* env, jclass clazz, jbyteArray key, jintAr
     string keyIn;
     if (!arrayToString(env, key, &keyIn))
         return 0L;
-    
+
     err = SCloudDecryptNew((uint8_t*)keyIn.data(), keyIn.size(), NULL, NULL, &scCtxDec);
     jlong retval = (jlong)scCtxDec;
     return retval;

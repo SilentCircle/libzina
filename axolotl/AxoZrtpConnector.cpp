@@ -255,7 +255,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     AxoConversation* remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
 
     if (remote == NULL) {
-        Log("Remote conversation for user %s (%s) not found", remoteName.c_str(), deviceId.c_str());
+//        Log("Remote conversation for user %s (%s) not found", remoteName.c_str(), deviceId.c_str());
         return;
     }
     const DhPublicKey* remoteId = remote->getDHIr();
