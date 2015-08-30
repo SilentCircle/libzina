@@ -39,7 +39,7 @@ namespace axolotl {
     static const int32_t NO_OWN_ID  = -14;            //!< Found no own identity for registration
     static const int32_t JS_FIELD_MISSING  = -15;     //!< Missing a required JSON field
     static const int32_t NO_DEVS_FOUND  = -16;        //!< No registered Axolotl devices found for a user
-    static const int32_t NO_PRE_KEY_FOUND  = -17;     //!< No more pre-keys for user's devices
+    static const int32_t NO_PRE_KEY_FOUND  = -17;     //!< Offered pre-key not found - unknown pre-key id
     static const int32_t NO_SESSION_USER  = -18;      //!< No session for this user found
     static const int32_t SESSION_NOT_INITED  = -19;   //!< Session not initialized
     static const int32_t OLD_MESSAGE  = -20;          //!< Message too old to decrypt

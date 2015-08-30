@@ -158,8 +158,9 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
        mac:       8 byte mac, truncated hmac256 of encrypted message
        if msgType == 2
            4 byte integer (network order) remote pre-key id
-           32 byte identity key
-           32 byte local, generated pre-key
+           32 byte Alice's identity key
+           32 byte Alice's local, generated pre-key
+
        encrytedMsgLen: 4 byte integer (network order), encrypted message length
        encryptedMsg: variable number of bytes
      */
@@ -299,7 +300,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
 }
 
 static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac, 
-                                  string* plaintext, string *supplementsPlain)
+                                     string* plaintext, string *supplementsPlain)
 {
     int32_t retVal = 0;
     list<string>* mks = conv->loadStagedMks();
@@ -516,7 +517,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         conv->setDHRr(DHRp);
 
         // RKp, CKp = KDF( HMAC-HASH(RK, DH(DHRp, DHRs)) )
-        //With the new ratchet key derive the purported RK and CKr
+        // With the new ratchet key derive the purported RK and CKr
         deriveRkCk(*conv, &RKp, &CKp);
 
         // With a new ratchet the message nr starts at zero, however we may have missed
