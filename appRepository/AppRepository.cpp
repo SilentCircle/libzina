@@ -188,7 +188,6 @@ static bool checkForFieldInTable(sqlite3* dbp, const char* table, const char* fi
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         const unsigned char* fieldName = sqlite3_column_text(stmt, 1);
-        Log("++++ fieldname: %s", fieldName);
         if (strcmp((const char*)fieldName, field) == 0) {
             sqlite3_finalize(stmt);
             return true;

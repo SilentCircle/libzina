@@ -379,7 +379,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return The serialized data of the conversation data structure, {@code null} if no
      *         such conversation
      */
-    public static native byte[] loadConversation(byte[]name, int[] code);
+    public synchronized static native byte[] loadConversation(byte[]name, int[] code);
 
     /**
      * Delete a conversation.

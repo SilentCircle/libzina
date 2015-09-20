@@ -117,7 +117,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "otherInfo", msgEnvelope.c_str());    // App may use this to retry after fixing the problem
     cJSON_AddStringToObject(details, "msgId", msgId.c_str());              // May help to diganose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
-    cJSON_AddStringToObject(details, "sentToId", errorCode == WRONG_RECV_DEV_ID ? sentToId.c_str() : "NA");
+    cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
 
     char *out = cJSON_PrintUnformatted(root);
     string retVal(out);
