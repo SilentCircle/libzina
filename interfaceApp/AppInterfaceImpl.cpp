@@ -357,8 +357,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
 
     // Update number of avaialble pre-keys on server
     int32_t size = preList->size();
-    int32_t numPreKeys = ownConv->getPreKeysAvail() + size;
-    ownConv->setPreKeysAvail(numPreKeys);
+    ownConv->setPreKeysAvail(size);
     ownConv->storeConversation();
     delete ownConv;
 
