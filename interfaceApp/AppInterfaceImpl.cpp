@@ -104,7 +104,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
 }
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, 
-                               const string& msgEnvelope, int32_t errorCode, const string& sentToId)
+                               const char* msgHex, int32_t errorCode, const string& sentToId)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -114,8 +114,8 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
 
     cJSON_AddStringToObject(details, "name", sender.c_str());
     cJSON_AddStringToObject(details, "scClientDevId", senderScClientDevId.c_str());
-    cJSON_AddStringToObject(details, "otherInfo", msgEnvelope.c_str());    // App may use this to retry after fixing the problem
-    cJSON_AddStringToObject(details, "msgId", msgId.c_str());              // May help to diganose the issue
+    cJSON_AddStringToObject(details, "otherInfo", msgHex);            // App may use this to retry after fixing the problem
+    cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diganose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
     cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
 
@@ -201,11 +201,16 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
+        char b2hexBuffer[1004] = {0};
+        
         if (oldMessage)
             errorCode_ = OLD_MESSAGE;
         if (wrongDeviceId)
             errorCode_ = WRONG_RECV_DEV_ID;
-        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, messageEnvelope, errorCode_, sentToId));
+        size_t msgLen = min(message.size(), (size_t)500);
+        size_t outLen;
+        bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
+        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
         return errorCode_;
     }
 

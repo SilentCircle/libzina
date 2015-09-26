@@ -71,6 +71,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
      *     NOTE: the notifyCallback function in app should return ASAP, queue/trigger actions only
      *   - done
      */
+
     size_t found = info.find(':');
     if (found == string::npos)        // No colon? No name -> return
         return;
@@ -89,18 +90,28 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
     bool newDevice = false;
+    int32_t numReportedDevices = 0;
     while ((pos = devIds.find(';')) != string::npos) {
         devId = devIds.substr(0, pos);
         devIds.erase(0, pos + 1);
         if (Zeros.compare(0, devId.size(), devId) == 0) {
             continue;
         }
+        numReportedDevices++;
         if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
             newDevice = true;
             break;
         }
     }
-    if (newDevice)
+    list<string>* devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
+    int32_t numKnownDevices = devicesDb->size();
+    delete devicesDb;
+
+//    Log("++++ number of devices: reported: %d, known: %d", numReportedDevices, numKnownDevices);
+
+    if (newDevice /*|| numKnownDevices != numReportedDevices*/) {
+//        Log("++++ calling notify callback");
         appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
+    }
 }
 
