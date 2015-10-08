@@ -884,10 +884,11 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
         Log("Removing Axolotl conversation data for '%s'\n", dataContainer.c_str());
 
         SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-        store->deleteConversationsName(dataContainer, axoAppInterface->getOwnUser());
+        int32_t sqlResult = 0;
+        store->deleteConversationsName(dataContainer, axoAppInterface->getOwnUser(), &sqlResult);
 
-        Log("Removing Axolotl conversation data for '%s' returned %d\n", dataContainer.c_str(), store->getSqlCode());
-        if (SQL_FAIL(store->getSqlCode())) {
+        Log("Removing Axolotl conversation data for '%s' returned %d\n", dataContainer.c_str(), sqlResult);
+        if (SQL_FAIL(sqlResult)) {
             jstring result = env->NewStringUTF(store->getLastError());
         }
         else {

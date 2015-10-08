@@ -6,6 +6,7 @@
 #include <cryptcommon/ZrtpRandom.h>
 #include <cryptcommon/aescpp.h>
 
+#include <common/Thread.h>
 
 /* *****************************************************************************
  * A few helping macros. 
@@ -25,8 +26,8 @@
                           "SQLite3 error: %s, line: %d, error message: %s\n", __FILE__, __LINE__, sqlite3_errmsg(db));}
 
 #define SQLITE_CHK(func) {          \
-        sqlCode_ = (func);          \
-        if(sqlCode_ != SQLITE_OK) { \
+        sqlResult = (func);          \
+        if(sqlResult != SQLITE_OK) { \
             ERRMSG;                 \
             goto cleanup;           \
         }                           \
@@ -41,6 +42,8 @@
 #endif
 
 #define DB_VERSION 2
+
+static CMutexClass sqlLock;
 
 void Log(const char* format, ...);
 
@@ -201,9 +204,11 @@ AppRepository* AppRepository::instance_ = NULL;
 
 AppRepository* AppRepository::getStore()
 {
+    sqlLock.Lock();
     if (instance_ == NULL) {
         instance_ = new AppRepository();
     }
+    sqlLock.Unlock();
     return instance_;
 }
 
@@ -219,12 +224,19 @@ AppRepository::~AppRepository()
 
 int AppRepository::openStore(const std::string& name)
 {
+    sqlLock.Lock();
+    if (ready) {
+        sqlLock.Unlock();
+        return SQLITE_OK;
+    }
+
     // If name has size 0 then open im-memory DB, handy for testing
     const char *dbName = name.size() == 0 ? ":memory:" : name.c_str();
     sqlCode_ = sqlite3_open_v2(dbName, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
 
     if (sqlCode_) {
         ERRMSG;
+        sqlLock.Unlock();
         return(sqlCode_);
     }
     if (keyData_ != NULL)
@@ -240,17 +252,21 @@ int AppRepository::openStore(const std::string& name)
         beginTransaction();
         if (updateDb(version, DB_VERSION) != SQLITE_OK) {
             sqlite3_close(db);
+            sqlLock.Unlock();
             return SQLITE_ERROR;
         }
         commitTransaction();
     }
     else {
-        if (createTables() != SQLITE_OK)
+        if (createTables() != SQLITE_OK) {
+            sqlLock.Unlock();
             return sqlCode_;
+        }
     }
 
     setUserVersion(db, DB_VERSION);
     ready = true;
+    sqlLock.Unlock();
     return SQLITE_OK;
 }
 
@@ -336,17 +352,17 @@ cleanup:
 
 }
 
-int32_t AppRepository::storeConversation(const std::string& name, const std::string& conversation)
+int32_t AppRepository::storeConversation(const string& name, const string& conversation)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // "UPDATE conversations SET data=?1 WHERE name=?2;
     SQLITE_CHK(SQLITE_PREPARE(db, updateConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 1, conversation.data(), conversation.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
-    ERRMSG;
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
     // "INSERT OR IGNORE INTO conversations (name, since, nextMsgNumber, state, data)"
@@ -357,83 +373,89 @@ int32_t AppRepository::storeConversation(const std::string& name, const std::str
     SQLITE_CHK(sqlite3_bind_int(stmt,   3, 1));    // Initialize next message counter with 1
     SQLITE_CHK(sqlite3_bind_int(stmt,   4, 0));    // No state yet
     SQLITE_CHK(sqlite3_bind_blob(stmt,  5, conversation.data(), conversation.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-int32_t AppRepository::loadConversation(const std::string& name, std::string* conversation) const
+int32_t AppRepository::loadConversation(const string& name, string* conversation) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
+    int32_t sqlResult;
 
     // SELECT data FROM conversations WHERE name=?1;
     SQLITE_CHK(SQLITE_PREPARE(db, selectConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {        // No such conversation
-        sqlite3_finalize(stmt);
-        return sqlCode_;
+    if (sqlResult == SQLITE_ROW) {        // Found a conversation
+        // Get the conversation data
+        len = sqlite3_column_bytes(stmt, 0);
+        conversation->assign((const char*)sqlite3_column_blob(stmt, 0), len);
     }
-
-    // Get the conversation data
-    len = sqlite3_column_bytes(stmt, 0);
-    conversation->assign((const char*)sqlite3_column_blob(stmt, 0), len);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
-
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-bool AppRepository::existConversation(const std::string& name)
+bool AppRepository::existConversation(const string& name, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    bool retVal = false;
 
     // SELECT data FROM conversations WHERE name LIKE ?1;
     SQLITE_CHK(SQLITE_PREPARE(db, selectConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    sqlite3_finalize(stmt);
-    return (sqlCode_ == SQLITE_ROW);
+    retVal = (sqlResult == SQLITE_ROW);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return false;
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return retVal;
 }
 
-int32_t AppRepository::deleteConversation(const std::string& name)
+int32_t AppRepository::deleteConversation(const string& name)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // DELETE FROM conversations WHERE name=?1;
     SQLITE_CHK(SQLITE_PREPARE(db, deleteConversationSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1,name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-list<string>* AppRepository::listConversations() const
+list<string>* AppRepository::listConversations(int32_t* sqlCode) const
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
     list<string>* result = new list<string>;
 
     // selectConversationNames = "SELECT name FROM conversations;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectConversationNames, -1, &stmt, NULL));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         string data((const char*)sqlite3_column_text(stmt, 0));
         result->push_back(data);
     }
@@ -443,21 +465,25 @@ list<string>* AppRepository::listConversations() const
 cleanup:
     delete result;
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
     return NULL;
 }
 
 
 static const char* selectMsgNumber = "SELECT nextMsgNumber FROM conversations WHERE name =?1;";
-int32_t AppRepository::getHighestMsgNum(const std::string& name) const
+int32_t AppRepository::getHighestMsgNum(const string& name) const
 {
     sqlite3_stmt *stmt;
     int32_t number;
+    int32_t sqlResult;
 
     SQLITE_CHK(SQLITE_PREPARE(db, selectMsgNumber, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
 
-    if (sqlCode_ != SQLITE_ROW) {
+    if (sqlResult != SQLITE_ROW) {
         sqlite3_finalize(stmt);
         return -1;
     }
@@ -470,10 +496,11 @@ cleanup:
     return -1;
 }
 
-int32_t AppRepository::insertEvent(const std::string& name, const std::string& eventId, const std::string& event)
+int32_t AppRepository::insertEvent(const string& name, const string& eventId, const string& event)
 {
     sqlite3_stmt *stmt;
     int32_t msgNumber;
+    int32_t sqlResult;
 
     if (existEvent(name, eventId))
         return updateEvent(name, eventId, event);
@@ -490,9 +517,9 @@ int32_t AppRepository::insertEvent(const std::string& name, const std::string& e
     SQLITE_CHK(sqlite3_bind_int(stmt,   4, 0));         // No state yet
     SQLITE_CHK(sqlite3_bind_blob(stmt,  5, event.data(), event.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  6, name.data(), name.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_DONE) {
+    if (sqlResult != SQLITE_DONE) {
         rollbackTransaction();
     }
     else {
@@ -501,103 +528,111 @@ int32_t AppRepository::insertEvent(const std::string& name, const std::string& e
 
 cleanup:
     sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
     return sqlCode_;
 }
 
-int32_t AppRepository::updateEvent(const std::string& name, const std::string& eventId, const std::string& event)
+int32_t AppRepository::updateEvent(const string& name, const string& eventId, const string& event)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // updateEventSql = "UPDATE events SET data=?1 WHERE eventid=?2 AND convName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, updateEventSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt,  1, event.data(), event.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  2, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  3, name.data(), name.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 
 }
 
-int32_t AppRepository::loadEvent(const std::string& name, const std::string& eventId, std::string* event, int32_t *msgNumber) const
+int32_t AppRepository::loadEvent(const string& name, const string& eventId, string* event, int32_t *msgNumber) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
+    int32_t sqlResult;
 
     // selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 and convName=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectEvent, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {
-        sqlite3_finalize(stmt);
-        return sqlCode_;
+    if (sqlResult == SQLITE_ROW) {
+        // Get the conversation data
+        len = sqlite3_column_bytes(stmt, 0);
+        event->assign((const char*)sqlite3_column_blob(stmt, 0), len);
+        *msgNumber = sqlite3_column_int(stmt, 1);
     }
-    // Get the conversation data
-    len = sqlite3_column_bytes(stmt, 0);
-    event->assign((const char*)sqlite3_column_blob(stmt, 0), len);
-    *msgNumber = sqlite3_column_int(stmt, 1);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::loadEventWithMsgId(const string& eventId,  string* event)
 {
     sqlite3_stmt *stmt;
     int32_t len;
+    int32_t sqlResult;
 
     // selectEventWithId = "SELECT data FROM events WHERE eventid=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectEventWithId, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {
-        sqlite3_finalize(stmt);
-        return sqlCode_;
+    if (sqlResult == SQLITE_ROW) {
+        // Get the conversation data
+        len = sqlite3_column_bytes(stmt, 0);
+        event->assign((const char*)sqlite3_column_blob(stmt, 0), len);
     }
-    // Get the conversation data
-    len = sqlite3_column_bytes(stmt, 0);
-    event->assign((const char*)sqlite3_column_blob(stmt, 0), len);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-bool AppRepository::existEvent(const std::string& name, const std::string& eventId)
+bool AppRepository::existEvent(const string& name, const string& eventId, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    bool retVal = false;
 
     // "SELECT data FROM events WHERE eventid=?1 and convName=?2;"
     SQLITE_CHK(SQLITE_PREPARE(db, selectEvent, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    sqlite3_finalize(stmt);
-    return (sqlCode_ == SQLITE_ROW);
+    retVal = (sqlResult == SQLITE_ROW);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return false;
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return retVal;
 }
 
 static const char* selectEventAllDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 ORDER by msgNumber DESC;";
 static const char* selectEventLimitDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber>=?2 ORDER BY msgNumber DESC LIMIT ?3;";
 static const char* selectEventBetweenDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber BETWEEN ?2 AND ?3 ORDER BY msgNumber DESC;";
 
-int32_t AppRepository::loadEvents(const std::string& name, uint32_t offset, int32_t number, std::list<std::string*>* events, int32_t *lastMsgNumber) const
+int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t number, list<std::string*>* events, int32_t *lastMsgNumber) const
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     if (offset == -1 && number == -1) {            // selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 and convName=?2;";
         SQLITE_CHK(SQLITE_PREPARE(db, selectEventAllDesc, -1, &stmt, NULL));
@@ -617,7 +652,7 @@ int32_t AppRepository::loadEvents(const std::string& name, uint32_t offset, int3
     }
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         int32_t len = sqlite3_column_bytes(stmt, 0);
         std::string* data = new std::string((const char*)sqlite3_column_blob(stmt, 0), len);
         *lastMsgNumber = sqlite3_column_int(stmt, 1);
@@ -626,48 +661,54 @@ int32_t AppRepository::loadEvents(const std::string& name, uint32_t offset, int3
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-int32_t AppRepository::deleteEvent(const std::string& name, const std::string& eventId)
+int32_t AppRepository::deleteEvent(const string& name, const string& eventId)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // "DELETE FROM events WHERE eventid=?1 AND convName=?2;"
     SQLITE_CHK(SQLITE_PREPARE(db, deleteEventSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-int32_t AppRepository::deleteEventName(const std::string& name)
+int32_t AppRepository::deleteEventName(const string& name)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // "DELETE FROM events WHERE convName=?1;"
     SQLITE_CHK(SQLITE_PREPARE(db, deleteEventNameSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
 //    std::cerr << "Deleted records: " << sqlite3_changes(db) << std::endl;
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 
-int32_t AppRepository::insertObject(const std::string& name, const std::string& eventId, const std::string& objectId, const std::string& object)
+int32_t AppRepository::insertObject(const string& name, const string& eventId, const string& objectId, const string& object)
 {
     sqlite3_stmt *stmt;
     int32_t msgNumber;
+    int32_t sqlResult;
 
 //     "INSERT INTO objects (objectid, inserted,  state, data, eventid, conv)"
 //     "VALUES (?1, strftime('%s', ?2, 'unixepoch'), ?3, ?4, ?5, ?6);";
@@ -678,18 +719,20 @@ int32_t AppRepository::insertObject(const std::string& name, const std::string& 
     SQLITE_CHK(sqlite3_bind_blob(stmt,  4, object.data(), object.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  5, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt,  6, name.data(), name.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-int32_t AppRepository::loadObject(const std::string& name, const std::string& eventId, const std::string& objectId, std::string* object) const
+int32_t AppRepository::loadObject(const string& name, const string& eventId, const string& objectId, string* object) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
+    int32_t sqlResult;
 
     // selectObject = "SELECT data FROM objects WHERE objectid=?1 and eventid=?2  AND conv=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectObject, -1, &stmt, NULL));
@@ -697,24 +740,25 @@ int32_t AppRepository::loadObject(const std::string& name, const std::string& ev
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {
-        sqlite3_finalize(stmt);
-        return sqlCode_;
+    if (sqlResult == SQLITE_ROW) {
+        // Get the conversation data
+        len = sqlite3_column_bytes(stmt, 0);
+        object->assign((const char*)sqlite3_column_blob(stmt, 0), len);
     }
-    // Get the conversation data
-    len = sqlite3_column_bytes(stmt, 0);
-    object->assign((const char*)sqlite3_column_blob(stmt, 0), len);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-bool AppRepository::existObject(const std::string& name, const std::string& eventId, const std::string& objId) const
+bool AppRepository::existObject(const string& name, const string& eventId, const string& objId, int32_t* sqlCode) const
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    bool retVal = false;
 
     // selectObject = "SELECT data FROM objects WHERE objectid=?1 and eventid=?2  AND conv=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectObject, -1, &stmt, NULL));
@@ -722,26 +766,29 @@ bool AppRepository::existObject(const std::string& name, const std::string& even
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    sqlite3_finalize(stmt);
-    return (sqlCode_ == SQLITE_ROW);
+    retVal = (sqlResult == SQLITE_ROW);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return false;
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return retVal;
 }
 
-int32_t AppRepository::loadObjects(const std::string& name, const std::string& eventId, std::list<std::string*>* objects) const
+int32_t AppRepository::loadObjects(const string& name, const string& eventId, list<string*>* objects) const
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // selectObjectsMsg = "SELECT data FROM objects WHERE eventid=?1  AND conv=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectObjectsMsg, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         int32_t len = sqlite3_column_bytes(stmt, 0);
         std::string* data = new std::string((const char*)sqlite3_column_blob(stmt, 0), len);
         objects->push_back(data);
@@ -749,12 +796,14 @@ int32_t AppRepository::loadObjects(const std::string& name, const std::string& e
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
-int32_t AppRepository::deleteObject(const std::string& name, const std::string& eventId, const std::string& objectId)
+int32_t AppRepository::deleteObject(const string& name, const string& eventId, const string& objectId)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // deleteObjectSql = "DELETE FROM objects WHERE objectid=?1 AND eventid=?2  AND conv=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, deleteObjectSql, -1, &stmt, NULL));
@@ -762,35 +811,39 @@ int32_t AppRepository::deleteObject(const std::string& name, const std::string& 
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::deleteObjectMsg(const std::string& name, const std::string& eventId)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // deleteObjectMsgSql = "DELETE FROM objects WHERE eventid=?1  AND conv=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, deleteObjectMsgSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, eventId.data(), eventId.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
 //    std::cerr << "Deleted records: " << sqlite3_changes(db) << std::endl;
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::storeAttachmentStatus(const string& mesgId, const string& partnerName, int32_t status)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // insertAttachmentStatusSql = "INSERT OR REPLACE INTO attachmentStatus (msgId, status, partnerName) VALUES (?1, ?2, ?3);"; 
     SQLITE_CHK(SQLITE_PREPARE(db, insertAttachmentStatusSql, -1, &stmt, NULL));
@@ -802,20 +855,22 @@ int32_t AppRepository::storeAttachmentStatus(const string& mesgId, const string&
     else {
         SQLITE_CHK(sqlite3_bind_text(stmt, 3, partnerName.data(), partnerName.size(), SQLITE_STATIC));
     }
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::deleteAttachmentStatus(const string& mesgId, const string& partnerName)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
     // deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
     // deleteAttachmentStatusMsgIdSql2 = "DELETE FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
-    
+
     if (partnerName.empty()) {
         SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusMsgIdSql, -1, &stmt, NULL));
     }
@@ -826,32 +881,36 @@ int32_t AppRepository::deleteAttachmentStatus(const string& mesgId, const string
     if (!partnerName.empty()) {
         SQLITE_CHK(sqlite3_bind_text(stmt, 2, partnerName.data(), partnerName.size(), SQLITE_STATIC));
     }
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::deleteWithAttachmentStatus(int32_t status)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
     // static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusWithStatusSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, status));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* status)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
     *status = -1;
     // selectAttachmentStatus = "SELECT status FROM attachmentStatus WHERE msgId=?1;";
     // selectAttachmentStatus2 = "SELECT status FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
@@ -865,28 +924,29 @@ int32_t AppRepository::loadAttachmentStatus(const string& mesgId, const string& 
     if (!partnerName.empty()) {
         SQLITE_CHK(sqlite3_bind_text(stmt, 2, partnerName.data(), partnerName.size(), SQLITE_STATIC));
     }
-    sqlCode_= sqlite3_step(stmt);
-    if (sqlCode_ != SQLITE_ROW) {
-        ERRMSG;
-        sqlite3_finalize(stmt);
-        return sqlCode_;
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult == SQLITE_ROW) {
+        *status = sqlite3_column_int(stmt, 0);
     }
-    *status = sqlite3_column_int(stmt, 0);
 
 cleanup:
+    ERRMSG;
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 int32_t AppRepository::loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* msgIds)
 {
     sqlite3_stmt *stmt;
     const unsigned char* pn;
+    int32_t sqlResult;
+
     // selectMsgIdsWithStatus = "SELECT msgId, partnerName FROM attachmentStatus WHERE status=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectMsgIdsWithStatus, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, status));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         int32_t len = sqlite3_column_bytes(stmt, 0);
         string data((const char*)sqlite3_column_text(stmt, 0), len);
         pn = sqlite3_column_text(stmt, 1);
@@ -898,7 +958,8 @@ int32_t AppRepository::loadMsgsIdsWithAttachmentStatus(int32_t status, list<stri
 
 cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    sqlCode_ = sqlResult;
+    return sqlResult;
 }
 
 /*
@@ -912,12 +973,13 @@ int32_t AppRepository::getNextSequenceNum(const std::string& name)
 {
     sqlite3_stmt *stmt;
     int32_t nextNumber;
+    int32_t sqlResult;
 
     SQLITE_CHK(SQLITE_PREPARE(db, selectMsgNumber, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
 
-    if (sqlCode_ != SQLITE_ROW) {
+    if (sqlResult != SQLITE_ROW) {
         sqlite3_finalize(stmt);
         return -1;
     }
@@ -927,7 +989,7 @@ int32_t AppRepository::getNextSequenceNum(const std::string& name)
     SQLITE_CHK(SQLITE_PREPARE(db, updateMsgNumber, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt,  1, nextNumber+1));    // Increment nextMsgNumber
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
 
     sqlite3_finalize(stmt);
     return nextNumber;

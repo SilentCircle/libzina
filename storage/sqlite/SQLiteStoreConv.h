@@ -104,7 +104,7 @@ public:
      * @return a new list with the names, an empty list if now identities available,
      *         NULL in case of error
      */
-    list<string>* getKnownConversations(const string& ownName);
+    list<string>* getKnownConversations(const string& ownName, int32_t* sqlCode = NULL);
 
     /**
      * @brief Get a list of long device ids for a name.
@@ -115,37 +115,37 @@ public:
      * @param name the user's name.
      * @return a new list with the long device ids, NULL in case of error
      */
-    list<string>* getLongDeviceIds(const string& name, const string& ownName);
+    list<string>* getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 
 
     // ***** Conversation store
-    string* loadConversation(const string& name, const string& longDevId, const string& ownName) const;
+    string* loadConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
 
-    void storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data);
+    void storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data, int32_t* sqlCode = NULL);
 
-    bool hasConversation(const string& name, const string& longDevId, const string& ownName) const;
+    bool hasConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
 
-    void deleteConversation(const string& name, const string& longDevId, const string& ownName);
+    void deleteConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL);
 
-    void deleteConversationsName(const string& name, const string& ownName);
+    void deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 
     // ***** staged message keys store
-    list<string>* loadStagedMks(const string& name, const string& longDevId, const string& ownName) const;
+    list<string>* loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
 
-    void insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv);
+    void insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode = NULL);
 
-    void deleteStagedMk(const string& name, const string& longDevId, const string& ownName, string& MKiv);
+    void deleteStagedMk(const string& name, const string& longDevId, const string& ownName, string& MKiv, int32_t* sqlCode = NULL);
 
-    void deleteStagedMk(time_t timestamp);
+    void deleteStagedMk(time_t timestamp, int32_t* sqlCode = NULL);
 
     // Pre key storage. The functions encrypt, decrypt and store/retrive Pre-key JSON strings
-    string* loadPreKey(int32_t preKeyId) const;
+    string* loadPreKey(int32_t preKeyId, int32_t* sqlCode = NULL) const;
 
-    void storePreKey(int32_t preKeyId, const string& preKeyData);
+    void storePreKey(int32_t preKeyId, const string& preKeyData, int32_t* sqlCode = NULL);
 
-    bool containsPreKey(int32_t preKeyId) const;
+    bool containsPreKey(int32_t preKeyId, int32_t* sqlCode = NULL) const;
 
-    void removePreKey(int32_t preKeyId);
+    void removePreKey(int32_t preKeyId, int32_t* sqlCode = NULL);
 
     void dumpPreKeys() const;
     /*

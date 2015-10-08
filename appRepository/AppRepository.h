@@ -94,7 +94,7 @@ public:
      * @param conversation The serialized data of the conversation data structure
      * @return An SQLITE code.
      */
-    int32_t storeConversation(const std::string& name, const std::string& conversation);
+    int32_t storeConversation(const string& name, const string& conversation);
 
     /**
      * @brief Load and return serialized conversation data.
@@ -103,7 +103,7 @@ public:
      * @param conversation The serialized data of the conversation data structure
      * @return An SQLITE code.
      */
-    int32_t loadConversation(const std::string& name, std::string* conversation) const;
+    int32_t loadConversation(const string& name, string* conversation) const;
 
     /**
      * @brief Checks if a conversation for the name exists.
@@ -111,7 +111,7 @@ public:
      * @param name Name of the conversation
      * @return @c true if the conversation exists, @c false if not.
      */
-    bool existConversation(const std::string& name);
+    bool existConversation(const string& name, int32_t* sqlCode = NULL);
 
     /**
      * @brief Delete serialized conversation data.
@@ -123,14 +123,14 @@ public:
      * @param name The conversation partner's name
      * @return An SQLITE code.
      */
-    int32_t deleteConversation(const std::string& name);
+    int32_t deleteConversation(const string& name);
 
     /**
      * @brief Return a list of names for all known conversations.
      * 
      * @return A list of names for conversations, @c NULL in case of an error.
      */
-    list<string>* listConversations() const;
+    list<string>* listConversations(int32_t* sqlCode = NULL) const;
 
     /**
      * @brief Insert serialized event/message data.
@@ -146,7 +146,7 @@ public:
      * @param event The serialized data of the event data structure
      * @return A SQLITE code.
      */
-    int32_t insertEvent(const std::string& name, const std::string& eventId, const std::string& event);
+    int32_t insertEvent(const string& name, const string& eventId, const string& event);
 
     /**
      * @brief Update serialized event/message data.
@@ -158,7 +158,7 @@ public:
      * @param event The serialized data of the event data structure
      * @return A SQLITE code.
      */
-    int32_t updateEvent(const std::string& name, const std::string& eventId, const std::string& event);
+    int32_t updateEvent(const string& name, const string& eventId, const string& event);
 
     /**
      * @brief Get the highest event/message sequence number.
@@ -166,7 +166,7 @@ public:
      * @param name The conversation partner's name
      * @return the highest message number or -1 in case of a failure.
      */
-    int32_t getHighestMsgNum(const std::string& name) const;
+    int32_t getHighestMsgNum(const string& name) const;
 
     /**
      * @brief Load and returns one serialized event/message data.
@@ -180,7 +180,7 @@ public:
      *                  sequence number.
      * @return A SQLITE code.
      */
-    int32_t loadEvent(const std::string& name, const std::string& eventId, std::string* event, int32_t *msgNumber) const;
+    int32_t loadEvent(const string& name, const string& eventId, string* event, int32_t *msgNumber) const;
 
     /**
      * @brief Load a message with a defined message id.
@@ -201,7 +201,7 @@ public:
      * @param eventId Id of the event
      * @return @c true if the event exists, @c false if not.
      */
-    bool existEvent(const std::string& name, const std::string& eventId);
+    bool existEvent(const string& name, const string& eventId, int32_t* sqlCode = NULL);
 
     /**
      * @brief Load and returns a set of serialized event/message data.
@@ -236,7 +236,7 @@ public:
      *                      number of the oldest message in the returned data list.
      * @return A SQLITE code.
      */
-    int32_t loadEvents(const std::string& name, uint32_t offset, int32_t number, std::list<std::string*>* events, int32_t *lastMsgNumber) const;
+    int32_t loadEvents(const string& name, uint32_t offset, int32_t number, list<string*>* events, int32_t *lastMsgNumber) const;
 
     /**
      * @brief Delete a single event.
@@ -249,7 +249,7 @@ public:
      * @param eventId the id of the event
      * @return An SQLITE code.
      */
-    int32_t deleteEvent(const std::string& name, const std::string& eventId);
+    int32_t deleteEvent(const string& name, const string& eventId);
 
     /**
      * @brief Delete all events for the defined conversation.
@@ -261,7 +261,7 @@ public:
      * @param name The conversation partner's name
      * @return An SQLITE code.
      */
-    int32_t deleteEventName(const std::string& name);
+    int32_t deleteEventName(const string& name);
 
     /**
      * @brief Insert serialized object data.
@@ -277,7 +277,7 @@ public:
      * @param object The serialized data of the object data structure
      * @return A SQLITE code.
      */
-    int32_t insertObject(const std::string& name, const std::string& eventId, const std::string& objectId, const std::string& object);
+    int32_t insertObject(const string& name, const string& eventId, const string& objectId, const string& object);
 
     /**
      * @brief Load and returns one serialized object data.
@@ -288,7 +288,7 @@ public:
      * @param object The serialized data of the event data structure
      * @return A SQLITE code.
      */
-    int32_t loadObject(const std::string& name, const std::string& eventId, const std::string& objectId, std::string* object) const;
+    int32_t loadObject(const string& name, const string& eventId, const string& objectId, string* object) const;
 
      /**
       * @brief Checks if an object exists.
@@ -298,7 +298,7 @@ public:
       * @param objectId The object id, unique inside the event it belongs to
       * @return @c true if the event exists, @c false if not.
       */
-     bool existObject(const std::string& name, const std::string& eventId, const std::string& objId) const;
+     bool existObject(const std::string& name, const std::string& eventId, const std::string& objId, int32_t* sqlCode = NULL) const;
 
     /**
      * @brief Load and returns he set of serialized object data that belong to a event/message.
@@ -308,7 +308,7 @@ public:
      * @param objects The serialized data of the event data structure, the caller must delete the string pointers
      * @return A SQLITE code.
      */
-    int32_t loadObjects(const std::string& name, const std::string& eventId, std::list<std::string*>* objects) const;
+    int32_t loadObjects(const string& name, const string& eventId, list<string*>* objects) const;
 
     /**
      * @brief Delete a single object.
@@ -318,7 +318,7 @@ public:
      * @param objectId The object id, unique inside the event it belongs to
      * @return An SQLITE code.
      */
-    int32_t deleteObject(const std::string& name, const std::string& eventId, const std::string& objectId);
+    int32_t deleteObject(const string& name, const string& eventId, const string& objectId);
 
     /**
      * @brief Delete a all objects that belong to an event/message.
@@ -327,7 +327,7 @@ public:
      * @param eventId the id of the event
      * @return An SQLITE code.
      */
-    int32_t deleteObjectMsg(const std::string& name, const std::string& eventId);
+    int32_t deleteObjectMsg(const string& name, const string& eventId);
 
     /**
      * Insert or update the attachment status.

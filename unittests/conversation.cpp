@@ -35,7 +35,6 @@ TEST(Conversation, BasicEmpty)
 
     // localUser, remote user, remote dev id
     AxoConversation conv(aliceName, bobName, bobDev);
-
     conv.storeConversation();
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();    
 

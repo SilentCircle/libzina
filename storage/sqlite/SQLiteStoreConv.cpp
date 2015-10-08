@@ -6,6 +6,7 @@
 #include <cryptcommon/ZrtpRandom.h>
 #include <cryptcommon/aescpp.h>
 
+#include <common/Thread.h>
 
 /* *****************************************************************************
  * A few helping macros. 
@@ -25,8 +26,8 @@
                           "SQLite3 error: %s, line: %d, error message: %s\n", __FILE__, __LINE__, sqlite3_errmsg(db));}
 
 #define SQLITE_CHK(func) {          \
-        sqlCode_ = (func);          \
-        if(sqlCode_ != SQLITE_OK) { \
+        sqlResult = (func);          \
+        if(sqlResult != SQLITE_OK) { \
             ERRMSG;                 \
             goto cleanup;           \
         }                           \
@@ -41,6 +42,8 @@
 #endif
 
 #define DB_VERSION 1
+
+static CMutexClass sqlLock;
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
@@ -179,8 +182,10 @@ SQLiteStoreConv* SQLiteStoreConv::instance_ = NULL;
 
 SQLiteStoreConv* SQLiteStoreConv::getStore()
 {
+    sqlLock.Lock();
     if (instance_ == NULL)
         instance_ = new SQLiteStoreConv();
+    sqlLock.Unlock();
     return instance_;
 }
 
@@ -196,39 +201,41 @@ SQLiteStoreConv::~SQLiteStoreConv()
 int SQLiteStoreConv::beginTransaction()
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     SQLITE_CHK(SQLITE_PREPARE(db, beginTransactionSql, -1, &stmt, NULL));
 
-    sqlCode_ = sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    if (sqlCode_ != SQLITE_DONE) {
+    if (sqlResult != SQLITE_DONE) {
         ERRMSG;
-        return sqlCode_;
+        return sqlResult;
     }
     return SQLITE_OK;
 
  cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    return sqlResult;
 }
 
 int SQLiteStoreConv::commitTransaction()
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     SQLITE_CHK(SQLITE_PREPARE(db, commitTransactionSql, -1, &stmt, NULL));
 
-    sqlCode_ = sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    if (sqlCode_ != SQLITE_DONE) {
+    if (sqlResult != SQLITE_DONE) {
         ERRMSG;
-        return sqlCode_;
+        return sqlResult;
     }
     return SQLITE_OK;
 
  cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    return sqlResult;
 }
 
 /*
@@ -250,12 +257,14 @@ int SQLiteStoreConv::openStore(const std::string& name)
     sqlite3_stmt *stmt;
     int found = 0;
 
+    sqlLock.Lock();
     // If name has size 0 then open im-memory DB, handy for testing
     const char *dbName = name.size() == 0 ? ":memory:" : name.c_str();
     sqlCode_ = sqlite3_open_v2(dbName, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
 
     if (sqlCode_) {
         ERRMSG;
+        sqlLock.Unlock();
         return(sqlCode_);
     }
     sqlite3_key(db, keyData_->data(), keyData_->size());
@@ -268,22 +277,26 @@ int SQLiteStoreConv::openStore(const std::string& name)
         beginTransaction();
         if (updateDb(version, DB_VERSION) != SQLITE_OK) {
             sqlite3_close(db);
+            sqlLock.Unlock();
             return SQLITE_ERROR;
         }
         commitTransaction();
     }
     else {
-        if (createTables() != SQLITE_OK)
+        if (createTables() != SQLITE_OK) {
+            sqlLock.Unlock();
             return sqlCode_;
+        }
     }
-
     setUserVersion(db, DB_VERSION);
 
     isReady_ = true;
+    sqlLock.Unlock();
     return SQLITE_OK;
 
  cleanup:
     sqlite3_finalize(stmt);
+    sqlLock.Unlock();
     return sqlCode_;
 }
 
@@ -291,6 +304,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
 int SQLiteStoreConv::createTables()
 {
     sqlite3_stmt* stmt;
+    int32_t sqlResult;
 
     /* First drop them, just to be on the save side
      * Ignore errors, there is nothing to drop on empty DB. If ZrtpIdOwn was
@@ -298,49 +312,49 @@ int SQLiteStoreConv::createTables()
      * and names also to have a clean state.
      */
 
-    sqlCode_ = SQLITE_PREPARE(db, dropConversations, -1, &stmt, NULL);
-    sqlCode_ = sqlite3_step(stmt);
+    sqlResult = SQLITE_PREPARE(db, dropConversations, -1, &stmt, NULL);
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
     SQLITE_CHK(SQLITE_PREPARE(db, createConversations, -1, &stmt, NULL));
-    sqlCode_ = sqlite3_step(stmt);
-    if (sqlCode_ != SQLITE_DONE) {
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
         ERRMSG;
         goto cleanup;
     }
     sqlite3_finalize(stmt);
 
-    sqlCode_ = SQLITE_PREPARE(db, dropStagedMk, -1, &stmt, NULL);
-    sqlCode_ = sqlite3_step(stmt);
+    sqlResult = SQLITE_PREPARE(db, dropStagedMk, -1, &stmt, NULL);
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
     SQLITE_CHK(SQLITE_PREPARE(db, createStagedMk, -1, &stmt, NULL));
-    sqlCode_ = sqlite3_step(stmt);
-    if (sqlCode_ != SQLITE_DONE) {
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
         ERRMSG;
         goto cleanup;
     }
     sqlite3_finalize(stmt);
 
-    sqlCode_ = SQLITE_PREPARE(db, dropAccounts, -1, &stmt, NULL);
-    sqlCode_ = sqlite3_step(stmt);
+    sqlResult = SQLITE_PREPARE(db, dropAccounts, -1, &stmt, NULL);
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
     SQLITE_CHK(SQLITE_PREPARE(db, createAccounts, -1, &stmt, NULL));
-    sqlCode_ = sqlite3_step(stmt);
-    if (sqlCode_ != SQLITE_DONE) {
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
         ERRMSG;
         goto cleanup;
     }
     sqlite3_finalize(stmt);
 
-    sqlCode_ = SQLITE_PREPARE(db, dropPreKeys, -1, &stmt, NULL);
-    sqlCode_ = sqlite3_step(stmt);
+    sqlResult = SQLITE_PREPARE(db, dropPreKeys, -1, &stmt, NULL);
+    sqlResult = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
     SQLITE_CHK(SQLITE_PREPARE(db, createPreKeys, -1, &stmt, NULL));
-    sqlCode_ = sqlite3_step(stmt);
-    if (sqlCode_ != SQLITE_DONE) {
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
         ERRMSG;
         goto cleanup;
     }
@@ -349,7 +363,7 @@ int SQLiteStoreConv::createTables()
 
  cleanup:
     sqlite3_finalize(stmt);
-    return sqlCode_;
+    return sqlResult;
 }
 
 
@@ -357,10 +371,11 @@ int SQLiteStoreConv::createTables()
 const static char* dummyId = "__DUMMY__";
 
 
-std::list<std::string>* SQLiteStoreConv::getKnownConversations(const std::string& ownName)
+list<std::string>* SQLiteStoreConv::getKnownConversations(const string& ownName, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t nameLen;
+    int32_t sqlResult;
 
     std::list<std::string>* names = new std::list<std::string>;
 
@@ -368,24 +383,31 @@ std::list<std::string>* SQLiteStoreConv::getKnownConversations(const std::string
     SQLITE_CHK(SQLITE_PREPARE(db, selectConvNames, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         nameLen = sqlite3_column_bytes(stmt, 0);
         std::string name((const char*)sqlite3_column_text(stmt, 0), nameLen);
         names->push_back(name);
     }
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
     return names;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
     return NULL;
 }
 
-std::list<std::string>* SQLiteStoreConv::getLongDeviceIds(const std::string& name, const std::string& ownName)
+std::list<std::string>* SQLiteStoreConv::getLongDeviceIds(const std::string& name, const std::string& ownName, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t idLen;
     std::string* id;
+    int32_t sqlResult;
 
     std::list<std::string>* devIds = new std::list<std::string>;
 
@@ -394,7 +416,7 @@ std::list<std::string>* SQLiteStoreConv::getLongDeviceIds(const std::string& nam
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         idLen = sqlite3_column_bytes(stmt, 0);
         string id((const char*)sqlite3_column_text(stmt, 0), idLen);
         if (id.compare(0, id.size(), dummyId, id.size()) == 0)
@@ -402,20 +424,27 @@ std::list<std::string>* SQLiteStoreConv::getLongDeviceIds(const std::string& nam
         devIds->push_back(id);
     }
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
     return devIds;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
     return NULL;
 }
 
 
 // ***** Session store
-std::string* SQLiteStoreConv::loadConversation(const std::string& name, const std::string& longDevId, const std::string& ownName) const 
+std::string* SQLiteStoreConv::loadConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const 
 { 
     sqlite3_stmt *stmt;
     int32_t len;
-    string* data;
+    string* data = NULL;
+    int32_t sqlResult;
 
     const char* devId;
     int32_t devIdLen;
@@ -434,28 +463,26 @@ std::string* SQLiteStoreConv::loadConversation(const std::string& name, const st
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {        // No such session, return an empty session record
-        sqlite3_finalize(stmt);
-        return NULL;
+    if (sqlResult == SQLITE_ROW) {        // No such session, return an empty session record
+        // Get the session data
+        len = sqlite3_column_bytes(stmt, 0);
+        data = new string((const char*)sqlite3_column_blob(stmt, 0), len);
     }
-    // Get the session data
-    len = sqlite3_column_bytes(stmt, 0);
-    data = new string((const char*)sqlite3_column_blob(stmt, 0), len);
-
-    sqlite3_finalize(stmt);
-
-    return data;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return NULL;
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return data;
 }
 
-void SQLiteStoreConv::storeConversation(const std::string& name, const std::string& longDevId, const std::string& ownName, const std::string& data)
+void SQLiteStoreConv::storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     const char* devId;
     int32_t devIdLen;
@@ -473,7 +500,7 @@ void SQLiteStoreConv::storeConversation(const std::string& name, const std::stri
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 4, ownName.data(), ownName.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
     sqlite3_finalize(stmt);
 
@@ -484,16 +511,21 @@ void SQLiteStoreConv::storeConversation(const std::string& name, const std::stri
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 4, data.data(), data.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 5, ownName.data(), ownName.size(), SQLITE_STATIC));
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
-bool SQLiteStoreConv::hasConversation(const std::string& name, const std::string& longDevId, const std::string& ownName) const 
+bool SQLiteStoreConv::hasConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const 
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    bool retVal = false;
 
     const char* devId;
     int32_t devIdLen;
@@ -511,19 +543,22 @@ bool SQLiteStoreConv::hasConversation(const std::string& name, const std::string
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
-    sqlite3_finalize(stmt);
-    return sqlCode_ == SQLITE_ROW; 
+    retVal = sqlResult == SQLITE_ROW; 
 
 cleanup:
     sqlite3_finalize(stmt);
-    return false;
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return retVal;
 }
 
-void SQLiteStoreConv::deleteConversation(const std::string& name, const std::string& longDevId, const std::string& ownName)
+void SQLiteStoreConv::deleteConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     const char* devId;
     int32_t devIdLen;
@@ -541,33 +576,41 @@ void SQLiteStoreConv::deleteConversation(const std::string& name, const std::str
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
-void SQLiteStoreConv::deleteConversationsName(const std::string& name, const std::string& ownName)
+void SQLiteStoreConv::deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // removeConversations = "DELETE FROM Conversations WHERE name=?1 AND ownName=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeConversations, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), name.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
-list<string>* SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName) const
+list<string>* SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
+    int32_t sqlResult;
     list<string>* keys = new list<string>;
 
     const char* devId;
@@ -586,31 +629,38 @@ list<string>* SQLiteStoreConv::loadStagedMks(const string& name, const string& l
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), ownName.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {        // No stored MKs, return an empty session record
+    if (sqlResult != SQLITE_ROW) {        // No stored MKs, return an empty session record
         sqlite3_finalize(stmt);
+        if (sqlCode != NULL)
+            *sqlCode = sqlResult;
+        sqlCode_ = sqlResult;
         delete keys;
         return NULL;
     }
-    while (sqlCode_ == SQLITE_ROW) {
+    while (sqlResult == SQLITE_ROW) {
         // Get the MK and its iv
         len = sqlite3_column_bytes(stmt, 0);
         string mkivenc((const char*)sqlite3_column_blob(stmt, 0), len);
 
         keys->push_back(mkivenc);
 
-        sqlCode_= sqlite3_step(stmt);
+        sqlResult= sqlite3_step(stmt);
     }
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
     return keys;
 }
 
-void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv)
+void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     const char* devId;
     int32_t devIdLen;
@@ -635,16 +685,20 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
     SQLITE_CHK(sqlite3_bind_blob(stmt,  6, MKiv.data(), MKiv.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_null(stmt,  7));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
-void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId, const string& ownName, string& MKiv)
+void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId, const string& ownName, string& MKiv, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     const char* devId;
     int32_t devIdLen;
@@ -663,36 +717,45 @@ void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), ownName.size(), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 4, MKiv.data(), MKiv.size(), SQLITE_STATIC));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
-void SQLiteStoreConv::deleteStagedMk(time_t timestamp)
+void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
-    int32_t cleaned;
+//    int32_t cleaned;
+    int32_t sqlResult;
+
     // removeStagedMkTime = "DELETE FROM stagedMk WHERE since < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeStagedMkTime, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
 //    cleaned = sqlite3_changes(db);
 //    Log("Number of removed old MK: %d", cleaned);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
 // ******** PreKey store
-string* SQLiteStoreConv::loadPreKey(int32_t preKeyId) const 
+string* SQLiteStoreConv::loadPreKey(int32_t preKeyId, int32_t* sqlCode) const 
 {
     sqlite3_stmt *stmt;
     int32_t len;
-    string* preKeyData;
+    string* preKeyData = NULL;
+    int32_t sqlResult;
 
     // selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
 
@@ -700,87 +763,98 @@ string* SQLiteStoreConv::loadPreKey(int32_t preKeyId) const
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, strlen(selectPreKey)+1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
-    if (sqlCode_ != SQLITE_ROW) {        // No such pre key
-        sqlite3_finalize(stmt);
-        return NULL;
+    if (sqlResult == SQLITE_ROW) {        // No such pre key
+        // Get the pre key data
+        len = sqlite3_column_bytes(stmt, 0);
+        preKeyData = new string((const char*)sqlite3_column_blob(stmt, 0), len);
     }
-    // Get the pre key data
-    len = sqlite3_column_bytes(stmt, 0);
-    preKeyData = new string((const char*)sqlite3_column_blob(stmt, 0), len);
-    sqlite3_finalize(stmt);
-
-    return preKeyData;
 
 cleanup:
     sqlite3_finalize(stmt);
-    return NULL;
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return preKeyData;
 }
 
-void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& data)
+void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, strlen(insertPreKey)+1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
-    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, data.data(), data.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, preKeyData.data(), preKeyData.size(), SQLITE_STATIC));
 
-    sqlCode_ = sqlite3_step(stmt);
-    if (sqlCode_ != SQLITE_DONE)
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE)
         ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
-bool SQLiteStoreConv::containsPreKey(int32_t preKeyId) const
+bool SQLiteStoreConv::containsPreKey(int32_t preKeyId, int32_t* sqlCode) const
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    bool retVal = false;
 
     // SELECT preKeyData FROM PreKeys WHERE keyid=?1 ;
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, strlen(selectPreKey)+1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult= sqlite3_step(stmt);
     ERRMSG;
-    sqlite3_finalize(stmt);
-    return (sqlCode_ == SQLITE_ROW);
+    retVal = (sqlResult == SQLITE_ROW);
 
 cleanup:
     sqlite3_finalize(stmt);
-    return false; 
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    return retVal; 
 }
 
-void SQLiteStoreConv::removePreKey(int32_t preKeyId) 
+void SQLiteStoreConv::removePreKey(int32_t preKeyId, int32_t* sqlCode) 
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     // DELETE FROM PreKeys WHERE keyId=?1
     SQLITE_CHK(SQLITE_PREPARE(db, deletePreKey, strlen(deletePreKey)+1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
-    sqlCode_= sqlite3_step(stmt);
+    sqlResult = sqlite3_step(stmt);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
 }
 
 void SQLiteStoreConv::dumpPreKeys() const
 {
     sqlite3_stmt *stmt;
+    int32_t sqlResult;
 
     //  selectPreKeyAll = "SELECT keyId, preKeyData FROM PreKeys;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKeyAll, -1, &stmt, NULL));
 
-    while ((sqlCode_ = sqlite3_step(stmt)) == SQLITE_ROW) {
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         int32_t keyId = sqlite3_column_int(stmt, 0);
     }
 
 cleanup:
     sqlite3_finalize(stmt);
-
+    sqlCode_ = sqlResult;
 }
 

@@ -284,12 +284,14 @@ void AppInterfaceImpl::messageStateReport(int64_t messageIdentfier, int32_t stat
 
 string* AppInterfaceImpl::getKnownUsers()
 {
+    int32_t sqlCode;
+
     if (!store_->isReady())
         return NULL;
 
-    list<string>* names = store_->getKnownConversations(ownUser_);
+    list<string>* names = store_->getKnownConversations(ownUser_, &sqlCode);
 
-    if (SQL_FAIL(store_->getSqlCode()) || names == NULL) {
+    if (SQL_FAIL(sqlCode) || names == NULL) {
 //        Log("generatePreKey: %d", store_->getLastError());
         return NULL;
     }
