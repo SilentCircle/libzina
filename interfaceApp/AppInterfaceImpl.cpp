@@ -475,7 +475,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             AxoConversation* conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
             if (conv != NULL) {
                 const string& convDevName = conv->getDeviceName();
-                if (convDevName.empty()) {
+                if (!deviceName.empty()) {
                     conv->setDeviceName(deviceName);
                     conv->storeConversation();
                 }
