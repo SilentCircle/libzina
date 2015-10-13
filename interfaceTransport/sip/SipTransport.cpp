@@ -1,6 +1,9 @@
 #include "SipTransport.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
 #include <iostream>
+#include <map>
+#include <utility>
+
 
 using namespace axolotl;
 
@@ -59,6 +62,7 @@ void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, 
 }
 
 static string Zeros("00000000000000000000000000000000");
+static map<string, string> seenIdStringsForName;
 
 void SipTransport::notifyAxo(uint8_t* data, size_t length)
 {
@@ -85,6 +89,30 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     string devIds = info.substr(found + 1);
     string devIdsSave(devIds);
 
+    // This is a check if the SIP server already send the same notify string for a name
+    map<string, string>::iterator it;
+    it = seenIdStringsForName.find(name);
+    if (it != seenIdStringsForName.end()) {
+//        Log("++++ Found entry: %s", name.c_str());
+
+        // Found an entry, check if device ids match, if yes -> return, already processed,
+        // if no -> delete the entry, continue processing which will add the new entry.
+        if (it->second == devIdsSave) {
+//            Log("++++ Found match: %s (%s)", name.c_str(), devIdsSave.c_str());
+            return;
+        }
+        else {
+//            Log("++++ No match: %s (%s)", name.c_str(), devIdsSave.c_str());
+            seenIdStringsForName.erase(it);
+        }
+    }
+    pair<map<string, string>::iterator, bool> ret;
+//    Log("++++ Adding entry: %s", name.c_str());
+    ret = seenIdStringsForName.insert (pair<string, string>(name, devIdsSave));
+    if (ret.second == false) {
+        Log("Inserting of notified device ids failed: %s (%s)", name.c_str(), devIdsSave.c_str());
+    }
+
     size_t pos = 0;
     string devId;
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -103,9 +131,9 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
             break;
         }
     }
-    list<string>* devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
-    int32_t numKnownDevices = devicesDb->size();
-    delete devicesDb;
+//     list<string>* devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
+//     int32_t numKnownDevices = devicesDb->size();
+//     delete devicesDb;
 
 //    Log("++++ number of devices: reported: %d, known: %d", numReportedDevices, numKnownDevices);
 
