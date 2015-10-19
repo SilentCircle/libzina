@@ -252,6 +252,13 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     const string& localUser = appIf->getOwnUser();
 
     string remoteName = extractNameFromUri(user);
+
+    // This happens if user called an own sibling device, somehow P-Asserted-Id of called party
+    // is not set for the caller - thus use own name. No risk - because the device id is not
+    // available on any other user entry.
+    if (remoteName.empty()) {
+        remoteName = localUser;
+    }
     AxoConversation* remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
 
     if (remote == NULL) {
