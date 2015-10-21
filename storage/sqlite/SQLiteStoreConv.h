@@ -148,6 +148,32 @@ public:
     void removePreKey(int32_t preKeyId, int32_t* sqlCode = NULL);
 
     void dumpPreKeys() const;
+
+    // ***** Message hash / time table to detect duplicate message from server
+    /**
+     * @brief Insert a message hash into the table.
+     * 
+     * @param msgHash the hash to insert, no duplicates allowed
+     * @return SQLite code
+     */
+    int32_t insertMsgHash( const string& msgHash );
+
+    /**
+     * @brief Check if a message hash is in the table.
+     * 
+     * @param msgHash the hash to insert, no duplicates allowed
+     * @return SQLite code
+     */
+    int32_t hasMsgHash(const string msgHash);
+
+    /**
+     * @brief Delete message hashes old than the timestamp.
+     * 
+     * @param timestamp the timestamp of oldest hash
+     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
+     */
+    int32_t deleteMsgHashes(time_t timestamp);
+
     /*
      * @brief For use for debugging and development only
      */
@@ -193,7 +219,7 @@ private:
      * @param newVersion the target version for the database
      * @return SQLITE_OK to commit any changes, any other code closes the database with rollback.
      */
-    int32_t updateDb(int32_t oldVersion, int32_t newVersion) {return SQLITE_OK; }
+    int32_t updateDb(int32_t oldVersion, int32_t newVersion);
 
     static SQLiteStoreConv* instance_;
     sqlite3* db;

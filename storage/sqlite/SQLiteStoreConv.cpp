@@ -41,7 +41,7 @@
 #define SQLITE_PREPARE sqlite3_prepare
 #endif
 
-#define DB_VERSION 1
+#define DB_VERSION 2
 
 static CMutexClass sqlLock;
 
@@ -121,6 +121,15 @@ static const char* insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUE
 static const char* selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
 static const char* deletePreKey = "DELETE FROM PreKeys WHERE keyId=?1;";
 static const char* selectPreKeyAll = "SELECT keyId, preKeyData FROM PreKeys;";
+
+/* *****************************************************************************
+ * SQL statements to process the message has table table.
+ */
+static const char* dropMsgHash = "DROP TABLE MsgHash;";
+static const char* createMsgHash = "CREATE TABLE MsgHash (msgHash BLOB NOT NULL PRIMARY KEY, since TIMESTAMP);";
+static const char* insertMsgHashSql = "INSERT INTO MsgHash (msgHash, since) VALUES (?1, strftime('%s', ?2, 'unixepoch'));";
+static const char* selectMsgHash = "SELECT msgHash FROM MsgHash WHERE msgHash=?1;";
+static const char* removeMsgHash = "DELETE FROM MsgHash WHERE since < ?1;";
 
 
 #ifdef UNITTESTS
@@ -359,11 +368,43 @@ int SQLiteStoreConv::createTables()
         goto cleanup;
     }
     sqlite3_finalize(stmt);
+
+    sqlResult = SQLITE_PREPARE(db, dropMsgHash, -1, &stmt, NULL);
+    sqlResult = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, createMsgHash, -1, &stmt, NULL));
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
     return SQLITE_OK;
+
 
  cleanup:
     sqlite3_finalize(stmt);
     return sqlResult;
+}
+
+int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion)
+{
+    sqlite3_stmt* stmt;
+
+    // Version 2 adds the message hash table
+    if (oldVersion < 2) {
+        sqlCode_ = SQLITE_PREPARE(db, createMsgHash, -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        if (sqlCode_ != SQLITE_DONE)
+            return sqlCode_;
+        oldVersion = 2;
+    }
+
+    if (oldVersion != newVersion)
+        return SQLITE_ERROR;
+    return SQLITE_OK;
 }
 
 
@@ -760,7 +801,7 @@ string* SQLiteStoreConv::loadPreKey(int32_t preKeyId, int32_t* sqlCode) const
     // selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
 
     // SELECT iv, preKeyData FROM PreKeys WHERE keyid=?1 ;
-    SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, strlen(selectPreKey)+1, &stmt, NULL));
+    SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
     sqlResult= sqlite3_step(stmt);
@@ -785,7 +826,7 @@ void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, in
     int32_t sqlResult;
 
     // insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
-    SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, strlen(insertPreKey)+1, &stmt, NULL));
+    SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 2, preKeyData.data(), preKeyData.size(), SQLITE_STATIC));
 
@@ -807,7 +848,7 @@ bool SQLiteStoreConv::containsPreKey(int32_t preKeyId, int32_t* sqlCode) const
     bool retVal = false;
 
     // SELECT preKeyData FROM PreKeys WHERE keyid=?1 ;
-    SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, strlen(selectPreKey)+1, &stmt, NULL));
+    SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
     sqlResult= sqlite3_step(stmt);
@@ -828,7 +869,7 @@ void SQLiteStoreConv::removePreKey(int32_t preKeyId, int32_t* sqlCode)
     int32_t sqlResult;
 
     // DELETE FROM PreKeys WHERE keyId=?1
-    SQLITE_CHK(SQLITE_PREPARE(db, deletePreKey, strlen(deletePreKey)+1, &stmt, NULL));
+    SQLITE_CHK(SQLITE_PREPARE(db, deletePreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
     sqlResult = sqlite3_step(stmt);
@@ -858,3 +899,64 @@ cleanup:
     sqlCode_ = sqlResult;
 }
 
+// ***** Message hash / time table to detect duplicate message from server
+
+int32_t SQLiteStoreConv::insertMsgHash(const string& msgHash)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // char* insertMsgHashSql = "INSERT INTO MsgHash (msgHash, since) VALUES (?1, strftime('%s', ?2, 'unixepoch'));";
+    SQLITE_CHK(SQLITE_PREPARE(db, insertMsgHashSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_blob(stmt,  1, msgHash.data(), msgHash.size(), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 2, time(0)));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE)
+        ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::hasMsgHash(const string msgHash)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // char* selectMsgHash = "SELECT msgHash FROM MsgHash WHERE msgHash=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectMsgHash, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 1, msgHash.data(), msgHash.size(), SQLITE_STATIC));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE)
+        ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::deleteMsgHashes(time_t timestamp)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // char* removeMsgHash = "DELETE FROM MsgHash WHERE since < ?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, removeMsgHash, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
+
+    sqlResult= sqlite3_step(stmt);
+//    cleaned = sqlite3_changes(db);
+//    Log("Number of removed old MK: %d", cleaned);
+    if (sqlResult != SQLITE_DONE)
+        ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    return sqlResult;
+}

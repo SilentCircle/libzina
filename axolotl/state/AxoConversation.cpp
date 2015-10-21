@@ -22,15 +22,14 @@ AxoConversation* AxoConversation::loadConversation(const string& localUser, cons
         return NULL;
     }
 
-    // Create and lock a new conversation object _before_ loading data from database
-    AxoConversation*  conv = new AxoConversation(localUser, user, deviceId);
-
     string* data = store->loadConversation(user, deviceId, localUser);
     if (data == NULL || data->empty()) {   // Illegal state, should not happen
 //        cerr << "cannot load conversation" << endl;
-        delete conv;
         return NULL;
     }
+    // Create new conversation object
+    AxoConversation*  conv = new AxoConversation(localUser, user, deviceId);
+
     conv->deserialize(*data);
     delete data;
     return conv;
@@ -46,6 +45,37 @@ void AxoConversation::storeConversation()
     memset_volatile((void*)data->data(), 0, data->size());
 
     delete data;
+}
+
+int32_t AxoConversation::renameConversation(const string& localUserOld, const string& localUserNew, 
+                                            const string& userOld, const string& userNew, const string& deviceId)
+{
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    if (!store->hasConversation(userOld, deviceId, localUserOld)) {
+        return SQLITE_ERROR;
+    }
+
+    string* data = store->loadConversation(userOld, deviceId, localUserOld);
+    if (data == NULL || data->empty()) {   // Illegal state, should not happen
+        return SQLITE_ERROR;
+    }
+
+    // Create conversation object with the new names. Then deserialize() the old data
+    // into the new object. This does not overwrite the new names set in the 
+    // AxoConversation object.
+    AxoConversation*  conv = new AxoConversation(localUserNew, userNew, deviceId);
+    conv->deserialize(*data);
+    delete data;
+
+    // Store the conversation with new name and the old data, only name and partner
+    // are changed in the data object.
+    conv->storeConversation();
+    delete conv;
+
+    // Now remove the old conversation
+    int32_t sqlCode;
+    store->deleteConversation(userOld, deviceId, localUserOld, &sqlCode);
+    return sqlCode;
 }
 
 void AxoConversation::storeStagedMks()
@@ -90,7 +120,7 @@ void AxoConversation::deserialize(const std::string& data)
     string alias(cJSON_GetObjectItem(jsonItem, "alias")->valuestring);
     partner_.setAlias(alias);
 
-    jsonItem = jsonItem = cJSON_GetObjectItem(root, "deviceName");
+    jsonItem = cJSON_GetObjectItem(root, "deviceName");
     if (jsonItem != NULL)
         deviceName_ = jsonItem->valuestring;
 

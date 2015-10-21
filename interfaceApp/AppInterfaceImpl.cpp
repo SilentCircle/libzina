@@ -16,6 +16,7 @@
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
+#include <zrtp/crypto/sha256.h>
 #include <common/Thread.h>
 
 #include <iostream>
@@ -128,8 +129,28 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
 
 // Take a message envelope (see sendMessage above), parse it, and process the embedded data. Then
 // forward the data to the UI layer.
+static int32_t duplicates = 0;
 int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 {
+    uint8_t hash[SHA256_DIGEST_LENGTH];
+    sha256((uint8_t*)messageEnvelope.data(), messageEnvelope.size(), hash);
+
+    string msgHash;
+    msgHash.assign((const char*)hash, SHA256_DIGEST_LENGTH);
+    int32_t sqlResult = store_->hasMsgHash(msgHash);
+
+    // If we found a duplicate, log and silently ignore it.
+    if (sqlResult == SQLITE_ROW) {
+        Log("Duplicate messages detected so far: %d", ++duplicates);
+        return OK;
+    }
+    sqlResult = store_->insertMsgHash(msgHash);
+//    Log("No duplicate messages detected so far: %d", sqlResult);
+
+    // Cleanup old message hashes
+    time_t timestamp = time(0) - MK_STORE_TIME;
+    store_->deleteMsgHashes(timestamp);
+
     if (messageEnvelope.size() > tempBufferSize_) {
         delete tempBuffer_;
         tempBuffer_ = new char[messageEnvelope.size()];
@@ -202,7 +223,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (messagePlain == NULL) {
         char b2hexBuffer[1004] = {0};
-        
+
         if (oldMessage)
             errorCode_ = OLD_MESSAGE;
         if (wrongDeviceId)

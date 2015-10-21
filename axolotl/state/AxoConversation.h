@@ -66,6 +66,18 @@ public:
     static AxoConversation* loadConversation(const string& localUser, const string& user, const string& deviceId);
 
     /**
+     * @brief Rename a conversation in the database.
+     * 
+     * @param localUserOld existing name of own user/account
+     * @param localUserNew new name of own user/account
+     * @param userOld existing name of the remote user
+     * @param userNew new name of the remote user
+     * @param deviceId The remote user's device id if it is available
+     * @return @c SQLITE_OK if renaming of conversation was OK, an SQLite error code on failure.
+     */
+    static int32_t renameConversation(const string& localUserOld, const string& localUserNew, 
+                                      const string& userOld, const string& userNew, const string& deviceId);
+    /**
      * @brief Store this conversation in persitent store
      */
     void storeConversation();
