@@ -137,14 +137,19 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 
     string msgHash;
     msgHash.assign((const char*)hash, SHA256_DIGEST_LENGTH);
+
+    convLock.Lock();
     int32_t sqlResult = store_->hasMsgHash(msgHash);
 
     // If we found a duplicate, log and silently ignore it.
     if (sqlResult == SQLITE_ROW) {
         Log("Duplicate messages detected so far: %d", ++duplicates);
+        convLock.Unlock();
         return OK;
     }
     sqlResult = store_->insertMsgHash(msgHash);
+    convLock.Unlock();
+
 //    Log("No duplicate messages detected so far: %d", sqlResult);
 
     // Cleanup old message hashes
