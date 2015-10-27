@@ -454,8 +454,8 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Load and returns a set of serialized event/message data.
      *
-     * Each event/message record has a increasing serial number and the highest serial number
-     * is the newest message this functions provides several ways to select the set of message
+     * Each event/message record has an increasing serial number and the highest serial number
+     * is the newest message. This function provides several ways to select the set of message
      * records to return:
      *
      * If @c offset is -1 then the functions takes the highest available message number and
@@ -471,16 +471,16 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * If @c offset and @c number are both -1 the the functions return all message records,
      * sorted in descending order.
      *
-     * The functions may return less event than request if the application deleted event
+     * The functions may return less events than request if the application deleted event
      * records in the selected range. The functions returns the sequence number of the last
      * (oldest) event record, i.e. the smallest found sequence number.
      *
      * @param name The conversation partner's name
      * @param offset Where to start to retrieve the events/message
-     * @param number how many enevt/message to load
+     * @param number how many events/messages to load
      * @param code array of length 2 to return the request result code at index 0 (usually 
      *             a SQLITE code) and the message sequence number at index 1. 
-     * @return Array of byte arrays that contain the serialied event data
+     * @return Array of byte arrays that contain the serialized event data
      */
     public static native byte[][] loadEvents(byte[]name, int offset, int number, int[] code);
 

@@ -451,8 +451,11 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     int pwLen = env->GetArrayLength(dbPassphrase);
     if (pw == NULL)
         return -14;
-    if (pwLen != 32)
+
+    if (pwLen != 32) {
+        env->ReleaseByteArrayElements(dbPassphrase, (jbyte*)pw, 0);
         return -15;
+    }
 
     if (dbName == NULL)
         return -16;
