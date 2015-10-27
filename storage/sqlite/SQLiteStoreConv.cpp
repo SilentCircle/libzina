@@ -50,13 +50,6 @@ static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 static const char *beginTransactionSql  = "BEGIN TRANSACTION;";
 static const char *commitTransactionSql = "COMMIT;";
 
-/* *****************************************************************************
- * The SQLite master table.
- *
- * Used to check if we have valid ZRTP cache tables.
- */
-static const char *lookupTables = "SELECT name FROM sqlite_master WHERE type='table' AND name='OwnIdentity';";
-
 
 /* *****************************************************************************
  * SQL statements to process the sessions table.
@@ -293,6 +286,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
     }
     else {
         if (createTables() != SQLITE_OK) {
+            sqlite3_close(db);
             sqlLock.Unlock();
             return sqlCode_;
         }
@@ -389,16 +383,32 @@ int SQLiteStoreConv::createTables()
     return sqlResult;
 }
 
+/* *****************************************************************************
+ * The SQLite master table.
+ *
+ * Used to check if we have valid attachmentStatus table.
+ */
+static const char *lookupTables = "SELECT name FROM sqlite_master WHERE type='table' AND name='MsgHash';";
+
+
 int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion)
 {
     sqlite3_stmt* stmt;
 
     // Version 2 adds the message hash table
     if (oldVersion < 2) {
-        sqlCode_ = SQLITE_PREPARE(db, createMsgHash, -1, &stmt, NULL);
-        sqlCode_ = sqlite3_step(stmt);
-        if (sqlCode_ != SQLITE_DONE)
-            return sqlCode_;
+        // check if MsgHash table is already available
+        SQLITE_PREPARE(db, lookupTables, -1, &stmt, NULL);
+        int32_t rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        // If not then create it
+        if (rc != SQLITE_ROW) {
+            sqlCode_ = SQLITE_PREPARE(db, createMsgHash, -1, &stmt, NULL);
+            sqlCode_ = sqlite3_step(stmt);
+            if (sqlCode_ != SQLITE_DONE)
+                return sqlCode_;
+        }
         oldVersion = 2;
     }
 
