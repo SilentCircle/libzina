@@ -48,6 +48,8 @@ public:
 
     int32_t receiveMessage(const string& messageEnvelope);
 
+    int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias);
+
     void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation);
 
     string* getKnownUsers();

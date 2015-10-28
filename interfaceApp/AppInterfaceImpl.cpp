@@ -130,7 +130,14 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
 // Take a message envelope (see sendMessage above), parse it, and process the embedded data. Then
 // forward the data to the UI layer.
 static int32_t duplicates = 0;
+
 int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
+{
+    return receiveMessage(messageEnvelope, Empty, Empty);
+}
+
+
+int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const string& uid, const string& alias)
 {
     uint8_t hash[SHA256_DIGEST_LENGTH];
     sha256((uint8_t*)messageEnvelope.data(), messageEnvelope.size(), hash);
@@ -167,7 +174,8 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
 
-    const string& sender = envelope.name();
+    const string sender = alias.empty() ? envelope.name() : alias;
+
     const string& senderScClientDevId = envelope.scclientdevid();
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
     const string& message = envelope.message();

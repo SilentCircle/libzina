@@ -34,6 +34,9 @@ public:
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 
+    int32_t receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
+                              uint8_t* primaryAlias, size_t aliasLen);
+
     void stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length);
 
     void notifyAxo(uint8_t* data, size_t length);

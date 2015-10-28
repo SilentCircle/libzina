@@ -52,6 +52,21 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
     return result;
 }
 
+int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
+                                        uint8_t* primaryAlias, size_t aliasLen)
+{
+    string envelope((const char*)data, length);
+    
+    string uidString;
+    if (uid != NULL && uidLen > 0)
+        uidString.assign((const char*)uid, uidLen);
+
+    string aliasString;
+    if (primaryAlias != NULL && aliasLen > 1)
+        aliasString.assign((const char*)primaryAlias, aliasLen);
+        
+}
+
 void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length)
 {
     std::string info;
