@@ -64,7 +64,11 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* u
     string aliasString;
     if (primaryAlias != NULL && aliasLen > 1)
         aliasString.assign((const char*)primaryAlias, aliasLen);
-        
+
+    int32_t result = appInterface_->receiveMessage(envelope, uidString, aliasString);
+
+    return result;
+
 }
 
 void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length)
