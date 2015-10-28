@@ -105,33 +105,36 @@ public:
 
     /**
      * @brief Receive a Message from transport
+     * 
+     * The function unpacks the message data, sender, sender's device and other data,
+     * performs some conistency checks and calls the Axolotl ratched to decrypt the
+     * message and the supplementary data. After decryption the functions constructs
+     * a JSON data structure containing sender's name, message information and calls 
+     * into the UI to handle the message, attributes, and attachments.
+     * 
+     * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
      *
-     * Takes JSON formatted message envelope of the received message and forwards it to the UI
-     * code via a callback functions. The function accepts an optional JSON formatted attachment
-     * descriptor and forwards it to the UI code if a descriptor is available.
-     *
-     * The implementation classes for the different language bindings need to perform the necessary
-     * setup to be able to call into the UI code. The function and thus also the called function in
-     * the UI runs in an own thread. UI frameworks may not directly call UI related functions inside
-     * their callback function. Some frameworks provide special functions to run code on the UI 
-     * thread even if the current functions runs on another thread.
-     *
-     * In any case the UI code shall not block processing of this callback function and shall return
-     * from the callback function as soon as possible.
-     *
-     * The @c receiveMessage function does not interpret or re-format the attachment descriptor. It takes
-     * the the data from the received message bundle, decrypts it with the same key as the message data
-     * and forwards the resulting string to the UI code. The UI code can then use this data as input to
-     * the attachment handling.
-     *
-     * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachementDescriptor  A string that contains an attachment descriptor. An empty string
-     *                               shows that no attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @return Either success of an error code (to be defined)
+     * @return Either success or an error code
      */
     virtual int32_t receiveMessage(const string& messageEnvelope) = 0;
+
+    /**
+     * @brief Receive a Message from transport
+     * 
+     * The function unpacks the message data, sender, sender's device and other data,
+     * performs some conistency checks and calls the Axolotl ratched to decrypt the
+     * message and the supplementary data. After decryption the functions constructs
+     * a JSON data structure containing sender's name, message information and calls 
+     * into the UI to handle the message, attributes, and attachments.
+     * 
+     * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
+     * @param uid The SIP receiver callback sets this to the sender's UID if availabe, an 
+     *            empty string if not available
+     * @param alias The SIP receiver callback sets this to the sender's primary alias name
+     *              if availabe, an empty string if not available
+     *
+     * @return Either success or an error code
+     */
 
     virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
     /**
