@@ -133,6 +133,7 @@ public:
      */
     virtual int32_t receiveMessage(const string& messageEnvelope) = 0;
 
+    virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
     /**
      * @brief Send a message state report to the application.
      *
