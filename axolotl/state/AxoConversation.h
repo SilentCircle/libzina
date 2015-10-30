@@ -142,8 +142,8 @@ public:
     void setZrtpVerifyState(int32_t state)  { zrtpVerifyState = state; }
     int32_t getZrtpVerifyState() const      { return zrtpVerifyState; }
 
-    void setPreKeysAvail(int32_t num)       { availablePreKeys = num; }
-    int32_t getPreKeysAvail() const         { return availablePreKeys; }
+    void setPreKeysAvail(size_t num)       { availablePreKeys = num; }
+    size_t getPreKeysAvail() const         { return availablePreKeys; }
 
     list<string>* stagedMk;
 
@@ -186,7 +186,7 @@ private:
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
     int32_t   zrtpVerifyState;
-    int32_t   availablePreKeys; //!< Only used in local conversation to track number of available pre-keys
+    size_t   availablePreKeys; //!< Only used in local conversation to track number of available pre-keys
     // ***** end of persitent data
 
     /*

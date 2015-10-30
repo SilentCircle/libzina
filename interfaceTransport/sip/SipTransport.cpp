@@ -2,7 +2,6 @@
 #include "../../storage/sqlite/SQLiteStoreConv.h"
 #include <iostream>
 #include <map>
-#include <utility>
 
 
 using namespace axolotl;
@@ -11,7 +10,7 @@ void Log(const char* format, ...);
 
 vector< int64_t >* SipTransport::sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs)
 {
-    int32_t numPairs = msgPairs->size();
+    size_t numPairs = msgPairs->size();
 
     uint8_t** names = new uint8_t*[numPairs+1];
     uint8_t** devIds = new uint8_t*[numPairs+1];
@@ -19,7 +18,7 @@ vector< int64_t >* SipTransport::sendAxoMessage(const string& recipient, vector<
     size_t*   sizes = new size_t[numPairs+1];
     uint64_t* msgIds = new uint64_t[numPairs+1];
 
-    int32_t index = 0;
+    size_t index = 0;
     for(; index < numPairs; index++) {
         pair<string, string>& msgPair = msgPairs->at(index);
         names[index] = (uint8_t*)recipient.c_str();
@@ -111,23 +110,18 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     map<string, string>::iterator it;
     it = seenIdStringsForName.find(name);
     if (it != seenIdStringsForName.end()) {
-//        Log("++++ Found entry: %s", name.c_str());
-
         // Found an entry, check if device ids match, if yes -> return, already processed,
         // if no -> delete the entry, continue processing which will add the new entry.
         if (it->second == devIdsSave) {
-//            Log("++++ Found match: %s (%s)", name.c_str(), devIdsSave.c_str());
             return;
         }
         else {
-//            Log("++++ No match: %s (%s)", name.c_str(), devIdsSave.c_str());
             seenIdStringsForName.erase(it);
         }
     }
     pair<map<string, string>::iterator, bool> ret;
-//    Log("++++ Adding entry: %s", name.c_str());
-    ret = seenIdStringsForName.insert (pair<string, string>(name, devIdsSave));
-    if (ret.second == false) {
+    ret = seenIdStringsForName.insert(pair<string, string>(name, devIdsSave));
+    if (!ret.second) {
         Log("Inserting of notified device ids failed: %s (%s)", name.c_str(), devIdsSave.c_str());
     }
 

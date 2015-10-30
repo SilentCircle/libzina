@@ -4,25 +4,20 @@
 #include "../axolotl/crypto/AesCbc.h"
 #include "../axolotl/Constants.h"
 #include "../axolotl/AxoPreKeyConnector.h"
-#include "../axolotl/state/AxoConversation.h"
 #include "../axolotl/ratchet/AxoRatchet.h"
 
-#include "../interfaceTransport/sip/SipTransport.h"
 #include "../keymanagment/PreKeys.h"
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
 #include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
-#include "../storage/sqlite/SQLiteStoreConv.h"
 
 #include <zrtp/crypto/sha256.h>
 #include <common/Thread.h>
 
-#include <iostream>
-#include <algorithm>
-#include <utility>
-
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCDFAInspection"
 static CMutexClass convLock;
 
 using namespace axolotl;
@@ -140,7 +135,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const string& uid, const string& alias)
 {
     uint8_t hash[SHA256_DIGEST_LENGTH];
-    sha256((uint8_t*)messageEnvelope.data(), messageEnvelope.size(), hash);
+    sha256((uint8_t*)messageEnvelope.data(), (uint32_t)messageEnvelope.size(), hash);
 
     string msgHash;
     msgHash.assign((const char*)hash, SHA256_DIGEST_LENGTH);
@@ -154,7 +149,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         convLock.Unlock();
         return OK;
     }
-    sqlResult = store_->insertMsgHash(msgHash);
+    store_->insertMsgHash(msgHash);
     convLock.Unlock();
 
 //    Log("No duplicate messages detected so far: %d", sqlResult);
@@ -168,7 +163,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         tempBuffer_ = new char[messageEnvelope.size()];
         tempBufferSize_ = messageEnvelope.size();
     }
-    int32_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t*)tempBuffer_, tempBufferSize_);
+    size_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t*)tempBuffer_, tempBufferSize_);
     string envelopeBin((const char*)tempBuffer_, binLength);
 
     MessageEnvelope envelope;
@@ -188,7 +183,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     bool wrongDeviceId = false; 
     if (!sentToId.empty()) {
         uint8_t binDevId[20];
-        int32_t res = hex2bin(scClientDevId_.c_str(), binDevId);
+        hex2bin(scClientDevId_.c_str(), binDevId);
 
         wrongDeviceId = memcmp((void*)sentToId.data(), binDevId, sentToId.size()) != 0;
 
@@ -197,7 +192,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), recv, &len);
         Log("Messge is for device id: %s, my device id: %s (%s)", recv, scClientDevId_.c_str(), wrongDeviceId? "True" : "False");
     }
-    uuid_t uu;
+    uuid_t uu = {0};
     uuid_parse(msgId.c_str(), uu);
     time_t msgTime = uuid_time(uu, NULL);
     time_t currentTime = time(NULL);
@@ -329,7 +324,7 @@ string* AppInterfaceImpl::getKnownUsers()
 //        Log("generatePreKey: %d", store_->getLastError());
         return NULL;
     }
-    int32_t size = names->size();
+    size_t size = names->size();
 
     cJSON *root,*nameArray;
     root=cJSON_CreateObject();
@@ -388,7 +383,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
     }
     string data = myIdPair->getPublicKey().serialize();
 
-    int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+    b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identity_key", b64Buffer);
 
     cJSON* jsonPkrArray;
@@ -397,7 +392,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
     list<pair<int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
 
     // Update number of avaialble pre-keys on server
-    int32_t size = preList->size();
+    size_t size = preList->size();
     ownConv->setPreKeysAvail(size);
     ownConv->storeConversation();
     delete ownConv;
@@ -412,9 +407,9 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
 
         // Get pre-key's public key data, serialized
         const DhKeyPair* ecPair = pkPair.second;
-        const string data = ecPair->getPublicKey().serialize();
+        const string keyData = ecPair->getPublicKey().serialize();
 
-        b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        b64Encode((const uint8_t*) keyData.data(), keyData.size(), b64Buffer, MAX_KEY_BYTES_ENCODED * 2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
         delete ecPair;
     }
@@ -496,8 +491,6 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
     convLock.Lock();
-    uuid_t pingUuid;
-    uuid_string_t uuidString;
 
     while (!devices->empty()) {
         string deviceId = devices->front().first;
@@ -517,6 +510,9 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             }
             continue;
         }
+        uuid_t pingUuid = {0};
+        uuid_string_t uuidString = {0};
+
         uuid_generate_time(pingUuid);
         uuid_unparse(pingUuid, uuidString);
         string msgId(uuidString);
@@ -562,7 +558,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
     errorCode_ = OK;
     AxoConversation* localConv = AxoConversation::loadLocalConversation(ownUser_);
     if (localConv != NULL) {
-        int32_t numPreKeys = localConv->getPreKeysAvail();
+        size_t numPreKeys = localConv->getPreKeysAvail();
         if (numPreKeys < MIN_NUM_PRE_KEYS) {
             string result;
             int32_t code = Provisioning::newPreKeys(store_, scClientDevId_, authorization_, NUM_PRE_KEYS, &result);
@@ -577,7 +573,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
     bool toSibling = recipient == ownUser_;
 
     list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
-    int32_t numDevices = devices->size();
+    size_t numDevices = devices->size();
 
     if (numDevices == 0) {
         vector<pair<string, string> >* msgPairs = sendMessagePreKeys(recipient, msgId, message, attachementDescriptor, messageAttributes);
@@ -645,7 +641,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         }
 
         uint8_t binDevId[20];
-        int32_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
+        size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
         if (res >= 0)
             envelope.set_recvdevidbin(binDevId, 4);
 //        envelope.set_recvdeviceid(recipientDeviceId);
@@ -659,7 +655,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
             tempBuffer_ = new char[serialized.size()*2];
             tempBufferSize_ = serialized.size()*2;
         }
-        int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
+        size_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
 
         // replace the binary data with B64 representation
         serialized.assign(tempBuffer_, b64Len);
@@ -842,7 +838,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     }
 
     uint8_t binDevId[20];
-    int32_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
+    size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
     if (res >= 0)
         envelope.set_recvdevidbin(binDevId, 4);
 //    envelope.set_recvdeviceid(recipientDeviceId);
@@ -857,7 +853,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         tempBuffer_ = new char[serialized.size()*2];
         tempBufferSize_ = serialized.size()*2;
     }
-    int32_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
+    size_t b64Len = b64Encode((const uint8_t*)serialized.data(), serialized.size(), tempBuffer_, tempBufferSize_);
 
     // replace the binary data with B64 representation
     serialized.assign(tempBuffer_, b64Len);
@@ -878,7 +874,7 @@ string AppInterfaceImpl::getOwnIdentityKey() const
     const DhKeyPair* keyPair = axoConv->getDHIs();
     const DhPublicKey& pubKey = keyPair->getPublicKey();
 
-    int b64Len = b64Encode((const uint8_t*)pubKey.getPublicKeyPointer(), pubKey.getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+    b64Encode(pubKey.getPublicKeyPointer(), pubKey.getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
     string idKey((const char*)b64Buffer);
     if (!axoConv->getDeviceName().empty()) {
@@ -894,7 +890,6 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
     list<string>* idKeys = new list<string>;
 
     list<string>* devices = store_->getLongDeviceIds(user, ownUser_);
-    int32_t numDevices = devices->size();
 
     while (!devices->empty()) {
         string recipientDeviceId = devices->front();
@@ -902,7 +897,7 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, user, recipientDeviceId);
         const DhPublicKey* idKey = axoConv->getDHIr();
 
-        int b64Len = b64Encode((const uint8_t*)idKey->getPublicKeyPointer(), idKey->getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        b64Encode(idKey->getPublicKeyPointer(), idKey->getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
         string id((const char*)b64Buffer);
         id.append(":");
@@ -920,4 +915,4 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
     delete devices;
     return idKeys;
 }
-
+#pragma clang diagnostic pop

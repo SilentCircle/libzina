@@ -52,8 +52,8 @@ public:
     const std::string serialize() const;
 
     int32_t getType() const {return EcCurveTypes::Curve25519;}
-    int32_t getEncodedSize() const {return KEY_LENGTH + 1;}
-    int32_t getSize() const {return KEY_LENGTH;}
+    size_t getEncodedSize() const {return KEY_LENGTH + 1;}
+    size_t getSize() const {return KEY_LENGTH;}
 
     void getPublicKey(uint8_t* outBuffer) const {memcpy(outBuffer, keyData_, KEY_LENGTH);}
     const std::string  getPublicKey() const { return std::string((const char*)keyData_, KEY_LENGTH); }
