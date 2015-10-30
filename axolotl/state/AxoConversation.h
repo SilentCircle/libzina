@@ -133,8 +133,8 @@ public:
     void setPNs(int32_t number)             { PNs = number; }
     int32_t getPNs() const                  { return PNs; }
 
-    void setPreKeyId(uint32_t id)           { preKeyId = id; }
-    uint32_t getPreKeyId() const            { return preKeyId; }
+    void setPreKeyId(int32_t id)            { preKeyId = id; }
+    int32_t getPreKeyId() const             { return preKeyId; }
 
     void setRatchetFlag(bool flag)          { ratchetFlag = flag; }
     bool getRatchetFlag() const             { return ratchetFlag; }
@@ -142,8 +142,8 @@ public:
     void setZrtpVerifyState(int32_t state)  { zrtpVerifyState = state; }
     int32_t getZrtpVerifyState() const      { return zrtpVerifyState; }
 
-    void setPreKeysAvail(size_t num)       { availablePreKeys = num; }
-    size_t getPreKeysAvail() const         { return availablePreKeys; }
+    void setPreKeysAvail(size_t num)        { availablePreKeys = num; }
+    size_t getPreKeysAvail() const          { return availablePreKeys; }
 
     list<string>* stagedMk;
 
