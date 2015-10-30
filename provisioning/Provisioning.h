@@ -103,6 +103,7 @@ public:
      */
     static int32_t newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, int32_t number, string* result);
 
+    static int32_t getUserInfo(const string& alias, const string& authorization, string* result);
 };
 } // namespace
 

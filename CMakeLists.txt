@@ -35,7 +35,8 @@ if (NOT STANDALONE)
 endif()
 
 set(axoLibName axolotl++)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
+message(STATUS "CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 ### No more configuration below this line (usually ;-) )
 if (EXISTS "${ZRTP_BASE_DIR}/zrtp/crypto/hmac256.cpp")
@@ -100,6 +101,7 @@ set (interface_src
 
 set (storage_src
     storage/sqlite/SQLiteStoreConv.cpp
+    storage/NameLookup.cpp
 )
 
 set (key_mngmnt_src

@@ -4,13 +4,9 @@
 #include "../util/b64helper.h"
 #include "../axolotl/Constants.h"
 #include "../axolotl/crypto/EcCurve.h"
-#include "../axolotl/crypto/DhKeyPair.h"
 #include "../keymanagment/PreKeys.h"
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <iostream>
-#include <utility>
 
 using namespace axolotl;
 using namespace std;
@@ -72,7 +68,8 @@ int32_t Provisioning::removeAxoDevice(const string& scClientDevId, const string&
 */
 static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 
-int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevId, const string& authorization, pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
+int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevId, const string& authorization,
+                                      pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
     char temp[1000];
     snprintf(temp, 990, getPreKeyRequest, name.c_str(), longDevId.c_str(), authorization.c_str());
@@ -81,6 +78,7 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
+    cerr << "+++ prekeyrequest: " << response << endl;
     if (code >= 400)
         return 0;
 
@@ -109,10 +107,10 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     int32_t pkyId = cJSON_GetObjectItem(pky, "id")->valueint;
     std::string pkyPub(cJSON_GetObjectItem(pky, "key")->valuestring);
 
-    int32_t len = b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
+    b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
     const DhPublicKey* prePublic = EcCurve::decodePoint(pubKeyBuffer);
 
-    len = b64Decode(identity.data(), identity.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
+    b64Decode(identity.data(), identity.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
     const DhPublicKey *identityKey = EcCurve::decodePoint(pubKeyBuffer);
 
     // Clear JSON buffer and context
@@ -241,10 +239,10 @@ list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& na
         if (devId == NULL)
             continue;
         string id(devId->valuestring);
-        string name;
+        string nameString;
         if (devName != NULL)
-            name.assign(devName->valuestring);
-        pair<string, string>idName(id, name);
+            nameString.assign(devName->valuestring);
+        pair<string, string>idName(id, nameString);
         deviceIds->push_back(idName);
     }
     // Clear JSON buffer and context
@@ -288,8 +286,8 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store, number);
-    int32_t size = preList->size();
-    for (int32_t i = 0; i < size; i++) {
+    size_t size = preList->size();
+    for (size_t i = 0; i < size; i++) {
         pair<int32_t, const DhKeyPair*> prePair = preList->front();
         preList->pop_front();
 
@@ -301,7 +299,7 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
         const DhKeyPair* ecPair = prePair.second;
         const std::string data = ecPair->getPublicKey().serialize();
 
-        int32_t b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
         delete ecPair;
     }
@@ -312,5 +310,20 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     cJSON_Delete(root); free(out);
 
     return ScProvisioning::httpHelper_(requestUri, PUT, registerRequest, result);
+}
 
+// Implementation of the Provisioning API: Get available user info from provisioning server
+// Request URL: /v1/user/<name>/?api_key=<apikey>
+// Method: GET
+static const char* getUserInfoRequest = "/v1/user/%s/?api_key=%s";
+
+int32_t Provisioning::getUserInfo(const string& alias,  const string& authorization, string* result)
+{
+    char temp[1000];
+    snprintf(temp, 990, getUserInfoRequest, alias.c_str(), authorization.c_str());
+    string requestUri(temp);
+
+    int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, result);
+
+    return code;
 }
