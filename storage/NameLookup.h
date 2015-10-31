@@ -25,8 +25,8 @@ namespace axolotl {
     class UserInfo {
     public:
         string uniqueId;        //!< User's unique name, canonical name, not human readable
-        string fullName;        //!< User's full name as stored with the provisioning server
-        string alias0;          //!< Primary alias, aka preferred alias
+        string displayName;     //!< User's full/display name as stored in the provisioning server
+        string alias0;          //!< Primary alias, aka preferred alias, aka alias0
     };
 
     class NameLookup {

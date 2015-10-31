@@ -789,4 +789,56 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param scloudRef the long integer context identifier
      */
     public static native void cloudFree(long scloudRef);
+
+    /*
+     ***************************************************************
+     * Below the native interface for the alias name lookup functions
+     * -- these do not really belong to Axolotl, however it's simpler
+     *    to leave it in one library --
+     * *************************************************************
+     */
+
+    /**
+     * Get the UID (canonical name) for the alias.
+     *
+     * This function returns the user's UID (canonical name) for the alias name. Because this
+     * function may request this mapping from a server the caller shall not call this function
+     * in the main (UI) thread.
+     *
+     * @param alias The alias
+     * @param authorization The API-key, may be {@code null}. If this is {@code null} then the
+     *                      functions uses the authorization data that the call defined in the
+     *                      #doInit call.
+     * @return the UID for the alias or {@code null} if no UID exists for the alias.
+     */
+    public static native String getUid(String alias, byte[] authorization);
+
+    /**
+     * Get the use information for the alias.
+     *
+     * This function returns a subset of the user information that's stored on the provisioning
+     * server for the alias. Because this function may request this mapping from a server the
+     * caller must not call this function in the main (UI) thread.
+     *
+     * The function returns a JSON formatted string:
+     * <pre>
+     * {
+     *   "uid":          "<string>"
+     *   "display_name": "<string>"
+     *   "alias0":       "<string"
+     * }
+     * </pre>
+     *
+     * The {@code display_name} string contains the user's full/display name returned by the
+     * provisioning server, the {@code alias0} is the user's preferred alias, returned by the
+     * provisioning server.
+     *
+     * @param alias The alias
+     * @param authorization The API-key, may be {@code null}. If this is {@code null} then the
+     *                      functions uses the authorization data that the call defined in the
+     *                      #doInit call.
+     * @return a JSON formatted string as UTF byte array or {@code null} if no user data exists
+     *         for the alias.
+     */
+    public static native byte[] getUserInfo(String alias, byte[] authorization);
 }

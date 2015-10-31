@@ -415,6 +415,22 @@ JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_cloudGetDecryptedMetaDat
 JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_cloudFree
   (JNIEnv *, jclass, jlong);
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getUid
+ * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_getUid
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getUserInfo
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getUserInfo
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif

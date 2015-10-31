@@ -12,14 +12,9 @@
 #include "../../interfaceTransport/sip/SipTransport.h"
 #include "../../axolotl/state/AxoConversation.h"
 #include "../../axolotl/crypto/EcCurve.h"
-#include "../../axolotl/crypto/DhKeyPair.h"
 #include "../../util/cJSON.h"
 #include "../../attachments/fileHandler/scloud.h"
-
-#include <stdlib.h>
-#include <stdarg.h>
-#include <vector>
-#include <string>
+#include "../../storage/NameLookup.h"
 
 using namespace axolotl;
 using namespace std;
@@ -469,7 +464,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->setKey(dbPw);
 
-    const char* db = (const char *)env->GetStringUTFChars(dbName, 0);
+    const char* db = env->GetStringUTFChars(dbName, 0);
     store->openStore(string (db));
     env->ReleaseStringUTFChars(dbName, db);
 
@@ -834,7 +829,7 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
 
     string dataContainer;
     if (data != NULL) {
-        int dataLen = env->GetArrayLength(data);
+        size_t dataLen = static_cast<size_t>(env->GetArrayLength(data));
         if (dataLen > 0) {
             const uint8_t* tmp = (uint8_t*)env->GetByteArrayElements(data, 0);
             if (tmp != NULL) {
@@ -892,7 +887,7 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
 
         Log("Removing Axolotl conversation data for '%s' returned %d\n", dataContainer.c_str(), sqlResult);
         if (SQL_FAIL(sqlResult)) {
-            jstring result = env->NewStringUTF(store->getLastError());
+            result = env->NewStringUTF(store->getLastError());
         }
         else {
             axoAppInterface->rescanUserDevices(dataContainer);
@@ -1833,3 +1828,77 @@ JNI_FUNCTION(cloudFree) (JNIEnv* env, jclass clazz, jlong cloudRef)
     SCloudFree(scCtx, 1);
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getUid
+ * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL
+JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+{
+    string auth;
+    if (!arrayToString(env, authorization, &auth) || auth.empty()) {
+        if (axoAppInterface == NULL)
+            return NULL;
+        auth = axoAppInterface->getOwnAuthrization();
+    }
+    if (alias == NULL) {
+        return NULL;
+    }
+    const char* aliasTmp = env->GetStringUTFChars(alias, 0);
+    string aliasString(aliasTmp);
+    env->ReleaseStringUTFChars(alias, aliasTmp);
+    if (aliasString.empty())
+        return NULL;
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    string uid = nameCache->getUid(aliasString, auth);
+
+    if (uid.empty())
+        return NULL;
+
+    jstring uidJava = env->NewStringUTF(uid.c_str());
+    return uidJava;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getUserInfo
+ * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+{
+    string auth;
+    if (!arrayToString(env, authorization, &auth) || auth.empty()) {
+        if (axoAppInterface == NULL)
+            return NULL;
+        auth = axoAppInterface->getOwnAuthrization();
+    }
+    if (alias == NULL) {
+        return NULL;
+    }
+    const char* aliasTmp = env->GetStringUTFChars(alias, 0);
+    string aliasString(aliasTmp);
+    env->ReleaseStringUTFChars(alias, aliasTmp);
+    if (aliasString.empty())
+        return NULL;
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    shared_ptr<UserInfo> userInfo = nameCache->getUserInfo(aliasString, auth);
+
+    if (!userInfo)
+        return NULL;
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "uid", userInfo->uniqueId.c_str());
+    cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
+    cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
+
+    char *out = cJSON_Print(root);
+    string json(out);
+    cJSON_Delete(root); free(out);
+
+    jbyteArray retData = stringToArray(env, json);
+    return retData;
+}

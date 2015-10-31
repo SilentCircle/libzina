@@ -52,17 +52,27 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
-                                        uint8_t* primaryAlias, size_t aliasLen)
-{
-    string envelope((const char*)data, length);
+                                        uint8_t* primaryAlias, size_t aliasLen) {
+    string envelope((const char *) data, length);
 
     string uidString;
-    if (uid != NULL && uidLen > 0)
-        uidString.assign((const char*)uid, uidLen);
+    if (uid != NULL && uidLen > 0) {
+        uidString.assign((const char *) uid, uidLen);
 
+        std::size_t found = uidString.find(scSipDomain);
+        if (found != string::npos) {
+            uidString = uidString.substr(0, found);
+        }
+    }
     string aliasString;
-    if (primaryAlias != NULL && aliasLen > 0)
-        aliasString.assign((const char*)primaryAlias, aliasLen);
+    if (primaryAlias != NULL && aliasLen > 0) {
+        aliasString.assign((const char *) primaryAlias, aliasLen);
+
+        std::size_t found = aliasString.find(scSipDomain);
+        if (found != string::npos) {
+            aliasString = aliasString.substr(0, found);
+        }
+    }
 
     int32_t result = appInterface_->receiveMessage(envelope, uidString, aliasString);
 

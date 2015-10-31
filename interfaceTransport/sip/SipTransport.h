@@ -15,6 +15,8 @@
 #include "../Transport.h"
 #include "../../interfaceApp/AppInterface.h"
 
+static const char* scSipDomain = "@sip.silentcircle.net";
+
 using namespace std;
 
 namespace axolotl {
