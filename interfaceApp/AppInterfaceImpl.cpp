@@ -398,7 +398,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
 
     list<pair<int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
 
-    // Update number of avaialble pre-keys on server
+    // Update number of available pre-keys on server
     size_t size = preList->size();
     ownConv->setPreKeysAvail(size);
     ownConv->storeConversation();

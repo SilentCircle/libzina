@@ -2,12 +2,10 @@
 #define UIINTERFACEIMPL_H
 
 /**
- * @file UiInterfaceImpl.h
+ * @file AppInterfaceImpl.h
  * @brief Implementation of the UI interface methods
  * @ingroup Axolotl++
  * @{
- * 
- * The implementation of this class is not thread safe.
  */
 
 #include <stdint.h>
@@ -150,7 +148,7 @@ private:
     Transport* transport_;
     int32_t flags_;
     // If this is true then we checked own device and see only one device for
-    // this account. If another device registeres for this account it sends out
+    // this account. If another device registers for this account it sends out
     // a sync message, the client receives this and we have a second device
     bool ownChecked_;
 };

@@ -35,9 +35,7 @@ public:
 
     /**
      * @brief Set the transport class.
-     * 
-     * Ownership stays with caller, the AppInterface implementation does not delete the Transport.
-     * 
+     *
      * @param transport The implementation of the transport interface to send data.
      */
     virtual void setTransport(Transport* transport) = 0;
@@ -72,46 +70,48 @@ public:
      * the string, encrypts it with the same key as the message data and puts it into the message
      * bundle. The same is true for the message attributes.
      * 
-     * @c sendMessage may send the message to more than one target if the user has more than one
-     * device regsieterd for Axolotl usage. In this case the method returns a unique message id
-     * for each message sent.
+     * @c sendMessage() may send the message to more than one target if the user has more than one
+     * device registered for Axolotl usage. In this case the method returns a unique 64-bit transport
+     * message id for each message sent. This message id is only used to identity message during
+     * transport handling, not to be confused with a message UUID that the application may create
+     * for a message.
      *
      * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachementDescriptor  A string that contains an attachment descriptor. An empty string
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
      *                               shows that not attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
-     * @return unique message identifiers if the messages were processed for sending, 0 if processing
+     * @return unique message identifiers if the messages were processed for sending, @c NULL if processing
      *         failed.
      */
-    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes) = 0;
+    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
 
     /**
-     * @brief Send message to siblinge devices.
+     * @brief Send message to sibling devices.
      * 
      * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
-     * belong to a user. The client uses function for send synchronization message to the siblings to
+     * belong to the same user account. The client uses function to send synchronization messages to siblings to
      * keep them in sync.
      * 
      * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachementDescriptor  A string that contains an attachment descriptor. An empty string
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
      *                               shows that not attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
      * @return unique message identifiers if the messages were processed for sending, 0 if processing
      *         failed.
      */
-    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes) = 0;
+    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
 
     /**
-     * @brief Receive a Message from transport
+     * @brief Receive a message from transport
      * 
      * The function unpacks the message data, sender, sender's device and other data,
-     * performs some conistency checks and calls the Axolotl ratched to decrypt the
-     * message and the supplementary data. After decryption the functions constructs
+     * performs some consistency checks and calls the Axolotl ratchet to decrypt the
+     * message and the supplementary data. After decryption the function constructs
      * a JSON data structure containing sender's name, message information and calls 
      * into the UI to handle the message, attributes, and attachments.
-     * 
+     *
      * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
      *
      * @return Either success or an error code
@@ -122,21 +122,21 @@ public:
      * @brief Receive a Message from transport
      * 
      * The function unpacks the message data, sender, sender's device and other data,
-     * performs some conistency checks and calls the Axolotl ratched to decrypt the
+     * performs some consistency checks and calls the Axolotl ratched to decrypt the
      * message and the supplementary data. After decryption the functions constructs
      * a JSON data structure containing sender's name, message information and calls 
      * into the UI to handle the message, attributes, and attachments.
      * 
      * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
-     * @param uid The SIP receiver callback sets this to the sender's UID if availabe, an 
-     *            empty string if not available
+     * @param uid   The SIP receiver callback sets this to the sender's UID if availabe, an
+     *              empty string if not available
      * @param alias The SIP receiver callback sets this to the sender's primary alias name
-     *              if availabe, an empty string if not available
+     *              if available, an empty string if not available
      *
      * @return Either success or an error code
      */
-
     virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
+
     /**
      * @brief Send a message state report to the application.
      *
@@ -259,12 +259,26 @@ public:
      * from the callback function as soon as possible.
      *
      * The @c receiveMessage function does not interpret or re-format the attachment descriptor. It takes
-     * the the data from the received message bundle, decrypts it with the same key as the message data
+     * the data from the received message bundle, decrypts it with the same key as the message data
      * and forwards the resulting string to the UI code. The UI code can then use this data as input to
      * the attachment handling.
      *
+     * The functions creates the following JSON data message descriptor:
+     *@verbatim
+      {
+          "version":    <int32_t>,            # Version of the JSON known users structure,
+                                              # 1 for the first implementation
+
+          "sender":     <string>,             # sender name (UID in newer versions)
+          "alias":      <string>              # sender alias name (human readable)
+          "scClientDevId": <string>           # sender's device id (instance dev id)
+          "msgId":      <string>,             # the message UUID
+          "message"     <string>              # decrypted message data
+      }
+     @endverbatim
+     *
      * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachementDescriptor  A string that contains an attachment descriptor. An empty string
+     * @param attachmentDescriptor   A string that contains an attachment descriptor. An empty string
      *                               shows that no attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
@@ -292,13 +306,11 @@ public:
      *
      * The Axolotl library uses this callback function to report data of a SIP NOTIFY to the app.
      *
-     * @param messageIdentifier  the unique 64-bit transport message identifier. 
-     * 
      * @param notifyActionCode   This code defines which action to perform, for example re-scan a
      *                           user's Axolotl devices
      * 
-     * @param actionInformation  JSON formatted state information block (string) that contains the
-     *                           details required for the action.
+     * @param actionInformation  string that contains details required for the action, currently
+     *                           the device identifiers separated with a colon.
      */
     NOTIFY_FUNC notifyCallback_;
 };
