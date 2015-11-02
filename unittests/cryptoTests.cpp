@@ -1,11 +1,8 @@
-#include <limits.h>
 #include "../axolotl/crypto/Ec255PrivateKey.h"
 #include "../axolotl/crypto/Ec255PublicKey.h"
-#include "../axolotl/crypto/EcCurveTypes.h"
 #include "../axolotl/crypto/EcCurve.h"
 #include "../axolotl/crypto/AesCbc.h"
 #include "gtest/gtest.h"
-#include <iostream>
 
 using namespace axolotl;
 static int32_t type255 = EcCurveTypes::Curve25519;
@@ -106,11 +103,11 @@ uint8_t shared[] = {
 
 TEST(Curve25519, Agreement)
 {
-    const EcPublicKey* alicePublicKey = EcCurve::decodePoint(alicePublic);
-    const EcPrivateKey* alicePrivateKey = EcCurve::decodePrivatePoint(alicePrivate, sizeof(alicePrivate));
+    const DhPublicKey* alicePublicKey = EcCurve::decodePoint(alicePublic);
+    const DhPrivateKey* alicePrivateKey = EcCurve::decodePrivatePoint(alicePrivate, sizeof(alicePrivate));
 
-    const EcPublicKey* bobPublicKey = EcCurve::decodePoint(bobPublic);
-    const EcPrivateKey* bobPrivateKey = EcCurve::decodePrivatePoint(bobPrivate, sizeof(bobPrivate));
+    const DhPublicKey* bobPublicKey = EcCurve::decodePoint(bobPublic);
+    const DhPrivateKey* bobPrivateKey = EcCurve::decodePrivatePoint(bobPrivate, sizeof(bobPrivate));
 
     uint8_t sharedOne[Ec255PrivateKey::KEY_LENGTH] = {0};
     uint8_t sharedTwo[Ec255PrivateKey::KEY_LENGTH] = {0};
@@ -164,8 +161,8 @@ uint8_t aliceSignature[] = {
 
 TEST(Curve25519, GenerateKeys)
 {
-    const EcKeyPair* alice = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    const EcKeyPair* bob = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+    const DhKeyPair* alice = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+    const DhKeyPair* bob = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
     uint8_t sharedOne[Ec255PrivateKey::KEY_LENGTH] = {0};
     uint8_t sharedTwo[Ec255PrivateKey::KEY_LENGTH] = {0};
@@ -235,32 +232,3 @@ TEST(Aes, ZeroLen)
     ASSERT_TRUE(checkAndRemovePadding(*newPlainText));
     ASSERT_EQ(plainText, *newPlainText);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
