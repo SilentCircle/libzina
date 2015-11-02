@@ -646,6 +646,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
             envelope.set_recvidhash(idHashes.first.data(), 4);
             envelope.set_senderidhash(idHashes.second.data(), 4);
         }
+        delete wireMessage;
 
         uint8_t binDevId[20];
         size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
