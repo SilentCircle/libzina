@@ -3,24 +3,20 @@
 #include "../AxoPreKeyConnector.h"
 #include "../crypto/EcCurve.h"
 #include "../crypto/AesCbc.h"
-#include "../crypto/DhPublicKey.h"
-#include "../crypto/Ec255PublicKey.h"
 #include "../crypto/HKDF.h"
 #include "../Constants.h"
-#include "../../storage/sqlite/SQLiteStoreConv.h"
 
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>
 #include <common/osSpecifics.h>
 #include <iostream>
-#include <stdio.h>
 
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
 static char hexBuffer[2000] = {0};
-static void hexdump(const char* title, const unsigned char *s, int l) {
-    int n=0;
+static void hexdump(const char* title, const unsigned char *s, size_t l) {
+    size_t n=0;
 //sprintf(char *str, const char *format, ...);
 
     if (s == NULL) return;
@@ -30,12 +26,12 @@ static void hexdump(const char* title, const unsigned char *s, int l) {
     for( ; n < l ; ++n)
     {
         if((n%16) == 0)
-            len += sprintf(hexBuffer+len, "\n%04x",n);
+            len += sprintf(hexBuffer+len, "\n%04x",static_cast<int>(n));
         len += sprintf(hexBuffer+len, " %02x",s[n]);
     }
     sprintf(hexBuffer+len, "\n");
 }
-static void hexdump(const char* title, const std::string& in)
+static void hexdump(const char* title, const string& in)
 {
     hexdump(title, (uint8_t*)in.data(), in.size());
 }
@@ -46,22 +42,19 @@ using namespace axolotl;
 void Log(const char* format, ...);
 
 AxoRatchet::AxoRatchet()
-{
-
-}
+{}
 
 AxoRatchet::~AxoRatchet()
-{
+{}
 
-}
 typedef struct parsedMessage_ {
-    int32_t msgType;
-    int32_t curveType;
-    int32_t version;
-    int32_t flags;
+    uint32_t msgType;
+    uint32_t curveType;
+    uint32_t version;
+    uint32_t flags;
 
-    int32_t Np;
-    int32_t PNp;
+    uint32_t Np;
+    uint32_t PNp;
 
     const uint8_t*  ratchet;
 
@@ -72,37 +65,39 @@ typedef struct parsedMessage_ {
     const uint8_t*  remoteIdKey;
 
 
-    int32_t   encryptedMsgLen;
+    size_t  encryptedMsgLen;
     const uint8_t*  encryptedMsg;
 } ParsedMessage;
 
-static void deriveRkCk(AxoConversation& conv, string* newRK, string* newCK)
+static int32_t deriveRkCk(AxoConversation& conv, string* newRK, string* newCK)
 {
     uint8_t agreement[MAX_KEY_BYTES];
 
-//    Log("Old RK length: %d (%d)", conv.getRK().size(), 32);
-
     // Compute a DH agreement from the current Ratchet keys: use receiver's (remote party's) public key and sender's
     // (local party's) private key
-    int32_t agreementLength = EcCurve::calculateAgreement(*conv.getDHRr(), conv.getDHRs()->getPrivateKey(), agreement, (size_t)MAX_KEY_BYTES);
+    int32_t agreementLength = EcCurve::calculateAgreement(*conv.getDHRr(), conv.getDHRs()->getPrivateKey(),
+                                                          agreement, (size_t)MAX_KEY_BYTES);
+    if (agreementLength < 0)
+        return agreementLength;
 
-
+    size_t length = static_cast<size_t>(agreementLength);
     // We need to derive key data for two keys: the new RK and the sender's CK (CKs), thus use
     // a larger buffer
     uint8_t derivedSecretBytes[MAX_KEY_BYTES*2];
 
     // Use HDKF with 3 input parameters: ikm, salt, info
-    HKDF::deriveSecrets(agreement, agreementLength,                          // agreement as input key material to HASH KDF
+    HKDF::deriveSecrets(agreement, length,                                  // agreement as input key material to HASH KDF
                        (uint8_t*)conv.getRK().data(), SYMMETRIC_KEY_LENGTH, // conv.getRK().size(),   // the current root key as salt
                        (uint8_t*)SILENT_RATCHET_DERIVE.data(), 
-                        SILENT_RATCHET_DERIVE.size(),                        // fixed string "SilentCircleRKCKDerive" as info
+                        SILENT_RATCHET_DERIVE.size(),                       // fixed string "SilentCircleRKCKDerive" as info
                        derivedSecretBytes, SYMMETRIC_KEY_LENGTH*2);
 
-    newRK->assign((const char*)derivedSecretBytes, agreementLength);
-    newCK->assign((const char*)derivedSecretBytes+agreementLength, agreementLength);
+    newRK->assign((const char*)derivedSecretBytes, length);
+    newCK->assign((const char*)derivedSecretBytes+length, length);
 //     hexdump("deriveRkCk old RK", conv.getRK());  Log("%s", hexBuffer);
 //     hexdump("deriveRkCk RK", *newRK);  Log("%s", hexBuffer);
 //     hexdump("deriveRkCk CK", *newCK);  Log("%s", hexBuffer);
+    return OK;
 }
 
 static void deriveMk(const string& chainKey, string* MK, string* iv, string* macKey)
@@ -132,17 +127,17 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 #define FIXED_TYPE1_OVERHEAD  (4 + 4 + 4 + 4 + 8)
 #define ADD_TYPE2_OVERHEAD    (4)
 
-static void createWireMessage(AxoConversation& conv, string& message, string& mac, string* wire)
+static void createWireMessage(AxoConversation& conv, string& message, string& mac, shared_ptr<string> wire)
 {
     // Determine the wire message type:
     // 1: Normal message with new Ratchet key
     // 2: Message with new Ratchet Key and pre-key information
 
-    int32_t msgType;
+    uint8_t msgType;
 
     // A0 is set only if we use pre-keys and this is 'Alice' and generated a pre-key info, thus
     // wire message type 2 only if we use pre-key initialization
-    msgType = (conv.getA0() == NULL) ? 1 : 2;
+    msgType = static_cast<uint8_t>((conv.getA0() == NULL) ? 1 : 2);
 
     // The code below currently uses the curve 25519 only. This curve requires 32 byte key data.
     // To support other curves we need to adapt that code
@@ -164,8 +159,8 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
        encrytedMsgLen: 4 byte integer (network order), encrypted message length
        encryptedMsg: variable number of bytes
      */
-    int32_t keyLength = EcCurveTypes::Curve25519KeyLength;  // fixed for curve 25519
-    int32_t msgLength = FIXED_TYPE1_OVERHEAD + keyLength;   // at least a msg type, Ns, PNs, and message length
+    size_t keyLength = EcCurveTypes::Curve25519KeyLength;  // fixed for curve 25519
+    size_t msgLength = FIXED_TYPE1_OVERHEAD + keyLength;   // at least a msg type, Ns, PNs, and message length
 
     if (msgType == 2) {
         msgLength += ADD_TYPE2_OVERHEAD + keyLength + keyLength;          // add remote pre-key id, local generated pre-key, identity key
@@ -195,8 +190,8 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
     intIndex += 8/sizeof(int32_t); byteIndex += 8;
 
     if (msgType == 2) {
-        // set remote pre-key id
-        wmPi[intIndex++] = zrtpHtonl(conv.getPreKeyId()); byteIndex += sizeof(uint32_t);
+        // set remote pre-key id, always a positive value, thus cast
+        wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(conv.getPreKeyId())); byteIndex += sizeof(uint32_t);
 
         const DhPublicKey& idKey = conv.getDHIs()->getPublicKey();   // copy the public identity key
         memcpy(&wmPb[byteIndex], idKey.getPublicKeyPointer(), idKey.getSize());
@@ -206,7 +201,7 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
         memcpy(&wmPb[byteIndex], a0Key.getPublicKeyPointer(), a0Key.getSize());
         intIndex += a0Key.getSize()/sizeof(int32_t); byteIndex += a0Key.getSize();
     }
-    wmPi[intIndex++] = zrtpHtonl(message.size()); byteIndex += sizeof(uint32_t);
+    wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(message.size())); byteIndex += sizeof(uint32_t);
     memcpy(&wmPb[byteIndex], message.data(), message.size());
 
     wire->assign((const char*)wireMessage, msgLength);
@@ -220,37 +215,37 @@ static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct)
 //    hexdump("parse wire", wire); Log("%s", hexBuffer);
 
     const uint8_t* data = (const uint8_t*)wire.data();
-    const int32_t* dPi = (int32_t*)data;
-    int32_t byteIndex = 0;
-    int32_t intIndex = 0;
+    const uint32_t* dPi = (uint32_t*)data;
+    size_t byteIndex = 0;
+    size_t intIndex = 0;
 
-    int32_t keyDataLength = EcCurveTypes::Curve25519KeyLength;
+    size_t keyDataLength = EcCurveTypes::Curve25519KeyLength;
     size_t expectedLength = FIXED_TYPE1_OVERHEAD + keyDataLength;
 
-    msgStruct->msgType = data[byteIndex++] & 0xff;
-    msgStruct->curveType = data[byteIndex++] & 0xff;
-    msgStruct->version = data[byteIndex++] & 0xff;
-    msgStruct->flags = data[byteIndex++] & 0xff;
+    msgStruct->msgType = data[byteIndex++] & 0xffU;
+    msgStruct->curveType = data[byteIndex++] & 0xffU;
+    msgStruct->version = data[byteIndex++] & 0xffU;
+    msgStruct->flags = data[byteIndex++] & 0xffU;
     intIndex++;
 
-    msgStruct->Np = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(int32_t);
-    msgStruct->PNp = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(int32_t);
+    msgStruct->Np = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(uint32_t);
+    msgStruct->PNp = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(uint32_t);
 
     msgStruct->ratchet = &data[byteIndex];
-    intIndex += keyDataLength/sizeof(int32_t); byteIndex += keyDataLength;
+    intIndex += keyDataLength/sizeof(uint32_t); byteIndex += keyDataLength;
 
     msgStruct->mac = &data[byteIndex];
-    intIndex += 8/sizeof(int32_t); byteIndex += 8;
+    intIndex += 8/sizeof(uint32_t); byteIndex += 8;
 
     if (msgStruct->msgType == 2) {
         expectedLength += ADD_TYPE2_OVERHEAD + keyDataLength + keyDataLength;
-        msgStruct->localPreKeyId = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(int32_t);
+        msgStruct->localPreKeyId = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(uint32_t);
 
         msgStruct->remoteIdKey = &data[byteIndex];
-        intIndex += keyDataLength/sizeof(int32_t); byteIndex += keyDataLength;
+        intIndex += keyDataLength/sizeof(uint32_t); byteIndex += keyDataLength;
 
         msgStruct->remotePreKey = &data[byteIndex];
-        intIndex += keyDataLength/sizeof(int32_t); byteIndex += keyDataLength;
+        intIndex += keyDataLength/sizeof(uint32_t); byteIndex += keyDataLength;
     }
     else {
         msgStruct->localPreKeyId = 0;
@@ -270,7 +265,7 @@ static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct)
 }
 
 static int32_t decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
-                            const string& mac, string* decrypted, string* supplementsPlain)
+                               const string& mac, shared_ptr<string> decrypted, shared_ptr<string> supplementsPlain)
 {
 
     uint32_t macLen;
@@ -287,20 +282,24 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
     if (result != 0)
         return MAC_CHECK_FAILED;
 
-    aesCbcDecrypt(MK, iv, encrypted, decrypted);
-    if (!checkAndRemovePadding(*decrypted))
+    int32_t ret = aesCbcDecrypt(MK, iv, encrypted, decrypted);
+    if (ret != SUCCESS)
+        return ret;
+    if (!checkAndRemovePadding(decrypted))
         return MSG_PADDING_FAILED;
 
-    if (supplements.size() > 0 && supplementsPlain != NULL) {
-        aesCbcDecrypt(MK, iv, supplements, supplementsPlain);
-        if (!checkAndRemovePadding(*supplementsPlain))
+    if (supplements.size() > 0 && supplementsPlain) {
+        ret = aesCbcDecrypt(MK, iv, supplements, supplementsPlain);
+        if (ret != SUCCESS)
+            return ret;
+        if (!checkAndRemovePadding(supplementsPlain))
             return SUP_PADDING_FAILED;
     }
     return OK;
 }
 
-static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac, 
-                                     string* plaintext, string *supplementsPlain)
+static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac,
+                                     shared_ptr<string> plaintext, shared_ptr<string> supplementsPlain)
 {
     int32_t retVal = 0;
     list<string>* mks = conv->loadStagedMks();
@@ -416,8 +415,8 @@ commit_skipped_header_and_message_keys()
 Nr = Np + 1
 CKr = CKp
 return read()*/
-string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements, 
-                            string* supplementsPlain, pair<string, string>* idHashes)
+shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements,
+                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes)
 {
     ParsedMessage msgStruct;
     int32_t result = OK;
@@ -426,11 +425,11 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
 
     if (msgStruct.encryptedMsg == NULL) {
         conv->setErrorCode(CORRUPT_DATA);
-        return NULL;
+        return shared_ptr<string>();;
     }
     if (result < 0) {
         conv->setErrorCode(result);
-        return NULL;
+        return shared_ptr<string>();;
     }
 
     string recvIdHash;
@@ -448,7 +447,7 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         // We got a message with embedded pre-key, thus the partner fetched one of our pre-keys from
         // the server. Countdown available pre keys.
         if (localConv != NULL) {
-            int32_t numPreKeys = localConv->getPreKeysAvail();
+            size_t numPreKeys = localConv->getPreKeysAvail();
             numPreKeys--;
             localConv->setPreKeysAvail(numPreKeys);
             localConv->storeConversation();
@@ -459,12 +458,12 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
     }
     delete localConv;
     if (result < 0)
-        return NULL;
+        return shared_ptr<string>();;
 
     // Check if conversation is really setup - identity key must be available in any case
     if (conv->getDHIr() == NULL) {
         conv->setErrorCode(SESSION_NOT_INITED);
-        return NULL;
+        return shared_ptr<string>();;
     }
 
     if (idHashes != NULL) {
@@ -474,12 +473,12 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         result = compareHashes(idHashes, recvIdHash, senderIdHash);
         if (result < 0) {
             conv->setErrorCode(result);
-            return NULL;
+            return shared_ptr<string>();;
         }
     }
 
     string encrypted((const char*)msgStruct.encryptedMsg, msgStruct.encryptedMsgLen);
-    string* decrypted = new string();
+    shared_ptr<string> decrypted = make_shared<string>();
 
     string mac((const char*)msgStruct.mac, 8);
     int32_t tryVal;
@@ -500,9 +499,8 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
         int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
         if (status < 0) {
-            delete decrypted;
             conv->setErrorCode(status);
-            return NULL;
+            return shared_ptr<string>();;
         }
     }
     else {
@@ -518,20 +516,25 @@ string* AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const str
 
         // RKp, CKp = KDF( HMAC-HASH(RK, DH(DHRp, DHRs)) )
         // With the new ratchet key derive the purported RK and CKr
-        deriveRkCk(*conv, &RKp, &CKp);
-
-        // With a new ratchet the message nr starts at zero, however we may have missed
-        // the first message with the new ratchet key, thus stage up to puported number and
-        // compute the chain key starting with the puported chain key computed above
-        stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &MK, &macKey);
-
-        int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted, supplementsPlain);
+        int32_t status = deriveRkCk(*conv, &RKp, &CKp);
         if (status < 0) {
             conv->setDHRr(saveDHRr);
             delete DHRp;
-            delete decrypted;
             conv->setErrorCode(status);
-            return NULL;
+            return shared_ptr<string>();;
+        }
+
+        // With a new ratchet the message nr starts at zero, however we may have missed
+        // the first message with the new ratchet key, thus stage up to purported number and
+        // compute the chain key starting with the purported chain key computed above
+        stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &MK, &macKey);
+
+        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted, supplementsPlain);
+        if (status < 0) {
+            conv->setDHRr(saveDHRr);
+            delete DHRp;
+            conv->setErrorCode(status);
+            return shared_ptr<string>();;
         }
         conv->setRK(RKp);
         delete saveDHRr;
@@ -572,12 +575,12 @@ return msg
  *
  * This implementation does not use header keys.
  */
-const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements, 
-                                  string* encryptedSupplements, pair<string, string>* idHashes)
+shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements,
+                                             shared_ptr<string> encryptedSupplements, pair<string, string>* idHashes)
 {
     if (conv.getRK().empty()) {
         conv.setErrorCode(SESSION_NOT_INITED);
-        return NULL;
+        return shared_ptr<string>();
     }
 
     if (idHashes != NULL) {
@@ -619,19 +622,29 @@ const string* AxoRatchet::encrypt(AxoConversation& conv, const string& message, 
     deriveMk(conv.getCKs(), &MK, &iv, &macKey);
 
 //    Log("Encrypt message to: %s, ratchet: %d, Nr: %d, Ns: %d, PNp: %d", conv.getPartner().getName().c_str(), ratchetSave, conv.getNr(), conv.getNr(), conv.getPNs());
-    string encryptedData;
+    shared_ptr<string> encryptedData = make_shared<string>();
 
-    aesCbcEncrypt(MK, iv, message, &encryptedData);
-    if (supplements.size() > 0 && encryptedSupplements != NULL)
-        aesCbcEncrypt(MK, iv, supplements, encryptedSupplements);
+    int32_t ret = aesCbcEncrypt(MK, iv, message, encryptedData);
+    if (ret != SUCCESS) {
+        conv.setErrorCode(ret);
+        return shared_ptr<string>();
+    }
+    if (supplements.size() > 0 && encryptedSupplements) {
+        ret = aesCbcEncrypt(MK, iv, supplements, encryptedSupplements);
+        if (ret != SUCCESS) {
+            conv.setErrorCode(ret);
+            return shared_ptr<string>();
+        }
+    }
 
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
-    hmac_sha256((uint8_t*)macKey.data(), (uint32_t)macKey.size(), (uint8_t*)encryptedData.data(), encryptedData.size(), mac, &macLen);
+    hmac_sha256((uint8_t*)macKey.data(), (uint32_t)macKey.size(), (uint8_t*)encryptedData->data(),
+                static_cast<int32_t>(encryptedData->size()), mac, &macLen);
     string computedMac((const char*)mac, SHA256_DIGEST_LENGTH);
 
-    string* wireMessage = new string();
-    createWireMessage(conv, encryptedData, computedMac, wireMessage);
+    shared_ptr<string> wireMessage = make_shared<string>();
+    createWireMessage(conv, *encryptedData, computedMac, wireMessage);
     conv.setNs(conv.getNs() + 1);
 
     // Hash CKs with "1"

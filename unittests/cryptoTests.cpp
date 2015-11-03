@@ -4,6 +4,8 @@
 #include "../axolotl/crypto/AesCbc.h"
 #include "gtest/gtest.h"
 
+#include <memory>
+
 using namespace axolotl;
 static int32_t type255 = EcCurveTypes::Curve25519;
 
@@ -71,7 +73,7 @@ TEST(Ec255PublicKey, CopyCompare) {
 
 
 uint8_t alicePublic[] = { 
-    0x05,  0x1b,  0xb7,  0x59,  0x66, 0xf2,  0xe9,  0x3a,  0x36,  0x91,
+    0x01,  0x1b,  0xb7,  0x59,  0x66, 0xf2,  0xe9,  0x3a,  0x36,  0x91,
     0xdf,  0xff,  0x94,  0x2b,  0xb2, 0xa4,  0x66,  0xa1,  0xc0,  0x8b,
     0x8d,  0x78,  0xca,  0x3f,  0x4d, 0x6d,  0xf8,  0xb8,  0xbf,  0xa2,
     0xe4,  0xee,  0x28};
@@ -83,7 +85,7 @@ uint8_t alicePrivate[] = {
     0xbf,  0x59};
 
 uint8_t bobPublic[] = {
-    0x05,  0x65,  0x36,  0x14,  0x99, 0x3d,  0x2b,  0x15,  0xee,  0x9e,
+    0x01,  0x65,  0x36,  0x14,  0x99, 0x3d,  0x2b,  0x15,  0xee,  0x9e,
     0x5f,  0xd3,  0xd8,  0x6c,  0xe7, 0x19,  0xef,  0x4e,  0xc1,  0xda,
     0xae,  0x18,  0x86,  0xa8,  0x7b, 0x3f,  0x5f,  0xa9,  0x56,  0x5a,
     0x27,  0xa2,  0x2f};
@@ -190,19 +192,19 @@ TEST(Aes, Basic)
     std::string iv((const char*)ivData, sizeof(ivData));
 
     std::string plainText("0123456789");   // 10 characters, expect 6 bytes padding
-    std::string *cryptText = new std::string();
+    shared_ptr<string> cryptText = make_shared<string>();
 
     aesCbcEncrypt(key, iv, plainText, cryptText);
     ASSERT_EQ(cryptText->size(), 16) << "Wrong cryptText size";
     ASSERT_NE(plainText, *cryptText);
 
-    std::string *newPlainText = new std::string();
+    shared_ptr<string> newPlainText = make_shared<string>();
 
     aesCbcDecrypt(key, iv, *cryptText, newPlainText);
     ASSERT_EQ(newPlainText->size(), 16) << "Wrong newPlainText size";
     ASSERT_EQ((*newPlainText)[15], '\6') << "Wrong padding byte";
     
-    ASSERT_TRUE(checkAndRemovePadding(*newPlainText));
+    ASSERT_TRUE(checkAndRemovePadding(newPlainText));
     ASSERT_EQ(plainText, *newPlainText);
 }
 
@@ -217,18 +219,18 @@ TEST(Aes, ZeroLen)
     std::string iv((const char*)ivData, sizeof(ivData));
 
     std::string plainText;   // 0 characters, expect 16 bytes padding
-    std::string *cryptText = new std::string();
+    shared_ptr<string> cryptText = make_shared<string>();
 
     aesCbcEncrypt(key, iv, plainText, cryptText);
     ASSERT_EQ(cryptText->size(), 16) << "Wrong cryptText size";
     ASSERT_NE(plainText, *cryptText);
 
-    std::string *newPlainText = new std::string();
+    shared_ptr<string> newPlainText = make_shared<string>();
 
     aesCbcDecrypt(key, iv, *cryptText, newPlainText);
     ASSERT_EQ(newPlainText->size(), 16) << "Wrong newPlainText size";
     ASSERT_EQ(16, (*newPlainText)[15]) << "Wrong padding byte";
 
-    ASSERT_TRUE(checkAndRemovePadding(*newPlainText));
+    ASSERT_TRUE(checkAndRemovePadding(newPlainText));
     ASSERT_EQ(plainText, *newPlainText);
 }

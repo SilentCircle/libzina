@@ -12,7 +12,6 @@
 #include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
-#include "../storage/NameLookup.h"
 
 #include <zrtp/crypto/sha256.h>
 #include <common/Thread.h>
@@ -223,16 +222,16 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     if (axoConv == NULL) {
         axoConv = new AxoConversation(ownUser_, sender, senderScClientDevId);
     }
-    string supplementsPlain;
-    string* messagePlain;
+    shared_ptr<string> supplementsPlain = make_shared<string>();
+    shared_ptr<const string> messagePlain;
 
-    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, &supplementsPlain, hasIdHashes ? &idHashes : NULL);
+    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
     errorCode_ = axoConv->getErrorCode();
     delete axoConv;
     convLock.Unlock();
 
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
-    if (messagePlain == NULL) {
+    if (!messagePlain) {
         char b2hexBuffer[1004] = {0};
 
         if (oldMessage)
@@ -265,7 +264,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     cJSON_AddStringToObject(root, "scClientDevId", senderScClientDevId.c_str());
     cJSON_AddStringToObject(root, "msgId", msgId.c_str());
     cJSON_AddStringToObject(root, "message", messagePlain->c_str());
-    delete messagePlain;
+    messagePlain.reset();
 
     char *out = cJSON_PrintUnformatted(root);
     string msgDescriptor(out);
@@ -274,9 +273,9 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     string attachmentDescr;
     string attributesDescr;
-    if (!supplementsPlain.empty()) {
+    if (!supplementsPlain->empty()) {
         checkAndRemovePadding(supplementsPlain);
-        cJSON* jsSupplement = cJSON_Parse(supplementsPlain.c_str());
+        cJSON* jsSupplement = cJSON_Parse(supplementsPlain->c_str());
 
         cJSON* cjTemp = cJSON_GetObjectItem(jsSupplement, "a");
         char* jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
@@ -614,15 +613,15 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
                 ownUser_.c_str(), recipient.c_str(), recipientDeviceId.c_str());
             continue;
         }
- 
-        string supplementsEncrypted;
+
+        shared_ptr<string> supplementsEncrypted = make_shared<string>();
 
         // Encrypt the user's message and the supplementary data if necessary
         pair<string, string> idHashes;
-        const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted, &idHashes);
+        shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
         axoConv->storeConversation();
         delete axoConv;
-        if (wireMessage == NULL)
+        if (!wireMessage)
             continue;
         bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
         /*
@@ -639,8 +638,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         envelope.set_name(ownUser_);
         envelope.set_scclientdevid(scClientDevId_);
         envelope.set_msgid(msgId);
-        if (!supplementsEncrypted.empty())
-            envelope.set_supplement(supplementsEncrypted);
+        if (!supplementsEncrypted->empty())
+            envelope.set_supplement(*supplementsEncrypted);
         envelope.set_message(*wireMessage);
         if (hasIdHashes) {
             envelope.set_recvidhash(idHashes.first.data(), 4);
@@ -670,7 +669,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         pair<string, string> msgPair(recipientDeviceId, serialized);
         msgPairs->push_back(msgPair);
 
-        supplementsEncrypted.clear();
+        supplementsEncrypted->clear();
     }
     convLock.Unlock();
     delete devices;
@@ -812,15 +811,15 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
     axoConv->setDeviceName(recipientDeviceName);
 
-    string supplementsEncrypted;
+    shared_ptr<string> supplementsEncrypted = make_shared<string>();
 
     // Encrypt the user's message and the supplementary data if necessary
     pair<string, string> idHashes;
-    const string* wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, &supplementsEncrypted, &idHashes);
+    shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
     axoConv->storeConversation();
     delete axoConv;
 
-    if (wireMessage == NULL)
+    if (!wireMessage)
         return 0;
     bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
     /*
@@ -836,8 +835,8 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
     envelope.set_msgid(msgId);
-    if (!supplementsEncrypted.empty())
-        envelope.set_supplement(supplementsEncrypted);
+    if (!supplementsEncrypted->empty())
+        envelope.set_supplement(*supplementsEncrypted);
     envelope.set_message(*wireMessage);
     if (hasIdHashes) {
         envelope.set_recvidhash(idHashes.first.data(), 4);
@@ -849,7 +848,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     if (res >= 0)
         envelope.set_recvdevidbin(binDevId, 4);
 //    envelope.set_recvdeviceid(recipientDeviceId);
-    delete wireMessage;
+    wireMessage.reset();
 
     string serialized = envelope.SerializeAsString();
 

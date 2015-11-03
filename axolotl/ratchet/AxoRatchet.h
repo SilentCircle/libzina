@@ -8,6 +8,7 @@
  * @{
  */
 
+#include <memory>
 #include "../crypto/DhKeyPair.h"
 #include "../crypto/DhPublicKey.h"
 #include "../state/AxoConversation.h"
@@ -31,8 +32,8 @@ public:
      *                 not required
      * @return An encrypted wire message, ready to send to the recipient+device tuple.
      */
-    static const string* encrypt(AxoConversation& conv, const string& message, const string& supplements, 
-                                 string* supplementsEncrypted, pair<string, string>* idHashes = NULL);
+    static shared_ptr<const string> encrypt(AxoConversation& conv, const string& message, const string& supplements,
+                                            shared_ptr<string> supplementsEncrypted, pair<string, string>* idHashes = NULL);
 
     /**
      * @brief Parse a wire message and decrypt the payload.
@@ -45,8 +46,8 @@ public:
      *                 not available
      * @return Plaintext or @c NULL if decryption failed
      */
-    static string* decrypt( axolotl::AxoConversation* conv, const string& wire, const string& supplements, 
-                            string* supplementsPlain, pair<string, string>* idHashes = NULL);
+    static shared_ptr<const string> decrypt(axolotl::AxoConversation* conv, const string& wire, const string& supplements,
+                                            shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL);
 };
 }
 /**
