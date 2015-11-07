@@ -1,7 +1,5 @@
 #include "AxoZrtpConnector.h"
-#include "state/AxoConversation.h"
 #include "crypto/EcCurve.h"
-#include "crypto/EcCurveTypes.h"
 #include "crypto/HKDF.h"
 #include "Constants.h"
 #include "../interfaceApp/AppInterface.h"
@@ -9,13 +7,12 @@
 #include <common/Thread.h>
 #include <iostream>
 #include <map>
-#include <utility>
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
 static char hexBuffer[2000] = {0};
-static void hexdump(const char* title, const unsigned char *s, int l) {
-    int n=0;
+static void hexdump(const char* title, const unsigned char *s, size_t l) {
+    size_t n = 0;
 //sprintf(char *str, const char *format, ...);
 
     if (s == NULL) return;
@@ -25,12 +22,12 @@ static void hexdump(const char* title, const unsigned char *s, int l) {
     for( ; n < l ; ++n)
     {
         if((n%16) == 0)
-            len += sprintf(hexBuffer+len, "\n%04x",n);
+            len += sprintf(hexBuffer+len, "\n%04x", static_cast<int>(n));
         len += sprintf(hexBuffer+len, " %02x",s[n]);
     }
     sprintf(hexBuffer+len, "\n");
 }
-static void hexdump(const char* title, const std::string& in)
+static void hexdump(const char* title, const string& in)
 {
     hexdump(title, (uint8_t*)in.data(), in.size());
 }
@@ -43,7 +40,7 @@ static map<string, AxoZrtpConnector*>* stagingList = new map<string, AxoZrtpConn
 using namespace axolotl;
 void Log(const char* format, ...);
 
-const std::string getAxoPublicKeyData(const std::string& localUser, const std::string& user, const std::string& deviceId)
+const string getAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId)
 {
     sessionLock.Lock();
     AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
@@ -66,20 +63,20 @@ const std::string getAxoPublicKeyData(const std::string& localUser, const std::s
     std::string combinedKeys;
 
     // First: length and data of local identity key
-    const std::string key = idKey->getPublicKey().serialize();
-    char keyLength = key.size();
+    const string key = idKey->getPublicKey().serialize();
+    char keyLength = static_cast<char>(key.size() & 0x7f);
     combinedKeys.assign(&keyLength, 1).append(key);
 
     // second: ratchet key
     const std::string rkey = ratchetKey->getPublicKey().serialize();
-    keyLength = rkey.size();
+    keyLength = static_cast<char>(rkey.size() & 0x7f);
     combinedKeys.append(&keyLength, 1).append(rkey);
     sessionLock.Unlock();
 
     return combinedKeys;
 }
 
-void setAxoPublicKeyData(const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& pubKeyData)
+void setAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId, const string& pubKeyData)
 {
     sessionLock.Lock();
 
@@ -97,8 +94,8 @@ void setAxoPublicKeyData(const std::string& localUser, const std::string& user, 
     const char* data = pubKeyData.data();
 
     // Get remote id key
-    char keyLength = *data++;
-    std::string keyData(data, keyLength);
+    size_t keyLength = static_cast<size_t>(*data++);
+    string keyData(data, keyLength);
 
     data += keyLength;
     const DhPublicKey* remoteIdKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
@@ -108,8 +105,8 @@ void setAxoPublicKeyData(const std::string& localUser, const std::string& user, 
     staging->setRemoteIdKey(remoteIdKey);
 
     // Now the remote ratchet key
-    keyLength = *data++;
-    keyData = std::string(data, keyLength);
+    keyLength = static_cast<size_t>(*data++);
+    keyData = string(data, keyLength);
     const DhPublicKey* remoteRatchetKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
     staging->setRemoteRatchetKey(remoteRatchetKey);
 
@@ -117,7 +114,7 @@ void setAxoPublicKeyData(const std::string& localUser, const std::string& user, 
 }
 
 // Also used by AxoPreKeyConnector.
-void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, int32_t requested)
+void createDerivedKeys(const string& masterSecret, string* root, string* chain, size_t requested)
 {
     uint8_t derivedSecretBytes[256];     // we support upto 128 byte symmetric keys.
 
@@ -147,7 +144,7 @@ Bob:
 
  
  */
-void setAxoExportedKey(const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& exportedKey)
+void setAxoExportedKey(const string& localUser, const string& user, const string& deviceId, const string& exportedKey)
 {
     sessionLock.Lock();
 
@@ -161,8 +158,8 @@ void setAxoExportedKey(const std::string& localUser, const std::string& user, co
     }
     stagingList->erase(it);
 
-    std::string root;
-    std::string chain;
+    string root;
+    string chain;
     createDerivedKeys(exportedKey, &root, &chain, SYMMETRIC_KEY_LENGTH);
     AxoConversation *conv = staging->getRemoteConversation();
 
@@ -191,7 +188,7 @@ void setAxoExportedKey(const std::string& localUser, const std::string& user, co
 
     delete staging->getLocalConversation();
     delete staging->getRemoteConversation();
-    delete staging; staging = NULL;
+    delete staging;
     sessionLock.Unlock();
 }
 

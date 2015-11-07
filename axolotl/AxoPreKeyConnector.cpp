@@ -3,16 +3,12 @@
 #include "../axolotl/Constants.h"
 #include "../axolotl/crypto/EcCurve.h"
 
-#include "../util/cJSON.h"
-#include "../util/b64helper.h"
 #include "../keymanagment/PreKeys.h"
 
-#include "../storage/sqlite/SQLiteStoreConv.h"
 #include <iostream>
-#include <stdio.h>
 
 // Generic function, located in AxoZrtpConnector.
-void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, int32_t requested);
+void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, size_t requested);
 
 using namespace axolotl;
 
@@ -20,8 +16,8 @@ void Log(const char* format, ...);
 
 #ifdef UNITTESTS
 static char hexBuffer[2000] = {0};
-static void hexdump(const char* title, const unsigned char *s, int l) {
-    int n=0;
+static void hexdump(const char* title, const unsigned char *s, size_t l) {
+    size_t n = 0;
     if (s == NULL) return;
 
     memset(hexBuffer, 0, 2000);
@@ -29,12 +25,12 @@ static void hexdump(const char* title, const unsigned char *s, int l) {
     for( ; n < l ; ++n)
     {
         if((n%16) == 0)
-            len += sprintf(hexBuffer+len, "\n%04x",n);
+            len += sprintf(hexBuffer+len, "\n%04x", static_cast<int>(n));
         len += sprintf(hexBuffer+len, " %02x",s[n]);
     }
     sprintf(hexBuffer+len, "\n");
 }
-static void hexdump(const char* title, const std::string& in)
+static void hexdump(const char* title, const string& in)
 {
     hexdump(title, (uint8_t*)in.data(), in.size());
 }

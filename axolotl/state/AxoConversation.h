@@ -23,6 +23,7 @@
 #include <string.h>    // for memset
 #include <list>
 #include <utility>
+#include <memory>
 
 #include "../crypto/DhPublicKey.h"
 #include "../crypto/DhKeyPair.h"
@@ -65,6 +66,8 @@ public:
      */
     static AxoConversation* loadConversation(const string& localUser, const string& user, const string& deviceId);
 
+    // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
+#if 0
     /**
      * @brief Rename a conversation in the database.
      * 
@@ -77,6 +80,7 @@ public:
      */
     static int32_t renameConversation(const string& localUserOld, const string& localUserNew, 
                                       const string& userOld, const string& userNew, const string& deviceId);
+#endif
     /**
      * @brief Store this conversation in persitent store
      */
@@ -84,7 +88,7 @@ public:
 
     void storeStagedMks();
 
-    list<string>* loadStagedMks();
+    shared_ptr<list<string> > loadStagedMks();
 
     void deleteStagedMk(string& mkiv);
 
@@ -186,7 +190,7 @@ private:
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
     int32_t   zrtpVerifyState;
-    size_t   availablePreKeys; //!< Only used in local conversation to track number of available pre-keys
+    size_t    availablePreKeys; //!< Only used in local conversation to track number of available pre-keys
     // ***** end of persitent data
 
     /*

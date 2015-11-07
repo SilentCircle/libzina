@@ -324,9 +324,9 @@ string* AppInterfaceImpl::getKnownUsers()
     if (!store_->isReady())
         return NULL;
 
-    list<string>* names = store_->getKnownConversations(ownUser_, &sqlCode);
+    shared_ptr<list<string> > names = store_->getKnownConversations(ownUser_, &sqlCode);
 
-    if (SQL_FAIL(sqlCode) || names == NULL) {
+    if (SQL_FAIL(sqlCode) || names) {
 //        Log("generatePreKey: %d", store_->getLastError());
         return NULL;
     }
@@ -342,7 +342,6 @@ string* AppInterfaceImpl::getKnownUsers()
         cJSON_AddItemToArray(nameArray, cJSON_CreateString(name.c_str()));
         names->pop_front();
     }
-    delete names;
 
     char *out = cJSON_PrintUnformatted(root);
     string* retVal = new string(out);
@@ -467,7 +466,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     //
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
-    list<string>* devicesDb = store_->getLongDeviceIds(userName, ownUser_);
+    shared_ptr<list<string> > devicesDb = store_->getLongDeviceIds(userName, ownUser_);
 
     while (!devicesDb->empty()) {
         string devIdDb = devicesDb->front();
@@ -484,7 +483,6 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         if (!found)
             store->deleteConversation(userName, devIdDb, ownUser_);
     }
-    delete devicesDb;
 
     // Prepare and send this to the new device:
     // - an Empty message
@@ -578,7 +576,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
     }
     bool toSibling = recipient == ownUser_;
 
-    list<string>* devices = store_->getLongDeviceIds(recipient, ownUser_);
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
     size_t numDevices = devices->size();
 
     if (numDevices == 0) {
@@ -672,7 +670,6 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         supplementsEncrypted->clear();
     }
     convLock.Unlock();
-    delete devices;
 
     vector<int64_t>* returnMsgIds = NULL;
     if (!msgPairs->empty())
@@ -895,7 +892,7 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     list<string>* idKeys = new list<string>;
 
-    list<string>* devices = store_->getLongDeviceIds(user, ownUser_);
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(user, ownUser_);
 
     while (!devices->empty()) {
         string recipientDeviceId = devices->front();
@@ -918,7 +915,6 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         idKeys->push_back(id);
         delete axoConv;
     }
-    delete devices;
     return idKeys;
 }
 #pragma clang diagnostic pop

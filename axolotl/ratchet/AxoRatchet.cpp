@@ -179,8 +179,8 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
     wmPb[byteIndex++] = 0;
     intIndex++;
 
-    wmPi[intIndex++] = zrtpHtonl(conv.getNs()); byteIndex += sizeof(uint32_t);
-    wmPi[intIndex++] = zrtpHtonl(conv.getPNs()); byteIndex += sizeof(uint32_t);
+    wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(conv.getNs())); byteIndex += sizeof(uint32_t);
+    wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(conv.getPNs())); byteIndex += sizeof(uint32_t);
 
     const DhPublicKey& rKey = conv.getDHRs()->getPublicKey();
     memcpy(&wmPb[byteIndex], rKey.getPublicKeyPointer(), rKey.getSize());   // sizes are currently Curve25519KeyLength
@@ -201,7 +201,7 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
         memcpy(&wmPb[byteIndex], a0Key.getPublicKeyPointer(), a0Key.getSize());
         intIndex += a0Key.getSize()/sizeof(int32_t); byteIndex += a0Key.getSize();
     }
-    wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(message.size())); byteIndex += sizeof(uint32_t);
+    wmPi[intIndex] = zrtpHtonl(static_cast<uint32_t>(message.size())); byteIndex += sizeof(uint32_t);
     memcpy(&wmPb[byteIndex], message.data(), message.size());
 
     wire->assign((const char*)wireMessage, msgLength);
@@ -252,7 +252,7 @@ static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct)
         msgStruct->remoteIdKey = NULL;
         msgStruct->remotePreKey = NULL;
     }
-    msgStruct->encryptedMsgLen = zrtpNtohl(dPi[intIndex++]); byteIndex += sizeof(int32_t);
+    msgStruct->encryptedMsgLen = zrtpNtohl(dPi[intIndex]); byteIndex += sizeof(int32_t);
     msgStruct->encryptedMsg = &data[byteIndex];
     if ((byteIndex + msgStruct->encryptedMsgLen) > wire.size()) {
         msgStruct->encryptedMsg = NULL;
@@ -302,30 +302,25 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
                                      shared_ptr<string> plaintext, shared_ptr<string> supplementsPlain)
 {
     int32_t retVal = 0;
-    list<string>* mks = conv->loadStagedMks();
-    if (mks == NULL)
+    shared_ptr<list<string> > mks = conv->loadStagedMks();
+    if (mks)
         return NO_STAGED_KEYS;
 
-//    cerr << "try skipped message" << endl;
     while (!mks->empty()) {
         string MKiv = mks->front();
         mks->pop_front();
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
-        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) >= 0) {
-//            cerr << "try skipped message - true" << endl;
+        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) == OK) {
             memset_volatile((void*)MK.data(), 0, MK.size());
             conv->deleteStagedMk(MKiv);
             mks->clear();
-            delete mks;
             return retVal;
         }
         memset_volatile((void*)MK.data(), 0, MK.size());
     }
-//    cerr << "try skipped message - false" << endl;
     mks->clear();
-    delete mks;
     return retVal;
 }
 
@@ -419,9 +414,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
                                              shared_ptr<string> supplementsPlain, pair<string, string>* idHashes)
 {
     ParsedMessage msgStruct;
-    int32_t result = OK;
-
-    result = parseWireMsg(wire, &msgStruct);
+    int32_t result = parseWireMsg(wire, &msgStruct);
 
     if (msgStruct.encryptedMsg == NULL) {
         conv->setErrorCode(CORRUPT_DATA);
@@ -482,7 +475,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
 
     string mac((const char*)msgStruct.mac, 8);
     int32_t tryVal;
-    if ((tryVal = trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain)) >= 0) {
+    if ((tryVal = trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain)) == OK) {
         return decrypted;
     }
 

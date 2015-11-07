@@ -1,8 +1,6 @@
 #include <cryptcommon/ZrtpRandom.h>
-#include <string.h>
 
 #include "EcCurve.h"
-#include "Ec255PrivateKey.h"
 #include "Ec255PublicKey.h"
 #include "../Constants.h"
 

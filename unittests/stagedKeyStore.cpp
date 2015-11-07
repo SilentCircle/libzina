@@ -18,10 +18,10 @@ static std::string bobName("bob@milkyway.com");
 static std::string aliceDev("aliceDevId");
 static std::string bobDev("BobDevId");
 
-static const uint8_t keyInDataC[] = {"1234567890098765432112345678901"}; // 32 bytes (incl. '\0')
-static const uint8_t keyInDataD[] = {"aaaaaaaaaabbbbbbbbbbccccccccccd"};
-static const uint8_t keyInDataE[] = {"AAAAAAAAAABBBBBBBBBBCCCCCCCCCCD"};
-static const uint8_t keyInDataF[] = {"ZZZZZZZZZZYYYYYYYYYYXXXXXXXXXXW"};
+static const char* keyInDataC = "1234567890098765432112345678901"; // 32 bytes (incl. '\0')
+static const char* keyInDataD = "aaaaaaaaaabbbbbbbbbbccccccccccd";
+static const char* keyInDataE = "AAAAAAAAAABBBBBBBBBBCCCCCCCCCCD";
+static const char* keyInDataF = "ZZZZZZZZZZYYYYYYYYYYXXXXXXXXXXW";
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 
@@ -47,32 +47,30 @@ TEST(StagedKeys, Basic)
     store->insertStagedMk(bobName, bobDev, aliceName, mkiv);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
 
-    list<string>* keys = store->loadStagedMks(bobName, bobDev, aliceName);
+    shared_ptr<list<string> > keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys != NULL);
+    ASSERT_TRUE(keys.get() != NULL);
     ASSERT_EQ(1, keys->size());
     string both = keys->front();
     keys->pop_front();
     ASSERT_EQ(mkiv, both);
-    delete keys; keys = NULL;
 
     store->deleteStagedMk(bobName, bobDev, aliceName, both);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
 
     keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys == NULL);
-    delete keys;
+    ASSERT_TRUE(keys.get() == NULL);
 }
 
 TEST(StagedKeys, TimeDelete) 
 {
     prepareStore();
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    string mkiv((const char*)keyInDataC, 32);
-    string mkiv_1((const char*)keyInDataD, 32);
-    string mkiv_2((const char*)keyInDataE, 32);
-    string mkiv_3((const char*)keyInDataF, 32);
+    string mkiv(keyInDataC, 32);
+    string mkiv_1(keyInDataD, 32);
+    string mkiv_2(keyInDataE, 32);
+    string mkiv_3(keyInDataF, 32);
 
     store->insertStagedMk(bobName, bobDev, aliceName, mkiv);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
@@ -80,11 +78,10 @@ TEST(StagedKeys, TimeDelete)
     store->insertStagedMk(bobName, bobDev, aliceName, mkiv_1);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
 
-    list<string>* keys = store->loadStagedMks(bobName, bobDev, aliceName);
+    shared_ptr<list<string> > keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys != NULL);
+    ASSERT_TRUE(keys.get() != NULL);
     ASSERT_EQ(2, keys->size());
-    delete keys; keys = NULL;
 
     sqlite3_sleep(5000);
 
@@ -96,18 +93,16 @@ TEST(StagedKeys, TimeDelete)
 
     keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys != NULL);
+    ASSERT_TRUE(keys.get() != NULL);
     ASSERT_EQ(4, keys->size());
-    delete keys;
 
     time_t now_4 = time(0) - 4;
     store->deleteStagedMk(now_4);
     keys = store->loadStagedMks(bobName, bobDev, aliceName);
 
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys != NULL);
+    ASSERT_TRUE(keys.get() != NULL);
     ASSERT_EQ(2, keys->size());
-    delete keys;
 }
 
 TEST(UUID, Basic)
@@ -122,7 +117,7 @@ TEST(UUID, Basic)
     uuid_string_t uuidString;
     uuid_unparse(uuid1, uuidString);
 
-    cerr << "tm: " << tm << ", tm1: " << tm1 << endl;
+    EXPECT_EQ(tm, tm1) << "tm1 may be off by 1";
     cerr << uuidString << endl;
 }
 

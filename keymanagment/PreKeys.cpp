@@ -5,7 +5,6 @@
 #include "../util/b64helper.h"
 
 #include <cryptcommon/ZrtpRandom.h>
-#include <stdlib.h>
 #include <iostream>
 #include <utility>
 
@@ -77,7 +76,7 @@ DhKeyPair* PreKeys::parsePreKeyData(const string& data)
     // the time being use Ec255 (DJB's curve 25519).
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
-    const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, (int32_t)binLength);
+    const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
     cJSON_Delete(root);
 

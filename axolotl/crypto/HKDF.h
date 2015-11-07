@@ -32,7 +32,7 @@ public:
 
 private:
     static const int HASH_OUTPUT_SIZE  = 32;
-    static const int OFFSET = 1;
+    static const size_t OFFSET = 1U;
 
     static void extract(uint8_t* salt, size_t saltLen, uint8_t* inputKeyMaterial, size_t ikmLength, uint8_t* prkOut);
 
