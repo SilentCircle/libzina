@@ -2,6 +2,8 @@
 #include "gtest/gtest.h"
 
 #include "../appRepository/AppRepository.h"
+#include "../axolotl/Constants.h"
+
 #include <list>
 
 using namespace axolotl;
@@ -191,7 +193,6 @@ TEST(AppRestore, Object)
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
 }
 
-static string Empty;
 TEST(AppRestore, AttachmentStatus)
 {
     AppRepository* store = AppRepository::getStore();

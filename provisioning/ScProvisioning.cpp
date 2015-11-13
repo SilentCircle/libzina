@@ -11,8 +11,6 @@
 using namespace axolotl;
 using namespace std;
 
-static std::string Empty;
-
 int32_t (*ScProvisioning::httpHelper_)(const std::string&, const std::string&, const std::string&, std::string*) = NULL;
 
 void ScProvisioning::setHttpHelper(int32_t (*httpHelper)( const std::string&, const std::string&, const std::string&, std::string* ))

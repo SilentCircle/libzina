@@ -12,17 +12,17 @@
 #include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
+#include "../storage/NameLookup.h"
 
 #include <zrtp/crypto/sha256.h>
-#include <common/Thread.h>
+
+#include <mutex>          // std::mutex, std::unique_lock
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
-static CMutexClass convLock;
+static mutex convLock;
 
 using namespace axolotl;
-
-static string Empty;
 
 void Log(const char* format, ...);
 
@@ -140,17 +140,16 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     string msgHash;
     msgHash.assign((const char*)hash, SHA256_DIGEST_LENGTH);
 
-    convLock.Lock();
+    unique_lock<mutex> lck(convLock);
     int32_t sqlResult = store_->hasMsgHash(msgHash);
 
     // If we found a duplicate, log and silently ignore it.
     if (sqlResult == SQLITE_ROW) {
         Log("Duplicate messages detected so far: %d", ++duplicates);
-        convLock.Unlock();
         return OK;
     }
     store_->insertMsgHash(msgHash);
-    convLock.Unlock();
+    lck.unlock();
 
 //    Log("No duplicate messages detected so far: %d", sqlResult);
 
@@ -189,10 +188,10 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
         wrongDeviceId = memcmp((void*)sentToId.data(), binDevId, sentToId.size()) != 0;
 
-        char recv[16] = {0};
+        char receiverId[16] = {0};
         size_t len;
-        bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), recv, &len);
-        Log("Messge is for device id: %s, my device id: %s (%s)", recv, scClientDevId_.c_str(), wrongDeviceId? "True" : "False");
+        bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), receiverId, &len);
+        Log("Messge is for device id: %s, my device id: %s (%s)", receiverId, scClientDevId_.c_str(), wrongDeviceId ? "True" : "False");
     }
     uuid_t uu = {0};
     uuid_parse(msgId.c_str(), uu);
@@ -214,7 +213,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         idHashes.first = recvIdHash;
         idHashes.second = senderIdHash;
     }
-    convLock.Lock();
+    lck.lock();
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
     // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills
@@ -228,7 +227,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
     errorCode_ = axoConv->getErrorCode();
     delete axoConv;
-    convLock.Unlock();
+    lck.unlock();
 
     //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
@@ -494,8 +493,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     // Prepare the messages for all known new devices of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
-    convLock.Lock();
-
+    unique_lock<mutex> lck(convLock);
     while (!devices->empty()) {
         string deviceId = devices->front().first;
         string deviceName = devices->front().second;
@@ -529,11 +527,10 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         if (result < 0) {
             delete msgPairs;
             delete devices;
-            convLock.Unlock();
             return;
         }
     }
-    convLock.Unlock();
+    lck.unlock();
     delete devices;
 
     if (msgPairs->empty()) {
@@ -595,7 +592,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
     // Prepare the messages for all known device of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
-    convLock.Lock();
+    unique_lock<mutex> lck(convLock);
     while (!devices->empty()) {
         string recipientDeviceId = devices->front();
         devices->pop_front();
@@ -669,7 +666,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         supplementsEncrypted->clear();
     }
-    convLock.Unlock();
+    lck.unlock();
 
     vector<int64_t>* returnMsgIds = NULL;
     if (!msgPairs->empty())
@@ -701,7 +698,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
     // Prepare the messages for all known devices of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
-    convLock.Lock();
+    unique_lock<mutex> lck(convLock);
     while (!devices->empty()) {
         string recipientDeviceId = devices->front().first;
         string recipientDeviceName = devices->front().second;
@@ -722,11 +719,10 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
             delete devices;
             errorCode_ = result;
             errorInfo_ = recipientDeviceId;
-            convLock.Unlock();
             return NULL;
         }
     }
-    convLock.Unlock();
+    lck.unlock();
     delete devices;
 
     if (msgPairs->empty()) {

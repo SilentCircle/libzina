@@ -2,26 +2,26 @@
 // Created by werner on 30.10.15.
 //
 
-#include <common/Thread.h>
 #include <iostream>
 #include "NameLookup.h"
+#include <mutex>          // std::mutex, std::unique_lock
+
 #include "../util/cJSON.h"
 #include "../axolotl/Constants.h"
 #include "../provisioning/Provisioning.h"
 
+
 using namespace axolotl;
 
-static string Empty;
-static CMutexClass nameLock;
+static mutex nameLock;           // mutex for critical section
 
 NameLookup* NameLookup::instance_ = NULL;
 
 NameLookup* NameLookup::getInstance()
 {
-    nameLock.Lock();
+    volatile unique_lock<mutex> lck(nameLock);
     if (instance_ == NULL)
         instance_ = new NameLookup();
-    nameLock.Unlock();
     return instance_;
 }
 
@@ -77,14 +77,14 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     if (root == NULL)
         return CORRUPT_DATA;
 
-    cJSON* tmpData = cJSON_GetObjectItem(root, "user_id");
+    cJSON* tmpData = cJSON_GetObjectItem(root, "uuid");
     if (tmpData == NULL) {
         cJSON_Delete(root);
         return JS_FIELD_MISSING;
     }
     userInfo->uniqueId.assign(tmpData->valuestring);
 
-    tmpData = cJSON_GetObjectItem(root, "primary_alias");
+    tmpData = cJSON_GetObjectItem(root, "default_alias");
     if (tmpData == NULL) {
         cJSON_Delete(root);
         return JS_FIELD_MISSING;
@@ -124,15 +124,20 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
 
     // Check if we already have the user's UID in the map. If not then cache the
     // userInfo with the UID
+    volatile unique_lock<mutex> lck(nameLock);
     it = nameMap_.find(userInfo->uniqueId);
     if (it == nameMap_.end()) {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
         if (!ret.second) {
             return shared_ptr<UserInfo>();
         }
-        ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
-        if (!ret.second) {
-            return shared_ptr<UserInfo>();
+        // For existing account (old accounts) the UUID and the primary alias could be identical
+        // Don't add an alias entry in this case
+        if (alias.compare(userInfo->uniqueId) != 0) {
+           ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
+            if (!ret.second) {
+                return shared_ptr<UserInfo>();
+            }
         }
     }
     else {

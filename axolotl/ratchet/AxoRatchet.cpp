@@ -303,7 +303,7 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
 {
     int32_t retVal = 0;
     shared_ptr<list<string> > mks = conv->loadStagedMks();
-    if (mks)
+    if (!mks)
         return NO_STAGED_KEYS;
 
     while (!mks->empty()) {

@@ -14,7 +14,9 @@
  */
 
 #include <string>
+using namespace std;
 namespace axolotl {
+    static string Empty;                              //!< For default return of an empty string
     static const int MAX_KEY_BYTES         = 128;     //!< This would cover a EC with a prime of 1024 bits
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
     static const int SYMMETRIC_KEY_LENGTH  = 32;      //!< Use 256 bit keys for symmetric crypto
