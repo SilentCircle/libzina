@@ -12,7 +12,6 @@
 #include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
-#include "../storage/NameLookup.h"
 
 #include <zrtp/crypto/sha256.h>
 
@@ -341,7 +340,6 @@ string* AppInterfaceImpl::getKnownUsers()
         cJSON_AddItemToArray(nameArray, cJSON_CreateString(name.c_str()));
         names->pop_front();
     }
-
     char *out = cJSON_PrintUnformatted(root);
     string* retVal = new string(out);
     cJSON_Delete(root); free(out);
@@ -467,20 +465,23 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
 
     shared_ptr<list<string> > devicesDb = store_->getLongDeviceIds(userName, ownUser_);
 
-    while (!devicesDb->empty()) {
-        string devIdDb = devicesDb->front();
-        devicesDb->pop_front();
-        bool found = false;
+    if (devicesDb) {
+        while (!devicesDb->empty()) {
+            string devIdDb = devicesDb->front();
+            devicesDb->pop_front();
+            bool found = false;
 
-        for (list<pair<string, string> >::iterator devIterator = devices->begin(); devIterator != devices->end(); devIterator++) {
-            string devId = (*devIterator).first;
-            if (devIdDb == devId) {
-                found = true;
-                break;
+            for (list<pair<string, string> >::iterator devIterator = devices->begin();
+                 devIterator != devices->end(); devIterator++) {
+                string devId = (*devIterator).first;
+                if (devIdDb == devId) {
+                    found = true;
+                    break;
+                }
             }
+            if (!found)
+                store->deleteConversation(userName, devIdDb, ownUser_);
         }
-        if (!found)
-            store->deleteConversation(userName, devIdDb, ownUser_);
     }
 
     // Prepare and send this to the new device:
