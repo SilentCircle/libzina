@@ -76,7 +76,6 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
-    cerr << "+++ prekeyrequest: " << response << endl;
     if (code >= 400)
         return 0;
 
