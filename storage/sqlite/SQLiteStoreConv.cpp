@@ -5,6 +5,8 @@
 #include <cryptcommon/ZrtpRandom.h>
 
 #include <common/Thread.h>
+#include "../../logging/AxoLogging.h"
+
 
 /* *****************************************************************************
  * A few helping macros. 
@@ -251,6 +253,7 @@ int SQLiteStoreConv::commitTransaction()
  */
 int SQLiteStoreConv::openStore(const std::string& name)
 {
+    LOGGER(INFO, __func__ , " -->");
     if (keyData_ == NULL) {
         return -1;
     }
@@ -292,6 +295,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
 
     isReady_ = true;
     sqlLock.Unlock();
+    LOGGER(INFO, __func__ , " <--");
     return SQLITE_OK;
 }
 

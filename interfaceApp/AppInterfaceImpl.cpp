@@ -12,6 +12,7 @@
 #include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
+#include "../logging/AxoLogging.h"
 
 #include <zrtp/crypto/sha256.h>
 
@@ -35,26 +36,33 @@ AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authoriz
 
 AppInterfaceImpl::~AppInterfaceImpl()
 {
+    LOGGER(INFO, __func__ , " -->");
     tempBufferSize_ = 0; delete tempBuffer_; tempBuffer_ = NULL;
     delete transport_; transport_ = NULL;
+    LOGGER(INFO, __func__ , " <--");
 }
 
 static void createSupplementString(const string& attachementDesc, const string& messageAttrib, string* supplement)
 {
+    LOGGER(INFO, __func__ , " -->");
     if (!attachementDesc.empty() || !messageAttrib.empty()) {
         cJSON* msgSupplement = cJSON_CreateObject();
 
-        if (!attachementDesc.empty())
+        if (!attachementDesc.empty()) {
+            LOGGER(DEBUG, "Adding an attachment descriptor supplement");
             cJSON_AddStringToObject(msgSupplement, "a", attachementDesc.c_str());
+        }
 
-        if (!messageAttrib.empty())
+        if (!messageAttrib.empty()) {
+            LOGGER(DEBUG, "Adding an message attribute supplement");
             cJSON_AddStringToObject(msgSupplement, "m", messageAttrib.c_str());
-
+        }
         char *out = cJSON_PrintUnformatted(msgSupplement);
 
         supplement->append(out);
         cJSON_Delete(msgSupplement); free(out);
     }
+    LOGGER(INFO, __func__ , " <--");
 }
 
 /*

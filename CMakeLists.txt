@@ -45,6 +45,8 @@ else()
     message(FATAL_ERROR "Cannot locate ${ZRTP_BASE_DIR}. Please set correct path")
 endif()
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLOG_MAX_LEVEL=VERBOSE")
+
 # use protobuf_lite.pc
 # include most of the fine stuff we need
 include(FindPkgConfig)
@@ -116,6 +118,7 @@ set (util_src
     util/cJSON.c
     util/b64helper.cpp
     util/UUID.cpp
+    logging/AxoLogging.cpp
 )
 
 set (app_repo_src
