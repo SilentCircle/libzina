@@ -14,6 +14,7 @@
 using namespace axolotl;
 
 static mutex nameLock;           // mutex for critical section
+static string Empty;
 
 NameLookup* NameLookup::instance_ = NULL;
 

@@ -68,7 +68,7 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* u
     if (primaryAlias != NULL && aliasLen > 0) {
         aliasString.assign((const char *) primaryAlias, aliasLen);
 
-        std::size_t found = aliasString.find(scSipDomain);
+        size_t found = aliasString.find(scSipDomain);
         if (found != string::npos) {
             aliasString = aliasString.substr(0, found);
         }
