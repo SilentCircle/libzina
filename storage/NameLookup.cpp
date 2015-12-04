@@ -20,7 +20,7 @@ NameLookup* NameLookup::instance_ = NULL;
 
 NameLookup* NameLookup::getInstance()
 {
-    volatile unique_lock<mutex> lck(nameLock);
+    unique_lock<mutex> lck(nameLock);
     if (instance_ == NULL)
         instance_ = new NameLookup();
     return instance_;
@@ -105,7 +105,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     if (alias.empty() || authorization.empty())
         return shared_ptr<UserInfo>();
 
-    // Check is an alias name already exists in the name map
+    // Check if this alias name already exists in the name map
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
@@ -125,7 +125,8 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
 
     // Check if we already have the user's UID in the map. If not then cache the
     // userInfo with the UID
-    volatile unique_lock<mutex> lck(nameLock);
+    unique_lock<mutex> lck(nameLock);
+
     it = nameMap_.find(userInfo->uniqueId);
     if (it == nameMap_.end()) {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));

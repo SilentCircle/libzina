@@ -47,6 +47,12 @@ endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLOG_MAX_LEVEL=VERBOSE")
 
+string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
+if ("debug" STREQUAL build_type)
+    set (LOG_MAX_LEVEL "-DLOG_MAX_LEVEL=VERBOSE")
+endif()
+
+
 # use protobuf_lite.pc
 # include most of the fine stuff we need
 include(FindPkgConfig)
@@ -118,6 +124,7 @@ set (util_src
     util/cJSON.c
     util/b64helper.cpp
     util/UUID.cpp
+    logging/Logger.cpp
     logging/AxoLogging.cpp
 )
 

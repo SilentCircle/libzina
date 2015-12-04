@@ -165,7 +165,7 @@ shared_ptr<logging::Logger<logging::CerrLogPolicy> >
 
  * Then declare the above Logger instance as external, either in an already existing include
  * file that most or all your project's source modules use or create a small @c MyGlobalLogger.h
- * for this purpose and it in every source module that requires some logging.
+ * for this purpose and include it in every source module that requires some logging.
  * The LogPolicy shown in the example uses the @c CerrLogPolicy which simply outputs all
  * log data to @c std::cerr
  *

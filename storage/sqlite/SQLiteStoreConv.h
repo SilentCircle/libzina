@@ -200,6 +200,7 @@ private:
     int createTables();
     int beginTransaction();
     int commitTransaction();
+    int rollbackTransaction();
 
     /**
      * @brief Update database version.

@@ -8,16 +8,16 @@
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
 
-
 #include "gtest/gtest.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
+#include "../logging/AxoLogging.h"
 #include <iostream>
 #include <string>
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
-static const uint8_t keyInData_2[] = {"ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW"};  // 32 bytes
+static const uint8_t keyInData_2[] = "ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW";  // 32 bytes
 static     string empty;
 
 using namespace std;
@@ -44,7 +44,30 @@ static string* preKeyJson(const DhKeyPair& preKeyPair)
     return data;
 }
 
-TEST(PreKeyStore, Basic)
+class StoreTestFixture: public ::testing::Test {
+public:
+    StoreTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+    }
+
+    ~StoreTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+
+    // put in any custom data members that you need
+};
+TEST_F(StoreTestFixture, PreKeyStore)
 {
     // Need a key pair here
     const Ec255PublicKey baseKey_1(keyInData_1);
@@ -76,7 +99,7 @@ TEST(PreKeyStore, Basic)
     SQLiteStoreConv::closeStoreForTesting(pks);
 }
 
-TEST(MsgHashStore, Basic)
+TEST_F(StoreTestFixture, MsgHashStore)
 {
     SQLiteStoreConv* pks = SQLiteStoreConv::getStoreForTesting();
     pks->setKey(string((const char*)keyInData, 32));

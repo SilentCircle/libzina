@@ -10,6 +10,8 @@
  * Definition of global Logger instance, implementation of Logger policies
  */
 
+#include "Logger.h"
+
 using namespace std;
 using namespace logging;
 

@@ -8,6 +8,7 @@
 // Set the project's maximum compiler log level if not otherwise specified during
 // compilation. See main CMakeLists.txt file, setting CMAKE_CXX_FLAGS_DEBUG for
 // DEBUG builds.
+// The standard setting is debug level 'ERROR'
 
 #ifndef LOG_MAX_LEVEL
 #define LOG_MAX_LEVEL ERROR
