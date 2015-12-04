@@ -95,17 +95,6 @@ static const char* removeStagedMk = "DELETE FROM stagedMk WHERE name=?1 AND long
 
 static const char* removeStagedMkTime = "DELETE FROM stagedMk WHERE since < ?1;";
 
-
-/* *****************************************************************************
- * SQL statements to process account management table.
- */
-static const char* dropAccounts = "DROP TABLE AccountMngmt;";
-static const char* createAccounts = 
-    "CREATE TABLE AccountMngmt (name VARCHAR NOT NULL PRIMARY KEY, lastUpdated TIMESTAMP, domain VARCHAR);";
-static const char* insertAccount = "INSERT INTO AccountMngmt (name, lastUpdated) VALUES (?1, strftime('%s', ?2, 'unixepoch'));";
-static const char* updateAccount = "UPDATE zrtpIdRemote SET name=?1,lastUpdated=strftime('%s', ?2, 'unixepoch') WHERE name=?3";
-static const char* selectAccountLastUpdated = "SELECT strftime('%s', lastUpdated, 'unixepoch') FROM AccountMngmt WHERE name=?1;";
-
 /* *****************************************************************************
  * SQL statements to process the Pre-key table.
  */
@@ -188,6 +177,7 @@ SQLiteStoreConv* SQLiteStoreConv::getStore()
     unique_lock<mutex> lck(sqlLock);
     if (instance_ == NULL)
         instance_ = new SQLiteStoreConv();
+    lck.unlock();
     return instance_;
 }
 
@@ -310,6 +300,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
     setUserVersion(db, DB_VERSION);
 
     isReady_ = true;
+    lck.unlock();
     LOGGER(INFO, __func__ , " <-- ");
     return SQLITE_OK;
 }
@@ -344,18 +335,6 @@ int SQLiteStoreConv::createTables()
     sqlite3_finalize(stmt);
 
     SQLITE_CHK(SQLITE_PREPARE(db, createStagedMk, -1, &stmt, NULL));
-    sqlResult = sqlite3_step(stmt);
-    if (sqlResult != SQLITE_DONE) {
-        ERRMSG;
-        goto cleanup;
-    }
-    sqlite3_finalize(stmt);
-
-    SQLITE_PREPARE(db, dropAccounts, -1, &stmt, NULL);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    SQLITE_CHK(SQLITE_PREPARE(db, createAccounts, -1, &stmt, NULL));
     sqlResult = sqlite3_step(stmt);
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
@@ -616,6 +595,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
+    lck.unlock();
     LOGGER(INFO, __func__, " <-- ", sqlResult);
 }
 
