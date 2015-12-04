@@ -570,6 +570,7 @@ void SQLiteStoreConv::storeConversation(const string& name, const string& longDe
     sqlResult = sqlite3_step(stmt);
     ERRMSG;
     sqlite3_finalize(stmt);
+    stmt = NULL;
 
     if (!SQL_FAIL(sqlResult) && sqlite3_changes(db) <= 0) {
         // insertConversation = "INSERT OR IGNORE INTO Conversations (name, secondName, longDevId, data, ownName) VALUES (?1, ?2, ?3, ?4, ?5);";
