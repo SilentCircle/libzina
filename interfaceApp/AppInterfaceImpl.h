@@ -52,36 +52,8 @@ public:
 
     string* getKnownUsers();
 
-    /**
-     * @brief Get own identity key and device name.
-     *
-     * The returned string contains the B64 encoded data of the own public identity key
-     * followed by a colon and the device name. Thus the returned string:
-     *
-     *   @c identityKey:deviceName
-     *
-     * @return formatted string, device name part may be empty if no device name was defined.
-     */
     string getOwnIdentityKey() const;
 
-    /**
-     * @brief Get a list of all identity keys a remote parts.
-     *
-     * The remote partner may have more than one device. This function returns the identity
-     * keys of remote user's devices that this client knows of. The client sends messages only
-     * to these known device of the remote user.
-     *
-     * The returned strings in the list contain the B64 encoded data of the public identity keys
-     * of the known devices, followed by a colon and the device name, followed by a colon and the
-     * the device id, followed by a colon and the ZRTP verify state. Format of the returned string:
-     *
-     *   @c identityKey:deviceName:deviceId:verifyState
-     *
-     * The device name part may be empty if no device name was defined.
-     *
-     * @param user the name of the user
-     * @return list of formatted strings, empty list if no information is available for that user.
-     */
     list<string>* getIdentityKeys(string& user) const;
 
     int32_t registerAxolotlDevice(string* result);
@@ -94,6 +66,7 @@ public:
 
     void rescanUserDevices(string& userName);
 
+    // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
      * 

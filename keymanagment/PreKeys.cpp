@@ -3,15 +3,15 @@
 #include "../axolotl/crypto/EcCurve.h"
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
+#include "../logging/AxoLogging.h"
 
 #include <cryptcommon/ZrtpRandom.h>
-#include <iostream>
-#include <utility>
 
 using namespace axolotl;
 
 static string* preKeyJson(const DhKeyPair &preKeyPair)
 {
+    LOGGER(INFO, __func__, " -->");
     cJSON *root;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
@@ -27,11 +27,14 @@ static string* preKeyJson(const DhKeyPair &preKeyPair)
     string* data = new string(out);
     cJSON_Delete(root); free(out);
 
+    LOGGER(INFO, __func__, " <--");
     return data;
 }
 
 pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
 {
+    LOGGER(INFO, __func__, " -->");
+
     int32_t keyId = 0;
     for (bool ok = false; !ok; ) {
         ZrtpRandom::getRandomData((uint8_t*)&keyId, sizeof(int32_t));
@@ -46,22 +49,29 @@ pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
     delete pk;
 
     pair <int32_t, const DhKeyPair*> prePair(keyId, preKeyPair);
+
+    LOGGER(INFO, __func__, " <--");
     return prePair;
 }
 
 list<pair<int32_t, const DhKeyPair*> >* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
 {
-    std::list< pair<int32_t, const DhKeyPair*> >* pkrList = new std::list< pair<int32_t, const DhKeyPair*> >;
+    LOGGER(INFO, __func__, " -->");
+
+    std::list<pair<int32_t, const DhKeyPair*> >* pkrList = new std::list<pair<int32_t, const DhKeyPair*> >;
 
     for (int32_t i = 0; i < num; i++) {
         pair<int32_t, const DhKeyPair*> pkPair = generatePreKey(store);
         pkrList->push_back(pkPair);
     }
+    LOGGER(INFO, __func__, " <--");
     return pkrList;
 }
 
 DhKeyPair* PreKeys::parsePreKeyData(const string& data)
 {
+    LOGGER(INFO, __func__, " -->");
+
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     uint8_t binBuffer[MAX_KEY_BYTES_ENCODED];
 
@@ -72,7 +82,7 @@ DhKeyPair* PreKeys::parsePreKeyData(const string& data)
     const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
 
     // Here we may check the public curve type and do some code to support different curves and
-    // create to correct private key. The serilaized public key data contain a curve type id. For
+    // create to correct private key. The serialized public key data contains a curve type id. For
     // the time being use Ec255 (DJB's curve 25519).
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
@@ -84,5 +94,6 @@ DhKeyPair* PreKeys::parsePreKeyData(const string& data)
     delete pubKey;
     delete privKey;
 
+    LOGGER(INFO, __func__, " <--");
     return keyPair;
 }

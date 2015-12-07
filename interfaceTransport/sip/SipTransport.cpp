@@ -1,6 +1,6 @@
 #include "SipTransport.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
-#include <iostream>
+#include "../../logging/AxoLogging.h"
 #include <map>
 
 
@@ -8,8 +8,9 @@ using namespace axolotl;
 
 void Log(const char* format, ...);
 
-vector< int64_t >* SipTransport::sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs)
+vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs)
 {
+    LOGGER(INFO, __func__, " -->");
     size_t numPairs = msgPairs->size();
 
     uint8_t** names = new uint8_t*[numPairs+1];
@@ -40,19 +41,23 @@ vector< int64_t >* SipTransport::sendAxoMessage(const string& recipient, vector<
             msgIdsReturn->push_back(msgIds[i]);
     }
     delete msgIds;
+    LOGGER(INFO, __func__, " <--");
     return msgIdsReturn;
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 {
+    LOGGER(INFO, __func__, " -->");
     string envelope((const char*)data, length);
     int32_t result = appInterface_->receiveMessage(envelope);
+    LOGGER(INFO, __func__, " <--", result);
 
     return result;
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
                                         uint8_t* primaryAlias, size_t aliasLen) {
+    LOGGER(INFO, __func__, " -->");
     string envelope((const char *) data, length);
 
     string uidString;
@@ -75,17 +80,20 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* u
     }
 
     int32_t result = appInterface_->receiveMessage(envelope, uidString, aliasString);
+    LOGGER(INFO, __func__, " <-- ", result);
 
     return result;
 }
 
 void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length)
 {
+    LOGGER(INFO, __func__, " -->");
     std::string info;
     if (data != NULL) {
         info.assign((const char*)data, length);
     }
     appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
+    LOGGER(INFO, __func__, " <--");
 }
 
 static string Zeros("00000000000000000000000000000000");
@@ -93,6 +101,7 @@ static map<string, string> seenIdStringsForName;
 
 void SipTransport::notifyAxo(uint8_t* data, size_t length)
 {
+    LOGGER(INFO, __func__, " -->");
     string info((const char*)data, length);
     /*
      * notify call back from SIP:
@@ -116,7 +125,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     string devIds = info.substr(found + 1);
     string devIdsSave(devIds);
 
-    // This is a check if the SIP server already send the same notify string for a name
+    // This is a check if the SIP server already sent the same notify string for a name
     map<string, string>::iterator it;
     it = seenIdStringsForName.find(name);
     if (it != seenIdStringsForName.end()) {
@@ -132,7 +141,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     pair<map<string, string>::iterator, bool> ret;
     ret = seenIdStringsForName.insert(pair<string, string>(name, devIdsSave));
     if (!ret.second) {
-        Log("Inserting of notified device ids failed: %s (%s)", name.c_str(), devIdsSave.c_str());
+        LOGGER(ERROR, "Caching of notified device ids failed: ", name, ", ", devIdsSave);
     }
 
     size_t pos = 0;
@@ -150,6 +159,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
         numReportedDevices++;
         if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
             newDevice = true;
+            LOGGER(DEBUG, "New device detected: ", devId);
             break;
         }
     }
@@ -163,5 +173,6 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
 //        Log("++++ calling notify callback");
         appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
     }
+    LOGGER(INFO, __func__, " <--");
 }
 

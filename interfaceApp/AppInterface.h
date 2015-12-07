@@ -180,9 +180,11 @@ public:
      * @brief Get public part of own identity key.
      * 
      * The returned strings is the B64 encoded data of the own public identity key, optinally
-     * followed by a colon and the device name.
+     * followed by a colon and the device name. Thus the returned string:
      *
-     * @return public part of own identity key
+     *   @c identityKey:deviceName
+     *
+     * @return formatted string, device name part may be empty if no device name was defined.
      */
     virtual string getOwnIdentityKey() const = 0;
 
@@ -195,10 +197,12 @@ public:
      * 
      * The returned strings in the list contain the B64 encoded data of the public identity keys
      * of the known devices, followed by a colon and the device name, followed by a colon and the
-     * the device id, followed by a colon and the ZRTP verify state.
-     * 
-     * identityKey:device name:device id:verify state
-     * 
+     * the device id, followed by a colon and the ZRTP verify state. Format of the returned string:
+     *
+     *   @c identityKey:deviceName:deviceId:verifyState
+     *
+     * The device name part may be empty if no device name was defined.
+     *
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.
      */
