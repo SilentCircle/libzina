@@ -65,7 +65,7 @@ TEST(SCloud, Basic)
     ASSERT_EQ(kSCLError_NoErr, err);
 
     string locator((char*)buffer, bufSize);
-    cerr << "Locator: " << locator << ", length: " << bufSize << endl;
+//    cerr << "Locator: " << locator << ", length: " << bufSize << endl;
 
     err = SCloudEncryptGetKeyBLOB( scCtxEnc, &blob, &blobSize);
     ASSERT_EQ(kSCLError_NoErr, err);
@@ -73,7 +73,7 @@ TEST(SCloud, Basic)
 
     string key((char*)blob, blobSize);
     free(blob);
-    cerr << "Key: " << key << ", length: " << blobSize << endl;
+//    cerr << "Key: " << key << ", length: " << blobSize << endl;
 
     err = SCloudEncryptGetSegmentBLOB( scCtxEnc, 1, &blob, &blobSize);
     ASSERT_EQ(kSCLError_NoErr, err);
@@ -81,7 +81,7 @@ TEST(SCloud, Basic)
 
     string segment((char*)blob, blobSize);
     free(blob);
-    cerr << "segment: " << segment << ", length: " << blobSize << endl;
+//    cerr << "segment: " << segment << ", length: " << blobSize << endl;
 
     bufSize = 1024;
     SCloudEncryptNext(scCtxEnc, buffer, &bufSize);
@@ -189,7 +189,7 @@ TEST(SCloud, BigBuffer)
 
     string metaDecrypt((char*)metaBuffer, metaLen);
     ASSERT_EQ(metadataBig, metaDecrypt);
-    cerr << "metaDecrypt: " << metaDecrypt << ", length: " << metaLen << endl;
+//    cerr << "metaDecrypt: " << metaDecrypt << ", length: " << metaLen << endl;
 
     int cmpResult = memcmp(dataBuffer, bigData, dataLen);
     ASSERT_EQ(0, cmpResult);

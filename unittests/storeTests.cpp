@@ -38,7 +38,7 @@ static string* preKeyJson(const DhKeyPair& preKeyPair)
 
     char *out = cJSON_Print(root);
     std::string* data = new std::string(out);
-    cerr << "PreKey data to store: " << *data << endl;
+//    cerr << "PreKey data to store: " << *data << endl;
     cJSON_Delete(root); free(out);
 
     return data;
@@ -53,11 +53,15 @@ public:
     void SetUp() {
         // code here will execute just before the test ensues
         LOGGER_INSTANCE setLogLevel(ERROR);
+        pks = SQLiteStoreConv::getStore();
+        pks->setKey(std::string((const char*)keyInData, 32));
+        pks->openStore(std::string());
     }
 
     void TearDown( ) {
         // code here will be called just after the test completes
         // ok to through exceptions from here if need be
+        SQLiteStoreConv::closeStore();
     }
 
     ~StoreTestFixture( )  {
@@ -66,7 +70,9 @@ public:
     }
 
     // put in any custom data members that you need
+    SQLiteStoreConv* pks;
 };
+
 TEST_F(StoreTestFixture, PreKeyStore)
 {
     // Need a key pair here
@@ -75,10 +81,6 @@ TEST_F(StoreTestFixture, PreKeyStore)
     const DhKeyPair basePair(baseKey_1, basePriv_1);
 
     string* pk = preKeyJson(basePair);
-
-    SQLiteStoreConv* pks = SQLiteStoreConv::getStoreForTesting();
-    pks->setKey(std::string((const char*)keyInData, 32));
-    pks->openStore(std::string());
 
     string* pk_1 = pks->loadPreKey(3);
     ASSERT_EQ(NULL, pk_1) <<  "Some data in an empty store?";
@@ -96,15 +98,10 @@ TEST_F(StoreTestFixture, PreKeyStore)
     pks->removePreKey(3);
     ASSERT_FALSE(pks->containsPreKey(3));
 
-    SQLiteStoreConv::closeStoreForTesting(pks);
 }
 
 TEST_F(StoreTestFixture, MsgHashStore)
 {
-    SQLiteStoreConv* pks = SQLiteStoreConv::getStoreForTesting();
-    pks->setKey(string((const char*)keyInData, 32));
-    pks->openStore(string());
-
     string msgHash_1("abcdefghijkl");
     string msgHash_2("123456789012");
 
@@ -139,9 +136,32 @@ TEST_F(StoreTestFixture, MsgHashStore)
 
     result = pks->hasMsgHash(msgHash_2);
     ASSERT_NE(SQLITE_ROW, result) <<  "msgHash_2 found after delete";
-
-    SQLiteStoreConv::closeStoreForTesting(pks);
 }
+
+
+class NameLookTestFixture: public ::testing::Test {
+public:
+    NameLookTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+    }
+
+    ~NameLookTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+
+    // put in any custom data members that you need
+};
 
 static const char* userInfoData =
         {
@@ -194,7 +214,7 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
     return 400;
 }
 
-TEST(NameLookUp, Basic)
+TEST_F(NameLookTestFixture, NameLookUpBasic)
 {
     ScProvisioning::setHttpHelper(helper0);
 
@@ -217,7 +237,7 @@ TEST(NameLookUp, Basic)
     nameCache->clearNameCache();
 }
 
-TEST(NameLookUp, BasicInfo)
+TEST_F(NameLookTestFixture, NameLookupBasicInfo)
 {
     ScProvisioning::setHttpHelper(helper0);
 
@@ -260,11 +280,12 @@ TEST(NameLookUp, BasicInfo)
     nameCache->clearNameCache();
 }
 
-TEST(NameLookUp, BasicError)
+TEST_F(NameLookTestFixture, NameLookupBasicError)
 {
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
+    LOGGER_INSTANCE setLogLevel(NONE);          // suppress logging, even for errors because we test it here
 
     string expectedUid;
     string alias("checker");
@@ -283,11 +304,12 @@ TEST(NameLookUp, BasicError)
     nameCache->clearNameCache();
 }
 
-TEST(NameLookUp, BasicInfoError)
+TEST_F(NameLookTestFixture, NameLookupBasicInfoError)
 {
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
+    LOGGER_INSTANCE setLogLevel(NONE);          // suppress logging, even for errors because we test it here
 
     string expectedUid("uvv9h7fbldqpfp82ed33dqv4lh");
     string alias("checker");

@@ -265,6 +265,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
 {
     LOGGER(INFO, __func__ , " -->");
     if (keyData_ == NULL) {
+        LOGGER(ERROR, __func__ , " No password defined.");
         return -1;
     }
     unique_lock<mutex> lck(sqlLock);
@@ -275,6 +276,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
 
     if (sqlCode_) {
         ERRMSG;
+        LOGGER(ERROR, __func__, " Failed to open database: ", sqlCode_, ", ", lastError_);
         return(sqlCode_);
     }
     sqlite3_key(db, keyData_->data(), static_cast<int>(keyData_->size()));

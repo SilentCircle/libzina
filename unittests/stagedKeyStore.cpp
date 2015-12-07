@@ -7,6 +7,7 @@
 #include "../axolotl/crypto/EcCurveTypes.h"
 #include "../axolotl/crypto/Ec255PublicKey.h"
 #include "../util/UUID.h"
+#include "../logging/AxoLogging.h"
 
 #include <iostream>
 using namespace axolotl;
@@ -25,6 +26,35 @@ static const char* keyInDataF = "ZZZZZZZZZZYYYYYYYYYYXXXXXXXXXXW";
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 
+class StoreTestFixture: public ::testing::Test {
+public:
+    StoreTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        store = SQLiteStoreConv::getStore();
+        store->setKey(std::string((const char*)keyInData, 32));
+        store->openStore(std::string());
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+        SQLiteStoreConv::closeStore();
+    }
+
+    ~StoreTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+
+    // put in any custom data members that you need
+    SQLiteStoreConv* store;
+};
+
 void prepareStore()
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -38,10 +68,10 @@ void prepareStore()
     }
 }
 
-TEST(StagedKeys, Basic) 
+TEST_F(StoreTestFixture, Basic)
 {
-    prepareStore();
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+//    prepareStore();
+//    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     string mkiv((const char*)keyInData, 32);
 
     store->insertStagedMk(bobName, bobDev, aliceName, mkiv);
@@ -63,10 +93,10 @@ TEST(StagedKeys, Basic)
     ASSERT_TRUE(keys.get() == NULL);
 }
 
-TEST(StagedKeys, TimeDelete) 
+TEST_F(StoreTestFixture, TimeDelete)
 {
-    prepareStore();
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+//    prepareStore();
+//    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     string mkiv(keyInDataC, 32);
     string mkiv_1(keyInDataD, 32);
     string mkiv_2(keyInDataE, 32);
@@ -117,7 +147,6 @@ TEST(UUID, Basic)
     uuid_string_t uuidString;
     uuid_unparse(uuid1, uuidString);
 
-    EXPECT_EQ(tm, tm1) << "tm1 may be off by 1";
-    cerr << uuidString << endl;
+    EXPECT_NEAR(tm, tm1, 1) << "tm1 may be off by 1";
 }
 

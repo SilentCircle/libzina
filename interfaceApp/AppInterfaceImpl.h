@@ -52,8 +52,36 @@ public:
 
     string* getKnownUsers();
 
+    /**
+     * @brief Get own identity key and device name.
+     *
+     * The returned string contains the B64 encoded data of the own public identity key
+     * followed by a colon and the device name. Thus the returned string:
+     *
+     *   @c identityKey:deviceName
+     *
+     * @return formatted string, device name part may be empty if no device name was defined.
+     */
     string getOwnIdentityKey() const;
 
+    /**
+     * @brief Get a list of all identity keys a remote parts.
+     *
+     * The remote partner may have more than one device. This function returns the identity
+     * keys of remote user's devices that this client knows of. The client sends messages only
+     * to these known device of the remote user.
+     *
+     * The returned strings in the list contain the B64 encoded data of the public identity keys
+     * of the known devices, followed by a colon and the device name, followed by a colon and the
+     * the device id, followed by a colon and the ZRTP verify state. Format of the returned string:
+     *
+     *   @c identityKey:deviceName:deviceId:verifyState
+     *
+     * The device name part may be empty if no device name was defined.
+     *
+     * @param user the name of the user
+     * @return list of formatted strings, empty list if no information is available for that user.
+     */
     list<string>* getIdentityKeys(string& user) const;
 
     int32_t registerAxolotlDevice(string* result);
@@ -147,9 +175,10 @@ private:
     SQLiteStoreConv* store_;
     Transport* transport_;
     int32_t flags_;
-    // If this is true then we checked own device and see only one device for
-    // this account. If another device registers for this account it sends out
-    // a sync message, the client receives this and we have a second device
+    // If this is true then we checked own devices and see only one device for
+    // own account it's the sending device. If another device registers for this
+    // account it sends out a sync message, the client receives this and we have
+    // a second device
     bool ownChecked_;
 };
 } // namespace

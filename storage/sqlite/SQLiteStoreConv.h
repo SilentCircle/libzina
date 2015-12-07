@@ -46,10 +46,6 @@ public:
      */
     static void closeStore() { delete instance_; instance_ = NULL;}
 
-#ifdef UNITTESTS
-    static SQLiteStoreConv* getStoreForTesting() {return new SQLiteStoreConv(); }
-    static SQLiteStoreConv* closeStoreForTesting(SQLiteStoreConv* store) {delete store; }
-#endif
     /**
      * @brief Is store ready for use?
      */

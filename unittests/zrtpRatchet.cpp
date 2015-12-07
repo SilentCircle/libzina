@@ -4,12 +4,10 @@
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../axolotl/crypto/EcCurve.h"
 #include "../axolotl/ratchet/AxoRatchet.h"
+#include "../logging/AxoLogging.h"
 
 using namespace axolotl;
 using namespace std;
-
-static AxoConversation* p1Conv;
-static AxoConversation* p2Conv;
 
 static const string p1Name("party1");
 static const string p2Name("party2");
@@ -22,6 +20,8 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
 void setAxoExportedKey( const string& localUser, const string& user, const string& deviceId, const string& exportedKey );
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
+
+static shared_ptr<string> emptySharedString;
 
 // Used in testing and debugging to do in-depth checks
 static void hexdump(const char* title, const unsigned char *s, size_t l) {
@@ -42,32 +42,62 @@ static void hexdump(const char* title, const string& in)
     hexdump(title, (uint8_t*)in.data(), in.size());
 }
 
-void prepareStore()
-{
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    if (store->isReady())
-        return;
-    store->setKey(std::string((const char*)keyInData, 32));
-    store->openStore(std::string());
-    if (SQL_FAIL(store->getSqlCode())) {
-        cerr << store->getLastError() << endl;
-        exit(1);
+class RatchetTestFixture: public ::testing::Test {
+public:
+    RatchetTestFixture( ) {
+        // initialization code here
     }
-    p1Conv = new AxoConversation(p1Name, p1Name, emptyString);   // Create P1's own (local) conversation
-    p1Conv->setDHIs(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
-    p1Conv->storeConversation();
 
-    p2Conv = new AxoConversation(p2Name, p2Name, emptyString);   // Create P2's own (local) conversation
-    p2Conv->setDHIs(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
-    p2Conv->storeConversation();
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        store = SQLiteStoreConv::getStore();
+        if (store->isReady())
+            return;
+        store->setKey(std::string((const char*)keyInData, 32));
+        store->openStore(std::string());
+        if (SQL_FAIL(store->getSqlCode())) {
+            LOGGER(ERROR, __func__, " Cannot open conversation store: ", store->getLastError());
+            exit(1);
+        }
+        p1Conv = new AxoConversation(p1Name, p1Name, emptyString);   // Create P1's own (local) conversation
+        p1Conv->setDHIs(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
+        p1Conv->storeConversation();
+
+        p2Conv = new AxoConversation(p2Name, p2Name, emptyString);   // Create P2's own (local) conversation
+        p2Conv->setDHIs(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
+        p2Conv->storeConversation();
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+        store->closeStore();
+        store = NULL;
+    }
+
+    ~RatchetTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+    // put in any custom data members that you need
+    AxoConversation* p1Conv;
+    AxoConversation* p2Conv;
+    SQLiteStoreConv* store;
+};
+
+TEST_F(RatchetTestFixture, ConversationTest)
+{
+    int32_t sqlCode = -1;
+    shared_ptr<list<string> > p1Conversation = store->getKnownConversations(p1Name, &sqlCode);
+    ASSERT_FALSE(SQL_FAIL(sqlCode));
+    ASSERT_TRUE(p1Conversation.get() != NULL);
+    ASSERT_EQ(1, p1Conversation->size());
+    ASSERT_EQ(p1Name, p1Conversation->front());
 }
 
-static shared_ptr<string> emptySharedString;
-
-TEST(ZrtpRatchet, Setup)
+TEST_F(RatchetTestFixture, RatchetTest)
 {
-    prepareStore();
-
     // Simulate the ZRTP data exchange via the confirm packets
     string p1_0_p2 = getAxoPublicKeyData(p1Name, p2Name, p2dev);
     string p2_0_p1 = getAxoPublicKeyData(p2Name, p1Name, p1dev);
@@ -111,7 +141,7 @@ TEST(ZrtpRatchet, Setup)
 //    hexdump("p2p1Wire", *p2p1Wire);
 
     shared_ptr<const string> p2p1Plain =  AxoRatchet::decrypt(p1p2Conv, *p2p1Wire, string(), emptySharedString);
-    ASSERT_TRUE(p2p1Plain != NULL);
+    ASSERT_TRUE(p2p1Plain.get() != NULL);
 //    hexdump("p2p1Plain", *p2p1Plain);
 //    cerr << *p2p1Plain << endl;
     ASSERT_EQ(p2toP1, *p2p1Plain);

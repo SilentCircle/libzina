@@ -9,12 +9,11 @@
 #include "../util/cJSON.h"
 #include "../axolotl/Constants.h"
 #include "../provisioning/Provisioning.h"
-
+#include "../logging/AxoLogging.h"
 
 using namespace axolotl;
 
 static mutex nameLock;           // mutex for critical section
-static string Empty;
 
 NameLookup* NameLookup::instance_ = NULL;
 
@@ -23,13 +22,16 @@ NameLookup* NameLookup::getInstance()
     unique_lock<mutex> lck(nameLock);
     if (instance_ == NULL)
         instance_ = new NameLookup();
+    lck.unlock();
     return instance_;
 }
 
 
 const string NameLookup::getUid(const string &alias, const string& authorization) {
 
+    LOGGER(INFO, __func__ , " -->");
     shared_ptr<UserInfo> userInfo = getUserInfo(alias, authorization);
+    LOGGER(INFO, __func__ , " <--");
     return (userInfo) ? userInfo->uniqueId : Empty;
 }
 
@@ -74,13 +76,17 @@ const string NameLookup::getUid(const string &alias, const string& authorization
  */
 int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
 {
+    LOGGER(INFO, __func__ , " -->");
     cJSON* root = cJSON_Parse(json.c_str());
-    if (root == NULL)
+    if (root == NULL) {
+        LOGGER(ERROR, __func__ , " JSON data not parseable: ", json);
         return CORRUPT_DATA;
+    }
 
     cJSON* tmpData = cJSON_GetObjectItem(root, "uuid");
     if (tmpData == NULL) {
         cJSON_Delete(root);
+        LOGGER(ERROR, __func__ , " Missing 'uuid' field.");
         return JS_FIELD_MISSING;
     }
     userInfo->uniqueId.assign(tmpData->valuestring);
@@ -88,6 +94,7 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     tmpData = cJSON_GetObjectItem(root, "default_alias");
     if (tmpData == NULL) {
         cJSON_Delete(root);
+        LOGGER(ERROR, __func__ , " Missing 'default_alias' field.");
         return JS_FIELD_MISSING;
     }
     userInfo->alias0.assign(tmpData->valuestring);
@@ -97,18 +104,23 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
         userInfo->displayName.assign(tmpData->valuestring);
     }
     cJSON_Delete(root);
+    LOGGER(INFO, __func__ , " <--");
     return OK;
 }
 
 const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization) {
 
-    if (alias.empty() || authorization.empty())
+    LOGGER(INFO, __func__ , " -->");
+    if (alias.empty() || authorization.empty()) {
+        LOGGER(INFO, __func__ , " <-- empty data");
         return shared_ptr<UserInfo>();
+    }
 
     // Check if this alias name already exists in the name map
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
+        LOGGER(INFO, __func__ , " <-- cached data");
         return it->second;
     }
     string result;
@@ -116,10 +128,11 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
 
     // Return empty pointer in case of HTTP error
     if (code >= 400) {
+        LOGGER(ERROR, __func__ , " Error return from server: ", code);
         return shared_ptr<UserInfo>();
     }
     shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
-    code = parseUserInfo(result, userInfo);
+    parseUserInfo(result, userInfo);
 
     pair<map<string, shared_ptr<UserInfo> >::iterator, bool> ret;
 
@@ -131,13 +144,15 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     if (it == nameMap_.end()) {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
         if (!ret.second) {
+            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
             return shared_ptr<UserInfo>();
         }
         // For existing account (old accounts) the UUID and the primary alias could be identical
         // Don't add an alias entry in this case
         if (alias.compare(userInfo->uniqueId) != 0) {
-           ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
+            ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
             if (!ret.second) {
+                LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 1);
                 return shared_ptr<UserInfo>();
             }
         }
@@ -145,9 +160,12 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     else {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
         if (!ret.second) {
+            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 2);
             return shared_ptr<UserInfo>();
         }
         userInfo = it->second;
     }
+    LOGGER(INFO, __func__ , " <--");
+    lck.unlock();
     return userInfo;
 }
