@@ -18,10 +18,7 @@ namespace axolotl {
 class HKDF
 {
 public:
-    HKDF();
-    ~HKDF();
-
-    static void deriveSecrets(uint8_t* inputKeyMaterial, size_t ikmLength, 
+    static void deriveSecrets(uint8_t* inputKeyMaterial, size_t ikmLength,
                               uint8_t* info, size_t infoLength, 
                               uint8_t* output, size_t outputLength);
 
@@ -31,6 +28,9 @@ public:
                               uint8_t* output, size_t outputLength);
 
 private:
+    HKDF() {};
+    ~HKDF() {};
+
     static const int HASH_OUTPUT_SIZE  = 32;
     static const size_t OFFSET = 1U;
 

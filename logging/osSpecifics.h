@@ -12,8 +12,8 @@
  *
  */
 
-#ifndef _OSSPECIFICS_H_
-#define _OSSPECIFICS_H_
+#ifndef _LOGGING_OSSPECIFICS_H_
+#define _LOGGING_OSSPECIFICS_H_
 
 #ifndef __EXPORT
 #if defined _WIN32 || defined __CYGWIN__
@@ -60,4 +60,4 @@
 /**
  * @}
  */
-#endif
+#endif  // _LOGGING_OSSPECIFICS_H_

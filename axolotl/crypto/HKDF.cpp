@@ -1,26 +1,19 @@
 #include <zrtp/crypto/hmac256.h>
 #include <string.h>
+#include "../../logging/AxoLogging.h"
 
 
 #include "HKDF.h"
 using namespace axolotl;
 
-HKDF::HKDF()
-{
-
-}
-
-HKDF::~HKDF()
-{
-
-}
-
 void HKDF::deriveSecrets(uint8_t* inputKeyMaterial, size_t ikmLength, 
                          uint8_t* info, size_t infoLength, 
                          uint8_t* output, size_t outputLength)
 {
+    LOGGER(INFO, __func__, " -->");
     uint8_t emptySalt[HASH_OUTPUT_SIZE] = {0};
     deriveSecrets(inputKeyMaterial, ikmLength, emptySalt, HASH_OUTPUT_SIZE, info, infoLength, output, outputLength);
+    LOGGER(INFO, __func__, " <--");
 }
 
 
@@ -29,9 +22,11 @@ void HKDF::deriveSecrets(uint8_t* inputKeyMaterial, size_t ikmLength,
                          uint8_t* info, size_t infoLength, 
                          uint8_t* output, size_t outputLength)
 {
+    LOGGER(INFO, __func__, " -->");
     uint8_t prk[HASH_OUTPUT_SIZE] = {0};
     extract(salt, saltLen, inputKeyMaterial, ikmLength, prk);
     expand(prk, HASH_OUTPUT_SIZE, info, infoLength, output, outputLength);
+    LOGGER(INFO, __func__, " <--");
 }
 
 // Extract function according to RFC 5869
@@ -48,6 +43,7 @@ void hmacSha256Ctx(void* ctx, const uint8_t* data[], uint32_t dataLength[], uint
 // Expand funtion according to RFC 5869
 void HKDF::expand(uint8_t* prk, size_t prkLen, uint8_t* info, size_t infoLen, uint8_t* output, size_t L)
 {
+    LOGGER(INFO, __func__, " -->");
     size_t iterations = (L + (HASH_OUTPUT_SIZE-1)) / HASH_OUTPUT_SIZE;
 
     void* hmacCtx;
@@ -89,4 +85,5 @@ void HKDF::expand(uint8_t* prk, size_t prkLen, uint8_t* info, size_t infoLen, ui
     freeSha256HmacContext(hmacCtx);
     memcpy(output, T, L);
     delete[] T;
+    LOGGER(INFO, __func__, " <--");
 }

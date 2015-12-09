@@ -3,9 +3,8 @@
 #include "crypto/HKDF.h"
 #include "Constants.h"
 #include "../interfaceApp/AppInterface.h"
+#include "../logging/AxoLogging.h"
 
-#include <common/Thread.h>
-#include <iostream>
 #include <map>
 
 #ifdef UNITTESTS
@@ -13,8 +12,6 @@
 static char hexBuffer[2000] = {0};
 static void hexdump(const char* title, const unsigned char *s, size_t l) {
     size_t n = 0;
-//sprintf(char *str, const char *format, ...);
-
     if (s == NULL) return;
 
     memset(hexBuffer, 0, 2000);
@@ -33,7 +30,7 @@ static void hexdump(const char* title, const string& in)
 }
 #endif
 
-static CMutexClass sessionLock;
+static mutex sessionLock;
 
 static map<string, AxoZrtpConnector*>* stagingList = new map<string, AxoZrtpConnector*>;
 
@@ -42,10 +39,12 @@ void Log(const char* format, ...);
 
 const string getAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId)
 {
-    sessionLock.Lock();
+    LOGGER(INFO, __func__, " -->");
+    unique_lock<mutex> lck(sessionLock);
+
     AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
     if (conv != NULL) {              // Already a conversation available, no setup necessary
-        sessionLock.Unlock();
+        LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
         return emptyString;
     }
     AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
@@ -71,22 +70,23 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     const std::string rkey = ratchetKey->getPublicKey().serialize();
     keyLength = static_cast<char>(rkey.size() & 0x7f);
     combinedKeys.append(&keyLength, 1).append(rkey);
-    sessionLock.Unlock();
+    lck.unlock();
 
+    LOGGER(INFO, __func__, " <--");
     return combinedKeys;
 }
 
 void setAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId, const string& pubKeyData)
 {
-    sessionLock.Lock();
+    LOGGER(INFO, __func__, " -->");
+    unique_lock<mutex> lck(sessionLock);
 
     std::map<string, AxoZrtpConnector*>::iterator it;
     it = stagingList->find(localUser);
     AxoZrtpConnector* staging = it->second;
 
     if (staging == NULL) {
-        sessionLock.Unlock();
-        // TODO: some error message: illegal state
+        LOGGER(ERROR, __func__, " <-- Illegal state, staging not found.");
         return;
     }
     AxoConversation* localConv = staging->getLocalConversation();
@@ -110,12 +110,14 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
     const DhPublicKey* remoteRatchetKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
     staging->setRemoteRatchetKey(remoteRatchetKey);
 
-    sessionLock.Unlock();
+    lck.unlock();
+    LOGGER(INFO, __func__, " <--");
 }
 
 // Also used by AxoPreKeyConnector.
 void createDerivedKeys(const string& masterSecret, string* root, string* chain, size_t requested)
 {
+    LOGGER(INFO, __func__, " -->");
     uint8_t derivedSecretBytes[256];     // we support upto 128 byte symmetric keys.
 
     // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes, similar 
@@ -124,6 +126,7 @@ void createDerivedKeys(const string& masterSecret, string* root, string* chain, 
                         (uint8_t*)SILENT_MESSAGE.data(), SILENT_MESSAGE.size(), derivedSecretBytes, requested*2);
     root->assign((const char*)derivedSecretBytes, requested);
     chain->assign((const char*)derivedSecretBytes+requested, requested);
+    LOGGER(INFO, __func__, " <--");
 }
 
 /*
@@ -146,14 +149,14 @@ Bob:
  */
 void setAxoExportedKey(const string& localUser, const string& user, const string& deviceId, const string& exportedKey)
 {
-    sessionLock.Lock();
+    LOGGER(INFO, __func__, " -->");
+    unique_lock<mutex> lck(sessionLock);
 
     std::map<string, AxoZrtpConnector*>::iterator it;
     it = stagingList->find(localUser);
     AxoZrtpConnector* staging = it->second;
     if (staging == NULL) {
-        sessionLock.Unlock();
-        // TODO: some error message: illegal state
+        LOGGER(ERROR, __func__, " <-- Illegal state, staging not found.");
         return;
     }
     stagingList->erase(it);
@@ -189,7 +192,8 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
     delete staging->getLocalConversation();
     delete staging->getRemoteConversation();
     delete staging;
-    sessionLock.Unlock();
+    lck.unlock();
+    LOGGER(INFO, __func__, " <--");
 }
 
 typedef AppInterface* (*GET_APP_IF)();
@@ -221,6 +225,7 @@ static string extractNameFromUri(const string sipUri)
 
 const string getOwnAxoIdKey() 
 {
+    LOGGER(INFO, __func__, " -->");
     if (getAppIf == NULL)
         return string();
     AppInterface* appIf = getAppIf();
@@ -238,11 +243,13 @@ const string getOwnAxoIdKey()
 
 //    hexdump("+++ own key", key); Log("%s", hexBuffer);
     delete local;
+    LOGGER(INFO, __func__, " <--");
     return key;
 }
 
 void checkRemoteAxoIdKey(const string user, const string deviceId, const string pubKey, int32_t verifyState)
 {
+    LOGGER(INFO, __func__, " -->");
     if (getAppIf == NULL)
         return;
     AppInterface* appIf = getAppIf();
@@ -259,7 +266,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     AxoConversation* remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
 
     if (remote == NULL) {
-//        Log("Remote conversation for user %s (%s) not found", remoteName.c_str(), deviceId.c_str());
+        LOGGER(ERROR, "<-- No conversation, user: '", user, "', device: ", deviceId);
         return;
     }
     const DhPublicKey* remoteId = remote->getDHIr();
@@ -268,7 +275,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
 //     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
 //     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
     if (pubKey.compare(remoteIdKey) != 0) {
-        Log("Messaging keys of user %s (%s) do not match", user.c_str(), deviceId.c_str());
+        LOGGER(ERROR, "<-- Messaging keys do not match, user: '", user, "', device: ", deviceId);
         return;
     }
     // if verifyState is 1 then both users verfied their SAS and thus set the Axolotl conversation
@@ -278,5 +285,6 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     remote->setZrtpVerifyState(verify);
     remote->storeConversation();
     delete remote;
+    LOGGER(INFO, __func__, " <--");
 }
 

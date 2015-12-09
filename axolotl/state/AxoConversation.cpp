@@ -4,8 +4,7 @@
 #include "../../util/b64helper.h"
 #include "../Constants.h"
 #include "../crypto/EcCurve.h"
-
-#include <iostream>
+#include "../../logging/AxoLogging.h"
 
 using namespace axolotl;
 using namespace std;
@@ -14,15 +13,16 @@ void Log(const char* format, ...);
 
 AxoConversation* AxoConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
 {
+    LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     if (!store->hasConversation(user, deviceId, localUser)) {
-//        cerr << "No conversation: " << localUser << ", user: " << user << endl;
+        LOGGER(WARNING, __func__, " <-- No such conversation: ", user);
         return NULL;
     }
 
     string* data = store->loadConversation(user, deviceId, localUser);
     if (data == NULL || data->empty()) {   // Illegal state, should not happen
-//        cerr << "cannot load conversation" << endl;
+        LOGGER(ERROR, __func__, " <-- Cannot load conversation: ", user);
         return NULL;
     }
     // Create new conversation object
@@ -30,11 +30,13 @@ AxoConversation* AxoConversation::loadConversation(const string& localUser, cons
 
     conv->deserialize(*data);
     delete data;
+    LOGGER(INFO, __func__, " <--");
     return conv;
 }
 
 void AxoConversation::storeConversation()
 {
+    LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
     const string* data = serialize();
@@ -43,6 +45,7 @@ void AxoConversation::storeConversation()
     memset_volatile((void*)data->data(), 0, data->size());
 
     delete data;
+    LOGGER(INFO, __func__, " <--");
 }
 
 // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
@@ -81,6 +84,7 @@ int32_t AxoConversation::renameConversation(const string& localUserOld, const st
 
 void AxoConversation::storeStagedMks()
 {
+    LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     while (!stagedMk->empty()) {
         string mkivmac = stagedMk->front();
@@ -92,19 +96,24 @@ void AxoConversation::storeStagedMks()
     // Cleanup old MKs
     time_t timestamp = time(0) - MK_STORE_TIME;
     store->deleteStagedMk(timestamp);
+    LOGGER(INFO, __func__, " <--");
 }
 
 shared_ptr<list<string> > AxoConversation::loadStagedMks()
 {
+    LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     shared_ptr<list<string> > mks = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
+    LOGGER(INFO, __func__, " <--");
     return mks;
 }
 
 void AxoConversation::deleteStagedMk(string& mkiv)
 {
+    LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkiv);
+    LOGGER(INFO, __func__, " <--");
 }
 
 /* *****************************************************************************
@@ -115,6 +124,7 @@ void AxoConversation::deleteStagedMk(string& mkiv)
 // with constructor.
 void AxoConversation::deserialize(const std::string& data)
 {
+    LOGGER(INFO, __func__, " -->");
     cJSON* root = cJSON_Parse(data.c_str());
 
     cJSON* jsonItem = cJSON_GetObjectItem(root, "partner");
@@ -218,7 +228,6 @@ void AxoConversation::deserialize(const std::string& data)
     if (b64Length > 0) {
         binLength = b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
         CKr.assign((const char*)binBuffer, binLength);
-//        Log("++++ deserialize CKr: b64length: %d, binLength: %d", b64Length, binLength);
     }
     Ns = cJSON_GetObjectItem(root, "Ns")->valueint;
     Nr = cJSON_GetObjectItem(root, "Nr")->valueint;
@@ -233,15 +242,16 @@ void AxoConversation::deserialize(const std::string& data)
     jsonItem = cJSON_GetObjectItem(root, "preKeysAvail");
     if (jsonItem != NULL)
         availablePreKeys = static_cast<size_t>(jsonItem->valueint);
-    cJSON_Delete(root); 
+    cJSON_Delete(root);
+    LOGGER(INFO, __func__, " <--");
 }
 
-const std::string* AxoConversation::serialize() const
+const string* AxoConversation::serialize() const
 {
-    cJSON *root = NULL;
+    LOGGER(INFO, __func__, " -->");
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
-    root = cJSON_CreateObject();
+    cJSON *root = cJSON_CreateObject();
 
     cJSON* jsonItem;
     cJSON_AddItemToObject(root, "partner", jsonItem = cJSON_CreateObject());
@@ -254,7 +264,6 @@ const std::string* AxoConversation::serialize() const
 
     // b64Encode terminates the B64 string with a nul byte
     b64Encode((const uint8_t*)RK.data(), RK.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-//    Log("++++ serialize RK: b64length: %d, inLength: %d - %s", b64Len, RK.size(), b64Buffer);
     cJSON_AddStringToObject(root, "RK", b64Buffer);
 
 
@@ -319,11 +328,9 @@ const std::string* AxoConversation::serialize() const
 
     // The two chain keys
     b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-//    Log("++++ serialize CKs: b64length: %d, inLength: %d", b64Len, CKs.size());
     cJSON_AddStringToObject(root, "CKs", b64Buffer);
 
     b64Encode((const uint8_t*)CKr.data(), CKr.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
-//    Log("++++ serialize CKr: b64length: %d, inLength: %d", b64Len, CKr.size());
     cJSON_AddStringToObject(root, "CKr", b64Buffer);
 
     cJSON_AddNumberToObject(root, "Ns", Ns);
@@ -335,15 +342,16 @@ const std::string* AxoConversation::serialize() const
     cJSON_AddNumberToObject(root, "preKeysAvail", availablePreKeys);
 
     char *out = cJSON_Print(root);
-    std::string* data = new std::string(out);
-//    Log("%s", data->c_str());
+    string* data = new string(out);
     cJSON_Delete(root); free(out);
 
+    LOGGER(INFO, __func__, " <--");
     return data;
 }
 
 void AxoConversation::reset()
 {
+    LOGGER(INFO, __func__, " -->");
     delete DHRs; DHRs = NULL;
     delete DHRr; DHRr = NULL;
     delete DHIs; DHIs = NULL;
@@ -363,4 +371,5 @@ void AxoConversation::reset()
     RK.clear();
     Nr = Ns = PNs = preKeyId = 0;
     ratchetFlag = false;
+    LOGGER(INFO, __func__, " <--");
 }

@@ -19,9 +19,6 @@ namespace axolotl {
 class AxoRatchet
 {
 public:
-    AxoRatchet();
-    ~AxoRatchet();
-
     /**
      * @brief Encrypt a message and message supplements, assemble a wire message.
      *
@@ -48,6 +45,11 @@ public:
      */
     static shared_ptr<const string> decrypt(axolotl::AxoConversation* conv, const string& wire, const string& supplements,
                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL);
+
+private:
+    AxoRatchet() {};
+    ~AxoRatchet() {};
+
 };
 }
 /**

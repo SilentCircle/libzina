@@ -16,8 +16,6 @@
 
 #include <zrtp/crypto/sha256.h>
 
-#include <mutex>          // std::mutex, std::unique_lock
-
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
 static mutex convLock;

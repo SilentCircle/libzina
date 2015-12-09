@@ -5,11 +5,11 @@
 #include "../crypto/AesCbc.h"
 #include "../crypto/HKDF.h"
 #include "../Constants.h"
+#include "../../logging/AxoLogging.h"
 
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>
 #include <common/osSpecifics.h>
-#include <iostream>
 
 
 #ifdef UNITTESTS
@@ -17,7 +17,6 @@
 static char hexBuffer[2000] = {0};
 static void hexdump(const char* title, const unsigned char *s, size_t l) {
     size_t n=0;
-//sprintf(char *str, const char *format, ...);
 
     if (s == NULL) return;
 
@@ -38,14 +37,6 @@ static void hexdump(const char* title, const string& in)
 #endif
 
 using namespace axolotl;
-
-void Log(const char* format, ...);
-
-AxoRatchet::AxoRatchet()
-{}
-
-AxoRatchet::~AxoRatchet()
-{}
 
 typedef struct parsedMessage_ {
     uint32_t msgType;
@@ -71,14 +62,17 @@ typedef struct parsedMessage_ {
 
 static int32_t deriveRkCk(AxoConversation& conv, string* newRK, string* newCK)
 {
+    LOGGER(INFO, __func__, " -->");
     uint8_t agreement[MAX_KEY_BYTES];
 
     // Compute a DH agreement from the current Ratchet keys: use receiver's (remote party's) public key and sender's
     // (local party's) private key
     int32_t agreementLength = EcCurve::calculateAgreement(*conv.getDHRr(), conv.getDHRs()->getPrivateKey(),
                                                           agreement, (size_t)MAX_KEY_BYTES);
-    if (agreementLength < 0)
+    if (agreementLength < 0) {
+        LOGGER(ERROR, __func__, " <-- agreement computation failed");
         return agreementLength;
+    }
 
     size_t length = static_cast<size_t>(agreementLength);
     // We need to derive key data for two keys: the new RK and the sender's CK (CKs), thus use
@@ -94,9 +88,10 @@ static int32_t deriveRkCk(AxoConversation& conv, string* newRK, string* newCK)
 
     newRK->assign((const char*)derivedSecretBytes, length);
     newCK->assign((const char*)derivedSecretBytes+length, length);
-//     hexdump("deriveRkCk old RK", conv.getRK());  Log("%s", hexBuffer);
-//     hexdump("deriveRkCk RK", *newRK);  Log("%s", hexBuffer);
-//     hexdump("deriveRkCk CK", *newCK);  Log("%s", hexBuffer);
+//     hexdump("deriveRkCk old RK", conv.getRK());  LOGGER(VERBOSE, hexBuffer);
+//     hexdump("deriveRkCk RK", *newRK);  LOGGER(VERBOSE, hexBuffer);
+//     hexdump("deriveRkCk CK", *newCK);  LOGGER(VERBOSE, hexBuffer);
+    LOGGER(INFO, __func__, " <--");
     return OK;
 }
 
@@ -105,15 +100,16 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
     // MK = HMAC-HASH(CKs, "0")
 
     // Hash CKs with "0"
+    LOGGER(INFO, __func__, " -->");
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
     hmac_sha256((uint8_t*)chainKey.data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"0", 1, mac, &macLen);
 
-    // We need a key and an IV
+    // We need a key, an IV, and a MAC key
     uint8_t keyMaterialBytes[SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE + SYMMETRIC_KEY_LENGTH];
 
     // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes
-    HKDF::deriveSecrets((uint8_t*)mac, macLen,                          // ipunt key material: hashed CKs
+    HKDF::deriveSecrets((uint8_t*)mac, macLen,                          // inpunt key material: hashed CKs
                         (uint8_t*)SILENT_MSG_DERIVE.data(), 
                         SILENT_MSG_DERIVE.size(),                       // fixed string "SilentCircleMessageKeyDerive" as info
                         keyMaterialBytes, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
@@ -121,6 +117,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
     MK->assign((const char*)keyMaterialBytes, SYMMETRIC_KEY_LENGTH);
     iv->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
     macKey->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE, SYMMETRIC_KEY_LENGTH);
+    LOGGER(INFO, __func__, " <--");
 }
 
 
@@ -129,6 +126,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 
 static void createWireMessage(AxoConversation& conv, string& message, string& mac, shared_ptr<string> wire)
 {
+    LOGGER(INFO, __func__, " -->");
     // Determine the wire message type:
     // 1: Normal message with new Ratchet key
     // 2: Message with new Ratchet Key and pre-key information
@@ -163,7 +161,7 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
     size_t msgLength = FIXED_TYPE1_OVERHEAD + keyLength;   // at least a msg type, Ns, PNs, and message length
 
     if (msgType == 2) {
-        msgLength += ADD_TYPE2_OVERHEAD + keyLength + keyLength;          // add remote pre-key id, local generated pre-key, identity key
+        msgLength += ADD_TYPE2_OVERHEAD + keyLength + keyLength;    // add remote pre-key id, local generated pre-key, identity key
     }
     msgLength += message.size();
 
@@ -206,14 +204,16 @@ static void createWireMessage(AxoConversation& conv, string& message, string& ma
 
     wire->assign((const char*)wireMessage, msgLength);
 //    hexdump("create wire", *wire); Log("%s", hexBuffer);
+    LOGGER(INFO, __func__, " <--");
 }
 
 // Parse a wire message and setup a structure with data from and pointers into wire message.
 //
 static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct) 
 {
-//    hexdump("parse wire", wire); Log("%s", hexBuffer);
+//    hexdump("parse wire", wire); LOGGER(VERBOSE, hexBuffer);
 
+    LOGGER(INFO, __func__, " -->");
     const uint8_t* data = (const uint8_t*)wire.data();
     const uint32_t* dPi = (uint32_t*)data;
     size_t byteIndex = 0;
@@ -259,73 +259,103 @@ static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct)
         msgStruct->encryptedMsgLen = 0;
     }
     expectedLength += msgStruct->encryptedMsgLen;
-    if (expectedLength != wire.size())
+    if (expectedLength != wire.size()) {
+        LOGGER(INFO, __func__, " <-- data length mismatch.");
         return RECV_DATA_LENGTH;
+    }
+    LOGGER(INFO, __func__, " <--");
     return OK;
 }
 
 static int32_t decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
-                               const string& mac, shared_ptr<string> decrypted, shared_ptr<string> supplementsPlain)
+                               const string& mac, shared_ptr<string> decrypted, shared_ptr<string> supplementsPlain, bool expectFail=false)
 {
+
+    LOGGER(INFO, __func__, " -->");
 
     uint32_t macLen;
     uint8_t computedMac[SHA256_DIGEST_LENGTH];
-//    Log("+++++ decryptCheck: mac size: %d, data size: %d", macKey.size(), encrypted.size());
 
-    hmac_sha256((uint8_t*)macKey.data(), (uint32_t)macKey.size(), (uint8_t*)encrypted.data(), encrypted.size(), computedMac, &macLen);
+    hmac_sha256((uint8_t*)macKey.data(), (uint32_t)macKey.size(), (uint8_t*)encrypted.data(),
+                static_cast<int32_t>(encrypted.size()), computedMac, &macLen);
 
+    // During the trySkippedMessageKeys we expect MAC failure because we try the staged
+    // message keys in a "brute-force" mode ;-)
     int32_t result = memcmp(computedMac, mac.data(), 8);
-//    Log("checking mac, result: %d", result);
-
-//     hexdump("expected mac", mac); Log("%s", hexBuffer);
-//     hexdump("computed mac", computedMac, 8); Log("%s", hexBuffer);
-    if (result != 0)
+    if (result != 0) {
+        if (expectFail) {
+            LOGGER(INFO, __func__, " <-- MAC check failed - expected.");
+        }
+        else {
+            LOGGER(ERROR, __func__, " <-- MAC check failed.");
+        }
         return MAC_CHECK_FAILED;
+    }
 
+    // If MAC is OK then treat every other failure as ERROR
     int32_t ret = aesCbcDecrypt(MK, iv, encrypted, decrypted);
-    if (ret != SUCCESS)
+    if (ret != SUCCESS) {
+        LOGGER(ERROR, __func__, " <-- Decrypt failed.");
         return ret;
-    if (!checkAndRemovePadding(decrypted))
+    }
+    if (!checkAndRemovePadding(decrypted)) {
+        LOGGER(ERROR, __func__, " <-- Padding check failed.");
         return MSG_PADDING_FAILED;
+    }
 
     if (supplements.size() > 0 && supplementsPlain) {
         ret = aesCbcDecrypt(MK, iv, supplements, supplementsPlain);
-        if (ret != SUCCESS)
+        if (ret != SUCCESS) {
+            LOGGER(ERROR, __func__, " <-- Decrypt failed (supple,ments).");
             return ret;
-        if (!checkAndRemovePadding(supplementsPlain))
+        }
+        if (!checkAndRemovePadding(supplementsPlain)) {
+            LOGGER(ERROR, __func__, " <-- Padding check failed (supplements).");
             return SUP_PADDING_FAILED;
+        }
     }
+    LOGGER(INFO, __func__, " <--");
     return OK;
 }
 
 static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac,
                                      shared_ptr<string> plaintext, shared_ptr<string> supplementsPlain)
 {
+    LOGGER(INFO, __func__, " -->");
+
     int32_t retVal = 0;
     shared_ptr<list<string> > mks = conv->loadStagedMks();
-    if (!mks)
+    if (!mks) {
+        LOGGER(INFO, __func__, " <-- No staged keys.");
         return NO_STAGED_KEYS;
+    }
 
+    // During the while loop we expect that decryptAndCheck fails
     while (!mks->empty()) {
         string MKiv = mks->front();
         mks->pop_front();
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
-        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain)) == OK) {
+        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == OK) {
             memset_volatile((void*)MK.data(), 0, MK.size());
             conv->deleteStagedMk(MKiv);
             mks->clear();
+            LOGGER(INFO, __func__, " <--");
             return retVal;
         }
         memset_volatile((void*)MK.data(), 0, MK.size());
     }
     mks->clear();
+    LOGGER(INFO, __func__, " <-- no matching MK found.");
     return retVal;
 }
 
-static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp, pair<string, string>* MKp, string* macKey)
+static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
+                                    pair<string, string>* MKp, string* macKey)
 {
+    LOGGER(INFO, __func__, " -->");
+
     string MK;
     string iv;
     string mKey;
@@ -346,37 +376,42 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
         CKp->assign((const char*)mac, macLen);
 
     }
-//    hexdump("stage CKp", *CKp); Log("%s", hexBuffer);
     deriveMk(*CKp, &MK, &iv, &mKey);
     MKp->first = MK;
     MKp->second = iv;
     *macKey = mKey;
-//    hexdump("decrypt macKey", *macKey); Log("%s", hexBuffer);
 
     // Hash CK with "1"
     hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, mac, &macLen);
     CKp->assign((const char*)mac, macLen);
+    LOGGER(INFO, __func__, " <--");
 }
 
 static void computeIdHash(const string& id, string* idHash)
 {
+    LOGGER(INFO, __func__, " -->");
     uint8_t hash[SHA256_DIGEST_LENGTH];
 
-    sha256((uint8_t*)id.data(), id.size(), hash);
+    sha256((uint8_t*)id.data(), static_cast<uint>(id.size()), hash);
     idHash->assign((const char*)hash, SHA256_DIGEST_LENGTH);
+    LOGGER(INFO, __func__, " <--");
 }
 
 static int32_t compareHashes(pair<string, string>* idHashes, string& recvIdHash, string& senderIdHash)
 {
+    LOGGER(INFO, __func__, " -->");
     string id = idHashes->first;
     if (id.compare(0, id.size(), recvIdHash, 0, id.size()) != 0) {
+        LOGGER(ERROR, __func__, " <-- Receive ID wrong");
         return RECEIVE_ID_WRONG;
     }
 
     id = idHashes->second;
     if (id.compare(0, id.size(), senderIdHash, 0, id.size()) != 0) {
+        LOGGER(ERROR, __func__, " <-- Sender ID wrong");
         return SENDER_ID_WRONG;
     }
+    LOGGER(INFO, __func__, " <--");
     return OK;
 }
 /*
@@ -413,6 +448,7 @@ return read()*/
 shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements,
                                              shared_ptr<string> supplementsPlain, pair<string, string>* idHashes)
 {
+    LOGGER(INFO, __func__, " -->");
     ParsedMessage msgStruct;
     int32_t result = parseWireMsg(wire, &msgStruct);
 
@@ -474,8 +510,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     shared_ptr<string> decrypted = make_shared<string>();
 
     string mac((const char*)msgStruct.mac, 8);
-    int32_t tryVal;
-    if ((tryVal = trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain)) == OK) {
+    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain) == OK) {
         return decrypted;
     }
 
@@ -492,6 +527,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
         int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
         if (status < 0) {
+            LOGGER(ERROR, __func__, " <-- Old ratchet, decrypt failed, staged MK not stored.");
             conv->setErrorCode(status);
             return shared_ptr<string>();;
         }
@@ -514,6 +550,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
             conv->setDHRr(saveDHRr);
             delete DHRp;
             conv->setErrorCode(status);
+            LOGGER(ERROR, __func__, " <-- New ratchet, failed to derive RKp/CKp, staged MK not stored.");
             return shared_ptr<string>();;
         }
 
@@ -527,7 +564,8 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
             conv->setDHRr(saveDHRr);
             delete DHRp;
             conv->setErrorCode(status);
-            return shared_ptr<string>();;
+            LOGGER(ERROR, __func__, " <-- New ratchet, failed to decrypt, new staged MK not stored.");
+            return shared_ptr<string>();
         }
         conv->setRK(RKp);
         delete saveDHRr;
@@ -542,6 +580,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     delete(conv->getA0());
     conv->setA0(NULL);
     conv->storeConversation();
+    LOGGER(INFO, __func__, " <--");
     return decrypted;
 }
 
@@ -571,6 +610,7 @@ return msg
 shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements,
                                              shared_ptr<string> encryptedSupplements, pair<string, string>* idHashes)
 {
+    LOGGER(INFO, __func__, " -->");
     if (conv.getRK().empty()) {
         conv.setErrorCode(SESSION_NOT_INITED);
         return shared_ptr<string>();
@@ -620,12 +660,14 @@ shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string
     int32_t ret = aesCbcEncrypt(MK, iv, message, encryptedData);
     if (ret != SUCCESS) {
         conv.setErrorCode(ret);
+        LOGGER(ERROR, __func__, " <-- Encryption failed.");
         return shared_ptr<string>();
     }
     if (supplements.size() > 0 && encryptedSupplements) {
         ret = aesCbcEncrypt(MK, iv, supplements, encryptedSupplements);
         if (ret != SUCCESS) {
             conv.setErrorCode(ret);
+            LOGGER(ERROR, __func__, " <-- Encryption failed (supplements).");
             return shared_ptr<string>();
         }
     }
@@ -645,5 +687,6 @@ shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string
     string newCKs((const char*)mac, macLen);
     conv.setCKs(newCKs);
 
+    LOGGER(INFO, __func__, " <--");
     return wireMessage;
 }
