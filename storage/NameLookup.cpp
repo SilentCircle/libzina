@@ -131,8 +131,13 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
         LOGGER(ERROR, __func__ , " Error return from server: ", code);
         return shared_ptr<UserInfo>();
     }
+
     shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
-    parseUserInfo(result, userInfo);
+    code = parseUserInfo(result, userInfo);
+    if (code != OK) {
+        LOGGER(ERROR, __func__ , " Error return from parsing.");
+        return shared_ptr<UserInfo>();
+    }
 
     pair<map<string, shared_ptr<UserInfo> >::iterator, bool> ret;
 
