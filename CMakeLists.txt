@@ -6,7 +6,16 @@
 
 cmake_minimum_required(VERSION 3.0)
 
-PROJECT(libaxolotl++)
+set(AUTO_BUILD $ENV{AUTOMATED_BUILD})
+
+# if running auto build then we assume that we build it for Android, thus we
+# don't need a CC or CXX compiler on the build system. all is done in Android's
+# ndk-build. Ignore some Cmake warnings in this case.
+if (AUTO_BUILD EQUAL 1)
+    PROJECT(libaxolotl++ NONE)
+else()
+    PROJECT(libaxolotl++)
+endif()
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 1)
 SET(CPACK_PACKAGE_VERSION_MINOR 0)
@@ -17,7 +26,7 @@ set (SOVERSION 1)
 
 ### Configuration section
 # Where to find the modules that we share with ZRTP, i.e. the ZRTP root directory
-set(AUTO_BUILD $ENV{AUTOMATED_BUILD})
+
 if (AUTO_BUILD EQUAL 1)
     set (ZRTP_BASE_DIR $ENV{WORKSPACE}/silentphone2/support/zrtpcpp)
 else()
