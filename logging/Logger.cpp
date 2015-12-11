@@ -71,7 +71,7 @@ void AndroidLogPolicy::write(LoggingLogLevel level, const std::string& tag, cons
             break;
     }
     if (priority != ANDROID_LOG_UNKNOWN)
-        __android_log_print(ANDROID_LOG_DEBUG, tag.c_str(), "%s", msg.c_str());
+        __android_log_print(priority, tag.c_str(), "%s", msg.c_str());
 }
 #endif
 

@@ -14,3 +14,8 @@ std::shared_ptr<logging::Logger<logging::CerrLogPolicy> >
 #else
 #error "Define Logger instance according to the system in use."
 #endif
+
+void setAxoLogLevel(int32_t level)
+{
+    _globalLogger->setLogLevel(static_cast<LoggingLogLevel>(level));
+}

@@ -7,7 +7,7 @@
 #define LOGGING_LOGGER_CONFIG_H
 
 #ifdef __ANDROID__
-    #include <log.h>
+    #include <android/log.h>
     #define ANDROID_LOGGER  // to use the __android_log_print(ANDROID_LOG_xxx, tag, "%s", logString); functions
 #elif defined _WIN32 || defined __CYGWIN__
     #define WINDOWS_LOGGER

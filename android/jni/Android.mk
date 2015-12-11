@@ -11,7 +11,7 @@ LOCAL_PATH := @CMAKE_SOURCE_DIR@
 # Setup to include the pre-built static protocol buffer library
 include $(CLEAR_VARS)
 LOCAL_MODULE := protobuf
-LOCAL_SRC_FILES := $(LOCAL_PATH)/android/jni/$(TARGET_ARCH_ABI)/libprotobuf-cpp-lite.a 
+LOCAL_SRC_FILES := $(LOCAL_PATH)/protobuf/android/obj/local/$(TARGET_ARCH_ABI)/libprotobuf-cpp-lite.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 # compile the Axolotl and support modules, build the lib

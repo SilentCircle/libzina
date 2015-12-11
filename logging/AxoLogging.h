@@ -8,10 +8,10 @@
 // Set the project's maximum compiler log level if not otherwise specified during
 // compilation. See main CMakeLists.txt file, setting CMAKE_CXX_FLAGS_DEBUG for
 // DEBUG builds.
-// The standard setting is debug level 'ERROR'
+// The standard compile setting is debug level 'WARNING'
 
 #ifndef LOG_MAX_LEVEL
-#define LOG_MAX_LEVEL ERROR
+#define LOG_MAX_LEVEL WARNING
 #endif
 
 #define LOGGER_INSTANCE _globalLogger->
@@ -24,6 +24,17 @@ extern std::shared_ptr<logging::Logger<logging::AndroidLogPolicy> > _globalLogge
 extern std::shared_ptr<logging::Logger<logging::CerrLogPolicy> > _globalLogger;
 #else
 #error "Define Logger instance according to the system in use."
+#endif
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+__EXPORT extern void setAxoLogLevel(int32_t level);
+
+#if defined(__cplusplus)
+}
 #endif
 
 #endif //LIBAXOLOTL_AXOLOGGING_CPP_H
