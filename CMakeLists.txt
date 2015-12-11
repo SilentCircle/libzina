@@ -17,8 +17,12 @@ set (SOVERSION 1)
 
 ### Configuration section
 # Where to find the modules that we share with ZRTP, i.e. the ZRTP root directory
-set (ZRTP_BASE_DIR /home/werner/silentC/zrtpcpp)
-# set (ZRTP_BASE_DIR /Users/werner/AndroidStudioProjects/spa2/silentphone2/support/zrtpcpp)
+set(AUTO_BUILD $ENV{AUTOMATED_BUILD})
+if (AUTO_BUILD EQUAL 1)
+    set (ZRTP_BASE_DIR $ENV{WORKSPACE}/silentphone2/support/zrtpcpp)
+else()
+    set (ZRTP_BASE_DIR /home/werner/silentC/zrtpcpp)
+endif()
 
 option(STANDALONE "Build standlone shared library, otherwise a static lib without ZRTP crypto modules." OFF)
 option(UNITTESTS "Build unit tests, implies STANDALONE true." OFF)
