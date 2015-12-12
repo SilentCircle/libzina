@@ -13,6 +13,8 @@
     #define WINDOWS_LOGGER
 #elif defined __linux__
     #define LINUX_LOGGER
+#elif defined __APPLE__
+    #define APPLE_LOGGER
 // add other specifics here
 #endif
 

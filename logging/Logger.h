@@ -95,6 +95,7 @@ namespace logging {
         virtual void openStream(const std::string& name) = 0;
         virtual void closeStream() = 0;
         virtual void write(LoggingLogLevel level, const std::string& tag, const std::string& msg) = 0;
+        virtual LoggingLogType getLoggingLogType() = 0;
     };
 
     /**
@@ -111,6 +112,7 @@ namespace logging {
         void openStream(const std::string& name);
         void closeStream();
         void write(LoggingLogLevel level, const std::string& tag, const std::string& msg);
+        LoggingLogType getLoggingLogType() { return FULL; }
     };
 
     /**
@@ -125,6 +127,7 @@ namespace logging {
         void openStream(const std::string& name) {};
         void closeStream() {};
         void write(LoggingLogLevel level, const std::string& tag, const std::string& msg) { std::cerr << msg << std::endl;};
+        LoggingLogType getLoggingLogType() { return FULL; }
     };
 
 #ifdef ANDROID_LOGGER
@@ -140,6 +143,7 @@ namespace logging {
         void openStream(const std::string& name) {};
         void closeStream() {};
         void write(LoggingLogLevel level, const std::string& tag, const std::string& msg);
+        LoggingLogType getLoggingLogType() { return RAW; }
     };
 #endif
 
@@ -299,18 +303,12 @@ return 0;
     Logger<log_policy >::Logger(const std::string& name) : tag("Logger")
     {
         logLineNumber = 0;
-        // In case of ANDROID_LOGGER initialize with RAW data format, Android's log
-        // functions already add date, time etc, thus not need to do it here again
-#ifdef ANDROID_LOGGER
-        logType = RAW;
-#else
-        logType = FULL;
-#endif
         logLevel = VERBOSE;
         policy = new log_policy;
         if (!policy) {
             throw std::runtime_error("LOGGER: Unable to create the logger instance");
         }
+        logType = policy->getLoggingLogType();
         policy->openStream( name );
     }
 
@@ -318,16 +316,12 @@ return 0;
     Logger<log_policy >::Logger(const std::string& name, const std::string& inTag) : tag(inTag)
     {
         logLineNumber = 0;
-#ifdef ANDROID_LOGGER
-        logType = RAW;
-#else
-        logType = FULL;
-#endif
         logLevel = VERBOSE;
         policy = new log_policy;
         if (!policy) {
             throw std::runtime_error("LOGGER: Unable to create the logger instance");
         }
+        logType = policy->getLoggingLogType();
         policy->openStream( name );
     }
 
