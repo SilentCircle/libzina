@@ -396,7 +396,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t AppRepository::loadConversation(const string& name, string* conversation) const
+int32_t AppRepository::loadConversation(const string& name, string* const conversation) const
 {
     LOGGER(INFO, __func__ , " -->");
 
@@ -423,7 +423,7 @@ cleanup:
     return sqlResult;
 }
 
-bool AppRepository::existConversation(const string& name, int32_t* sqlCode)
+bool AppRepository::existConversation(const string& name, int32_t* const sqlCode)
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -467,7 +467,7 @@ cleanup:
     return sqlResult;
 }
 
-list<string>* AppRepository::listConversations(int32_t* sqlCode) const
+list<string>* AppRepository::listConversations(int32_t* const sqlCode) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -581,7 +581,7 @@ cleanup:
 
 }
 
-int32_t AppRepository::loadEvent(const string& name, const string& eventId, string* event, int32_t *msgNumber) const
+int32_t AppRepository::loadEvent(const string& name, const string& eventId, string* const event, int32_t* const msgNumber) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -609,7 +609,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t AppRepository::loadEventWithMsgId(const string& eventId,  string* event)
+int32_t AppRepository::loadEventWithMsgId(const string& eventId,  string* const event)
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -635,7 +635,7 @@ cleanup:
     return sqlResult;
 }
 
-bool AppRepository::existEvent(const string& name, const string& eventId, int32_t* sqlCode)
+bool AppRepository::existEvent(const string& name, const string& eventId, int32_t* const sqlCode)
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -664,7 +664,7 @@ static const char* selectEventAllDesc = "SELECT data, msgNumber FROM events WHER
 static const char* selectEventLimitDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber>=?2 ORDER BY msgNumber DESC LIMIT ?3;";
 static const char* selectEventBetweenDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber BETWEEN ?2 AND ?3 ORDER BY msgNumber DESC;";
 
-int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t number, list<std::string*>* events, int32_t *lastMsgNumber) const
+int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t number, list<std::string*>* const events, int32_t* const lastMsgNumber) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -770,7 +770,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t AppRepository::loadObject(const string& name, const string& eventId, const string& objectId, string* object) const
+int32_t AppRepository::loadObject(const string& name, const string& eventId, const string& objectId, string* const object) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -798,7 +798,7 @@ cleanup:
     return sqlResult;
 }
 
-bool AppRepository::existObject(const string& name, const string& eventId, const string& objId, int32_t* sqlCode) const
+bool AppRepository::existObject(const string& name, const string& eventId, const string& objId, int32_t* const sqlCode) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -824,7 +824,7 @@ cleanup:
     return retVal;
 }
 
-int32_t AppRepository::loadObjects(const string& name, const string& eventId, list<string*>* objects) const
+int32_t AppRepository::loadObjects(const string& name, const string& eventId, list<string*>* const objects) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -965,7 +965,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t AppRepository::loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* status)
+int32_t AppRepository::loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* const status)
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -996,7 +996,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t AppRepository::loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* msgIds)
+int32_t AppRepository::loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* const msgIds)
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;

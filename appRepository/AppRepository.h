@@ -106,7 +106,7 @@ public:
      * @param conversation The serialized data of the conversation data structure
      * @return An SQLITE code.
      */
-    int32_t loadConversation(const string& name, string* conversation) const;
+    int32_t loadConversation(const string& name, string* const conversation) const;
 
     /**
      * @brief Checks if a conversation for the name exists.
@@ -114,7 +114,7 @@ public:
      * @param name Name of the conversation
      * @return @c true if the conversation exists, @c false if not.
      */
-    bool existConversation(const string& name, int32_t* sqlCode = NULL);
+    bool existConversation(const string& name, int32_t* const sqlCode = NULL);
 
     /**
      * @brief Delete serialized conversation data.
@@ -133,7 +133,7 @@ public:
      * 
      * @return A list of names for conversations, @c NULL in case of an error.
      */
-    list<string>* listConversations(int32_t* sqlCode = NULL) const;
+    list<string>* listConversations(int32_t* const sqlCode = NULL) const;
 
     /**
      * @brief Insert serialized event/message data.
@@ -183,7 +183,7 @@ public:
      *                  sequence number.
      * @return A SQLite code.
      */
-    int32_t loadEvent(const string& name, const string& eventId, string* event, int32_t *msgNumber) const;
+    int32_t loadEvent(const string& name, const string& eventId, string* const event, int32_t* const msgNumber) const;
 
     /**
      * @brief Load a message with a given message id.
@@ -195,7 +195,7 @@ public:
      * @param event The serialized data of the event data structure
      * @return A SQLite code.
      */
-    int32_t loadEventWithMsgId(const string& eventId, string* event);
+    int32_t loadEventWithMsgId(const string& eventId, string* const event);
 
     /**
      * @brief Checks if a event exists.
@@ -204,7 +204,7 @@ public:
      * @param eventId Id of the event
      * @return @c true if the event exists, @c false if not.
      */
-    bool existEvent(const string& name, const string& eventId, int32_t* sqlCode = NULL);
+    bool existEvent(const string& name, const string& eventId, int32_t* const sqlCode = NULL);
 
     /**
      * @brief Load and returns a set of serialized event/message data.
@@ -239,7 +239,7 @@ public:
      *                      number of the oldest message in the returned data list.
      * @return A SQLite code.
      */
-    int32_t loadEvents(const string& name, uint32_t offset, int32_t number, list<string*>* events, int32_t *lastMsgNumber) const;
+    int32_t loadEvents(const string& name, uint32_t offset, int32_t number, list<string*>* const events, int32_t* const lastMsgNumber) const;
 
     /**
      * @brief Delete a single event.
@@ -291,7 +291,7 @@ public:
      * @param object The serialized data of the event data structure
      * @return A SQLite code.
      */
-    int32_t loadObject(const string& name, const string& eventId, const string& objectId, string* object) const;
+    int32_t loadObject(const string& name, const string& eventId, const string& objectId, string* const object) const;
 
      /**
       * @brief Checks if an object exists.
@@ -301,7 +301,7 @@ public:
       * @param objectId The object id, unique inside the event it belongs to
       * @return @c true if the event exists, @c false if not.
       */
-     bool existObject(const string& name, const string& eventId, const string& objId, int32_t* sqlCode = NULL) const;
+     bool existObject(const string& name, const string& eventId, const string& objId, int32_t* const sqlCode = NULL) const;
 
     /**
      * @brief Load and returns he set of serialized object data that belong to a event/message.
@@ -311,7 +311,7 @@ public:
      * @param objects The serialized data of the event data structure, the caller must delete the string pointers
      * @return A SQLite code.
      */
-    int32_t loadObjects(const string& name, const string& eventId, list<string*>* objects) const;
+    int32_t loadObjects(const string& name, const string& eventId, list<string*>* const objects) const;
 
     /**
      * @brief Delete a single object.
@@ -382,7 +382,7 @@ public:
      * @param status contains the attachment status on return
      * @return the SQL code
      */
-    int32_t loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* status);
+    int32_t loadAttachmentStatus(const string& mesgId, const string& partnerName, int32_t* const status);
 
     /**
      * @brief Return all message ids with a given status.
@@ -395,7 +395,7 @@ public:
      * @param msgIds pointer to a (empty) list of strings to store the found message ids
      * @return the SQL code
      */
-    int32_t loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* msgIds);
+    int32_t loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* const msgIds);
 
     /**
      * @brief Return ready status.
