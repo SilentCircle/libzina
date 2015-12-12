@@ -1,6 +1,7 @@
 #include <limits.h>
 
 #include "../attachments/fileHandler/scloud.h"
+#include "../logging/AxoLogging.h"
 
 #include "gtest/gtest.h"
 #include <iostream>
@@ -37,7 +38,29 @@ static void hexdump(const char* title, const std::string& in)
 }
 #endif
 
-TEST(SCloud, Basic)
+class ScloudTestFixture: public ::testing::Test {
+public:
+    ScloudTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+    }
+
+    ~ScloudTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+};
+
+TEST_F(ScloudTestFixture, SCloudBasic)
 {
     SCloudContextRef scCtxEnc;
     SCloudContextRef scCtxDec;
@@ -121,7 +144,7 @@ TEST(SCloud, Basic)
 static const uint8_t bigData[64*1024] = {0};
 static const string metadataBig("This is bigger metadata");
 
-TEST(SCloud, BigBuffer)
+TEST_F(ScloudTestFixture, SCloudBigBuffer)
 {
     SCloudContextRef scCtxEnc;
     SCloudContextRef scCtxDec;
@@ -198,5 +221,4 @@ TEST(SCloud, BigBuffer)
 
     SCloudFree(scCtxEnc, 0);
     SCloudFree(scCtxDec, 1);
-
 }

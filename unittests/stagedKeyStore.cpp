@@ -55,19 +55,6 @@ public:
     SQLiteStoreConv* store;
 };
 
-void prepareStore()
-{
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    if (store->isReady())
-        return;
-    store->setKey(std::string((const char*)keyInData, 32));
-    store->openStore(std::string());
-    if (SQL_FAIL(store->getSqlCode())) {
-        cerr << store->getLastError() << endl;
-        exit(1);
-    }
-}
-
 TEST_F(StoreTestFixture, Basic)
 {
 //    prepareStore();
