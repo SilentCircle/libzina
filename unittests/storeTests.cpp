@@ -8,16 +8,16 @@
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
 
-
 #include "gtest/gtest.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
+#include "../logging/AxoLogging.h"
 #include <iostream>
 #include <string>
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
-static const uint8_t keyInData_2[] = {"ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW"};  // 32 bytes
+static const uint8_t keyInData_2[] = "ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW";  // 32 bytes
 static     string empty;
 
 using namespace std;
@@ -38,13 +38,42 @@ static string* preKeyJson(const DhKeyPair& preKeyPair)
 
     char *out = cJSON_Print(root);
     std::string* data = new std::string(out);
-    cerr << "PreKey data to store: " << *data << endl;
+//    cerr << "PreKey data to store: " << *data << endl;
     cJSON_Delete(root); free(out);
 
     return data;
 }
 
-TEST(PreKeyStore, Basic)
+class StoreTestFixture: public ::testing::Test {
+public:
+    StoreTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        pks = SQLiteStoreConv::getStore();
+        pks->setKey(std::string((const char*)keyInData, 32));
+        pks->openStore(std::string());
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+        SQLiteStoreConv::closeStore();
+    }
+
+    ~StoreTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+
+    // put in any custom data members that you need
+    SQLiteStoreConv* pks;
+};
+
+TEST_F(StoreTestFixture, PreKeyStore)
 {
     // Need a key pair here
     const Ec255PublicKey baseKey_1(keyInData_1);
@@ -52,10 +81,6 @@ TEST(PreKeyStore, Basic)
     const DhKeyPair basePair(baseKey_1, basePriv_1);
 
     string* pk = preKeyJson(basePair);
-
-    SQLiteStoreConv* pks = SQLiteStoreConv::getStoreForTesting();
-    pks->setKey(std::string((const char*)keyInData, 32));
-    pks->openStore(std::string());
 
     string* pk_1 = pks->loadPreKey(3);
     ASSERT_EQ(NULL, pk_1) <<  "Some data in an empty store?";
@@ -73,15 +98,10 @@ TEST(PreKeyStore, Basic)
     pks->removePreKey(3);
     ASSERT_FALSE(pks->containsPreKey(3));
 
-    SQLiteStoreConv::closeStoreForTesting(pks);
 }
 
-TEST(MsgHashStore, Basic)
+TEST_F(StoreTestFixture, MsgHashStore)
 {
-    SQLiteStoreConv* pks = SQLiteStoreConv::getStoreForTesting();
-    pks->setKey(string((const char*)keyInData, 32));
-    pks->openStore(string());
-
     string msgHash_1("abcdefghijkl");
     string msgHash_2("123456789012");
 
@@ -116,9 +136,32 @@ TEST(MsgHashStore, Basic)
 
     result = pks->hasMsgHash(msgHash_2);
     ASSERT_NE(SQLITE_ROW, result) <<  "msgHash_2 found after delete";
-
-    SQLiteStoreConv::closeStoreForTesting(pks);
 }
+
+
+class NameLookTestFixture: public ::testing::Test {
+public:
+    NameLookTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+    }
+
+    ~NameLookTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+
+    // put in any custom data members that you need
+};
 
 static const char* userInfoData =
         {
@@ -171,7 +214,7 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
     return 400;
 }
 
-TEST(NameLookUp, Basic)
+TEST_F(NameLookTestFixture, NameLookUpBasic)
 {
     ScProvisioning::setHttpHelper(helper0);
 
@@ -194,7 +237,7 @@ TEST(NameLookUp, Basic)
     nameCache->clearNameCache();
 }
 
-TEST(NameLookUp, BasicInfo)
+TEST_F(NameLookTestFixture, NameLookupBasicInfo)
 {
     ScProvisioning::setHttpHelper(helper0);
 
@@ -237,11 +280,12 @@ TEST(NameLookUp, BasicInfo)
     nameCache->clearNameCache();
 }
 
-TEST(NameLookUp, BasicError)
+TEST_F(NameLookTestFixture, NameLookupBasicError)
 {
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
+    LOGGER_INSTANCE setLogLevel(NONE);          // suppress logging, even for errors because we test it here
 
     string expectedUid;
     string alias("checker");
@@ -260,11 +304,12 @@ TEST(NameLookUp, BasicError)
     nameCache->clearNameCache();
 }
 
-TEST(NameLookUp, BasicInfoError)
+TEST_F(NameLookTestFixture, NameLookupBasicInfoError)
 {
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
+    LOGGER_INSTANCE setLogLevel(NONE);          // suppress logging, even for errors because we test it here
 
     string expectedUid("uvv9h7fbldqpfp82ed33dqv4lh");
     string alias("checker");

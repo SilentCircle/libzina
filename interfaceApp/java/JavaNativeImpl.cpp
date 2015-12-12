@@ -376,6 +376,7 @@ static int32_t httpHelper(const string& requestUri, const string& method, const 
 #ifndef EMBEDDED
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
+    (void)reserved;
     javaVM = vm;
     return JNI_VERSION_1_6;
 }
@@ -391,7 +392,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
                     jbyteArray authorization, jbyteArray scClientDeviceId)
 {
     debugLevel = flags & 0xf;
-    int32_t flagsInternal = flags >> 4;
+//    int32_t flagsInternal = flags >> 4;
 
     if (axolotlCallbackObject == NULL) {
         axolotlCallbackObject = env->NewGlobalRef(thiz);
@@ -511,6 +512,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 JNIEXPORT jlongArray JNICALL 
 JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachementDescriptor, jbyteArray messageAttributes)
 {
+    (void)clazz;
+
     if (messageDescriptor == NULL)
         return 0L;
 
@@ -557,6 +560,8 @@ JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescripto
 JNIEXPORT jlongArray JNICALL
 JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachementDescriptor, jbyteArray messageAttributes)
 {
+    (void)clazz;
+
     if (messageDescriptor == NULL)
         return 0L;
 
@@ -564,17 +569,17 @@ JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messa
     if (!arrayToString(env, messageDescriptor, &message)) {
         return 0L;
     }
-    Log("sendMessage - message: '%s' - length: %d", message.c_str(), message.size());
+    Log("sendMessage sib - message: '%s' - length: %d", message.c_str(), message.size());
 
     string attachment;
     if (attachementDescriptor != NULL) {
         arrayToString(env, attachementDescriptor, &attachment);
-        Log("sendMessage - attachement: '%s' - length: %d", attachment.c_str(), attachment.size());
+        Log("sendMessage sib - attachement: '%s' - length: %d", attachment.c_str(), attachment.size());
     }
     string attributes;
     if (messageAttributes != NULL) {
         arrayToString(env, messageAttributes, &attributes);
-        Log("sendMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
+        Log("sendMessage sib - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     vector<int64_t>* msgIds = axoAppInterface->sendMessageToSiblings(message, attachment, attributes);
     if (msgIds == NULL || msgIds->empty()) {
@@ -604,6 +609,8 @@ JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messa
 JNIEXPORT jbyteArray JNICALL 
 JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 {
+    (void)clazz;
+
     string* jsonNames = axoAppInterface->getKnownUsers();
     if (jsonNames == NULL)
         return NULL;
@@ -626,6 +633,8 @@ JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
 {
+    (void)clazz;
+
     string idKey = axoAppInterface->getOwnIdentityKey();
     jbyteArray key = stringToArray(env, idKey);
     return key;
@@ -639,6 +648,8 @@ JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
 JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, userName, &name))
         return NULL;
@@ -668,6 +679,8 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, userName, &name))
         return NULL;
@@ -711,6 +724,8 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
 JNIEXPORT jbyteArray JNICALL 
 JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
 {
+    (void)clazz;
+
     string info;
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
@@ -738,6 +753,8 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, jintArray code)
 {
+    (void)clazz;
+
     string info;
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
@@ -771,6 +788,9 @@ JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceI
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
 {
+    (void)clazz;
+    (void)env;
+
     return axoAppInterface->newPreKeys(numbers);
 }
 
@@ -782,6 +802,9 @@ JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(getNumPreKeys) (JNIEnv* env, jclass clazz)
 {
+    (void)clazz;
+    (void)env;
+
     return axoAppInterface->getNumPreKeys();
 }
 
@@ -793,6 +816,9 @@ JNI_FUNCTION(getNumPreKeys) (JNIEnv* env, jclass clazz)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(getErrorCode)(JNIEnv* env, jclass clazz)
 {
+    (void)clazz;
+    (void)env;
+
     return axoAppInterface->getErrorCode();
 }
 
@@ -804,6 +830,8 @@ JNI_FUNCTION(getErrorCode)(JNIEnv* env, jclass clazz)
 JNIEXPORT jstring JNICALL
 JNI_FUNCTION(getErrorInfo)(JNIEnv* env, jclass clazz)
 {
+    (void)clazz;
+
     const string info = axoAppInterface->getErrorInfo();
     jstring errInfo = env->NewStringUTF(info.c_str());
     return errInfo;
@@ -817,6 +845,8 @@ JNI_FUNCTION(getErrorInfo)(JNIEnv* env, jclass clazz)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
 {
+    (void)clazz;
+
     int32_t result = 0;
     const char* cmd = env->GetStringUTFChars(command, 0);
 
@@ -862,6 +892,8 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
 JNIEXPORT jstring JNICALL
 JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
 {
+    (void)clazz;
+
     if (command == NULL)
         return NULL;
     const char* cmd = env->GetStringUTFChars(command, 0);
@@ -911,9 +943,11 @@ static AppRepository* appRepository = NULL;
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName, jbyteArray keyData)
 {
+    (void)clazz;
+
     string nameString;
     if (dbName != NULL) {
-        const char* name = (const char *)env->GetStringUTFChars(dbName, 0);
+        const char* name = env->GetStringUTFChars(dbName, 0);
         nameString = name;
         env->ReleaseStringUTFChars(dbName, name);
     }
@@ -945,6 +979,9 @@ JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName, jbyte
  */
 JNIEXPORT void JNICALL
 JNI_FUNCTION(repoCloseDatabase) (JNIEnv* env, jclass clazz) {
+    (void)clazz;
+    (void)env;
+
     if (appRepository != NULL)
         AppRepository::closeStore();
     appRepository = NULL;
@@ -958,7 +995,10 @@ JNI_FUNCTION(repoCloseDatabase) (JNIEnv* env, jclass clazz) {
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(repoIsOpen) (JNIEnv* env, jclass clazz)
 {
-    return appRepository != NULL && appRepository->isReady();
+    (void)clazz;
+    (void)env;
+
+    return static_cast<jboolean>(appRepository != NULL && appRepository->isReady());
 }
 
 
@@ -970,12 +1010,14 @@ JNI_FUNCTION(repoIsOpen) (JNIEnv* env, jclass clazz)
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePattern)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, namePattern, &name) || name.empty())
-        return false;
+        return static_cast<jboolean>(false);
 
     bool result = appRepository->existConversation(name);
-    return result;
+    return static_cast<jboolean>(result);
 }
 
 /*
@@ -986,6 +1028,8 @@ JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePatte
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(storeConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray convData)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty())
         return -1;
@@ -1003,6 +1047,8 @@ JNI_FUNCTION(storeConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, j
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -1032,6 +1078,8 @@ JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, ji
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -1047,6 +1095,8 @@ JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
 JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 {
+    (void)clazz;
+
     list<string>* convNames = appRepository->listConversations();
 
     if (convNames == NULL)
@@ -1074,6 +1124,8 @@ JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray eventData)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -1095,6 +1147,8 @@ JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 2)
         return NULL;
 
@@ -1128,6 +1182,8 @@ JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArra
 JNIEXPORT jbyteArray JNICALL 
 JNI_FUNCTION(loadEventWithMsgId) (JNIEnv* env, jclass clazz, jbyteArray eventId, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -1156,16 +1212,18 @@ JNI_FUNCTION(loadEventWithMsgId) (JNIEnv* env, jclass clazz, jbyteArray eventId,
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
-        return false;
+        return static_cast<jboolean>(false);
     }
     string id;
     if (!arrayToString(env, eventId, &id) || id.empty()) {
-        return false;
+        return static_cast<jboolean>(false);
     }
     bool result = appRepository->existEvent(name, id);
-    return result;
+    return static_cast<jboolean>(result);
 }
 
 /*
@@ -1176,6 +1234,8 @@ JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
 JNIEXPORT jobjectArray JNICALL 
 JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint offset, jint number, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 2)
         return NULL;
 
@@ -1187,7 +1247,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 
     int32_t msgNumber = 0;
     list<string*> events;
-    int32_t result = appRepository->loadEvents(name, offset, number, &events, &msgNumber);
+    int32_t result = appRepository->loadEvents(name, static_cast<uint32_t>(offset), number, &events, &msgNumber);
 
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
@@ -1222,6 +1282,8 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -1242,6 +1304,8 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(insertObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId, jbyteArray objData)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -1267,6 +1331,8 @@ JNI_FUNCTION(insertObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(loadObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -1303,19 +1369,21 @@ JNI_FUNCTION(loadObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(existObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
-        return false;
+        return static_cast<jboolean>(false);
     }
     string event;
     if (!arrayToString(env, eventId, &event) || event.empty()) {
-        return false;
+        return static_cast<jboolean>(false);
     }
     string id;
     if (!arrayToString(env, objId, &id) || id.empty()) {
-        return false;
+        return static_cast<jboolean>(false);
     }
-    return appRepository->existObject(name, event, id);
+    return static_cast<jboolean>(appRepository->existObject(name, event, id));
 }
 
 /*
@@ -1326,6 +1394,8 @@ JNI_FUNCTION(existObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -1375,6 +1445,8 @@ JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -1398,6 +1470,8 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName, jint status)
 {
+    (void)clazz;
+
     string messageId;
     if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
         return 1;    // 1 is the generic SQL error code
@@ -1417,6 +1491,8 @@ JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName)
 {
+    (void)clazz;
+
     string messageId;
     if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
         return 1;    // 1 is the generic SQL error code
@@ -1436,6 +1512,9 @@ JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgI
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(deleteWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status)
 {
+    (void)clazz;
+    (void)env;
+
     return appRepository->deleteWithAttachmentStatus(status);
 }
 
@@ -1447,6 +1526,8 @@ JNI_FUNCTION(deleteWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return -1;
 
@@ -1473,6 +1554,8 @@ JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId,
 JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(loadMsgsIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status, jintArray code)
 {
+    (void)clazz;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -1531,6 +1614,8 @@ static uint8_t* jarrayToCarray(JNIEnv* env, jbyteArray array, size_t* len)
 JNIEXPORT jlong JNICALL
 JNI_FUNCTION(cloudEncryptNew) (JNIEnv* env, jclass clazz, jbyteArray context, jbyteArray data, jbyteArray metaData, jintArray code)
 {
+    (void)clazz;
+
     SCloudContextRef scCtxEnc;
 
     setReturnCode(env, code, kSCLError_NoErr);
@@ -1569,6 +1654,9 @@ JNI_FUNCTION(cloudEncryptNew) (JNIEnv* env, jclass clazz, jbyteArray context, jb
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(cloudCalculateKey) (JNIEnv* env, jclass clazz, jlong cloudRef)
 {
+    (void)clazz;
+    (void)env;
+
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
 
     SCLError err = SCloudCalculateKey(scCtxEnc, 0);
@@ -1595,6 +1683,8 @@ static jbyteArray cArrayToJArray(JNIEnv* env, const uint8_t* input, size_t len)
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudEncryptGetKeyBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
 {
+    (void)clazz;
+
     SCLError err;
     uint8_t* blob = NULL;
     size_t blobSize = 0;
@@ -1624,6 +1714,8 @@ JNI_FUNCTION(cloudEncryptGetKeyBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef,
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudEncryptGetSegmentBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef, jint segNum, jintArray code)
 {
+    (void)clazz;
+
     SCLError err;
     uint8_t* blob = NULL;
     size_t blobSize = 0;
@@ -1653,6 +1745,8 @@ JNI_FUNCTION(cloudEncryptGetSegmentBLOB) (JNIEnv* env, jclass clazz, jlong cloud
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudEncryptGetLocator) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
 {
+    (void)clazz;
+
     SCLError err;
     uint8_t buffer[1024];
     size_t bufSize = 1024;
@@ -1678,6 +1772,8 @@ JNI_FUNCTION(cloudEncryptGetLocator) (JNIEnv* env, jclass clazz, jlong cloudRef,
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudEncryptGetLocatorREST) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
 {
+    (void)clazz;
+
     SCLError err;
     uint8_t buffer[1024];
     size_t bufSize = 1024;
@@ -1703,6 +1799,8 @@ JNI_FUNCTION(cloudEncryptGetLocatorREST) (JNIEnv* env, jclass clazz, jlong cloud
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudEncryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jintArray code)
 {
+    (void)clazz;
+
     SCLError err;
 
     SCloudContextRef scCtxEnc = (SCloudContextRef)cloudRef;
@@ -1730,14 +1828,16 @@ JNI_FUNCTION(cloudEncryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jintA
 JNIEXPORT jlong JNICALL
 JNI_FUNCTION(cloudDecryptNew) (JNIEnv* env, jclass clazz, jbyteArray key, jintArray code)
 {
-    SCLError err;
+    (void)clazz;
+    (void)code;
+
     SCloudContextRef scCtxDec;
 
     string keyIn;
     if (!arrayToString(env, key, &keyIn))
         return 0L;
 
-    err = SCloudDecryptNew((uint8_t*)keyIn.data(), keyIn.size(), NULL, NULL, &scCtxDec);
+    SCloudDecryptNew((uint8_t*)keyIn.data(), keyIn.size(), NULL, NULL, &scCtxDec);
     jlong retval = (jlong)scCtxDec;
     return retval;
 }
@@ -1750,6 +1850,8 @@ JNI_FUNCTION(cloudDecryptNew) (JNIEnv* env, jclass clazz, jbyteArray key, jintAr
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(cloudDecryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jbyteArray in)
 {
+    (void)clazz;
+
     SCLError err;
     SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
 
@@ -1775,7 +1877,8 @@ JNI_FUNCTION(cloudDecryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jbyte
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudGetDecryptedData) (JNIEnv* env, jclass clazz, jlong cloudRef)
 {
-    SCLError err;
+    (void)clazz;
+
     SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
 
     uint8_t* dataBuffer = NULL;
@@ -1797,7 +1900,8 @@ JNI_FUNCTION(cloudGetDecryptedData) (JNIEnv* env, jclass clazz, jlong cloudRef)
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(cloudGetDecryptedMetaData) (JNIEnv* env, jclass clazz, jlong cloudRef)
 {
-    SCLError err;
+    (void)clazz;
+
     SCloudContextRef scCtxDec = (SCloudContextRef)cloudRef;
 
     uint8_t* dataBuffer = NULL;
@@ -1819,6 +1923,9 @@ JNI_FUNCTION(cloudGetDecryptedMetaData) (JNIEnv* env, jclass clazz, jlong cloudR
 JNIEXPORT void JNICALL
 JNI_FUNCTION(cloudFree) (JNIEnv* env, jclass clazz, jlong cloudRef)
 {
+    (void)clazz;
+    (void)env;
+
     SCloudContextRef scCtx = (SCloudContextRef)cloudRef;
     SCloudFree(scCtx, 1);
 }
@@ -1831,6 +1938,8 @@ JNI_FUNCTION(cloudFree) (JNIEnv* env, jclass clazz, jlong cloudRef)
 JNIEXPORT jstring JNICALL
 JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
 {
+    (void)clazz;
+
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
         if (axoAppInterface == NULL)
@@ -1864,6 +1973,8 @@ JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray author
 JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
 {
+    (void)clazz;
+
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
         if (axoAppInterface == NULL)

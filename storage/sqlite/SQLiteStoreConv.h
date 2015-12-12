@@ -11,6 +11,7 @@
 #include <string>
 #include <stdint.h>
 #include <list>
+#include <memory>
 
 #ifdef ANDROID
 #include "android/jni/sqlcipher/sqlite3.h"
@@ -45,10 +46,6 @@ public:
      */
     static void closeStore() { delete instance_; instance_ = NULL;}
 
-#ifdef UNITTESTS
-    static SQLiteStoreConv* getStoreForTesting() {return new SQLiteStoreConv(); }
-    static SQLiteStoreConv* closeStoreForTesting(SQLiteStoreConv* store) {delete store; }
-#endif
     /**
      * @brief Is store ready for use?
      */
@@ -104,7 +101,7 @@ public:
      * @return a new list with the names, an empty list if now identities available,
      *         NULL in case of error
      */
-    list<string>* getKnownConversations(const string& ownName, int32_t* sqlCode = NULL);
+    shared_ptr<list<string> > getKnownConversations(const string& ownName, int32_t* sqlCode = NULL);
 
     /**
      * @brief Get a list of long device ids for a name.
@@ -115,7 +112,7 @@ public:
      * @param name the user's name.
      * @return a new list with the long device ids, NULL in case of error
      */
-    list<string>* getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode = NULL);
+    shared_ptr<list<string> > getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 
 
     // ***** Conversation store
@@ -130,11 +127,11 @@ public:
     void deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 
     // ***** staged message keys store
-    list<string>* loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
+    shared_ptr<list<string> > loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
 
     void insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode = NULL);
 
-    void deleteStagedMk(const string& name, const string& longDevId, const string& ownName, string& MKiv, int32_t* sqlCode = NULL);
+    void deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode = NULL);
 
     void deleteStagedMk(time_t timestamp, int32_t* sqlCode = NULL);
 
@@ -197,17 +194,9 @@ private:
      * that Axolotl tables are available in the database.
      */
     int createTables();
-
-    /**
-     * Initialize the other Axolotl tables.
-     *
-     * First drop all tables and create them again.
-     * All information regarding remote peers, session state etc is lost.
-     */
-    int initializeOtherTables();
-
     int beginTransaction();
     int commitTransaction();
+    int rollbackTransaction();
 
     /**
      * @brief Update database version.

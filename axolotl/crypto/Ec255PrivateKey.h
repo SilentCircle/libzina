@@ -46,7 +46,7 @@ public:
     DhPrivateKey& operator=(const DhPrivateKey& other);
 
     /**
-     * @brief Comprare with another generic private key, could be of different type.
+     * @brief Compare with another generic private key, could be of different type.
      */
     bool operator== (const Ec255PrivateKey& other) const;
 

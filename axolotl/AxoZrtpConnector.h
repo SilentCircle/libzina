@@ -29,7 +29,7 @@
  * @param deviceId The remote user's device id if it is available
  * @return the serialized data of the public keys.
  */
-const std::string getAxoPublicKeyData( const std::string& localUser, const std::string& user, const std::string& deviceId );
+const string getAxoPublicKeyData( const string& localUser, const string& user, const string& deviceId );
 
 /**
  * @brief Set public keys of a remote user.
@@ -46,7 +46,7 @@ const std::string getAxoPublicKeyData( const std::string& localUser, const std::
  * @param user the remote user's name
  * @param deviceId The remote user's device id if it is available
  */
-void setAxoPublicKeyData(const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& pubKeyData);
+void setAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId, const string& pubKeyData);
 
 /**
  * @brief Receive the exported key data.
@@ -65,7 +65,7 @@ void setAxoPublicKeyData(const std::string& localUser, const std::string& user, 
  * @param exportedKey The raw data of the exported key from ZRTP
  * @param role the current client ZRTP role, Initiator or Responder
  */
-void setAxoExportedKey( const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& exportedKey );
+void setAxoExportedKey( const string& localUser, const string& user, const string& deviceId, const string& exportedKey );
 
 
 const string getOwnIdKey();

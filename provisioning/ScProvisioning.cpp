@@ -5,13 +5,10 @@
 #include "../axolotl/Constants.h"
 #include "../axolotl/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
-
-#include <iostream>
+#include "../logging/AxoLogging.h"
 
 using namespace axolotl;
 using namespace std;
-
-static std::string Empty;
 
 int32_t (*ScProvisioning::httpHelper_)(const std::string&, const std::string&, const std::string&, std::string*) = NULL;
 
@@ -29,10 +26,12 @@ static const char* registerRequest = "/v1/me/device/%s/axolotl/keys/?api_key=%s"
 
 int32_t Provisioning::registerAxoDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result)
 {
+    LOGGER(INFO, __func__, " -->");
     char temp[1000];
     snprintf(temp, 990, registerRequest, scClientDevId.c_str(), authorization.c_str());
 
     std::string requestUri(temp);
+    LOGGER(INFO, __func__, " <--");
 
     return ScProvisioning::httpHelper_(requestUri, PUT, request, result);
 }
@@ -43,9 +42,11 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 
 int32_t Provisioning::removeAxoDevice(const string& scClientDevId, const string& authorization, std::string* result)
 {
+    LOGGER(INFO, __func__, " -->");
     char temp[1000];
     snprintf(temp, 990, registerRequest, scClientDevId.c_str(), authorization.c_str());
     std::string requestUri(temp);
+    LOGGER(INFO, __func__, " <--");
 
     return ScProvisioning::httpHelper_(requestUri, DELETE, Empty, result);
 
@@ -71,6 +72,7 @@ static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevId, const string& authorization,
                                       pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
+    LOGGER(INFO, __func__, " -->");
     char temp[1000];
     snprintf(temp, 990, getPreKeyRequest, name.c_str(), longDevId.c_str(), authorization.c_str());
     std::string requestUri(temp);
@@ -78,7 +80,6 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
-    cerr << "+++ prekeyrequest: " << response << endl;
     if (code >= 400)
         return 0;
 
@@ -86,12 +87,14 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
 
     cJSON* root = cJSON_Parse(response.c_str());
 
-    if (root == NULL)
+    if (root == NULL) {
+        LOGGER(ERROR, "Wrong pre-key bundle JSON data, ignoring.");
         return 0;
+    }
 
-    // username is required in SC implementation
     cJSON* cjKey = cJSON_GetObjectItem(root, "axolotl");
     if (cjKey == NULL) {
+        LOGGER(ERROR, "Not a valid pre-key bundle, ignoring.");
         return 0;
     }
 
@@ -99,13 +102,14 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     char* jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
         cJSON_Delete(root);
+        LOGGER(ERROR, "Missing identity key in pre-key bundle, ignoring.");
         return 0;
     }
-    std::string identity(jsString);
+    string identity(jsString);
 
     cJSON* pky = cJSON_GetObjectItem(cjKey, "preKey");
     int32_t pkyId = cJSON_GetObjectItem(pky, "id")->valueint;
-    std::string pkyPub(cJSON_GetObjectItem(pky, "key")->valuestring);
+    string pkyPub(cJSON_GetObjectItem(pky, "key")->valuestring);
 
     b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
     const DhPublicKey* prePublic = EcCurve::decodePoint(pubKeyBuffer);
@@ -117,6 +121,8 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     cJSON_Delete(root);
     preIdKeys->first = identityKey;
     preIdKeys->second = prePublic;
+
+    LOGGER(INFO, __func__, " <--");
     return pkyId;
 }
 
@@ -162,6 +168,7 @@ static const char* getNumberPreKeys = "/v1/me/device/%s/?api_key=%s";
 
 int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& authorization)
 {
+    LOGGER(INFO, __func__, " -->");
 
     char temp[1000];
     snprintf(temp, 990, getNumberPreKeys, longDevId.c_str(), authorization.c_str());
@@ -173,24 +180,29 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
         return -1;
 
     cJSON* root = cJSON_Parse(response.c_str());
-    if (root == NULL)
+    if (root == NULL) {
+        LOGGER(ERROR, "Wrong pre-key bundle JSON data, ignoring.");
         return -1;
+    }
 
     cJSON* axolotl = cJSON_GetObjectItem(root, "axolotl");
     if (axolotl == NULL) {
         cJSON_Delete(root);
+        LOGGER(ERROR, "Not a valid pre-key bundle, ignoring.");
         return -1;
     }
 
     cJSON* keyIds = cJSON_GetObjectItem(axolotl, "prekeys");
     if (keyIds == NULL || keyIds->type != cJSON_Array) {
         cJSON_Delete(root);
+        LOGGER(ERROR, "No pre-keys array, ignoring.");
         return -1;
     }
     int32_t numIds = cJSON_GetArraySize(keyIds);
     // Clear JSON buffer and context
     cJSON_Delete(root);
 
+    LOGGER(INFO, __func__, " <--");
     return numIds;
 }
 
@@ -208,6 +220,8 @@ static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&a
 
 list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization)
 {
+    LOGGER(INFO, __func__, " -->");
+
     char temp[1000];
     snprintf(temp, 990, getUserDevicesRequest, name.c_str(), authorization.c_str());
 
@@ -222,24 +236,29 @@ list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& na
     list<pair<string, string> >* deviceIds = new list<pair<string, string> >;
 
     cJSON* root = cJSON_Parse(response.c_str());
-    if (root == NULL)
+    if (root == NULL) {
+        LOGGER(ERROR, "Wrong device respose JSON data, ignoring.");
         return NULL;
+    }
 
     cJSON* devIds = cJSON_GetObjectItem(root, "devices");
     if (devIds == NULL || devIds->type != cJSON_Array) {
         cJSON_Delete(root);
         delete deviceIds;
+        LOGGER(ERROR, "No devices array in response, ignoring.");
         return NULL;
     }
     int32_t numIds = cJSON_GetArraySize(devIds);
     for (int32_t i = 0; i < numIds; i++) {
         cJSON* arrayItem = cJSON_GetArrayItem(devIds, i);
         cJSON* devId = cJSON_GetObjectItem(arrayItem, "id");
-        cJSON* devName = cJSON_GetObjectItem(arrayItem, "device_name");
-        if (devId == NULL)
+        if (devId == NULL) {
+            LOGGER(ERROR, "Missing device id, ignoring.");
             continue;
+        }
         string id(devId->valuestring);
         string nameString;
+        cJSON* devName = cJSON_GetObjectItem(arrayItem, "device_name");
         if (devName != NULL)
             nameString.assign(devName->valuestring);
         pair<string, string>idName(id, nameString);
@@ -248,6 +267,7 @@ list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& na
     // Clear JSON buffer and context
     cJSON_Delete(root);
 
+    LOGGER(INFO, __func__, " <--");
     return deviceIds;
 }
 
@@ -270,17 +290,15 @@ list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& na
 */
 int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, int32_t number, string* result )
 {
+    LOGGER(INFO, __func__, " -->");
+
     char temp[1000];
     snprintf(temp, 990, registerRequest, longDevId.c_str(), authorization.c_str());
     std::string requestUri(temp);
 
-    cJSON *root;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
-    root = cJSON_CreateObject();
-//    cJSON_AddNumberToObject(root, "version", 1);
-//    cJSON_AddStringToObject(root, "scClientDevId", longDevId.c_str());
-//    cJSON_AddNumberToObject(root, "registrationId", store->getLocalRegistrationId());
+    cJSON *root = cJSON_CreateObject();
 
     cJSON* jsonPkrArray;
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
@@ -309,6 +327,8 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     std::string registerRequest(out);
     cJSON_Delete(root); free(out);
 
+    LOGGER(INFO, __func__, " <--");
+
     return ScProvisioning::httpHelper_(requestUri, PUT, registerRequest, result);
 }
 
@@ -319,11 +339,14 @@ static const char* getUserInfoRequest = "/v1/user/%s/?api_key=%s";
 
 int32_t Provisioning::getUserInfo(const string& alias,  const string& authorization, string* result)
 {
+    LOGGER(INFO, __func__, " <--");
+
     char temp[1000];
     snprintf(temp, 990, getUserInfoRequest, alias.c_str(), authorization.c_str());
     string requestUri(temp);
 
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, result);
 
+    LOGGER(INFO, __func__, " <--");
     return code;
 }

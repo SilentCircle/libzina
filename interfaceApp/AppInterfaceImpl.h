@@ -66,6 +66,7 @@ public:
 
     void rescanUserDevices(string& userName);
 
+    // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
      * 
@@ -147,9 +148,10 @@ private:
     SQLiteStoreConv* store_;
     Transport* transport_;
     int32_t flags_;
-    // If this is true then we checked own device and see only one device for
-    // this account. If another device registers for this account it sends out
-    // a sync message, the client receives this and we have a second device
+    // If this is true then we checked own devices and see only one device for
+    // own account it's the sending device. If another device registers for this
+    // account it sends out a sync message, the client receives this and we have
+    // a second device
     bool ownChecked_;
 };
 } // namespace
