@@ -2,6 +2,7 @@
 #include "../axolotl/crypto/Ec255PublicKey.h"
 #include "../axolotl/crypto/EcCurve.h"
 #include "../axolotl/crypto/AesCbc.h"
+#include "../logging/AxoLogging.h"
 #include "gtest/gtest.h"
 
 #include <memory>
@@ -9,7 +10,29 @@
 using namespace axolotl;
 static int32_t type255 = EcCurveTypes::Curve25519;
 
-TEST(Ec255PublicKey, Serialize) {
+class CryptoTestFixture: public ::testing::Test {
+public:
+    CryptoTestFixture( ) {
+        // initialization code here
+    }
+
+    void SetUp() {
+        // code here will execute just before the test ensues
+        LOGGER_INSTANCE setLogLevel(ERROR);
+    }
+
+    void TearDown( ) {
+        // code here will be called just after the test completes
+        // ok to through exceptions from here if need be
+    }
+
+    ~CryptoTestFixture( )  {
+        // cleanup any pending stuff, but no exceptions allowed
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
+    }
+};
+
+TEST_F(CryptoTestFixture, Ec255PublicKeySerialize) {
     // 32 bytes
     uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
     uint8_t encodedData[33] = {0};   // encodedData size is 32 + 1
@@ -31,7 +54,7 @@ TEST(Ec255PublicKey, Serialize) {
     }
 }
 
-TEST(Ec255PrivateKey, Serialize) {
+TEST_F(CryptoTestFixture, Ec255PrivateKeySerialize) {
     // 32 bytes
     uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
     uint8_t encodedData[32] = {0};   // encodedData for private key is 32
@@ -52,7 +75,7 @@ TEST(Ec255PrivateKey, Serialize) {
     }
 }
 
-TEST(Ec255PublicKey, CopyCompare) {
+TEST_F(CryptoTestFixture, Ec255PublicKeyCopyCompare) {
     // 32 bytes
     uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
     uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
@@ -103,7 +126,7 @@ uint8_t shared[] = {
     0xe6,  0x29};
 
 
-TEST(Curve25519, Agreement)
+TEST_F(CryptoTestFixture, Curve25519Agreement)
 {
     const DhPublicKey* alicePublicKey = EcCurve::decodePoint(alicePublic);
     const DhPrivateKey* alicePrivateKey = EcCurve::decodePrivatePoint(alicePrivate, sizeof(alicePrivate));
@@ -161,7 +184,7 @@ uint8_t aliceSignature[] = {
     0x60, 0xb8, 0x6e, 0x88};
 
 
-TEST(Curve25519, GenerateKeys)
+TEST_F(CryptoTestFixture, Curve25519GenerateKeys)
 {
     const DhKeyPair* alice = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
     const DhKeyPair* bob = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
@@ -181,7 +204,7 @@ TEST(Curve25519, GenerateKeys)
 }
 
 
-TEST(Aes, Basic)
+TEST_F(CryptoTestFixture, AesBasic)
 {
     // 32 bytes
     uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
@@ -208,7 +231,7 @@ TEST(Aes, Basic)
     ASSERT_EQ(plainText, *newPlainText);
 }
 
-TEST(Aes, ZeroLen)
+TEST_F(CryptoTestFixture, AesZeroLen)
 {
     // 32 bytes
     uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
