@@ -8,9 +8,10 @@ cmake_minimum_required(VERSION 3.0)
 
 set(AUTO_BUILD $ENV{AUTOMATED_BUILD})
 
-# if running auto build then we assume that we build it for Android, thus we
-# don't need a CC or CXX compiler on the build system. all is done in Android's
-# ndk-build. Ignore some Cmake warnings in this case.
+# If running auto build then we assume that we build it for Android, thus we
+# don't need a CC or CXX compiler on the build system. It's all done in Android's
+# cross-compiler environment when calling ndk-build. Ignore some Cmake messages
+# in this case.
 if (AUTO_BUILD EQUAL 1)
     PROJECT(libaxolotl++ NONE)
 else()
@@ -26,7 +27,6 @@ set (SOVERSION 1)
 
 ### Configuration section
 # Where to find the modules that we share with ZRTP, i.e. the ZRTP root directory
-
 if (AUTO_BUILD EQUAL 1)
     set (ZRTP_BASE_DIR $ENV{WORKSPACE}/silentphone2/support/zrtpcpp)
 else()
@@ -50,7 +50,6 @@ endif()
 
 set(axoLibName axolotl++)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
-message(STATUS "CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 ### No more configuration below this line (usually ;-) )
 if (EXISTS "${ZRTP_BASE_DIR}/zrtp/crypto/hmac256.cpp")

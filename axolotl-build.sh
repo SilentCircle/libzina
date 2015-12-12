@@ -23,7 +23,7 @@ rm -rf buildAxoAndroid
 mkdir buildAxoAndroid
 cd buildAxoAndroid
 
-echo "Building on directory $WORKSPACE"
+echo "###### If AUTOMATED_BUILD is set then ignore 2 cmake errors regarding OBJECT library #####"
 cmake -DANDROID=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
 
 if make android; then
