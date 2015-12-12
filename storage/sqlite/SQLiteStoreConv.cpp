@@ -289,6 +289,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
         beginTransaction();
         if (updateDb(version, DB_VERSION) != SQLITE_OK) {
             sqlite3_close(db);
+            LOGGER(ERROR, __func__ , " <-- update failed.");
             return SQLITE_ERROR;
         }
         commitTransaction();
@@ -296,6 +297,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
     else {
         if (createTables() != SQLITE_OK) {
             sqlite3_close(db);
+            LOGGER(ERROR, __func__ , " <-- table creation failed.");
             return sqlCode_;
         }
     }
@@ -413,7 +415,6 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         LOGGER(ERROR, __func__, ", Version numbers mismatch");
         return SQLITE_ERROR;
     }
-
     LOGGER(INFO, __func__ , " <-- ", sqlCode_);
     return SQLITE_OK;
 }
