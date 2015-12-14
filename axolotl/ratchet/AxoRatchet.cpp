@@ -492,7 +492,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     // Check if conversation is really setup - identity key must be available in any case
     if (conv->getDHIr() == NULL) {
         conv->setErrorCode(SESSION_NOT_INITED);
-        return shared_ptr<string>();;
+        return shared_ptr<string>();
     }
 
     if (idHashes != NULL) {
@@ -502,7 +502,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         result = compareHashes(idHashes, recvIdHash, senderIdHash);
         if (result < 0) {
             conv->setErrorCode(result);
-            return shared_ptr<string>();;
+            return shared_ptr<string>();
         }
     }
 
@@ -529,7 +529,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         if (status < 0) {
             LOGGER(ERROR, __func__, " <-- Old ratchet, decrypt failed, staged MK not stored.");
             conv->setErrorCode(status);
-            return shared_ptr<string>();;
+            return shared_ptr<string>();
         }
     }
     else {
@@ -551,7 +551,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
             delete DHRp;
             conv->setErrorCode(status);
             LOGGER(ERROR, __func__, " <-- New ratchet, failed to derive RKp/CKp, staged MK not stored.");
-            return shared_ptr<string>();;
+            return shared_ptr<string>();
         }
 
         // With a new ratchet the message nr starts at zero, however we may have missed

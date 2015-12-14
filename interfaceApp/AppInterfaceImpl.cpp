@@ -199,7 +199,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         char receiverId[16] = {0};
         size_t len;
         bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), receiverId, &len);
-        LOGGER(DEBUG, __func__, "Message is for device id: ", receiverId, ", my device id: ", scClientDevId_);
+        LOGGER(ERROR, __func__, "Message is for device id: ", receiverId, ", my device id: ", scClientDevId_);
     }
     uuid_t uu = {0};
     uuid_parse(msgId.c_str(), uu);
@@ -249,7 +249,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
         messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
-        LOGGER(DEBUG, __func__ , " Decryption failed: ", errorCode_);
+        LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         return errorCode_;
     }
 
