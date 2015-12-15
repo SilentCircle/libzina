@@ -282,7 +282,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     string attachmentDescr;
     string attributesDescr;
     if (!supplementsPlain->empty()) {
-        checkAndRemovePadding(supplementsPlain);
         cJSON* jsSupplement = cJSON_Parse(supplementsPlain->c_str());
 
         cJSON* cjTemp = cJSON_GetObjectItem(jsSupplement, "a");
