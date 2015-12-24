@@ -31,6 +31,7 @@ int32_t axolotl::aesCbcEncrypt(const string& key, const string& IV, const string
         aes.key256((const uint8_t*)key.data());
     else {
         LOGGER(ERROR, __func__, " <-- Unsupported key size: ", key.size());
+        delete[] outBuffer;
         return UNSUPPORTED_KEY_SIZE;
     }
 
@@ -65,6 +66,7 @@ int32_t axolotl::aesCbcDecrypt(const string& key, const string& IV, const string
         aes.key256((const uint8_t*)key.data());
     else {
         LOGGER(ERROR, __func__, " <-- Unsupported key size: ", key.size());
+        delete[] outBuffer;
         return UNSUPPORTED_KEY_SIZE;
     }
 
