@@ -117,6 +117,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     }
 
     // Check if this alias name already exists in the name map
+    unique_lock<mutex> lck(nameLock);
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
@@ -143,8 +144,6 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
 
     // Check if we already have the user's UID in the map. If not then cache the
     // userInfo with the UID
-    unique_lock<mutex> lck(nameLock);
-
     it = nameMap_.find(userInfo->uniqueId);
     if (it == nameMap_.end()) {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
