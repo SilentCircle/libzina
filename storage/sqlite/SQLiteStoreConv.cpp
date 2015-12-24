@@ -994,7 +994,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::hasMsgHash(const string msgHash)
+int32_t SQLiteStoreConv::hasMsgHash(const string& msgHash)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;

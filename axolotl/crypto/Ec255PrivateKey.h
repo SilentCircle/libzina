@@ -34,7 +34,7 @@ public:
      * 
      * The buffer must contain at least @c getKeysize - 1 bytes.
      */
-    Ec255PrivateKey(const uint8_t* data);
+    explicit Ec255PrivateKey(const uint8_t* data);
 
     /**
      * @brief Destructor clears internal data (set to 0)

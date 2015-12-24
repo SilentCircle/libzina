@@ -33,14 +33,14 @@ vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pa
 
     // This should clear everything because no pointers involved
     msgPairs->clear();
-    delete names; delete devIds; delete envelopes; delete sizes;
+    delete[] names; delete[] devIds; delete[] envelopes; delete[] sizes;
 
     vector<int64_t>* msgIdsReturn = new std::vector<int64_t>;
     for (int32_t i = 0; i < numPairs; i++) {
         if (msgIds[i] != 0)
             msgIdsReturn->push_back(msgIds[i]);
     }
-    delete msgIds;
+    delete[] msgIds;
     LOGGER(INFO, __func__, " <--");
     return msgIdsReturn;
 }

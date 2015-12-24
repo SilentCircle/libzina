@@ -408,12 +408,9 @@ private:
     AppRepository();
     ~AppRepository();
 
-    AppRepository(const AppRepository& other) {};
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-    AppRepository& operator=(const AppRepository& other) {};
-    bool operator==(const AppRepository& other) const {};
-#pragma clang diagnostic pop
+    AppRepository(const AppRepository& other) = delete;
+    AppRepository& operator=(const AppRepository& other) = delete;
+    bool operator==(const AppRepository& other) const = delete;
 
     /**
      * Create AppRepository tables in database.

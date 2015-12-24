@@ -25,7 +25,7 @@ class AppInterfaceImpl : public AppInterface
 {
 public:
 #ifdef UNITTESTS
-    AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
+    explicit AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
     AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
                     AppInterface(), tempBuffer_(NULL), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), 
                     store_(store), transport_(NULL), ownChecked_(false) {}
@@ -119,13 +119,10 @@ public:
     bool isRegistered()           {return ((flags_ & 0x1) == 1); }
 
 private:
-    // not support for copy, assignment and equals
-    AppInterfaceImpl ( const AppInterfaceImpl& other ) {}
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-    AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) { }
-    bool operator== ( const AppInterfaceImpl& other ) const { }
-#pragma clang diagnostic pop
+    // do not support copy, assignment and equals
+    AppInterfaceImpl (const AppInterfaceImpl& other ) = delete;
+    AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
+    bool operator== ( const AppInterfaceImpl& other ) const  = delete;
 
     vector<int64_t>* sendMessageInternal(const string& recipient, const string& msgId, const string& message,
                                          const string& attachementDescriptor, const string& messageAttributes);

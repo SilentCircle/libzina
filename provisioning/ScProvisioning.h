@@ -54,12 +54,11 @@ private:
     static HTTP_FUNC httpHelper_;
 
     ScProvisioning() {}
-    ScProvisioning(const ScProvisioning& other) {}
     ~ScProvisioning() {}
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-    ScProvisioning& operator=(const ScProvisioning& other) {}
-#pragma clang diagnostic pop
+
+    ScProvisioning(const ScProvisioning& other)  = delete;
+    ScProvisioning& operator=(const ScProvisioning& other)  = delete;
+    bool operator==(const ScProvisioning& other) const = delete;
 
 };
 } // namespace

@@ -161,7 +161,7 @@ public:
      * @param msgHash the hash to insert, no duplicates allowed
      * @return SQLite code
      */
-    int32_t hasMsgHash(const string msgHash);
+    int32_t hasMsgHash(const string& msgHash);
 
     /**
      * @brief Delete message hashes old than the timestamp.
@@ -180,12 +180,9 @@ private:
     SQLiteStoreConv();
     ~SQLiteStoreConv();
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-    SQLiteStoreConv(const SQLiteStoreConv& other) {};
-    SQLiteStoreConv& operator=(const SQLiteStoreConv& other) {};
-    bool operator==(const SQLiteStoreConv& other) const {};
-#pragma clang diagnostic pop
+    SQLiteStoreConv(const SQLiteStoreConv& other) = delete;
+    SQLiteStoreConv& operator=(const SQLiteStoreConv& other) = delete;
+    bool operator==(const SQLiteStoreConv& other) const = delete;
 
     /**
      * Create Axolotl tables in database.

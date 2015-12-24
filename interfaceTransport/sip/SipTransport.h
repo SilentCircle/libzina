@@ -24,7 +24,7 @@ namespace axolotl {
 class SipTransport: public Transport
 {
 public:
-    SipTransport(AppInterface* appInterface) : appInterface_(appInterface) {}
+    explicit SipTransport(AppInterface* appInterface) : appInterface_(appInterface), sendAxoData_(NULL) {}
 
     ~SipTransport() {}
 
@@ -45,12 +45,9 @@ public:
 
 private:
 
-    SipTransport(const SipTransport& other) {}
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-    SipTransport& operator= ( const SipTransport& other ) { }
-    bool operator== ( const SipTransport& other ) const { }
-#pragma clang diagnostic pop
+    SipTransport(const SipTransport& other) = delete;
+    SipTransport& operator= ( const SipTransport& other ) = delete;
+    bool operator== ( const SipTransport& other ) const = delete;
 
     AppInterface *appInterface_;
     SEND_DATA_FUNC sendAxoData_;

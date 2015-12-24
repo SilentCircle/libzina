@@ -70,7 +70,7 @@ void setAxoExportedKey( const string& localUser, const string& user, const strin
 
 const string getOwnIdKey();
 
-void checkRemoteIdKey( const string user, const string deviceId, const string pubKey, int32_t verifyState );
+void checkRemoteIdKey(const string user, const string deviceId, const string pubKey, int32_t verifyState);
 
 /*
  * To get some information from the SIP engine we need to something like this:
@@ -82,6 +82,7 @@ if (pEng) {
     devId = (char*)sendEngMsg(pEng, "device_id");
 }
 */
+static const int32_t None = 1;
 static const int32_t Alice = 1;
 static const int32_t Bob   = 2;
 
@@ -96,7 +97,7 @@ public:
      * @param localConv Pointer to local Axolotl state
      */
     AxoZrtpConnector(AxoConversation* conv, AxoConversation* localConv): conv_(conv), localConv_(localConv), ratchetKey_(NULL), 
-                     remoteRatchetKey_(NULL), remoteIdKey_(NULL) {}
+                     remoteRatchetKey_(NULL), remoteIdKey_(NULL), role_(None) {}
     ~AxoZrtpConnector() { delete ratchetKey_; ratchetKey_ = NULL; delete remoteRatchetKey_; remoteRatchetKey_ = NULL; }
 
 
@@ -131,12 +132,9 @@ public:
     AxoConversation* getLocalConversation()   { return localConv_; }
 
 private:
-    AxoZrtpConnector (const AxoZrtpConnector& other) {}
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreturn-type"
-    AxoZrtpConnector& operator= (const AxoZrtpConnector& other) {}
-    bool operator== (const AxoZrtpConnector& other) const {}
-#pragma clang diagnostic pop
+    AxoZrtpConnector (const AxoZrtpConnector& other) = delete;
+    AxoZrtpConnector& operator= (const AxoZrtpConnector& other) = delete;
+    bool operator== (const AxoZrtpConnector& other) const = delete;
 
     AxoConversation* conv_;
     AxoConversation* localConv_;

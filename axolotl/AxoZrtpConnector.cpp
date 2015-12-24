@@ -209,7 +209,7 @@ static GET_APP_IF getAppIf = t_getAxoAppInterface;
 static GET_APP_IF getAppIf = NULL;
 #endif
 
-static string extractNameFromUri(const string sipUri)
+static string extractNameFromUri(const string& sipUri)
 {
     size_t colon = sipUri.find_first_of(':');
     if (colon == string::npos)

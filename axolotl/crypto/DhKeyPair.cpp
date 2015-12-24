@@ -54,8 +54,8 @@ DhKeyPair::~DhKeyPair()
 
 DhKeyPair& DhKeyPair::operator=(const DhKeyPair& otherPair) {
     if (this == &otherPair) {
-        return *this;
         LOGGER(INFO, __func__, " <--");
+        return *this;
     }
 
     delete privateKey_;

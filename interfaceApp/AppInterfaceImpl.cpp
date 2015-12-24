@@ -27,7 +27,8 @@ void Log(const char* format, ...);
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback):
                                    AppInterface(receiveCallback, stateReportCallback, notifyCallback), tempBuffer_(NULL), tempBufferSize_(0),
-                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId), flags_(0), ownChecked_(false)
+                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
+                                   errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false)
 {
     store_ = SQLiteStoreConv::getStore();
 }
@@ -449,9 +450,8 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
 
 int32_t AppInterfaceImpl::removeAxolotlDevice(string& devId, string* result)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(INFO, __func__, " <-->");
     return ScProvisioning::removeAxoDevice(devId, authorization_, result);
-    LOGGER(INFO, __func__, " <--");
 }
 
 int32_t AppInterfaceImpl::newPreKeys(int32_t number)
@@ -464,9 +464,8 @@ int32_t AppInterfaceImpl::newPreKeys(int32_t number)
 
 int32_t AppInterfaceImpl::getNumPreKeys() const
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(INFO, __func__, " <-->");
     return Provisioning::getNumPreKeys(scClientDevId_, authorization_);
-    LOGGER(INFO, __func__, " <--");
 }
 
 // Get known Axolotl device from provisioning server, check if we have a new one
@@ -499,7 +498,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             bool found = false;
 
             for (list<pair<string, string> >::iterator devIterator = devices->begin();
-                 devIterator != devices->end(); devIterator++) {
+                 devIterator != devices->end(); ++devIterator) {
                 string devId = (*devIterator).first;
                 if (devIdDb == devId) {
                     found = true;
@@ -689,7 +688,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         uint8_t binDevId[20];
         size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
-        if (res >= 0)
+        if (res != 0)
             envelope.set_recvdevidbin(binDevId, 4);
 //        envelope.set_recvdeviceid(recipientDeviceId);
 
@@ -910,7 +909,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
 
     uint8_t binDevId[20];
     size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
-    if (res >= 0)
+    if (res != 0)
         envelope.set_recvdevidbin(binDevId, 4);
 //    envelope.set_recvdeviceid(recipientDeviceId);
     wireMessage.reset();

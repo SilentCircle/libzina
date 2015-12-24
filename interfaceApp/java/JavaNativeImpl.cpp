@@ -88,7 +88,7 @@ static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* en
     msgIds[0] = 4711;
 }
 
-static void reciveData(const string msgFileName)
+static void recieveData(const string& msgFileName)
 {
     uint8_t msgData[2000];
     FILE* msgFile = fopen(msgFileName.c_str(), "r");
@@ -111,7 +111,7 @@ static bool arrayToString(JNIEnv* env, jbyteArray array, string* output)
         return false;
 
     size_t dataLen = static_cast<size_t>(env->GetArrayLength(array));
-    if (dataLen <= 0)
+    if (dataLen == 0)
         return false;
 
     const uint8_t* tmp = (uint8_t*)env->GetByteArrayElements(array, 0);
@@ -871,7 +871,7 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     }
 
     if (strcmp("read", cmd) == 0) {
-        reciveData(dataContainer);
+        recieveData(dataContainer);
     }
 #endif
     if (strcmp("resetaxodb", cmd) == 0) {

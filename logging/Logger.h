@@ -244,7 +244,7 @@ return 0;
          *
          * @param name The LogPolicy implementation may use this
          */
-        Logger(const std::string& name);
+        explicit Logger(const std::string& name);
 
         /**
          * @brief Create a Logger instance.
@@ -300,10 +300,9 @@ return 0;
 
     // Template implementations
     template<typename log_policy >
-    Logger<log_policy >::Logger(const std::string& name) : tag("Logger")
+    Logger<log_policy >::Logger(const std::string& name) : logLevel(VERBOSE), currentLogLevel(NONE),
+                                                           tag("Logger"), logLineNumber(0)
     {
-        logLineNumber = 0;
-        logLevel = VERBOSE;
         policy = new log_policy;
         if (!policy) {
             throw std::runtime_error("LOGGER: Unable to create the logger instance");
@@ -313,10 +312,10 @@ return 0;
     }
 
     template<typename log_policy >
-    Logger<log_policy >::Logger(const std::string& name, const std::string& inTag) : tag(inTag)
+    Logger<log_policy >::Logger(const std::string& name, const std::string& inTag) : logLevel(VERBOSE),
+                                                                                     currentLogLevel(NONE), tag(inTag),
+                                                                                     logLineNumber(0)
     {
-        logLineNumber = 0;
-        logLevel = VERBOSE;
         policy = new log_policy;
         if (!policy) {
             throw std::runtime_error("LOGGER: Unable to create the logger instance");
