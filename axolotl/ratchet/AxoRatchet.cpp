@@ -524,6 +524,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
 //    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
 
     if (!newRatchet) {
+        delete(DHRp);
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
         int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
         if (status < 0) {
