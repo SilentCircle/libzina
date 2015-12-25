@@ -200,7 +200,9 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         char receiverId[16] = {0};
         size_t len;
         bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), receiverId, &len);
-        LOGGER(ERROR, __func__, "Message is for device id: ", receiverId, ", my device id: ", scClientDevId_);
+        if (wrongDeviceId) {
+            LOGGER(ERROR, __func__, "Message is for device id: ", receiverId, ", my device id: ", scClientDevId_);
+        }
     }
     uuid_t uu = {0};
     uuid_parse(msgId.c_str(), uu);
