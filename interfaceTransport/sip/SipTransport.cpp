@@ -159,7 +159,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
         numReportedDevices++;
         if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
             newDevice = true;
-            LOGGER(DEBUG, "New device detected: ", devId);
+            LOGGER(DEBUGGING, "New device detected: ", devId);
             break;
         }
     }

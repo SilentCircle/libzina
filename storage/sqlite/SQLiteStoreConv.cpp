@@ -527,7 +527,7 @@ string* SQLiteStoreConv::loadConversation(const string& name, const string& long
     ERRMSG;
     if (sqlResult == SQLITE_ROW) {        // session found, return session record
         // Get the session data
-        LOGGER(DEBUG, __func__, " Conversation session found");
+        LOGGER(DEBUGGING, __func__, " Conversation session found");
         len = sqlite3_column_bytes(stmt, 0);
         data = new string((const char*)sqlite3_column_blob(stmt, 0), len);
     }
@@ -630,7 +630,7 @@ bool SQLiteStoreConv::hasConversation(const string& name, const string& longDevI
     sqlResult = sqlite3_step(stmt);
     ERRMSG;
     retVal = sqlResult == SQLITE_ROW;
-    LOGGER(DEBUG, __func__, " Found conversation: ", retVal);
+    LOGGER(DEBUGGING, __func__, " Found conversation: ", retVal);
 
 cleanup:
     sqlite3_finalize(stmt);
@@ -919,7 +919,7 @@ bool SQLiteStoreConv::containsPreKey(int32_t preKeyId, int32_t* sqlCode) const
     sqlResult= sqlite3_step(stmt);
     ERRMSG;
     retVal = (sqlResult == SQLITE_ROW);
-    LOGGER(DEBUG, __func__, " Found preKey: ", retVal);
+    LOGGER(DEBUGGING, __func__, " Found preKey: ", retVal);
 
 cleanup:
     sqlite3_finalize(stmt);

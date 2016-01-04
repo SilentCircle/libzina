@@ -1,7 +1,6 @@
 #include "AppInterfaceImpl.h"
 #include "MessageEnvelope.pb.h"
 
-#include "../axolotl/crypto/AesCbc.h"
 #include "../axolotl/Constants.h"
 #include "../axolotl/AxoPreKeyConnector.h"
 #include "../axolotl/ratchet/AxoRatchet.h"
@@ -48,12 +47,12 @@ static void createSupplementString(const string& attachementDesc, const string& 
         cJSON* msgSupplement = cJSON_CreateObject();
 
         if (!attachementDesc.empty()) {
-            LOGGER(DEBUG, "Adding an attachment descriptor supplement");
+            LOGGER(DEBUGGING, "Adding an attachment descriptor supplement");
             cJSON_AddStringToObject(msgSupplement, "a", attachementDesc.c_str());
         }
 
         if (!messageAttrib.empty()) {
-            LOGGER(DEBUG, "Adding an message attribute supplement");
+            LOGGER(DEBUGGING, "Adding an message attribute supplement");
             cJSON_AddStringToObject(msgSupplement, "m", messageAttrib.c_str());
         }
         char *out = cJSON_PrintUnformatted(msgSupplement);
@@ -156,7 +155,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     // If we found a duplicate, log and silently ignore it.
     if (sqlResult == SQLITE_ROW) {
-        LOGGER(DEBUG, __func__, " Duplicate messages detected so far: ", ++duplicates);
+        LOGGER(DEBUGGING, __func__, " Duplicate messages detected so far: ", ++duplicates);
         return OK;
     }
     store_->insertMsgHash(msgHash);
@@ -509,7 +508,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             }
             if (!found) {
                 store->deleteConversation(userName, devIdDb, ownUser_);
-                LOGGER(DEBUG, "Remove device from database: ", devIdDb);
+                LOGGER(DEBUGGING, "Remove device from database: ", devIdDb);
             }
         }
     }
@@ -552,7 +551,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         uuid_unparse(pingUuid, uuidString);
         string msgId(uuidString);
 
-        LOGGER(DEBUG, "Send Ping to new found device: ", deviceId);
+        LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
         int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs);
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
@@ -572,7 +571,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         return;
     }
     vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
-    LOGGER(DEBUG, "Found new devices: ", returnMsgIds->size());
+    LOGGER(DEBUGGING, "Found new devices: ", returnMsgIds->size());
 
     delete msgPairs;
     delete returnMsgIds;
@@ -620,12 +619,12 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         // Either no device registered for recipient or some error occurred.
         if (msgPairs == NULL) {
-            LOGGER(DEBUG, "Cannot send initial pre-key message to: ", recipient, ", code: ", errorCode_);
+            LOGGER(DEBUGGING, "Cannot send initial pre-key message to: ", recipient, ", code: ", errorCode_);
             LOGGER(INFO, __func__, " <--");
             return NULL;
         }
         vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
-        LOGGER(DEBUG, "Sent initial pre-key messages to # devices: ", returnMsgIds->size());
+        LOGGER(DEBUGGING, "Sent initial pre-key messages to # devices: ", returnMsgIds->size());
         delete msgPairs;
 
         LOGGER(INFO, __func__, " <-- Initial pre-key message sent.");
@@ -650,8 +649,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
         if (axoConv == NULL) {
-            LOGGER(DEBUG, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", recipient, ", recipientDeviceId: ",
-                recipientDeviceId);
+            LOGGER(DEBUGGING, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", recipient, ", recipientDeviceId: ",
+                   recipientDeviceId);
             continue;
         }
 
@@ -718,7 +717,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
     vector<int64_t>* returnMsgIds = NULL;
     if (!msgPairs->empty()) {
         returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
-        LOGGER(DEBUG, "Sent messages to # devices: ", returnMsgIds->size());
+        LOGGER(DEBUGGING, "Sent messages to # devices: ", returnMsgIds->size());
     }
     delete msgPairs;
     LOGGER(INFO, __func__, " <--");
@@ -744,7 +743,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         errorCode_ = NO_DEVS_FOUND;
         errorInfo_ = recipient;
         delete devices;
-        LOGGER(DEBUG, "No device registered for recipient: ", recipient);
+        LOGGER(DEBUGGING, "No device registered for recipient: ", recipient);
         LOGGER(INFO, __func__, " <-- No device.");
         return NULL;
     }
@@ -765,7 +764,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
 
         int32_t result = createPreKeyMsg(recipient, recipientDeviceId, recipientDeviceName, message, supplements, msgId, msgPairs);
         if (result == 0) {  // no pre-key bundle available for name/device-id combination
-            LOGGER(DEBUG, "No pre-key bundle available for recipient ", recipient, ", device id: ", recipientDeviceId);
+            LOGGER(DEBUGGING, "No pre-key bundle available for recipient ", recipient, ", device id: ", recipientDeviceId);
             continue;
         }
 
@@ -793,7 +792,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         else {
             ownChecked_ = true;
         }
-        LOGGER(DEBUG, "No pre-key message sent to: ", recipient);
+        LOGGER(DEBUGGING, "No pre-key message sent to: ", recipient);
         LOGGER(INFO, __func__, " <-- No pre-key message sent.");
         return NULL;
     }
@@ -858,7 +857,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(recipient, recipientDeviceId, authorization_, &preIdKeys);
     if (preKeyId == 0) {
-        LOGGER(DEBUG, "No pre-key bundle available for recipient ", recipient, ", device id: ", recipientDeviceId);
+        LOGGER(DEBUGGING, "No pre-key bundle available for recipient ", recipient, ", device id: ", recipientDeviceId);
         LOGGER(INFO, __func__, " <-- No pre-key bundle");
         return 0;
     }

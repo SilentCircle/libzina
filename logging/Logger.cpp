@@ -51,7 +51,7 @@ void AndroidLogPolicy::write(LoggingLogLevel level, const std::string& tag, cons
 {
     android_LogPriority priority = ANDROID_LOG_UNKNOWN;
     switch (level) {
-        case DEBUG:
+        case DEBUGGING:
             priority = ANDROID_LOG_DEBUG;
             break;
         case WARNING:

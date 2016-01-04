@@ -31,7 +31,7 @@ enum LoggingLogLevel {
     ERROR,      //!< The Error level log output
     WARNING,    //!< The Warning level log output
     INFO,       //!< The Info level log output
-    DEBUG,      //!< The Debug level log output
+    DEBUGGING,  //!< The Debug level log output
     VERBOSE,    //!< The Verbose level log output
     EPIC        //!< The Epic level log output, only for rare cases :-)
 };
@@ -358,7 +358,7 @@ return 0;
         currentLogLevel = level;
         if (logType == FULL) {
             switch (level) {
-                case DEBUG:
+                case DEBUGGING:
                     logStream << "<DEBUG> :";
                     break;
                 case WARNING:
