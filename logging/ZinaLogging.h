@@ -46,7 +46,7 @@ limitations under the License.
 #ifdef ANDROID_LOGGER
 extern std::shared_ptr<logging::Logger<logging::AndroidLogPolicy> > _globalLogger;
 
-#elif defined(LINUX_LOGGER)
+#elif defined(LINUX_LOGGER) || defined(EMSCRIPTEN)
 extern std::shared_ptr<logging::Logger<logging::CerrLogPolicy> > _globalLogger;
 #elif defined(APPLE_LOGGER)
 extern std::shared_ptr<logging::Logger<logging::IosLogPolicy> > _globalLogger;

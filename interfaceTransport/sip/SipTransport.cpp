@@ -32,7 +32,7 @@ using namespace zina;
 
 static int32_t getNumOfSlots()
 {
-#if defined (EMBEDDED)
+#if defined (EMBEDDED) && !defined(EMSCRIPTEN)
     void *getAccountByID(int id);
     int getInfo(void *pEng, const char *key, char *p, int iMax);
 
@@ -60,6 +60,10 @@ typedef struct SendMsgInfo_ {
 static mutex sendListLock;
 static list<shared_ptr<SendMsgInfo> > sendMessageList;
 
+#if defined(EMSCRIPTEN)
+static bool sendQueueRunning = false;
+#endif
+
 static mutex threadLock;
 static mutex runLock;
 static condition_variable sendCv;
@@ -79,17 +83,26 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
     LOGGER(DEBUGGING, __func__, " -->");
 
     unique_lock<mutex> run(runLock);
+#if defined(EMSCRIPTEN)
+    if (sendQueueRunning) {
+        return;
+    }
+    sendQueueRunning = true;
+#else
     while (sendingActive) {
+#endif
         while (!runSend) sendCv.wait(run);
 
         unique_lock<mutex> listLock(sendListLock);
         for (; !sendMessageList.empty(); sendMessageList.pop_front()) {
+#if !defined(EMSCRIPTEN)
             for (int32_t slots = getNumOfSlots(); slots < KEEP_SLOTS;) {
                 listLock.unlock();
                 std::this_thread::sleep_for (std::chrono::milliseconds(sleepTime));
                 listLock.lock();
                 slots = getNumOfSlots();
             }
+#endif
             shared_ptr<SendMsgInfo>& sendInfo = sendMessageList.front();
             bool result = sendAxoData((uint8_t*)sendInfo->recipient.c_str(), (uint8_t*)sendInfo->deviceId.c_str(),
                                        (uint8_t*)sendInfo->envelope.data(), sendInfo->envelope.size(), sendInfo->transportMsgId);
@@ -100,7 +113,11 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
         }
         runSend = false;
         listLock.unlock();
+#if defined(EMSCRIPTEN)
+    sendQueueRunning = false;
+#else
     }
+#endif
 }
 
 SipTransport::~SipTransport() {
@@ -111,6 +128,7 @@ void SipTransport::sendAxoMessage(const CmdQueueInfo &info, const string& envelo
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
+#if !defined(EMSCRIPTEN)
     if (!sendThread.joinable()) {
         unique_lock<mutex> lck(threadLock);
         if (!sendThread.joinable()) {
@@ -119,6 +137,10 @@ void SipTransport::sendAxoMessage(const CmdQueueInfo &info, const string& envelo
         }
         lck.unlock();
     }
+#else
+    sendingActive = true;
+#endif
+
     unique_lock<mutex> listLock(sendListLock);
 
     // Store all relevant data to send a message in a structure, queue the message
@@ -134,6 +156,10 @@ void SipTransport::sendAxoMessage(const CmdQueueInfo &info, const string& envelo
     runSend = true;
     sendCv.notify_one();
     listLock.unlock();
+
+#if defined(EMSCRIPTEN)
+    runSendQueue(sendAxoData_, this);
+#endif
 
     LOGGER(DEBUGGING, __func__, " <--");
 }
@@ -273,4 +299,3 @@ void SipTransport::notifyAxo(const uint8_t* data, size_t length)
     }
     LOGGER(DEBUGGING, __func__, " <--");
 }
-

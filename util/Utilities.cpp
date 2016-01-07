@@ -20,6 +20,7 @@ limitations under the License.
 
 #include <sys/time.h>
 #include <string.h>
+#include <time.h>
 #include "Utilities.h"
 
 using namespace std;
@@ -195,3 +196,4 @@ string Utilities::urlEncode(string s)
 
     return string(v.cbegin(), v.cend());
 }
+

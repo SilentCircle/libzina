@@ -37,13 +37,16 @@ set (SOVERSION 1)
 # Where to find the modules that we share with ZRTP, i.e. the ZRTP root directory
 if (AUTO_BUILD EQUAL 1)
     set (ZRTP_BASE_DIR $ENV{WORKSPACE}/silentphone2/support/zrtpcpp)
+elseif (NOT "$ENV{ZRTP_BASE_DIR}" STREQUAL "")
+    set (ZRTP_BASE_DIR $ENV{ZRTP_BASE_DIR})
 else()
-    set(ZRTP_BASE_DIR $ENV{ZRTP_BASE_DIR})
+    set (ZRTP_BASE_DIR ${CMAKE_SOURCE_DIR}/../zrtpcpp)
 endif()
 
 option(STANDALONE "Build standlone shared library, otherwise a static lib without ZRTP crypto modules." OFF)
 option(UNITTESTS "Build unit tests, implies STANDALONE true." OFF)
 option(ANDROID "Compile and build for Android." OFF)
+option(EMSCRIPTEN "Compile for an emscripten target" OFF)
 
 set(LIBRARY_BUILD_TYPE SHARED)
 set (CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -82,6 +85,13 @@ endif()
 include(FindPkgConfig)
 include(CheckIncludeFiles)
 
+find_package(JNI)
+if (JNI_FOUND)
+    message (STATUS "JNI_INCLUDE_DIRS=${JNI_INCLUDE_DIRS}")
+    message (STATUS "JNI_LIBRARIES=${JNI_LIBRARIES}")
+    include_directories(${JNI_INCLUDE_DIRS})
+endif()
+
 if (NOT ANDROID)
     pkg_check_modules(PROTO protobuf-lite>=2.6.1)
     if (PROTO_FOUND)
@@ -91,30 +101,18 @@ if (NOT ANDROID)
         message(FATAL_ERROR "ProtocolBuffer library not found")
     endif()
 
-    set(CMAKE_PREFIX_PATH "/usr/local/")
     pkg_check_modules(SQLCIPHER sqlcipher>=3.7)
     if (SQLCIPHER_FOUND)
         set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${SQLCIPHER_INCLUDE_DIRS})
         check_include_files(sqlite3.h HAVE_SQLCIPHER_H)
+        include_directories(${SQLCIPHER_INCLUDE_DIRS})
+        set(LIBS ${LIBS} ${SQLCIPHER_LDFLAGS})
         set(LIBS ${LIBS} -lsqlcipher)
         MESSAGE(STATUS "Using SQlCipher based ZRTP cache")
         add_definitions(-DSQL_CIPHER -DSQLITE_HAS_CODEC)
-        get_filename_component(_sqlInclude ${SQLCIPHER_INCLUDE_DIRS} DIRECTORY)
-        include_directories(${_sqlInclude})
-        message(STATUS "SQLCipher include: ${_sqlInclude}")
     else()
         message(FATAL_ERROR "SQLCipher library not found")
     endif()
-
-    find_package(JNI)
-
-    if(JNI_FOUND)
-        include_directories(${JAVA_INCLUDE_PATH2})
-    else()
-        message(FATAL_ERROR "Java JNI package not found")
-    endif()
-
-
 endif()
 
 # pkg_check_modules(SQLITE3 sqlite3>=3.7)
@@ -144,13 +142,26 @@ set (interface_src
     interfaceApp/AppInterfaceImpl.cpp
     interfaceApp/MessageEnvelope.pb.cc
     interfaceApp/GroupProtocol.pb.cc
-    interfaceApp/java/JavaNativeImpl.cpp
     interfaceTransport/sip/SipTransport.cpp
     interfaceApp/GroupInterfaceImpl.cpp
     interfaceApp/GroupUpdateImpl.cpp
     interfaceApp/SendMessage.cpp
     interfaceApp/ReceiveMessage.cpp
     interfaceApp/QueueHandling.cpp)
+
+if (JNI_FOUND)
+set (interface_src
+    ${interface_src}
+    interfaceApp/java/JavaNativeImpl.cpp
+)
+endif()
+
+if (EMSCRIPTEN)
+set (interface_src
+    ${interface_src}
+    interfaceApp/emscripten/JSZina.cpp
+)
+endif()
 
 set (storage_src
     storage/sqlite/SQLiteStoreConv.cpp

@@ -24,6 +24,7 @@ limitations under the License.
  */
 
 #include <stdint.h>
+#include <time.h>
 #include <list>
 #include <set>
 #include <vector>

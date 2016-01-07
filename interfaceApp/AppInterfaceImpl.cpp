@@ -291,7 +291,9 @@ void AppInterfaceImpl::reKeyDevice(const string &userName, const string &deviceI
     }
 
     // Only _one_ re-key command at a time because we check on one Done condition only
+#if !defined(EMSCRIPTEN)
     unique_lock<mutex> reKey(reKeyLock);
+#endif
     reKeyDone = false;
 
     auto msgInfo = new CmdQueueInfo;
@@ -302,11 +304,11 @@ void AppInterfaceImpl::reKeyDevice(const string &userName, const string &deviceI
 
     unique_lock<mutex> syncCv(synchronizeLock);
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
-
+#if !defined(EMSCRIPTEN)
     while (!reKeyDone) {
         synchronizeCv.wait(syncCv);
     }
-
+#endif
     LOGGER(DEBUGGING, __func__, " <--");
     return;
 }

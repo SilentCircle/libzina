@@ -524,7 +524,7 @@ static void computeIdHash(const string& id, string* idHash)
     LOGGER(DEBUGGING, __func__, " -->");
     uint8_t hash[SHA256_DIGEST_LENGTH];
 
-    sha256((uint8_t*)id.data(), static_cast<uint>(id.size()), hash);
+    sha256((uint8_t*)id.data(), static_cast<unsigned int>(id.size()), hash);
     idHash->assign((const char*)hash, SHA256_DIGEST_LENGTH);
     LOGGER(DEBUGGING, __func__, " <--");
 }

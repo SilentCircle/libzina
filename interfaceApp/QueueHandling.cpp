@@ -30,6 +30,10 @@ using namespace zina;
 static mutex commandQueueLock;
 static list<unique_ptr<CmdQueueInfo> > commandQueue;
 
+#if defined(EMSCRIPTEN)
+static bool commandQueueRunning = false;
+#endif
+
 static mutex threadLock;
 static condition_variable commandQueueCv;
 static thread commandQueueThread;
@@ -47,6 +51,7 @@ void setTestIfObj_(AppInterfaceImpl* obj)
 
 void AppInterfaceImpl::checkStartRunThread()
 {
+#if !defined(EMSCRIPTEN)
     if (!cmdThreadRunning) {
         unique_lock<mutex> lck(threadLock);
         if (!cmdThreadRunning) {
@@ -56,6 +61,7 @@ void AppInterfaceImpl::checkStartRunThread()
         }
         lck.unlock();
     }
+#endif
 }
 
 void AppInterfaceImpl::addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToProcess)
@@ -67,6 +73,12 @@ void AppInterfaceImpl::addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToPr
     commandQueueCv.notify_one();
 
     listLock.unlock();
+
+#if defined(EMSCRIPTEN)
+    if (!commandQueueRunning) {
+        commandQueueHandler(this);
+    }
+#endif
 }
 
 void AppInterfaceImpl::addMsgInfosToRunQueue(list<unique_ptr<CmdQueueInfo> >& messagesToProcess)
@@ -78,6 +90,12 @@ void AppInterfaceImpl::addMsgInfosToRunQueue(list<unique_ptr<CmdQueueInfo> >& me
     commandQueueCv.notify_one();
 
     listLock.unlock();
+
+#if defined(EMSCRIPTEN)
+    if (!commandQueueRunning) {
+        commandQueueHandler(this);
+    }
+#endif
 }
 
 
@@ -86,14 +104,22 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
+#if defined(EMSCRIPTEN)
+    if (commandQueueRunning) {
+        return;
+    }
+    commandQueueRunning = true;
+#else
     unique_lock<mutex> listLock(commandQueueLock);
     while (cmdRun) {
         while (commandQueue.empty()) commandQueueCv.wait(listLock);
+#endif
 
         for (; !commandQueue.empty(); commandQueue.pop_front()) {
             auto& cmdInfo = commandQueue.front();
+#if !defined(EMSCRIPTEN)
             listLock.unlock();
-
+#endif
             int32_t result;
             switch (cmdInfo->command) {
                 case SendMessage: {
@@ -156,9 +182,15 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
 
                     break;
             }
+#if !defined(EMSCRIPTEN)
             listLock.lock();
+#endif
         }
+#if defined(EMSCRIPTEN)
+    commandQueueRunning = false;
+#else
     }
+#endif
     LOGGER(DEBUGGING, __func__, " <--");
 }
 

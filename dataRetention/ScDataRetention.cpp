@@ -22,7 +22,10 @@ limitations under the License.
 #include "../ratchet/state/ZinaConversation.h"
 #include "../util/Utilities.h"
 
+#include <memory>
+#if !defined(EMSCRIPTEN)
 #include <zlib.h>
+#endif
 
 using namespace zina;
 using namespace std;
@@ -94,6 +97,7 @@ std::string time_to_string(time_t time)
 
 std::string compress(const std::string& input)
 {
+#if !defined(EMSCRIPTEN)
     z_stream zs;
     Utilities::wipeMemory(&zs, sizeof(zs));
 
@@ -131,6 +135,9 @@ std::string compress(const std::string& input)
     }
 
     return output;
+#else
+    return input;
+#endif
 }
 }
 

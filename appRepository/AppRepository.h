@@ -28,6 +28,10 @@ limitations under the License.
 #include <list>
 #include <vector>
 
+#if defined(EMSCRIPTEN)
+#include <time.h>
+#endif
+
 #include <sqlcipher/sqlite3.h>
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
