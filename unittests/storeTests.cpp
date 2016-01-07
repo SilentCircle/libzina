@@ -158,6 +158,7 @@ public:
     ~NameLookTestFixture( )  {
         // cleanup any pending stuff, but no exceptions allowed
         LOGGER_INSTANCE setLogLevel(VERBOSE);
+        NameLookup::getInstance()->clearNameCache();
     }
 
     // put in any custom data members that you need
@@ -234,7 +235,17 @@ TEST_F(NameLookTestFixture, NameLookUpBasic)
     string uid2 = nameCache->getUid(alias2, auth);
     ASSERT_EQ(expectedUid, uid2) << "UID lookup for other alias name failed";
 
-    nameCache->clearNameCache();
+    shared_ptr<list<string> > aliases = nameCache->getAliases(expectedUid, auth);
+    size_t size = aliases->size();
+    ASSERT_EQ(2, size);
+
+    string aliasFound = aliases->front();
+    aliases->pop_front();
+    ASSERT_EQ(alias, aliasFound);
+
+    aliasFound = aliases->front();
+    aliases->pop_front();
+    ASSERT_EQ(alias2, aliasFound);
 }
 
 TEST_F(NameLookTestFixture, NameLookupBasicInfo)
@@ -277,11 +288,11 @@ TEST_F(NameLookTestFixture, NameLookupBasicInfo)
      * 1 additional entry in the map, alias name "checker12" points to the same userInfo data
      */
     ASSERT_EQ(6, uid2.use_count()) << "First added UID wrong";
-    nameCache->clearNameCache();
 }
 
 TEST_F(NameLookTestFixture, NameLookupBasicError)
 {
+    // Helper1 return a "server error", thus no call succeeds
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
@@ -301,7 +312,6 @@ TEST_F(NameLookTestFixture, NameLookupBasicError)
     string uid2 = nameCache->getUid(alias2, auth);
     ASSERT_EQ(expectedUid, uid2) << "UID lookup for other alias name failed";
 
-    nameCache->clearNameCache();
 }
 
 TEST_F(NameLookTestFixture, NameLookupBasicInfoError)
@@ -324,5 +334,46 @@ TEST_F(NameLookTestFixture, NameLookupBasicInfoError)
     string alias2("checker12");
     const shared_ptr<UserInfo> uid2 = nameCache->getUserInfo(alias2, auth);
     ASSERT_FALSE(uid2) << "UID lookup for other alias name failed";
-    nameCache->clearNameCache();
+}
+
+static const char* userData =
+        {
+                "{\n"
+                        "\"display_name\": \"Radagast the Brown\",\n"
+                        "\"uuid\": \"uvv9h7fbldqpfp82ed33dqv4lh\",\n"
+                        "\"default_alias\": \"radagast\"\n"
+                        "}"
+
+        };
+
+TEST_F(NameLookTestFixture, NameLookupAddAlias)
+{
+    NameLookup* nameCache = NameLookup::getInstance();
+
+    string uuid("uvv9h7fbldqpfp82ed33dqv4lh");
+    string alias("checker");
+    string auth("_DUMMY_");
+    string data(userData);
+
+    NameLookup::AliasAdd ret = nameCache->addAliasToUuid(alias, uuid, data, auth);
+    ASSERT_EQ(NameLookup::UuidAdded, ret);
+
+    ret = nameCache->addAliasToUuid(alias, uuid, data, auth);
+    ASSERT_EQ(NameLookup::AliasExisted, ret);
+
+    string alias1("checker1");
+    ret = nameCache->addAliasToUuid(alias1, uuid, data, auth);
+    ASSERT_EQ(NameLookup::AliasAdded, ret);
+
+    shared_ptr<list<string> > aliases = nameCache->getAliases(uuid, auth);
+    size_t size = aliases->size();
+    ASSERT_EQ(2, size);
+
+    string aliasFound = aliases->front();
+    aliases->pop_front();
+    ASSERT_EQ(alias, aliasFound);
+
+    aliasFound = aliases->front();
+    aliases->pop_front();
+    ASSERT_EQ(alias1, aliasFound);
 }

@@ -423,17 +423,17 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 
     }
     string name;
-    if (!arrayToString(env, userName, &name) || name.empty()) {
+    if (!arrayToString(env, userName, &name)) {
         return -10;
     }
 
     string auth;
-    if (!arrayToString(env, authorization, &auth) || auth.empty()) {
+    if (!arrayToString(env, authorization, &auth)) {
         return -11;
     }
 
     string devId;
-    if (!arrayToString(env, scClientDeviceId, &devId) || devId.empty())
+    if (!arrayToString(env, scClientDeviceId, &devId))
         return -12;
 
     const uint8_t* pw = (uint8_t*)env->GetByteArrayElements(dbPassphrase, 0);
@@ -1013,7 +1013,7 @@ JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePatte
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, namePattern, &name) || name.empty())
+    if (!arrayToString(env, namePattern, &name))
         return static_cast<jboolean>(false);
 
     bool result = appRepository->existConversation(name);
@@ -1031,7 +1031,7 @@ JNI_FUNCTION(storeConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, j
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty())
+    if (!arrayToString(env, inName, &name))
         return -1;
 
     string data;
@@ -1053,7 +1053,7 @@ JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, ji
         return NULL;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         setReturnCode(env, code, -1);
         return NULL;
     }
@@ -1081,7 +1081,7 @@ JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         return -1;
     }
     return appRepository->deleteConversation(name);
@@ -1127,11 +1127,11 @@ JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         return -1;
     }
     string id;
-    if (!arrayToString(env, eventId, &id) || id.empty()) {
+    if (!arrayToString(env, eventId, &id)) {
         return -2;
     }
     string data;
@@ -1153,12 +1153,12 @@ JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArra
         return NULL;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         setReturnCode(env, code, -1);
         return NULL;
     }
     string id;
-    if (!arrayToString(env, eventId, &id) || id.empty()) {
+    if (!arrayToString(env, eventId, &id)) {
         setReturnCode(env, code, -1);
         return NULL;
     }
@@ -1188,7 +1188,7 @@ JNI_FUNCTION(loadEventWithMsgId) (JNIEnv* env, jclass clazz, jbyteArray eventId,
         return NULL;
 
     string id;
-    if (!arrayToString(env, eventId, &id) || id.empty()) {
+    if (!arrayToString(env, eventId, &id)) {
         setReturnCode(env, code, -1);
         return NULL;
     }
@@ -1215,11 +1215,11 @@ JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         return static_cast<jboolean>(false);
     }
     string id;
-    if (!arrayToString(env, eventId, &id) || id.empty()) {
+    if (!arrayToString(env, eventId, &id)) {
         return static_cast<jboolean>(false);
     }
     bool result = appRepository->existEvent(name, id);
@@ -1240,7 +1240,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
         return NULL;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         setReturnCode(env, code, -1);
         return NULL;
     }
@@ -1285,11 +1285,11 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         return -1;
     }
     string id;
-    if (!arrayToString(env, eventId, &id) || id.empty()) {
+    if (!arrayToString(env, eventId, &id)) {
         return -1;
     }
     return appRepository->deleteEvent(name, id);
@@ -1307,15 +1307,15 @@ JNI_FUNCTION(insertObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, inName, &name) || name.empty()) {
+    if (!arrayToString(env, inName, &name)) {
         return -1;
     }
     string event;
-    if (!arrayToString(env, eventId, &event) || event.empty()) {
+    if (!arrayToString(env, eventId, &event)) {
         return -1;
     }
     string id;
-    if (!arrayToString(env, objId, &id) || id.empty()) {
+    if (!arrayToString(env, objId, &id)) {
         return -1;
     }
     string data;
@@ -2007,4 +2007,94 @@ JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray a
 
     jbyteArray retData = stringToArray(env, json);
     return retData;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getAliases
+ * Signature: (Ljava/lang/String;[B)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray authorization)
+{
+    (void)clazz;
+
+    string auth;
+    if (!arrayToString(env, authorization, &auth) || auth.empty()) {
+        if (axoAppInterface == NULL)
+            return NULL;
+        auth = axoAppInterface->getOwnAuthrization();
+    }
+    if (uuid == NULL) {
+        return NULL;
+    }
+    const char*uuidTemp = env->GetStringUTFChars(uuid, 0);
+    string uuidString(uuidTemp);
+    env->ReleaseStringUTFChars(uuid, uuidTemp);
+    if (uuidString.empty())
+        return NULL;
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    shared_ptr<list<string> > aliases = nameCache->getAliases(uuidString, auth);
+    if (!aliases)
+        return NULL;
+    size_t size = aliases->size();
+    if (size == 0)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    while (!aliases->empty()) {
+        string s = aliases->front();
+        aliases->pop_front();
+        jbyteArray retData = stringToArray(env, s);
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    addAliasToUuid
+ * Signature: (Ljava/lang/String;Ljava/lang/String;[B[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring uuid, jbyteArray userData, jbyteArray authorization)
+{
+    (void)clazz;
+
+    string auth;
+    if (!arrayToString(env, authorization, &auth)) {
+        if (axoAppInterface == NULL)
+            return NameLookup::MissingParameter;
+        auth = axoAppInterface->getOwnAuthrization();
+    }
+    if (uuid == NULL) {
+        return NameLookup::MissingParameter;;
+    }
+    const char*uuidTemp = env->GetStringUTFChars(uuid, 0);
+    string uuidString(uuidTemp);
+    env->ReleaseStringUTFChars(uuid, uuidTemp);
+    if (uuidString.empty())
+        return NameLookup::MissingParameter;
+
+    if (alias == NULL) {
+        return NameLookup::MissingParameter;
+    }
+    const char* aliasTmp = env->GetStringUTFChars(alias, 0);
+    string aliasString(aliasTmp);
+    env->ReleaseStringUTFChars(alias, aliasTmp);
+    if (aliasString.empty())
+        return NameLookup::MissingParameter;
+
+    string data;
+    if (!arrayToString(env, userData, &data))
+        return NameLookup::MissingParameter;
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    NameLookup::AliasAdd ret = nameCache->addAliasToUuid(aliasString, uuidString, data, auth);
+    return ret;
 }

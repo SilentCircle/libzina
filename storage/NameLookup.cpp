@@ -112,7 +112,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
 
     LOGGER(INFO, __func__ , " -->");
     if (alias.empty() || authorization.empty()) {
-        LOGGER(INFO, __func__ , " <-- empty data");
+        LOGGER(ERROR, __func__ , " <-- empty data");
         return shared_ptr<UserInfo>();
     }
 
@@ -169,7 +169,88 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
         }
         userInfo = it->second;
     }
-    LOGGER(INFO, __func__ , " <--");
     lck.unlock();
+    LOGGER(INFO, __func__ , " <--");
     return userInfo;
+}
+
+const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const string& authorization)
+{
+    LOGGER(INFO, __func__ , " -->");
+    if (uuid.empty() || authorization.empty()) {
+        LOGGER(ERROR, __func__ , " <-- empty data");
+        return shared_ptr<list<string> >();
+    }
+    unique_lock<mutex> lck(nameLock);
+    shared_ptr<list<string> > aliasList = make_shared<list<string> >();
+
+    if (nameMap_.size() == 0) {
+        LOGGER(INFO, __func__ , " <-- empty name map");
+        return shared_ptr<list<string> >();
+    }
+    for (map<string, shared_ptr<UserInfo> >::iterator it=nameMap_.begin(); it != nameMap_.end(); ++it) {
+        shared_ptr<UserInfo> userInfo = (*it).second;
+        // Add only aliases to the result, not the UUID which is also part of the map
+        if (uuid == userInfo->uniqueId && uuid != (*it).first) {
+            aliasList->push_back((*it).first);
+        }
+    }
+    lck.unlock();
+    LOGGER(INFO, __func__ , " <--");
+    return aliasList;
+}
+
+NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const string& uuid, const string& userData,
+                                   const string& authorization)
+{
+    LOGGER(INFO, __func__ , " -->");
+
+    // Check if this alias name already exists in the name map, if yes just return.
+    unique_lock<mutex> lck(nameLock);
+    map<string, shared_ptr<UserInfo> >::iterator it;
+    it = nameMap_.find(alias);
+    if (it != nameMap_.end()) {
+        LOGGER(INFO, __func__ , " <-- alias already exists");
+        return AliasExisted;
+    }
+
+    pair<map<string, shared_ptr<UserInfo> >::iterator, bool> ret;
+
+    // Check if we already have the user's UID in the map. If not then cache the
+    // userInfo with the UID
+    AliasAdd retValue;
+    it = nameMap_.find(uuid);
+    if (it == nameMap_.end()) {
+        shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
+        int32_t code = parseUserInfo(userData, userInfo);
+        if (code != OK) {
+            LOGGER(ERROR, __func__ , " Error return from parsing.");
+            return UserDataError;
+        }
+        ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
+        if (!ret.second) {
+            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
+            return InsertFailed;
+        }
+        // For existing account (old accounts) the UUID and the primary alias could be identical
+        // Don't add an alias entry in this case
+        if (alias.compare(userInfo->uniqueId) != 0) {
+            ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
+            if (!ret.second) {
+                LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 1);
+                return InsertFailed;
+            }
+        }
+        retValue = UuidAdded;
+    }
+    else {
+        ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
+        if (!ret.second) {
+            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 2);
+            return InsertFailed;
+        }
+        retValue = AliasAdded;
+    }
+    LOGGER(INFO, __func__ , " <--");
+    return retValue;
 }

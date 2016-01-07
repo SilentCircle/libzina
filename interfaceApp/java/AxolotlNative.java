@@ -841,4 +841,47 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *         for the alias.
      */
     public static native byte[] getUserInfo(String alias, byte[] authorization);
+
+    /**
+     * Return a list of the alias names of a UUID.
+     *
+     * This function does no trigger any network actions, save to run from UI thread.
+     *
+     * @param uuid the UUID
+     * @authorization the authorization data
+     * @return Array of strings (encoded as UTF-8 bytes) or {@code null} if alias is not known.
+     */
+     public static native byte[][] getAliases(String uuid, byte[] authorization);
+
+     /**
+      * Add an alias name and user info to an UUID.
+      *
+      * If the alias name already exists in the map the function is a no-op and returns
+      * immediately.
+      *
+      * The function first performs a lookup on the UUID. If it exists then it simply
+      * adds the alias name for this UUID and uses the already existing user info, thus
+      * ignores the provided user info.
+      *
+      * If the UUID does not exist the functions creates a UUID entry and links the
+      * user info to the new entry. Then it adds the alias name to the UUID.
+      *
+      * This function does no trigger any network actions, save to run from UI thread.
+      *
+      * The JSON data should look like this:
+      * <pre>
+      * {
+      *   "uuid":          "<string>",
+      *   "display_name":  "<string>",
+      *   "default_alias": "<string<"
+      * }
+      * </pre>
+      *
+      * @param alias the alias name/number
+      * @param uuid the UUID
+      * @param userInfo a JSON formatted string with the user information
+      * @authorization the authorization data
+      * @return a value > 0 to indicate success, < 0 on failure.
+      */
+      public static native int addAliasToUuid(String alias, String uuid, byte[] userInfo, byte[] authorization);
 }
