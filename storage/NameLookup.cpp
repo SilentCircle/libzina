@@ -26,6 +26,11 @@ NameLookup* NameLookup::getInstance()
     return instance_;
 }
 
+static string USER_NULL_NAME("_!NULL!_");
+static const char* nullData =
+                "{\"display_name\": \"%s\",\"uuid\": \"%s\",\"default_alias\": \"%s\"}";
+
+
 
 const string NameLookup::getUid(const string &alias, const string& authorization) {
 
@@ -122,15 +127,28 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
         LOGGER(INFO, __func__ , " <-- cached data");
+        if (it->second->displayName == USER_NULL_NAME) {
+            return shared_ptr<UserInfo>();
+        }
         return it->second;
     }
     string result;
     int32_t code = Provisioning::getUserInfo(alias, authorization, &result);
 
     // Return empty pointer in case of HTTP error
+    char temp[1000];
     if (code >= 400) {
-        LOGGER(ERROR, __func__ , " Error return from server: ", code);
-        return shared_ptr<UserInfo>();
+        // If server returns "not found" then add a invalid user data structure. Thus
+        // another lookup with the same name will have a cache hit, avoiding a network
+        // round trip but still returning an empty pointer signaling a non-existing name.
+        if (code == 404) {
+            snprintf(temp, 990, nullData, USER_NULL_NAME.c_str(), alias.c_str(), alias.c_str());
+            result = temp;
+        }
+        else {
+            LOGGER(ERROR, __func__ , " Error return from server: ", code);
+            return shared_ptr<UserInfo>();
+        }
     }
 
     shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
@@ -170,7 +188,11 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
         userInfo = it->second;
     }
     lck.unlock();
-    LOGGER(INFO, __func__ , " <--");
+    if (userInfo->displayName == USER_NULL_NAME) {
+        LOGGER(INFO, __func__ , " <-- return null name");
+        return shared_ptr<UserInfo>();
+    }
+    LOGGER(INFO, __func__ , " <-- ", userInfo->displayName);
     return userInfo;
 }
 

@@ -212,7 +212,7 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
 //     cerr << method << " helper 1 " << requestUrl << '\n';
 //     cerr << data;
     response->assign(userInfoData);
-    return 400;
+    return 404;
 }
 
 TEST_F(NameLookTestFixture, NameLookUpBasic)
@@ -296,7 +296,6 @@ TEST_F(NameLookTestFixture, NameLookupBasicError)
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
-    LOGGER_INSTANCE setLogLevel(NONE);          // suppress logging, even for errors because we test it here
 
     string expectedUid;
     string alias("checker");
@@ -319,7 +318,6 @@ TEST_F(NameLookTestFixture, NameLookupBasicInfoError)
     ScProvisioning::setHttpHelper(helper1);
 
     NameLookup* nameCache = NameLookup::getInstance();
-    LOGGER_INSTANCE setLogLevel(NONE);          // suppress logging, even for errors because we test it here
 
     string expectedUid("uvv9h7fbldqpfp82ed33dqv4lh");
     string alias("checker");
