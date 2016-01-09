@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ ! -d "${WORKSPACE}/silentphone2" ]; then
     echo '***** Variable WORKSPACE does not point to correct directory *****'
@@ -10,8 +10,7 @@ if [ "x$ANDROID_NDK" = "x" ]; then
     exit 1
 fi
 
-if [[ "$SC_BUILD_TYPE" = "DEVELOP" ]];
-then
+if [ "x$SC_BUILD_TYPE" = "xDEVELOP" ]; then
     BUILD_TYPE=Debug
     echo "*** building develop configuration"
 else
