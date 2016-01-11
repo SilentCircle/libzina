@@ -447,6 +447,14 @@ JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_getAliases
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_addAliasToUuid
   (JNIEnv *, jclass, jstring, jstring, jbyteArray, jbyteArray);
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getDisplayName
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getDisplayName
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif

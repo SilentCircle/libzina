@@ -199,22 +199,27 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
 const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const string& authorization)
 {
     LOGGER(INFO, __func__ , " -->");
+    shared_ptr<list<string> > aliasList = make_shared<list<string> >();
     if (uuid.empty() || authorization.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty data");
-        return shared_ptr<list<string> >();
+        return aliasList;
     }
     unique_lock<mutex> lck(nameLock);
-    shared_ptr<list<string> > aliasList = make_shared<list<string> >();
 
     if (nameMap_.size() == 0) {
         LOGGER(INFO, __func__ , " <-- empty name map");
-        return shared_ptr<list<string> >();
+        return aliasList;
     }
     for (map<string, shared_ptr<UserInfo> >::iterator it=nameMap_.begin(); it != nameMap_.end(); ++it) {
         shared_ptr<UserInfo> userInfo = (*it).second;
-        // Add only aliases to the result, not the UUID which is also part of the map
-        if (uuid == userInfo->uniqueId && uuid != (*it).first) {
-            aliasList->push_back((*it).first);
+        // Add aliases to the result. If the map entry if the UUID entry then add the default alias
+        if (uuid == userInfo->uniqueId) {
+            if (uuid != (*it).first) {
+                aliasList->push_back((*it).first);
+            }
+            else {
+                aliasList->push_back((*it).second->alias0);
+            }
         }
     }
     lck.unlock();
@@ -276,3 +281,29 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     LOGGER(INFO, __func__ , " <--");
     return retValue;
 }
+
+const shared_ptr<string> NameLookup::getDisplayName(const string& uuid, const string& authorization)
+{
+    LOGGER(INFO, __func__ , " -->");
+    shared_ptr<string> displayName = make_shared<string>();
+
+    if (uuid.empty() || authorization.empty()) {
+        LOGGER(ERROR, __func__ , " <-- empty data");
+        return displayName;
+    }
+    unique_lock<mutex> lck(nameLock);
+
+    if (nameMap_.size() == 0) {
+        LOGGER(INFO, __func__ , " <-- empty name map");
+        return displayName;
+    }
+    map<string, shared_ptr<UserInfo> >::iterator it;
+    it = nameMap_.find(uuid);
+    if (it != nameMap_.end()) {
+        *displayName = (*it).second->displayName;
+    }
+    lck.unlock();
+    LOGGER(INFO, __func__ , " <--");
+    return displayName;
+}
+

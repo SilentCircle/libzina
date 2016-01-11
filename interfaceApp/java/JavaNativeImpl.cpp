@@ -2028,7 +2028,7 @@ JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray aut
     if (uuid == NULL) {
         return NULL;
     }
-    const char*uuidTemp = env->GetStringUTFChars(uuid, 0);
+    const char* uuidTemp = env->GetStringUTFChars(uuid, 0);
     string uuidString(uuidTemp);
     env->ReleaseStringUTFChars(uuid, uuidTemp);
     if (uuidString.empty())
@@ -2073,9 +2073,9 @@ JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring u
         auth = axoAppInterface->getOwnAuthrization();
     }
     if (uuid == NULL) {
-        return NameLookup::MissingParameter;;
+        return NameLookup::MissingParameter;
     }
-    const char*uuidTemp = env->GetStringUTFChars(uuid, 0);
+    const char* uuidTemp = env->GetStringUTFChars(uuid, 0);
     string uuidString(uuidTemp);
     env->ReleaseStringUTFChars(uuid, uuidTemp);
     if (uuidString.empty())
@@ -2098,3 +2098,35 @@ JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring u
     NameLookup::AliasAdd ret = nameCache->addAliasToUuid(aliasString, uuidString, data, auth);
     return ret;
 }
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getDisplayName
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray authorization)
+{
+    (void)clazz;
+
+    string auth;
+    if (!arrayToString(env, authorization, &auth)) {
+        if (axoAppInterface == NULL)
+            return NULL;
+        auth = axoAppInterface->getOwnAuthrization();
+    }
+    if (uuid == NULL) {
+        return NULL;
+    }
+    const char* uuidTemp = env->GetStringUTFChars(uuid, 0);
+    string uuidString(uuidTemp);
+    env->ReleaseStringUTFChars(uuid, uuidTemp);
+    if (uuidString.empty())
+        return NULL;
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    shared_ptr<string> displayName = nameCache->getDisplayName(uuidString, auth);
+    jbyteArray retData = stringToArray(env, *displayName);
+    return retData;
+}
+

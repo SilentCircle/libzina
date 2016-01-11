@@ -237,15 +237,15 @@ TEST_F(NameLookTestFixture, NameLookUpBasic)
 
     shared_ptr<list<string> > aliases = nameCache->getAliases(expectedUid, auth);
     size_t size = aliases->size();
-    ASSERT_EQ(2, size);
+    ASSERT_EQ(3, size);
 
     string aliasFound = aliases->front();
     aliases->pop_front();
-    ASSERT_EQ(alias, aliasFound);
+    EXPECT_EQ(alias, aliasFound);
 
     aliasFound = aliases->front();
     aliases->pop_front();
-    ASSERT_EQ(alias2, aliasFound);
+    EXPECT_EQ(alias2, aliasFound);
 }
 
 TEST_F(NameLookTestFixture, NameLookupBasicInfo)
@@ -365,13 +365,13 @@ TEST_F(NameLookTestFixture, NameLookupAddAlias)
 
     shared_ptr<list<string> > aliases = nameCache->getAliases(uuid, auth);
     size_t size = aliases->size();
-    ASSERT_EQ(2, size);
+    ASSERT_EQ(3, size);
 
     string aliasFound = aliases->front();
     aliases->pop_front();
-    ASSERT_EQ(alias, aliasFound);
+    EXPECT_EQ(alias, aliasFound);
 
     aliasFound = aliases->front();
     aliases->pop_front();
-    ASSERT_EQ(alias1, aliasFound);
+    EXPECT_EQ(alias1, aliasFound);
 }

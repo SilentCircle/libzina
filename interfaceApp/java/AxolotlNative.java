@@ -884,4 +884,14 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
       * @return a value > 0 to indicate success, < 0 on failure.
       */
       public static native int addAliasToUuid(String alias, String uuid, byte[] userInfo, byte[] authorization);
+
+      /**
+       * Return the display name of a UUID.
+       *
+       * This function does no trigger any network actions, save to run from UI thread.
+       * @param uuid the UUID
+       * @authorization the authorization data
+       * @return The display name or a {@code null} pointer if none available
+       */
+       public static native byte[] getDisplayName(String uuid, byte[] authorization);
 }

@@ -98,6 +98,17 @@ namespace axolotl {
 
         void clearNameCache() { nameMap_.clear(); }
 
+        /**
+         * @brief Return the display name of a UUID.
+         *
+         * This function does no trigger any network actions, save to run from UI thread.
+
+         * @param uuid the UUID
+         * @authorization the authorization data
+         * @return The display name or an empty shared pointer if none available
+         */
+        const shared_ptr<string> getDisplayName(const string& uuid, const string& authorization);
+
     private:
         int32_t parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo);
 
