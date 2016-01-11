@@ -140,7 +140,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 }
 
 
-int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const string& uid, const string& alias)
+int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -178,7 +178,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
-    const string sender = uid.empty() ? envelope.name() : uid;
+    const string& sender = uid.empty() ? envelope.name() : uid;
 
     const string& senderScClientDevId = envelope.scclientdevid();
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
@@ -266,11 +266,11 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     */
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
-    cJSON_AddStringToObject(root, "sender", sender.c_str());
+    cJSON_AddStringToObject(root, "sender", sender.c_str());        // sender is the UUID string
 
     // backward compatibility or in case the message Transport does not support
     // alias handling. Then fallback to data in the message envelope.
-    cJSON_AddStringToObject(root, "alias", alias.empty() ? envelope.name().c_str() : alias.c_str());
+    cJSON_AddStringToObject(root, "display_name", displayName.empty() ? envelope.name().c_str() : displayName.c_str());
     cJSON_AddStringToObject(root, "scClientDevId", senderScClientDevId.c_str());
     cJSON_AddStringToObject(root, "msgId", msgId.c_str());
     cJSON_AddStringToObject(root, "message", messagePlain->c_str());

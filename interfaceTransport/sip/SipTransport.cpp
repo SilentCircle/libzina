@@ -56,7 +56,7 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
-                                        uint8_t* primaryAlias, size_t aliasLen) {
+                                        uint8_t* displayName, size_t dpNameLen) {
     LOGGER(INFO, __func__, " -->");
     string envelope((const char *) data, length);
 
@@ -69,17 +69,17 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* u
             uidString = uidString.substr(0, found);
         }
     }
-    string aliasString;
-    if (primaryAlias != NULL && aliasLen > 0) {
-        aliasString.assign((const char *) primaryAlias, aliasLen);
+    string displayNameString;
+    if (displayName != NULL && dpNameLen > 0) {
+        displayNameString.assign((const char *) displayName, dpNameLen);
 
-        size_t found = aliasString.find(scSipDomain);
+        size_t found = displayNameString.find(scSipDomain);
         if (found != string::npos) {
-            aliasString = aliasString.substr(0, found);
+            displayNameString = displayNameString.substr(0, found);
         }
     }
 
-    int32_t result = appInterface_->receiveMessage(envelope, uidString, aliasString);
+    int32_t result = appInterface_->receiveMessage(envelope, uidString, displayNameString);
     LOGGER(INFO, __func__, " <-- ", result);
 
     return result;
