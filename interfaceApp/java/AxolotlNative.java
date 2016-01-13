@@ -814,9 +814,9 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native String getUid(String alias, byte[] authorization);
 
     /**
-     * Get the use information for the alias.
+     * Get the user information for the alias.
      *
-     * This function returns a subset of the user information that's stored on the provisioning
+     * This function returns the user information that's stored in the cache on the provisioning
      * server for the alias. Because this function may request this mapping from a server the
      * caller must not call this function in the main (UI) thread.
      *
@@ -833,7 +833,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * provisioning server, the {@code alias0} is the user's preferred alias, returned by the
      * provisioning server.
      *
-     * @param alias The alias
+     * @param alias An alias name or the UUID
      * @param authorization The API-key, may be {@code null}. If this is {@code null} then the
      *                      functions uses the authorization data that the call defined in the
      *                      #doInit call.
@@ -841,6 +841,22 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *         for the alias.
      */
     public static native byte[] getUserInfo(String alias, byte[] authorization);
+
+    /**
+     * Get the user information for the alias from cache.
+     *
+     * This function does no trigger any network actions, save to run from UI thread.
+     *
+     * @param alias An alias name or the UUID
+     * @param authorization The API-key, may be {@code null}. If this is {@code null} then the
+     *                      functions uses the authorization data that the call defined in the
+     *                      #doInit call.
+     * @return a JSON formatted string as UTF byte array or {@code null} if no user data exists
+     *         for the alias in the cache.
+     *
+     * @see getUserInfo(String alias, byte[] authorization)
+     */
+    public static native byte[] getUserInfoFromCache(String alias, byte[] authorization);
 
     /**
      * Return a list of the alias names of a UUID.

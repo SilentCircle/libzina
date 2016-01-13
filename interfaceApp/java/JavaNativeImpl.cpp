@@ -1965,16 +1965,8 @@ JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray author
     return uidJava;
 }
 
-/*
- * Class:     axolotl_AxolotlNative
- * Method:    getUserInfo
- * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
- */
-JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray authorization, bool cacheOnly)
 {
-    (void)clazz;
-
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
         if (axoAppInterface == NULL)
@@ -1991,7 +1983,7 @@ JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray a
         return NULL;
 
     NameLookup* nameCache = NameLookup::getInstance();
-    shared_ptr<UserInfo> userInfo = nameCache->getUserInfo(aliasString, auth);
+    shared_ptr<UserInfo> userInfo = nameCache->getUserInfo(aliasString, auth, cacheOnly);
 
     if (!userInfo)
         return NULL;
@@ -2000,6 +1992,7 @@ JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray a
     cJSON_AddStringToObject(root, "uid", userInfo->uniqueId.c_str());
     cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
     cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
+    cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
 
     char *out = cJSON_Print(root);
     string json(out);
@@ -2008,6 +2001,30 @@ JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray a
     jbyteArray retData = stringToArray(env, json);
     return retData;
 }
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getUserInfo
+ * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+{
+    (void)clazz;
+    return getUserInfoInternal(env, alias, authorization, false);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getUserInfoFromCache
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+{
+    return getUserInfoInternal(env, alias, authorization, true);
+}
+
 
 /*
  * Class:     axolotl_AxolotlNative

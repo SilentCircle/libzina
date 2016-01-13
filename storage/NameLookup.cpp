@@ -108,12 +108,16 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     if (tmpData != NULL) {
         userInfo->displayName.assign(tmpData->valuestring);
     }
+    tmpData = cJSON_GetObjectItem(root, "lookup_uri");
+    if (tmpData != NULL) {
+        userInfo->contactLookupUri.assign(tmpData->valuestring);
+    }
     cJSON_Delete(root);
     LOGGER(INFO, __func__ , " <--");
     return OK;
 }
 
-const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization) {
+const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly) {
 
     LOGGER(INFO, __func__ , " -->");
     if (alias.empty() || authorization.empty()) {
@@ -131,6 +135,9 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
             return shared_ptr<UserInfo>();
         }
         return it->second;
+    }
+    if (cacheOnly) {
+        return shared_ptr<UserInfo>();
     }
     string result;
     int32_t code = Provisioning::getUserInfo(alias, authorization, &result);
@@ -202,13 +209,13 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const
     shared_ptr<list<string> > aliasList = make_shared<list<string> >();
     if (uuid.empty() || authorization.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty data");
-        return aliasList;
+        return shared_ptr<list<string> >();
     }
     unique_lock<mutex> lck(nameLock);
 
     if (nameMap_.size() == 0) {
         LOGGER(INFO, __func__ , " <-- empty name map");
-        return aliasList;
+        return shared_ptr<list<string> >();
     }
     for (map<string, shared_ptr<UserInfo> >::iterator it=nameMap_.begin(); it != nameMap_.end(); ++it) {
         shared_ptr<UserInfo> userInfo = (*it).second;
@@ -218,7 +225,8 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const
                 aliasList->push_back((*it).first);
             }
             else {
-                aliasList->push_back((*it).second->alias0);
+                if (!(*it).second->alias0.empty())
+                    aliasList->push_back((*it).second->alias0);
             }
         }
     }
@@ -228,7 +236,7 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const
 }
 
 NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const string& uuid, const string& userData,
-                                   const string& authorization)
+                                                const string& authorization)
 {
     LOGGER(INFO, __func__ , " -->");
 
@@ -289,13 +297,13 @@ const shared_ptr<string> NameLookup::getDisplayName(const string& uuid, const st
 
     if (uuid.empty() || authorization.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty data");
-        return displayName;
+        return shared_ptr<string>();
     }
     unique_lock<mutex> lck(nameLock);
 
     if (nameMap_.size() == 0) {
         LOGGER(INFO, __func__ , " <-- empty name map");
-        return displayName;
+        return shared_ptr<string>();
     }
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(uuid);

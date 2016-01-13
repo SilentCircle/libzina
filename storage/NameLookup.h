@@ -28,6 +28,7 @@ namespace axolotl {
         string uniqueId;        //!< User's unique name, canonical name, not human readable
         string displayName;     //!< User's full/display name as stored in the provisioning server
         string alias0;          //!< Primary alias, aka preferred alias, aka alias0
+        string contactLookupUri; //!< Set by contacts discovery to the contact's lookup key
     };
 
     class NameLookup {
@@ -56,17 +57,29 @@ namespace axolotl {
         /**
          * @brief Get UserInfo of an alias, e.g. a name or number.
          *
-         * @param alias the alias name/number
+         * @param alias the alias name/number or the UUID
          * @authorization the authorization data
          * @return A JSON string containing the UserInfo or empty shared pointer if alias is not known.
          */
-        const shared_ptr<UserInfo> getUserInfo(const string& alias, const string& authorization);
+        const shared_ptr<UserInfo> getUserInfo(const string& alias, const string& authorization, bool cacheOnly = false);
+
+        /**
+         * @brief Get UserInfo of an alias, e.g. a name or number if in cache
+         *
+         * This function does no trigger any network actions, save to run from UI thread.
+         *
+         * @param alias the alias name/number or the UUID
+         * @authorization the authorization data
+         * @return A JSON string containing the UserInfo or empty shared pointer if alias is not in cache.
+         */
+        const shared_ptr<UserInfo> getUserInfoFromCache(const string& alias, const string& authorization)
+        { return getUserInfo(alias, authorization, true); }
 
         /**
          * @brief Return a list of the alias names of a UUID.
          *
          * This function does no trigger any network actions, save to run from UI thread.
-
+         *
          * @param uuid the UUID
          * @authorization the authorization data
          * @return List of strings or empty shared pointer if alias is not known.
