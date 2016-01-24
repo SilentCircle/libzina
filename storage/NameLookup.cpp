@@ -98,9 +98,12 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
 
     tmpData = cJSON_GetObjectItem(root, "default_alias");
     if (tmpData == NULL) {
-        cJSON_Delete(root);
-        LOGGER(ERROR, __func__ , " Missing 'default_alias' field.");
-        return JS_FIELD_MISSING;
+        tmpData = cJSON_GetObjectItem(root, "display_alias");
+        if (tmpData == NULL) {
+            cJSON_Delete(root);
+            LOGGER(ERROR, __func__, " Missing 'default_alias' or 'display_alias' field.");
+            return JS_FIELD_MISSING;
+        }
     }
     userInfo->alias0.assign(tmpData->valuestring);
 
