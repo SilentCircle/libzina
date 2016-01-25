@@ -339,7 +339,18 @@ static const char* userData =
                 "{\n"
                         "\"display_name\": \"Radagast the Brown\",\n"
                         "\"uuid\": \"uvv9h7fbldqpfp82ed33dqv4lh\",\n"
-                        "\"default_alias\": \"radagast\"\n"
+                        "\"display_alias\": \"radagast\"\n"
+                        "}"
+
+        };
+
+static const char* userDataWithLookup =
+        {
+                "{\n"
+                        "\"display_name\": \"Radagast the Brown\",\n"
+                        "\"uuid\": \"uvv9h7fbldqpfp82ed33dqv4lh\",\n"
+                        "\"lookup_uri\": \"uri_uri_uri\",\n"
+                        "\"display_alias\": \"radagast\"\n"
                         "}"
 
         };
@@ -352,12 +363,18 @@ TEST_F(NameLookTestFixture, NameLookupAddAlias)
     string alias("checker");
     string auth("_DUMMY_");
     string data(userData);
+    string dataWithUri(userDataWithLookup);
 
     NameLookup::AliasAdd ret = nameCache->addAliasToUuid(alias, uuid, data, auth);
     ASSERT_EQ(NameLookup::UuidAdded, ret);
 
-    ret = nameCache->addAliasToUuid(alias, uuid, data, auth);
+    // Lookup again. this time with lookup URI, amend this to existing user info
+    ret = nameCache->addAliasToUuid(alias, uuid, dataWithUri, auth);
     ASSERT_EQ(NameLookup::AliasExisted, ret);
+
+    const shared_ptr<UserInfo> uid = nameCache->getUserInfo(alias, auth);
+    ASSERT_FALSE(!uid) << "Failed to get user info after amending lookup uri";
+    ASSERT_TRUE(uid->contactLookupUri == "uri_uri_uri");
 
     string alias1("checker1");
     ret = nameCache->addAliasToUuid(alias1, uuid, data, auth);

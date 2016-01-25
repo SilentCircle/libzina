@@ -47,6 +47,9 @@ namespace axolotl {
         /**
          * @brief Get UUID of an alias, e.g. a name or number.
          *
+         * Because this function may request this mapping from a server the caller
+         * must not call this function in the main (UI) thread.
+         *
          * @param alias the alias name/number
          * @authorization the authorization data
          *
@@ -56,6 +59,30 @@ namespace axolotl {
 
         /**
          * @brief Get UserInfo of an alias, e.g. a name or number.
+         *
+         * This function returns the user information that's stored in the cache or on the
+         * provisioning server for the alias. Because this function may request this mapping
+         * from a server the caller must not call this function in the main (UI) thread.
+         *
+         * The function returns a JSON formatted string:
+         @verbatim
+         {
+           "uid":          "<string>"
+           "display_name": "<string>"
+           "alias0":       "<string>"
+           "lookup_uri":   "<string>"
+         }
+         @endverbatim
+         *
+         * The @c display_name string contains the user's full/display name as returned by the
+         * provisioning server, the @c alias0 is the user's display alias, returned by the
+         * provisioning server. The @c lookup_uri may be empty if it was not set in the lookup
+         * cache with #addAliasToUuid.
+         *
+         * Note: the provisioning server never returns a @c lookup_uri string, the application
+         * must call #addAliasToUuid to set this string. Despite it's name an application may use
+         * this string to store some internal data for a UUID - the name was chosen because we used
+         * it to store the @c lookup_uri of a contact entry in Android's contact application.
          *
          * @param alias the alias name/number or the UUID
          * @authorization the authorization data
@@ -90,16 +117,32 @@ namespace axolotl {
          * @brief Add an alias name and user info to an UUID.
          *
          * If the alias name already exists in the map the function is a no-op and returns
-         * immediately.
+         * immediately after amending the @c lookup_uri string if necessary.
          *
-         * The function first performs a lookup on the UUID. If it exists then it simply
+         * The function then performs a lookup on the UUID. If it exists then it simply
          * adds the alias name for this UUID and uses the already existing user info, thus
-         * ignores the provided user info.
+         * ignores the provided user info except for the @c lookup_uri string. If
+         * @c lookup_uri is empty in the cached user info and it is available in
+         * the provided user info then the functions stores the @c lookup_uri string, thus
+         * the caller can amend existing user info data with a @c lookup_uri.
+         *
+         * If the UUID does not exist the function creates an UUID entry in the cache and
+         * links the user info to the new entry. Then it adds the alias name to the UUID.
          *
          * If the UUID does not exist the functions creates a UUID entry and links the
          * user info to the new entry. Then it adds the alias name to the UUID.
          *
          * This function does no trigger any network actions, save to run from UI thread.
+         *
+         * The JSON data should look like this:
+         @verbatim
+         {
+            "uuid":          "<string>",
+            "display_name":  "<string>",
+            "display_alias": "<string>"
+            "lookup_uri":    "<string>"
+          }
+         @endverbatim
          *
          * @param alias the alias name/number
          * @param uuid the UUID

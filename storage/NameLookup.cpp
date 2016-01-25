@@ -243,11 +243,23 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
 {
     LOGGER(INFO, __func__ , " -->");
 
-    // Check if this alias name already exists in the name map, if yes just return.
     unique_lock<mutex> lck(nameLock);
+
+    shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
+    int32_t code = parseUserInfo(userData, userInfo);
+    if (code != OK) {
+        LOGGER(ERROR, __func__ , " Error return from parsing.");
+        return UserDataError;
+    }
+
+    // Check if this alias name already exists in the name map, if yes amend
+    // lookup URI string if necessary, then return
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
+        if (it->second->contactLookupUri.empty() && !userInfo->contactLookupUri.empty())
+            it->second->contactLookupUri.assign(userInfo->contactLookupUri);
+
         LOGGER(INFO, __func__ , " <-- alias already exists");
         return AliasExisted;
     }
@@ -255,22 +267,16 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     pair<map<string, shared_ptr<UserInfo> >::iterator, bool> ret;
 
     // Check if we already have the user's UID in the map. If not then cache the
-    // userInfo with the UID
+    // userInfo with the UUID and add the alias for the UUID
     AliasAdd retValue;
     it = nameMap_.find(uuid);
     if (it == nameMap_.end()) {
-        shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
-        int32_t code = parseUserInfo(userData, userInfo);
-        if (code != OK) {
-            LOGGER(ERROR, __func__ , " Error return from parsing.");
-            return UserDataError;
-        }
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
         if (!ret.second) {
             LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
             return InsertFailed;
         }
-        // For existing account (old accounts) the UUID and the primary alias could be identical
+        // For existing accounts (old accounts) the UUID and the display alias are identical
         // Don't add an alias entry in this case
         if (alias.compare(userInfo->uniqueId) != 0) {
             ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
@@ -282,6 +288,9 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
         retValue = UuidAdded;
     }
     else {
+        if (it->second->contactLookupUri.empty() && !userInfo->contactLookupUri.empty())
+            it->second->contactLookupUri.assign(userInfo->contactLookupUri);
+
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
         if (!ret.second) {
             LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 2);
