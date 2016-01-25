@@ -128,7 +128,7 @@ public:
      * into the UI to handle the message, attributes, and attachments.
      * 
      * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
-     * @param uid   The SIP receiver callback sets this to the sender's UID if availabe, an
+     * @param uid   The SIP receiver callback sets this to the sender's UID if available, an
      *              empty string if not available
      * @param alias The SIP receiver callback sets this to the sender's primary alias name
      *              if available, an empty string if not available

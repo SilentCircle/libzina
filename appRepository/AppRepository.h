@@ -210,29 +210,29 @@ public:
      * @brief Load and returns a set of serialized event/message data.
      * 
      * Because each event/message record has a serial number and the highest serial number
-     * is the newest message this functions provides several ways to select the set of message
+     * is the newest message this function provides several ways to select the set of message
      * records to return:
      * 
      * If @c offset is -1 then the functions takes the highest available message number and
-     * subtracts the @c number to select and starts with this message. It sorts the message
-     * records is descending order, thus the newest message is the first in the returned vector.
-     * If the computation results in a negative record number then the functions starts with
+     * subtracts @c number and starts with this message. It sorts the message records in
+     * descending order, thus the newest message is the first in the returned vector.
+     * If the computation results in a negative record number then the function starts with
      * record number 1.
      * 
      * If @c offset is not -1 then the function takes this number as a sequence number of a
      * record and starts to select @c number of records or until the end of the record table,
      * sorted in descending order.
      * 
-     * If @c offset and @c number are both -1 the the functions return all message records,
+     * If @c offset and @c number are both -1 the the function returns all message records,
      * sorted in descending order.
      * 
-     * The functions may return less event than request if the application deleted event
-     * records in the selected range. The functions returns the sequence number of the last
+     * The function may return less events than requested if the application deleted event
+     * records in the selected range. The function returns the sequence number of the last
      * (oldest) event record, i.e. the smallest found sequence number.
      * 
      * @param name The conversation partner's name
      * @param offset Where to start to retrieve the events/message
-     * @param number how many enevt/message to load
+     * @param number how many event/message to load
      * @param events The serialized data of the events data structure, the caller must delete 
      *               the string pointers
      * @param lastMsgNumber Pointer to an integer. The function sets the integer to the sequence
