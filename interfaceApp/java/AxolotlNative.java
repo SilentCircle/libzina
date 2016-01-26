@@ -961,7 +961,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * @see getUserInfo(String alias, byte[] authorization)
      */
-    public static native byte[] getUserInfoFromCache(String alias, byte[] authorization);
+    public static native byte[] getUserInfoFromCache(String alias);
 
     /**
      * Return a list of the alias names of a UUID.
@@ -972,7 +972,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @authorization the authorization data
      * @return Array of strings (encoded as UTF-8 bytes) or {@code null} if alias is not known.
      */
-    public static native byte[][] getAliases(String uuid, byte[] authorization);
+    public static native byte[][] getAliases(String uuid);
 
     /**
      * Add an alias name and user info to an UUID.
@@ -1008,7 +1008,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @authorization the authorization data
      * @return a value > 0 to indicate success, < 0 on failure.
      */
-    public static native int addAliasToUuid(String alias, String uuid, byte[] userInfo, byte[] authorization);
+    public static native int addAliasToUuid(String alias, String uuid, byte[] userInfo);
 
     /**
      * Return the display name of a UUID.
@@ -1019,5 +1019,5 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @authorization the authorization data
      * @return The display name or a {@code null} pointer if none available
      */
-    public static native byte[] getDisplayName(String uuid, byte[] authorization);
+    public static native byte[] getDisplayName(String uuid);
 }

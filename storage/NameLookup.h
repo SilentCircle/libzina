@@ -85,22 +85,22 @@ namespace axolotl {
          * it to store the @c lookup_uri of a contact entry in Android's contact application.
          *
          * @param alias the alias name/number or the UUID
-         * @authorization the authorization data
+         * @param authorization the authorization data, can be empty if @c cacheOnly is @c true
+         * @param cacheOnly If true only look in the cache, don't contact server if not in cache
          * @return A JSON string containing the UserInfo or empty shared pointer if alias is not known.
          */
         const shared_ptr<UserInfo> getUserInfo(const string& alias, const string& authorization, bool cacheOnly = false);
 
         /**
-         * @brief Get UserInfo of an alias, e.g. a name or number if in cache
+         * @brief Get UserInfo of an alias, e.g. a name or number, if in cache
          *
          * This function does no trigger any network actions, save to run from UI thread.
          *
          * @param alias the alias name/number or the UUID
-         * @authorization the authorization data
          * @return A JSON string containing the UserInfo or empty shared pointer if alias is not in cache.
          */
-        const shared_ptr<UserInfo> getUserInfoFromCache(const string& alias, const string& authorization)
-        { return getUserInfo(alias, authorization, true); }
+        const shared_ptr<UserInfo> getUserInfoFromCache(const string& alias)
+        { return getUserInfo(alias, string(), true); }
 
         /**
          * @brief Return a list of the alias names of a UUID.
@@ -111,7 +111,7 @@ namespace axolotl {
          * @authorization the authorization data
          * @return List of strings or empty shared pointer if alias is not known.
          */
-        const shared_ptr<list<string> > getAliases(const string& uuid, const string& authorization);
+        const shared_ptr<list<string> > getAliases(const string& uuid);
 
         /**
          * @brief Add an alias name and user info to an UUID.
@@ -150,7 +150,7 @@ namespace axolotl {
          * @authorization the authorization data
          * @return a value > 0 to indicate success, < 0 on failure.
          */
-        AliasAdd addAliasToUuid(const string& alias, const string& uuid, const string& userInfo, const string& authorization);
+        AliasAdd addAliasToUuid(const string& alias, const string& uuid, const string& userInfo);
 
         void clearNameCache() { nameMap_.clear(); }
 
@@ -163,7 +163,7 @@ namespace axolotl {
          * @authorization the authorization data
          * @return The display name or an empty shared pointer if none available
          */
-        const shared_ptr<string> getDisplayName(const string& uuid, const string& authorization);
+        const shared_ptr<string> getDisplayName(const string& uuid);
 
     private:
         int32_t parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo);

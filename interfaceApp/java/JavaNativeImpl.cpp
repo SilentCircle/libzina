@@ -2020,9 +2020,10 @@ JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray a
  * Signature: (Ljava/lang/String;[B)[B
  */
 JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias)
 {
-    return getUserInfoInternal(env, alias, authorization, true);
+    (void)clazz;
+    return getUserInfoInternal(env, alias, NULL, true);
 }
 
 
@@ -2032,16 +2033,10 @@ JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias, jby
  * Signature: (Ljava/lang/String;[B)[[B
  */
 JNIEXPORT jobjectArray JNICALL
-JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray authorization)
+JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid)
 {
     (void)clazz;
 
-    string auth;
-    if (!arrayToString(env, authorization, &auth) || auth.empty()) {
-        if (axoAppInterface == NULL)
-            return NULL;
-        auth = axoAppInterface->getOwnAuthrization();
-    }
     if (uuid == NULL) {
         return NULL;
     }
@@ -2052,7 +2047,7 @@ JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray aut
         return NULL;
 
     NameLookup* nameCache = NameLookup::getInstance();
-    shared_ptr<list<string> > aliases = nameCache->getAliases(uuidString, auth);
+    shared_ptr<list<string> > aliases = nameCache->getAliases(uuidString);
     if (!aliases)
         return NULL;
     size_t size = aliases->size();
@@ -2079,16 +2074,10 @@ JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray aut
  * Signature: (Ljava/lang/String;Ljava/lang/String;[B[B)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring uuid, jbyteArray userData, jbyteArray authorization)
+JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring uuid, jbyteArray userData)
 {
     (void)clazz;
 
-    string auth;
-    if (!arrayToString(env, authorization, &auth)) {
-        if (axoAppInterface == NULL)
-            return NameLookup::MissingParameter;
-        auth = axoAppInterface->getOwnAuthrization();
-    }
     if (uuid == NULL) {
         return NameLookup::MissingParameter;
     }
@@ -2112,7 +2101,7 @@ JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring u
         return NameLookup::MissingParameter;
 
     NameLookup* nameCache = NameLookup::getInstance();
-    NameLookup::AliasAdd ret = nameCache->addAliasToUuid(aliasString, uuidString, data, auth);
+    NameLookup::AliasAdd ret = nameCache->addAliasToUuid(aliasString, uuidString, data);
     return ret;
 }
 
@@ -2122,16 +2111,10 @@ JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring u
  * Signature: (Ljava/lang/String;[B)[B
  */
 JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray authorization)
+JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid)
 {
     (void)clazz;
 
-    string auth;
-    if (!arrayToString(env, authorization, &auth)) {
-        if (axoAppInterface == NULL)
-            return NULL;
-        auth = axoAppInterface->getOwnAuthrization();
-    }
     if (uuid == NULL) {
         return NULL;
     }
@@ -2142,7 +2125,7 @@ JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid, jbyteArray
         return NULL;
 
     NameLookup* nameCache = NameLookup::getInstance();
-    shared_ptr<string> displayName = nameCache->getDisplayName(uuidString, auth);
+    shared_ptr<string> displayName = nameCache->getDisplayName(uuidString);
     jbyteArray retData = stringToArray(env, *displayName);
     return retData;
 }

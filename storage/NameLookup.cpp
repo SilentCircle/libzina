@@ -123,8 +123,8 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
 const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly) {
 
     LOGGER(INFO, __func__ , " -->");
-    if (alias.empty() || authorization.empty()) {
-        LOGGER(ERROR, __func__ , " <-- empty data");
+    if (alias.empty()) {
+        LOGGER(ERROR, __func__ , " <-- empty alias name");
         return shared_ptr<UserInfo>();
     }
 
@@ -142,6 +142,11 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     if (cacheOnly) {
         return shared_ptr<UserInfo>();
     }
+    if (authorization.empty()) {
+        LOGGER(ERROR, __func__ , " <-- missing authorization");
+        return shared_ptr<UserInfo>();
+    }
+
     string result;
     int32_t code = Provisioning::getUserInfo(alias, authorization, &result);
 
@@ -206,12 +211,12 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     return userInfo;
 }
 
-const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const string& authorization)
+const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
 {
     LOGGER(INFO, __func__ , " -->");
     shared_ptr<list<string> > aliasList = make_shared<list<string> >();
-    if (uuid.empty() || authorization.empty()) {
-        LOGGER(ERROR, __func__ , " <-- empty data");
+    if (uuid.empty()) {
+        LOGGER(ERROR, __func__ , " <-- empty uuid");
         return shared_ptr<list<string> >();
     }
     unique_lock<mutex> lck(nameLock);
@@ -238,12 +243,16 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid, const
     return aliasList;
 }
 
-NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const string& uuid, const string& userData,
-                                                const string& authorization)
+NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const string& uuid, const string& userData)
 {
     LOGGER(INFO, __func__ , " -->");
 
     unique_lock<mutex> lck(nameLock);
+
+    if (uuid.empty()) {
+        LOGGER(ERROR, __func__ , " <-- missing UUID data");
+        return UserDataError;
+    }
 
     shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
     int32_t code = parseUserInfo(userData, userInfo);
@@ -302,13 +311,13 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     return retValue;
 }
 
-const shared_ptr<string> NameLookup::getDisplayName(const string& uuid, const string& authorization)
+const shared_ptr<string> NameLookup::getDisplayName(const string& uuid)
 {
     LOGGER(INFO, __func__ , " -->");
     shared_ptr<string> displayName = make_shared<string>();
 
-    if (uuid.empty() || authorization.empty()) {
-        LOGGER(ERROR, __func__ , " <-- empty data");
+    if (uuid.empty()) {
+        LOGGER(ERROR, __func__ , " <-- missing UUID data");
         return shared_ptr<string>();
     }
     unique_lock<mutex> lck(nameLock);

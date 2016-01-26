@@ -235,7 +235,7 @@ TEST_F(NameLookTestFixture, NameLookUpBasic)
     string uid2 = nameCache->getUid(alias2, auth);
     ASSERT_EQ(expectedUid, uid2) << "UID lookup for other alias name failed";
 
-    shared_ptr<list<string> > aliases = nameCache->getAliases(expectedUid, auth);
+    shared_ptr<list<string> > aliases = nameCache->getAliases(expectedUid);
     size_t size = aliases->size();
     ASSERT_EQ(3, size);
 
@@ -365,11 +365,11 @@ TEST_F(NameLookTestFixture, NameLookupAddAlias)
     string data(userData);
     string dataWithUri(userDataWithLookup);
 
-    NameLookup::AliasAdd ret = nameCache->addAliasToUuid(alias, uuid, data, auth);
+    NameLookup::AliasAdd ret = nameCache->addAliasToUuid(alias, uuid, data);
     ASSERT_EQ(NameLookup::UuidAdded, ret);
 
     // Lookup again. this time with lookup URI, amend this to existing user info
-    ret = nameCache->addAliasToUuid(alias, uuid, dataWithUri, auth);
+    ret = nameCache->addAliasToUuid(alias, uuid, dataWithUri);
     ASSERT_EQ(NameLookup::AliasExisted, ret);
 
     const shared_ptr<UserInfo> uid = nameCache->getUserInfo(alias, auth);
@@ -377,10 +377,10 @@ TEST_F(NameLookTestFixture, NameLookupAddAlias)
     ASSERT_TRUE(uid->contactLookupUri == "uri_uri_uri");
 
     string alias1("checker1");
-    ret = nameCache->addAliasToUuid(alias1, uuid, data, auth);
+    ret = nameCache->addAliasToUuid(alias1, uuid, data);
     ASSERT_EQ(NameLookup::AliasAdded, ret);
 
-    shared_ptr<list<string> > aliases = nameCache->getAliases(uuid, auth);
+    shared_ptr<list<string> > aliases = nameCache->getAliases(uuid);
     size_t size = aliases->size();
     ASSERT_EQ(3, size);
 
