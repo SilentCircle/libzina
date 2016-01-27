@@ -2126,6 +2126,8 @@ JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid)
 
     NameLookup* nameCache = NameLookup::getInstance();
     shared_ptr<string> displayName = nameCache->getDisplayName(uuidString);
+    if (!displayName)
+        return NULL;
     jbyteArray retData = stringToArray(env, *displayName);
     return retData;
 }
