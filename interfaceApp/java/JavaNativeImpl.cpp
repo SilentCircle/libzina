@@ -1993,8 +1993,9 @@ static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray aut
     cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
     cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
     cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
+    cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
 
-    char *out = cJSON_Print(root);
+    char *out = cJSON_PrintUnformatted(root);
     string json(out);
     cJSON_Delete(root); free(out);
 
@@ -2026,6 +2027,49 @@ JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias)
     return getUserInfoInternal(env, alias, NULL, true);
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    refreshUserData
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT jbyteArray
+JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+{
+    string auth;
+    if (!arrayToString(env, authorization, &auth) || auth.empty()) {
+        if (axoAppInterface == NULL)
+            return NULL;
+        auth = axoAppInterface->getOwnAuthrization();
+    }
+    if (alias == NULL) {
+        return NULL;
+    }
+    const char* aliasTmp = env->GetStringUTFChars(alias, 0);
+    string aliasString(aliasTmp);
+    env->ReleaseStringUTFChars(alias, aliasTmp);
+    if (aliasString.empty())
+        return NULL;
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    shared_ptr<UserInfo> userInfo = nameCache->refreshUserData(aliasString, auth);
+
+    if (!userInfo)
+        return NULL;
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "uid", userInfo->uniqueId.c_str());
+    cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
+    cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
+    cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
+    cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
+
+    char *out = cJSON_PrintUnformatted(root);
+    string json(out);
+    cJSON_Delete(root); free(out);
+
+    jbyteArray retData = stringToArray(env, json);
+    return retData;
+}
 
 /*
  * Class:     axolotl_AxolotlNative

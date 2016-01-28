@@ -924,6 +924,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *   "display_name": "<string>"
      *   "alias0":       "<string>"
      *   "lookup_uri":   "<string>"
+     *   "avatar_url":   "<string>"
      * }
      * </pre>
      *
@@ -946,6 +947,22 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      */
     //**ANN** @WorkerThread
     public static native byte[] getUserInfo(String alias, byte[] authorization);
+
+    /**
+     * Refresh cached user data.
+     *
+     * The function accesses the provisioning server to get a fresh set of user data.
+     *
+     * @param alias the alias name/number or the UUID
+     * @param authorization the authorization data, can be empty if @c cacheOnly is @c true
+     * @param cacheOnly If true only look in the cache, don't contact server if not in cache
+     * @return  a JSON formatted string as UTF byte array or {@code null} if no user data exists
+     *         for the alias.
+     *
+     * @see getUserInfo(String alias, byte[] authorization)
+     */
+    //**ANN** @WorkerThread
+    public static native byte[] refreshUserData(String aliasUuid, byte[] authorization);
 
     /**
      * Get the user information for the alias from cache.
@@ -982,10 +999,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * The function then performs a lookup on the UUID. If it exists then it simply
      * adds the alias name for this UUID and uses the already existing user info, thus
-     * ignores the provided user info except for the {@code lookup_uri} string. If
-     * {@code lookup_uri} is empty in the cached user info and it is available in
-     * the provided user info then the functions stores the {@code lookup_uri} string,
-     * thus the caller can amend existing user info data with a {@code lookup_uri}.
+     * ignores the provided user info except for the {@code lookup_uri} and {@code avatar_url}
+     * strings.
+     *
+     * If {@code lookup_uri} or {@code avatar_url} are empty in the cached user info and if
+     * they are available in the provided user info then the functions stores the
+     * {@code lookup_uri} or {@code avatar_url} string, thus the caller can amend existing
+     * user info data with {@code lookup_uri} and/or {@code avatar_url}.
      *
      * If the UUID does not exist the function creates an UUID entry in the cache and
      * links the user info to the new entry. Then it adds the alias name to the UUID.
@@ -999,6 +1019,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *   "display_name":  "<string>",
      *   "display_alias": "<string>"
      *   "lookup_uri":    "<string>"
+     *   "avatar_url":    "<string>"
      * }
      * </pre>
      *

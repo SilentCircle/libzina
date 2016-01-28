@@ -42,41 +42,8 @@ const string NameLookup::getUid(const string &alias, const string& authorization
 
 /*
  * Structure of the user info JSON that the provisioning server returns:
- * {
-    "last_name": "",
-    "hash": "2f8f64dd8e3da11cd25f4148f242377bc5bb6c67",
-    "keys": [],
-    "active_st_device": "a2563336fd7435701fc3cb77ffee312f",
-    "country_code": "",
-    "silent_text": true,
-    "display_name": "nodid2",
-    "permissions":
-    {
-        "can_send_media": true,
-        "silent_text": true,
-        "outbound_messaging": true,
-        "can_receive_voicemail": false,
-        "silent_desktop": true,
-        "outbound_calling": true,
-        "silent_phone": true,
-        "inbound_messaging": true,
-        "has_oca": false,
-        "inbound_calling": true
-    },
-    "first_name": "",
-    "force_password_change": false,
-    "user_id": "uq2et4rhvj9kgxlud3eh0kp74j",
-    "primary_alias": "nodid2",
-    "avatar_url": null,
-    "silent_phone": true,
-    "subscription":
-    {
-        "state": "paying",
-        "expires": "2016-07-08T00:00:00Z",
-        "has_expired": false,
-        "handles_own_billing": true
-    }
- * }
+
+{"display_alias": <string>, "avatar_url": <string>, "display_name": <string>, "uuid": <string>}
  *
  */
 int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
@@ -89,7 +56,7 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     }
 
     cJSON* tmpData = cJSON_GetObjectItem(root, "uuid");
-    if (tmpData == NULL) {
+    if (tmpData == NULL || tmpData->valuestring == NULL) {
         cJSON_Delete(root);
         LOGGER(ERROR, __func__ , " Missing 'uuid' field.");
         return JS_FIELD_MISSING;
@@ -97,9 +64,9 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     userInfo->uniqueId.assign(tmpData->valuestring);
 
     tmpData = cJSON_GetObjectItem(root, "default_alias");
-    if (tmpData == NULL) {
+    if (tmpData == NULL || tmpData->valuestring == NULL) {
         tmpData = cJSON_GetObjectItem(root, "display_alias");
-        if (tmpData == NULL) {
+        if (tmpData == NULL || tmpData->valuestring == NULL) {
             cJSON_Delete(root);
             LOGGER(ERROR, __func__, " Missing 'default_alias' or 'display_alias' field.");
             return JS_FIELD_MISSING;
@@ -108,12 +75,16 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     userInfo->alias0.assign(tmpData->valuestring);
 
     tmpData = cJSON_GetObjectItem(root, "display_name");
-    if (tmpData != NULL) {
+    if (tmpData != NULL && tmpData->valuestring != NULL) {
         userInfo->displayName.assign(tmpData->valuestring);
     }
     tmpData = cJSON_GetObjectItem(root, "lookup_uri");
-    if (tmpData != NULL) {
+    if (tmpData != NULL && tmpData->valuestring != NULL) {
         userInfo->contactLookupUri.assign(tmpData->valuestring);
+    }
+    tmpData = cJSON_GetObjectItem(root, "avatar_url");
+    if (tmpData != NULL && tmpData->valuestring != NULL) {
+        userInfo->avatarUrl.assign(tmpData->valuestring);
     }
     cJSON_Delete(root);
     LOGGER(INFO, __func__ , " <--");
@@ -211,6 +182,44 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     return userInfo;
 }
 
+shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const string& authorization)
+{
+    LOGGER(INFO, __func__ , " -->");
+    if (aliasUuid.empty()) {
+        LOGGER(ERROR, __func__ , " <-- empty alias name");
+        return shared_ptr<UserInfo>();
+    }
+
+    // Check if this alias name already exists in the name map
+    unique_lock<mutex> lck(nameLock);
+    map<string, shared_ptr<UserInfo> >::iterator it;
+    it = nameMap_.find(aliasUuid);
+    if (it == nameMap_.end()) {
+        lck.unlock();
+        return getUserInfo(aliasUuid, authorization, false);
+        LOGGER(INFO, __func__ , " <-- No cached data, just load");
+    }
+    string result;
+    int32_t code = Provisioning::getUserInfo(aliasUuid, authorization, &result);
+    if (code >= 400) {
+        LOGGER(ERROR, __func__ , " <-- no refresh for unknown user");
+        return shared_ptr<UserInfo>();
+    }
+    shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
+    code = parseUserInfo(result, userInfo);
+    if (code != OK) {
+        LOGGER(ERROR, __func__ , " Error return from parsing.");
+        return shared_ptr<UserInfo>();
+    }
+    // Replace existing data, don't touch the lookup_uri because the server _never_ sends
+    // it. Only the application may delete it.
+    it->second->displayName.assign(userInfo->displayName);
+    it->second->alias0.assign(userInfo->alias0);
+    it->second->avatarUrl.assign(userInfo->avatarUrl);
+
+    return it->second;
+}
+
 const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
 {
     LOGGER(INFO, __func__ , " -->");
@@ -266,8 +275,8 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
-        if (it->second->contactLookupUri.empty() && !userInfo->contactLookupUri.empty())
-            it->second->contactLookupUri.assign(userInfo->contactLookupUri);
+        it->second->contactLookupUri.assign(userInfo->contactLookupUri);
+        it->second->avatarUrl.assign(userInfo->avatarUrl);
 
         LOGGER(INFO, __func__ , " <-- alias already exists");
         return AliasExisted;
@@ -297,8 +306,8 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
         retValue = UuidAdded;
     }
     else {
-        if (it->second->contactLookupUri.empty() && !userInfo->contactLookupUri.empty())
-            it->second->contactLookupUri.assign(userInfo->contactLookupUri);
+        it->second->contactLookupUri.assign(userInfo->contactLookupUri);
+        it->second->avatarUrl.assign(userInfo->avatarUrl);
 
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
         if (!ret.second) {

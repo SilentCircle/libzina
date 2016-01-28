@@ -433,6 +433,14 @@ JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getUserInfo
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    refreshUserData
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_refreshUserData
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    getUserInfoFromCache
  * Signature: (Ljava/lang/String;)[B
  */
