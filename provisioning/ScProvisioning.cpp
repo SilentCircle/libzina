@@ -218,7 +218,7 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
  */
 static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&api_key=%s";
 
-list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization)
+list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -230,8 +230,11 @@ list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& na
     std::string response;
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
-    if (code >= 400)
+    if (code >= 400) {
+        if (errorCode != NULL)
+            *errorCode = code;
         return NULL;
+    }
 
     list<pair<string, string> >* deviceIds = new list<pair<string, string> >;
 

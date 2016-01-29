@@ -736,10 +736,22 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
     bool toSibling = recipient == ownUser_;
 
     list<pair<string, string> >* devices = NULL;
+    int32_t errorCode = 0;
     if (!toSibling || !ownChecked_) {
-        devices = Provisioning::getAxoDeviceIds(recipient, authorization_);
+        devices = Provisioning::getAxoDeviceIds(recipient, authorization_, &errorCode);
     }
-    if (devices == NULL || devices->empty()) {
+    if (devices == NULL) {
+        char tmpBuff[20];
+        snprintf(tmpBuff, 10, "%d", errorCode);
+        string errorString(tmpBuff);
+
+        errorCode_ = NETWORK_ERROR;
+        errorInfo_ = errorString;
+        LOGGER(INFO, __func__, " <-- Network error: ", errorCode);
+        return NULL;
+    }
+
+    if (devices->empty()) {
         errorCode_ = NO_DEVS_FOUND;
         errorInfo_ = recipient;
         delete devices;

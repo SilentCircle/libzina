@@ -16,7 +16,7 @@ AxoConversation* AxoConversation::loadConversation(const string& localUser, cons
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     if (!store->hasConversation(user, deviceId, localUser)) {
-        LOGGER(WARNING, __func__, " <-- No such conversation: ", user);
+        LOGGER(INFO, __func__, " <-- No such conversation: ", user);
         return NULL;
     }
 
