@@ -661,10 +661,14 @@ cleanup:
 }
 
 static const char* selectEventAllDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 ORDER by msgNumber DESC;";
-static const char* selectEventLimitDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber>=?2 ORDER BY msgNumber DESC LIMIT ?3;";
+static const char* selectEventLimitDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber<=?2 ORDER BY msgNumber DESC LIMIT ?3;";
+static const char* selectEventLimitAsc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber>=?2 ORDER BY msgNumber ASC LIMIT ?3;";
 static const char* selectEventBetweenDesc = "SELECT data, msgNumber FROM events WHERE convName=?1 AND msgNumber BETWEEN ?2 AND ?3 ORDER BY msgNumber DESC;";
 
-int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t number, list<std::string*>* const events, int32_t* const lastMsgNumber) const
+#define FROM_YOUNGEST_TO_OLDEST -1
+#define FROM_OLDEST_TO_YOUNGEST 1
+
+int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t number, int32_t direction, list<std::string*>* const events, int32_t* const lastMsgNumber) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
@@ -673,12 +677,17 @@ int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t n
     if (offset == -1 && number == -1) {            // selectEvent = "SELECT data, msgNumber FROM events WHERE eventid=?1 and convName=?2;";
         SQLITE_CHK(SQLITE_PREPARE(db, selectEventAllDesc, -1, &stmt, NULL));
     }
-    else if (offset == -1 && number > 0) {
+    else if (direction == FROM_YOUNGEST_TO_OLDEST) {
         int32_t highestNum = getHighestMsgNum(name);
-        int32_t startAt = highestNum - number;
+        int32_t startAt = offset == -1 ? highestNum : offset;
         startAt = (startAt <= 0) ? 1 : startAt;
         SQLITE_CHK(SQLITE_PREPARE(db, selectEventLimitDesc, -1, &stmt, NULL));
         SQLITE_CHK(sqlite3_bind_int(stmt, 2, startAt));
+        SQLITE_CHK(sqlite3_bind_int(stmt, 3, number));
+    }
+    else if (direction == FROM_OLDEST_TO_YOUNGEST) {
+        SQLITE_CHK(SQLITE_PREPARE(db, selectEventLimitAsc, -1, &stmt, NULL));
+        SQLITE_CHK(sqlite3_bind_int(stmt, 2, offset));
         SQLITE_CHK(sqlite3_bind_int(stmt, 3, number));
     }
     else {

@@ -229,7 +229,7 @@ JNIEXPORT jboolean JNICALL Java_axolotl_AxolotlNative_existEvent
  * Signature: ([BII[I)[[B
  */
 JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadEvents
-  (JNIEnv *, jclass, jbyteArray, jint, jint, jintArray);
+  (JNIEnv *, jclass, jbyteArray, jint, jint, jint, jintArray);
 
 /*
  * Class:     axolotl_AxolotlNative

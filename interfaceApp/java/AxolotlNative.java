@@ -26,6 +26,11 @@ package axolotl;
 public abstract class AxolotlNative { //  extends Service {  -- depends on the implementation of the real Java class 
 
     /**
+     * Some constants, mirrored from C++ files
+     */
+    public static final int DEVICE_SCAN = 1;        //!< Notify callback requests a device re-scan (AppInterface.h)
+
+    /**
      * Initialize the Axolotl library.
      * 
      * The following native functions MUST NOT be static because their native implementation 
@@ -505,35 +510,37 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * is the newest message. This function provides several ways to select the set of message
      * records to return:
      *
-     * If @c offset is -1 then the functions takes the highest available message number and
-     * subtracts the @c number to select and starts with this message. It sorts the message
+     * If @c direction is -1 then the functions takes offset (in case of -1 the highest available
+     * message number) and retrieves @c number messages. It sorts the message
      * records is descending order, thus the newest message is the first in the returned vector.
-     * If the computation results in a negative record number then the functions starts with
-     * record number 1.
      *
-     * If @c offset is not -1 then the function takes this number as a sequence number of a
+     * If @c direction is 1 then the function takes @c offset as a sequence number of a
      * record and starts to select @c number of records or until the end of the record table,
-     * sorted in descending order.
+     * sorted in ascending order.
      *
      * If @c offset and @c number are both -1 the the functions return all message records,
      * sorted in descending order.
      *
-     * The functions may return less events than request if the application deleted event
-     * records in the selected range. The functions returns the sequence number of the last
-     * (oldest) event record, i.e. the smallest found sequence number.
+     * If @c direction is not -1 or 1 and if @c offset and @c number are not -1 then the function
+     * selects records between @c offset and @c offset+number-1 .
+     *
+     * The functions returns the sequence number of the last (oldest) event record, i.e. the
+     * smallest found sequence number in case @c direction is -1 and largest sequence number in
+     * all other cases.
      *
      * This function does no trigger any network actions, save to run from UI thread, maybe
      * I/O bound, consider using a background thread.
      *
      * @param name The conversation partner's name
      * @param offset Where to start to retrieve the events/message
-     * @param number how many events/messages to load
+     * @param number How many events/messages to load
+     * @param direction Paging direction from youngest to oldest (-1) or from oldest to youngest (1)
      * @param code array of length 2 to return the request result code at index 0 (usually 
      *             a SQLITE code) and the message sequence number at index 1. The message number
      *             0 indicates that no messages were read.
      * @return Array of byte arrays that contain the serialized event data
      */
-    public static native byte[][] loadEvents(byte[]name, int offset, int number, int[] code);
+    public static native byte[][] loadEvents(byte[]name, int offset, int number, int direction, int[] code);
 
     /**
      * Delete an event from a conversation.

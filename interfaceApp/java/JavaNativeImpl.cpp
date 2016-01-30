@@ -1232,7 +1232,7 @@ JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
  * Signature: ([BII[I)[[B
  */
 JNIEXPORT jobjectArray JNICALL 
-JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint offset, jint number, jintArray code)
+JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint offset, jint number, jint direction, jintArray code)
 {
     (void)clazz;
 
@@ -1247,7 +1247,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 
     int32_t msgNumber = 0;
     list<string*> events;
-    int32_t result = appRepository->loadEvents(name, static_cast<uint32_t>(offset), number, &events, &msgNumber);
+    int32_t result = appRepository->loadEvents(name, static_cast<uint32_t>(offset), number, direction, &events, &msgNumber);
 
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
