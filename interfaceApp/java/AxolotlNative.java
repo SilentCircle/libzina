@@ -1,18 +1,36 @@
 package axolotl;
 
+/*
+This file uses annotations. Because we use this file only to create the JNI
+interface file we use the normal Java compiler (javac) without any additional
+libraries etc. Thus the annotation statements are commented using special
+comments. To remove the comments and enable the annotations perform replacments:
+- replace '//**ANN** ' with an empty string globally
+- replace '/*!' with an empty string globally
+- replace '!*/' with an empty string globally
+
+To create the JNI interface file:
+- cd to the AxolotlNative.java directory
+- run 'javac -d . AxolotlNative.java'
+- run 'javah axolotl.AxolotlNative'
+
+After this you can remove the created 'axolotl' directory.
+*/
+
 //**ANN** import android.support.annotation.WorkerThread;
+//**ANN** import android.support.annotation.Nullable;
 
 /**
  * Native functions and callbacks for Axolotl library.
  *
  * The functions in this class often use JSON formatted strings to exchange data with the
  * native Axolotl library functions.
- * 
+ *
  * The native functions expect UTF-8 encoded strings and return UTF-8 encoded strings.
- * 
- * Java uses a modified UTF-8 encoding in its String class and this encoding could 
+ *
+ * Java uses a modified UTF-8 encoding in its String class and this encoding could
  * give problems if a Java program hands over a pure Java String to the native functions.
- * Fortunately Java can convert its internal encoding into the correct standard encoding. 
+ * Fortunately Java can convert its internal encoding into the correct standard encoding.
  * The following Java code snippet shows how to to it:
  * <code>
  * String str = "contains some other characters öäüß á â ã";
@@ -23,7 +41,7 @@ package axolotl;
  * and not {@code String}.
  */
 
-public abstract class AxolotlNative { //  extends Service {  -- depends on the implementation of the real Java class 
+public abstract class AxolotlNative { //  extends Service {  -- depends on the implementation of the real Java class
 
     /**
      * Some constants, mirrored from C++ files
@@ -32,13 +50,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Initialize the Axolotl library.
-     * 
-     * The following native functions MUST NOT be static because their native implementation 
+     *
+     * The following native functions MUST NOT be static because their native implementation
      * use the "this" object.
-     * 
+     *
      * An application must call this functions before it can use any other Axolotl library
      * functions.
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @param flags Lower 4 bits define debugging level, upper bits some flags
@@ -47,7 +65,8 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param userName the local username, for SC it's the name of the user's account
      * @param authorization some authorization code, for SC it's the API key of this device
      * @param scClientDevId the sender's device id, same as used to register the device (v1/me/device/{device_id}/)
-     * @return 1 if call was OK, a negative value in case of errors
+     * @return 1 if call was OK and a 'own' conversation existed, 2 if an 'own' conversation was created and
+     *         initialized, a negative value in case of errors
      */
     public native int doInit(int flags, String dbName, byte[] dbPassPhrase, byte[] userName, byte[] authorization, byte[] scClientDevId);
 
@@ -61,11 +80,11 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * This is a blocking call and the function returns after the transport layer accepted the
      * message and returns. This function may take some time if the recipient is not yet known
      * and has no Axolotl session. In this case the function interrogates the provisioning server
-     * to get the necessary Axolotl data of the recipient, creates a session and then sends the 
+     * to get the necessary Axolotl data of the recipient, creates a session and then sends the
      * message.
      *
      * After encrypting the message the function forwards the message data to the message handler.
-     * The message handler takes the message, processes it and returns a unique message id (see 
+     * The message handler takes the message, processes it and returns a unique message id (see
      * description of message handler API). The UI should use the unique id to monitor message
      * state, for example if the message was actually sent, etc. Refer to message state report
      * callback below. The message id is an opaque datum.
@@ -75,14 +94,14 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * bundle.
      *
      * @param messageDescriptor      The JSON formatted message descriptor, string, required.
-     * 
+     *
      * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty
      *                               string ot {@code null} shows that not attachment descriptor is available.
-     * 
+     *
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string ot {@code null} shows that not attributes are available.
-     * 
-     * @return A list of unique 64-bit transport message identifiers, one for each message set to the user's 
+     *
+     * @return A list of unique 64-bit transport message identifiers, one for each message set to the user's
      *         devices. In case of error the functions return {@code null} and the {@code getErrorCode} and
      *         {@code getErrorInfo} have the details.
      */
@@ -91,11 +110,11 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Send message to sibling devices.
-     * 
+     *
      * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
      * belong to a user. The client uses function for send synchronization message to the siblings to
      * keep them in sync.
-     * 
+     *
      * @param messageDescriptor      The JSON formatted message descriptor, required
      * @param attachmentDescriptor   A string that contains an attachment descriptor. An empty string
      *                               shows that not attachment descriptor is available.
@@ -123,7 +142,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Get public part of own identity key.
-     * 
+     *
      * The returned array contains the B64 encoded data of the own public identity key, optionally
      * followed by a colon and the device name.
      *
@@ -136,32 +155,33 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Get a list of all identity keys of a remote party.
-     * 
-     * The remote partner may have more than one device. This function returns the identity 
+     *
+     * The remote partner may have more than one device. This function returns the identity
      * keys of remote user's devices that this client knows of. The client sends messages only
      * to these known device of the remote user.
-     * 
+     *
      * The returned strings in the list contain the B64 encoded data of the public identity keys
      * of the known devices, followed by a colon and the device name, followed by a colon and the
-     * the device id, followed by a colon and the ZRTP verify state.
-     * 
+     * the device id, followed by a colon and the ZRTP verify state:
+     *
+     * identityKey:device name:device id:verify state
+     *
      * This function does no trigger any network actions, save to run from UI thread,
      * uses database functions. Consider using a worker thread, may take some time to run
      * all database actions
      *
-     * identityKey:device name:device id:verify state
-     * 
      * @param user the name of the user
-     * @return array of identity keys, {@code null} if no identity keys are available for that user.
+     * @return array of identity keys.
      */
-    public static native byte[][] getIdentityKeys(byte[] user);
+    //**ANN** @Nullable
+    public static native byte[][] getIdentityKeys(/*!@Nullable!*/ byte[] user);
 
     /**
      * Request a user's Axolotl device names.
      *
      * Ask the server for known Axolotl devices of a user.
      *
-     * @return JSON formatted information about user's Axolotl devices. It returns {@code null} 
+     * @return JSON formatted information about user's Axolotl devices. It returns {@code null}
      *         if no devices known for this user.
      */
     //**ANN** @WorkerThread
@@ -172,12 +192,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * Register this device with the server. The registration requires a device id that's unique
      * for the user's account on the server. The user should have a valid account on the server.
-     * 
+     *
      * In the Silent Circle use case the user name was provided during account creation, the client computes a
      * unique device id and registers this with the server during the first generic device registration.
-     * 
+     *
      * @param resultCode an int array with at least a length of one. The functions returns the
-     *        request result code at index 0 
+     *        request result code at index 0
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
     //**ANN** @WorkerThread
@@ -187,7 +207,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * Remove Axolotl device.
      *
      * Remove an Axolotl device from a user's account.
-     * 
+     *
      * @param resultCode an int array with at least a length of one. The functions returns the
      *        request result code at index 0
      * @param deviceId the SC device id of the device to remove.
@@ -198,7 +218,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Generate and register a set of new pre-keys.
-     * 
+     *
      * @return Result of the register new pre-key request, usually a HTTP code (200, 404, etc)
      */
     //**ANN** @WorkerThread
@@ -206,10 +226,10 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Get number of pre-keys available on the server.
-     * 
+     *
      * Checks if the server has pre-keys for this account/device id and return how many keys are
      * available.
-     * 
+     *
      * @return number of available pre-keys or -1 if request to server failed.
      */
     //**ANN** @WorkerThread
@@ -217,15 +237,15 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Return the stored error code.
-     * 
+     *
      * Functions of this implementation store error code in case they detect
      * a problem and return {@code null}, for example. In this case the caller should
      * get the error code and the additional error information for detailed error
      * data.
-     * 
+     *
      * Functions overwrite the stored error code only if they return {@code null} or some
      * other error indicator.
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @return The stored error code.
@@ -234,15 +254,15 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Return the stored error information.
-     * 
+     *
      * Functions of this implementation store error information in case they detect
      * a problem and return {@code null}, for example. In this case the caller should
      * get the error code and the additional error information for detailed error
      * data.
-     * 
-     * Functions overwrite the stored error information only if they return {@code null} 
+     *
+     * Functions overwrite the stored error information only if they return {@code null}
      * or some other error indicator.
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @return The stored error information string.
@@ -251,14 +271,14 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * For testing only, not available in production code.
-     * 
+     *
      * Returns -1 in production code.
      */
     public static native int testCommand(String command, byte[] data);
 
     /**
      * Command interface to send management command and to request management information.
-     * 
+     *
      * @param command the management command string.
      * @param optional data required for the command.
      * @return a string depending on command.
@@ -285,10 +305,10 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * the attachment handling.
      *
      * @param messageDescriptor      The JSON formatted message descriptor, string, required.
-     * 
+     *
      * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty
      *                               string ot {@code null} shows that not attachment descriptor is available.
-     * 
+     *
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string ot {@code null} shows that not attributes are available.
      * @return Either success of an error code (to be defined)
@@ -303,14 +323,14 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * The library reports state changes of message it got for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
-     * @param messageIdentifier  the unique 64-bit transport message identifier. If this identifier 
-     *                           is 0 then this report belongs to a received message and the library 
+     * @param messageIdentifier  the unique 64-bit transport message identifier. If this identifier
+     *                           is 0 then this report belongs to a received message and the library
      *                           failed to process it.
-     * 
+     *
      * @param statusCode         The status code as reported from the network transport, usually like
      *                           HTTP or SIP codes. If less 0 then the messageIdentifier may be 0 and
      *                           this would indicate a problem with a received message.
-     * 
+     *
      * @param stateInformation   JSON formatted state information block (string) that contains the
      *                           details about the new state of some error information.
      */
@@ -319,18 +339,18 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Helper function to perform HTTP(S) requests callback function.
-     * 
+     *
      * The Axolotl library uses this callback to perform HTTP(S) requests. The application should
      * implement this function to contact a provisioning server or other server that can return
      * required Axolotl data. If the application really implements this as HTTP(S) or not is an
      * implementation detail of the application.
-     * 
+     *
      * The Axolotl library creates a request URI, provides request data if required, specifies the
      * method (GET, PUT) to use. On return the function sets the request return code in the code
      * array at index 0 and returns response data as byte array.
-     * 
+     *
      * The functions returns after the HTTP(S) or other network requests return.
-     * 
+     *
      * @param requestUri the request URI without the protocol and domain part.
      * @param requestData data for the request if required
      * @param method to use, GET, PUT
@@ -345,11 +365,11 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * The Axolotl library uses this callback function to report data of a SIP NOTIFY to the app.
      *
-     * @param messageIdentifier  the unique 64-bit transport message identifier. 
-     * 
+     * @param messageIdentifier  the unique 64-bit transport message identifier.
+     *
      * @param notifyActionCode   This code defines which action to perform, for example re-scan a
      *                           user's Axolotl devices
-     * 
+     *
      * @param actionInformation  JSON formatted state information block (string) that contains the
      *                           details required for the action.
      */
@@ -437,7 +457,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Return a list of names for all known conversations.
-     * 
+     *
      * @return A list of names for conversations, {@code null} in case of an error.
      */
     public static native byte[][] listConversations();
@@ -465,13 +485,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * The functions returns the sequence number of the loaded event record at index 1 of
      * the return {@code code} array
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @param name The conversation partner's name
      * @param eventId The event id, unique inside partner's conversation
-     * @param code array of length 2 to return the request result code at index 0 (usually 
-     *             a SQLITE code) and the message sequence number at index 1. 
+     * @param code array of length 2 to return the request result code at index 0 (usually
+     *             a SQLITE code) and the message sequence number at index 1.
      * @return The serialized data of the event/message data structure, {@code null} if no
      *         such event/message
      */
@@ -535,7 +555,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param offset Where to start to retrieve the events/message
      * @param number How many events/messages to load
      * @param direction Paging direction from youngest to oldest (-1) or from oldest to youngest (1)
-     * @param code array of length 2 to return the request result code at index 0 (usually 
+     * @param code array of length 2 to return the request result code at index 0 (usually
      *             a SQLITE code) and the message sequence number at index 1. The message number
      *             0 indicates that no messages were read.
      * @return Array of byte arrays that contain the serialized event data
@@ -625,10 +645,10 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * If no entry exists for the msgId then insert a new entry and set its
      * status to 'status'. If an entry already exists then update the status
      * only.
-     * 
+     *
      * If the caller provides a {@code partnerName} then the function stores it together
      * with the message id.
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @param msgId the message identifier of the attachment status entry.
@@ -644,7 +664,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * If the partner name is {@code null} then the function uses only the message id to
      * perform the delete request. Otherwise it requires full match, message id and
      * partner name to delete the status entry.
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @param msgId the message identifier of the attachment status entry.
@@ -667,12 +687,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * If the partner name is {@code null} then the function uses only the message id to
      * perform the load request. Otherwise it requires full match, message id and
      * partner name to load the status entry.
-     * 
+     *
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @param msgId the message identifier of the attachment status entry.
      * @param partnerName Name of the conversation partner, maybe {@code null}
-     * @param code is an array with a minimum  length of 1, index 0 contains 
+     * @param code is an array with a minimum  length of 1, index 0 contains
      *        the SQL code on return
      * @return the attachment status or -1 in case of error
      */
@@ -680,7 +700,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
 
     /**
      * Return all message ids with a given status.
-     * 
+     *
      * Returns a string array that contains the message identifier as UUID string.
      * If a partner name was set then the functions appends a colon (:) and the
      * partner name to the UUID string.
@@ -688,7 +708,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * This function does no trigger any network actions, save to run from UI thread.
      *
      * @param status finds all attachment message ids with this status.
-     * @param code is an array with a minimum  length of 1, index 0 contains 
+     * @param code is an array with a minimum  length of 1, index 0 contains
      *        the SQL code on return
      * @return a String array with the found message ids (UUID) or {@code null}
      *         in case of error
