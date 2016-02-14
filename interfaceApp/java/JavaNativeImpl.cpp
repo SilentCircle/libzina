@@ -12,6 +12,7 @@
 #include "../../interfaceTransport/sip/SipTransport.h"
 #include "../../axolotl/state/AxoConversation.h"
 #include "../../axolotl/crypto/EcCurve.h"
+#include "../../axolotl/Constants.h"
 #include "../../util/cJSON.h"
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"
@@ -1965,25 +1966,30 @@ JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray author
     return uidJava;
 }
 
-static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray authorization, bool cacheOnly)
+static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray authorization, bool cacheOnly, int32_t* errorCode)
 {
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
-        if (axoAppInterface == NULL)
+        if (axoAppInterface == NULL) {
+            *errorCode = GENERIC_ERROR;
             return NULL;
+        }
         auth = axoAppInterface->getOwnAuthrization();
     }
     if (alias == NULL) {
+        *errorCode = GENERIC_ERROR;
         return NULL;
     }
     const char* aliasTmp = env->GetStringUTFChars(alias, 0);
     string aliasString(aliasTmp);
     env->ReleaseStringUTFChars(alias, aliasTmp);
-    if (aliasString.empty())
+    if (aliasString.empty()) {
+        *errorCode = GENERIC_ERROR;
         return NULL;
+    }
 
     NameLookup* nameCache = NameLookup::getInstance();
-    shared_ptr<UserInfo> userInfo = nameCache->getUserInfo(aliasString, auth, cacheOnly);
+    shared_ptr<UserInfo> userInfo = nameCache->getUserInfo(aliasString, auth, cacheOnly, errorCode);
 
     if (!userInfo)
         return NULL;
@@ -2009,10 +2015,17 @@ static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray aut
  * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
  */
 JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
+JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization, jintArray code)
 {
     (void)clazz;
-    return getUserInfoInternal(env, alias, authorization, false);
+    int32_t errorCode = 0;
+
+    jbyteArray retData = getUserInfoInternal(env, alias, authorization, false, &errorCode);
+
+    if (code != NULL && env->GetArrayLength(code) >= 1) {
+        setReturnCode(env, code, errorCode);
+    }
+    return retData;
 }
 
 /*
@@ -2024,7 +2037,8 @@ JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias)
 {
     (void)clazz;
-    return getUserInfoInternal(env, alias, NULL, true);
+    int32_t errorCode = 0;
+    return getUserInfoInternal(env, alias, NULL, true, &errorCode);
 }
 
 /*

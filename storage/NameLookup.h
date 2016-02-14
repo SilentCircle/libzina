@@ -80,7 +80,7 @@ namespace axolotl {
          * @param cacheOnly If true only look in the cache, don't contact server if not in cache
          * @return The UserInfo or empty shared pointer if alias is not known.
          */
-        const shared_ptr<UserInfo> getUserInfo(const string& alias, const string& authorization, bool cacheOnly = false);
+        const shared_ptr<UserInfo> getUserInfo(const string& alias, const string& authorization, bool cacheOnly = false, int32_t* errorCode=NULL);
 
         /**
          * @brief Get UserInfo of an alias, e.g. a name or number, if in cache

@@ -91,11 +91,13 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     return OK;
 }
 
-const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly) {
+const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly, int32_t* errorCode) {
 
     LOGGER(INFO, __func__ , " -->");
     if (alias.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty alias name");
+        if (errorCode != NULL)
+            *errorCode = GENERIC_ERROR;
         return shared_ptr<UserInfo>();
     }
 
@@ -115,6 +117,8 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     }
     if (authorization.empty()) {
         LOGGER(ERROR, __func__ , " <-- missing authorization");
+        if (errorCode != NULL)
+            *errorCode = GENERIC_ERROR;
         return shared_ptr<UserInfo>();
     }
 
@@ -132,7 +136,9 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
             result = temp;
         }
         else {
-            LOGGER(ERROR, __func__ , " Error return from server: ", code);
+            LOGGER(ERROR, __func__ , " <-- error return from server: ", code);
+            if (errorCode != NULL)
+                *errorCode = code;
             return shared_ptr<UserInfo>();
         }
     }
@@ -317,6 +323,7 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
         retValue = AliasAdded;
     }
     LOGGER(INFO, __func__ , " <--");
+    lck.unlock();
     return retValue;
 }
 

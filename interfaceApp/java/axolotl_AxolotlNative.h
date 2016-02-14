@@ -7,6 +7,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef axolotl_AxolotlNative_DEVICE_SCAN
+#define axolotl_AxolotlNative_DEVICE_SCAN 1L
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    doInit
@@ -226,7 +228,7 @@ JNIEXPORT jboolean JNICALL Java_axolotl_AxolotlNative_existEvent
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    loadEvents
- * Signature: ([BII[I)[[B
+ * Signature: ([BIII[I)[[B
  */
 JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadEvents
   (JNIEnv *, jclass, jbyteArray, jint, jint, jint, jintArray);
@@ -426,10 +428,10 @@ JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_getUid
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    getUserInfo
- * Signature: (Ljava/lang/String;[B)[B
+ * Signature: (Ljava/lang/String;[B[I)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getUserInfo
-  (JNIEnv *, jclass, jstring, jbyteArray);
+  (JNIEnv *, jclass, jstring, jbyteArray, jintArray);
 
 /*
  * Class:     axolotl_AxolotlNative

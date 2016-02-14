@@ -1,21 +1,21 @@
 package axolotl;
 
-/*
-This file uses annotations. Because we use this file only to create the JNI
-interface file we use the normal Java compiler (javac) without any additional
-libraries etc. Thus the annotation statements are commented using special
-comments. To remove the comments and enable the annotations perform replacments:
-- replace '//**ANN** ' with an empty string globally
-- replace '/*!' with an empty string globally
-- replace '!*/' with an empty string globally
 
-To create the JNI interface file:
-- cd to the AxolotlNative.java directory
-- run 'javac -d . AxolotlNative.java'
-- run 'javah axolotl.AxolotlNative'
+// This file uses annotations. Because we use this file only to create the JNI
+// interface file we use the normal Java compiler (javac) without any additional
+// libraries etc. Thus the annotation statements are commented using special
+// comments. To remove the comments and enable the annotations perform replacements:
+// - replace '//**ANN** ' with an empty string globally
+// - replace '/*!' with an empty string globally
+// - replace '!*/' with an empty string globally
+//
+// To create the JNI interface file:
+// - cd to the AxolotlNative.java directory
+// - run 'javac -d . AxolotlNative.java'
+// - run 'javah axolotl.AxolotlNative'
+//
+// After this you can remove the created 'axolotl' directory.
 
-After this you can remove the created 'axolotl' directory.
-*/
 
 //**ANN** import android.support.annotation.WorkerThread;
 //**ANN** import android.support.annotation.Nullable;
@@ -969,11 +969,14 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param authorization The API-key, may be {@code null}. If this is {@code null} then the
      *                      functions uses the authorization data that the call defined in the
      *                      #doInit call.
+     * @param errorCode A 1 element integer array that returns the result code/error code, can
+     *                  {@code null}.
+     *
      * @return a JSON formatted string as UTF byte array or {@code null} if no user data exists
      *         for the alias.
      */
     //**ANN** @WorkerThread
-    public static native byte[] getUserInfo(String alias, byte[] authorization);
+    public static native byte[] getUserInfo(String alias, byte[] authorization, int[] errorCode);
 
     /**
      * Refresh cached user data.
