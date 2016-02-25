@@ -23,6 +23,7 @@ limitations under the License.
 #include "../util/b64helper.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
+#include "../dataRetention/ScDataRetention.h"
 #include "../logging/AxoLogging.h"
 #include "../storage/MessageCapture.h"
 #include "MessageEnvelope.pb.h"
@@ -46,6 +47,7 @@ AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authoriz
         errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false), delayRatchetCommit_(false), storeCallback_(storeCallback)
 {
     store_ = SQLiteStoreConv::getStore();
+    ScDataRetention::setAuthorization(authorization);
 }
 
 AppInterfaceImpl::~AppInterfaceImpl()
@@ -609,6 +611,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
 void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 {
     ScProvisioning::setHttpHelper(httpHelper);
+    ScDataRetention::setHttpHelper(httpHelper);
 }
 
 // ***** Private functions 
@@ -730,6 +733,9 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         LOGGER(INFO, "Sending messages to # devices: ", msgPairs->size());
         returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs, messageType);
         LOGGER(DEBUGGING, "Sent messages to # devices: ", returnMsgIds->size());
+
+        // TODO: Extract call id, composed time and sent time
+        ScDataRetention::sendMessageMetadata("", recipient, time(NULL), time(NULL));
     }
     lck.unlock();
     delete msgPairs;

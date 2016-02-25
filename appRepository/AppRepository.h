@@ -26,6 +26,7 @@ limitations under the License.
 #include <string>
 #include <stdint.h>
 #include <list>
+#include <vector>
 
 #include <sqlcipher/sqlite3.h>
 
@@ -411,6 +412,34 @@ public:
      * @return the SQL code
      */
     int32_t loadMsgsIdsWithAttachmentStatus(int32_t status, list<string>* const msgIds);
+
+    /**
+     * @brief Store data retention pending events
+     * 
+     * @param startTime The time the message or call event started
+     * @param data The JSON serialized data of the event
+     * @return An SQLite code.
+     */
+    int32_t storeDrPendingEvent(time_t startTime, const string& data);
+
+    /**
+     * @brief Load and returns the set of serialized data retention event data
+     *        along with the an identifier that can be used to remove it later.
+     * @param objects A list of pairs containing an identifier for the stored
+     *        event data and a string containing the JSON event data.
+     * @return A SQLite code.
+     */
+    int32_t loadDrPendingEvents(std::list<pair<int64_t, string>>& objects) const;
+
+    /**
+     * @brief Delete data retention pending event data identified by the list of
+     *        identifiers.
+     *
+     * @param rows A list of identifiers of the rows to delete. These identifiers
+     *        should be obtained y a loadDrPendingEvents call.
+     * @return the SQL code
+     */
+    int32_t deleteDrPendingEvents(std::vector<int64_t>& rows);
 
     /**
      * @brief Return ready status.

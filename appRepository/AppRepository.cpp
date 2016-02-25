@@ -17,11 +17,12 @@ limitations under the License.
 
 #include <iostream>
 #include <mutex>          // std::mutex, std::unique_lock
+#include <algorithm>
+#include <functional>
 
 #include <cryptcommon/ZrtpRandom.h>
 
 #include "../logging/AxoLogging.h"
-
 
 /* *****************************************************************************
  * A few helping macros. 
@@ -56,7 +57,7 @@ limitations under the License.
 #define SQLITE_PREPARE sqlite3_prepare
 #endif
 
-#define DB_VERSION 2
+#define DB_VERSION 3
 
 static mutex sqlLock;
 
@@ -148,6 +149,15 @@ static const char* selectMsgIdsWithStatus = "SELECT msgId, partnerName FROM atta
 static const char* deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
 static const char* deleteAttachmentStatusMsgIdSql2 = "DELETE FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
 static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
+
+/* *****************************************************************************
+ * SQL statements to process the pending data retention event metadata
+ */
+static const char *createDrPending =
+  "CREATE TABLE IF NOT EXISTS drPendingEvent ( startTime INTEGER, data BLOB );";
+static const char* insertDrPendingSql = "INSERT OR REPLACE INTO drPendingEvent (startTime, data ) VALUES(?1, ?2);";
+static const char* selectDrPendingSql = "SELECT rowid,data from drPendingEvent ORDER BY startTime ASC;";
+static const char* deleteDrPendingSql = "DELETE FROM drPendingEvent where rowid = ?1";
 
 using namespace axolotl;
 
@@ -324,6 +334,17 @@ int32_t AppRepository::updateDb(int32_t oldVersion, int32_t newVersion)
         }
         oldVersion = 2;
     }
+    if (oldVersion < 3) {
+        // Add data retention tables
+        sqlCode_ = SQLITE_PREPARE(db, createDrPending, -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        if (sqlCode_ != SQLITE_DONE) {
+            LOGGER(ERROR, __func__, ", SQL error: ", sqlCode_);
+            return sqlCode_;
+        }
+        sqlite3_finalize(stmt);
+        oldVersion = 3;
+    }
     if (oldVersion != newVersion) {
         LOGGER(ERROR, __func__, ", Version numbers mismatch");
         return SQLITE_ERROR;
@@ -362,6 +383,14 @@ int AppRepository::createTables()
     sqlite3_finalize(stmt);
 
     sqlCode_ = SQLITE_PREPARE(db, createAttachmentStatus, -1, &stmt, NULL);
+    sqlCode_ = sqlite3_step(stmt);
+    if (sqlCode_ != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
+    sqlCode_ = SQLITE_PREPARE(db, createDrPending, -1, &stmt, NULL);
     sqlCode_ = sqlite3_step(stmt);
     if (sqlCode_ != SQLITE_DONE) {
         ERRMSG;
@@ -1039,6 +1068,72 @@ int32_t AppRepository::loadMsgsIdsWithAttachmentStatus(int32_t status, list<stri
             data.append(":").append((const char*)pn);
         }
         msgIds->push_back(data);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t AppRepository::storeDrPendingEvent(time_t startTime, const string& data)
+{
+    LOGGER(INFO, __func__ , " -->");
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    SQLITE_CHK(SQLITE_PREPARE(db, insertDrPendingSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 1, static_cast<int64_t>(startTime)));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, data.data(), static_cast<int>(data.size()), SQLITE_STATIC));
+
+    sqlResult = sqlite3_step(stmt);
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t AppRepository::loadDrPendingEvents(list<pair<int64_t, string>>& objects) const
+{
+    LOGGER(INFO, __func__ , " -->");
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // selectDrPendingSql = "SELECT data from drPendingEvent ORDER BY startTime ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectDrPendingSql, -1, &stmt, NULL));
+    while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int64_t rowid = sqlite3_column_int64(stmt, 0);
+        int32_t len = sqlite3_column_bytes(stmt, 1);
+        std::string data((const char*)sqlite3_column_blob(stmt, 1), len);
+        objects.push_back(make_pair(rowid, data));
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t AppRepository::deleteDrPendingEvents(vector<int64_t>& rows)
+{
+    LOGGER(INFO, __func__ , " -->");
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // deleteDrPendingSql = "DELETE FROM drPendingEvent where rowid = ?1";
+    SQLITE_CHK(SQLITE_PREPARE(db, deleteDrPendingSql, -1, &stmt, NULL));
+    // Vector is sorted in descending order first to ensure highest rows are
+    // deleted first.
+    std::sort(rows.begin(), rows.end(), std::greater<int>());
+    for (int64_t rowid : rows) {
+        SQLITE_CHK(sqlite3_bind_int64(stmt, 1, rowid));
+        sqlResult = sqlite3_step(stmt);
+        SQLITE_CHK(sqlite3_reset(stmt));
+        SQLITE_CHK(sqlite3_clear_bindings(stmt));
     }
 
 cleanup:

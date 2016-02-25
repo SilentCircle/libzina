@@ -158,6 +158,10 @@ set (provisioning_src
     provisioning/ScProvisioning.cpp
 )
 
+set (dataretention_src
+    dataRetention/ScDataRetention.cpp
+)
+
 set (util_src
     util/cJSON.c
     util/b64helper.cpp
@@ -183,6 +187,7 @@ set (axo_src
     ${interface_src}
     ${key_mngmnt_src}
     ${provisioning_src}
+    ${dataretention_src}
     ${util_src}
     ${external_src}
     ${app_repo_src}
