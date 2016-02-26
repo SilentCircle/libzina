@@ -904,7 +904,7 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
     string dataContainer;
     arrayToString(env, data, &dataContainer);
 
-    if (strcmp("removeAxoConversation", cmd) == 0) {
+    if (strcmp("removeAxoConversation", cmd) == 0 && !dataContainer.empty()) {
         Log("Removing Axolotl conversation data for '%s'\n", dataContainer.c_str());
 
         SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -988,6 +988,7 @@ JNI_FUNCTION(repoCloseDatabase) (JNIEnv* env, jclass clazz) {
     appRepository = NULL;
 }
 
+#define IS_APP_REPO_OPEN    (appRepository != NULL && appRepository->isReady())
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    repoIsOpen
@@ -999,7 +1000,7 @@ JNI_FUNCTION(repoIsOpen) (JNIEnv* env, jclass clazz)
     (void)clazz;
     (void)env;
 
-    return static_cast<jboolean>(appRepository != NULL && appRepository->isReady());
+    return static_cast<jboolean>(IS_APP_REPO_OPEN);
 }
 
 
@@ -1017,6 +1018,9 @@ JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePatte
     if (!arrayToString(env, namePattern, &name))
         return static_cast<jboolean>(false);
 
+    if (!IS_APP_REPO_OPEN)
+        return static_cast<jboolean>(false);
+
     bool result = appRepository->existConversation(name);
     return static_cast<jboolean>(result);
 }
@@ -1030,6 +1034,9 @@ JNIEXPORT jint JNICALL
 JNI_FUNCTION(storeConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray convData)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return -1;
 
     string name;
     if (!arrayToString(env, inName, &name))
@@ -1049,6 +1056,9 @@ JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
@@ -1081,6 +1091,9 @@ JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return -1;
+
     string name;
     if (!arrayToString(env, inName, &name)) {
         return -1;
@@ -1097,6 +1110,9 @@ JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     list<string>* convNames = appRepository->listConversations();
 
@@ -1127,6 +1143,9 @@ JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return -3;
+
     string name;
     if (!arrayToString(env, inName, &name)) {
         return -1;
@@ -1149,6 +1168,9 @@ JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 2)
         return NULL;
@@ -1185,6 +1207,9 @@ JNI_FUNCTION(loadEventWithMsgId) (JNIEnv* env, jclass clazz, jbyteArray eventId,
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
+
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
@@ -1215,6 +1240,9 @@ JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return static_cast<jboolean>(false);
+
     string name;
     if (!arrayToString(env, inName, &name)) {
         return static_cast<jboolean>(false);
@@ -1236,6 +1264,9 @@ JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint offset, jint number, jint direction, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 2)
         return NULL;
@@ -1285,6 +1316,9 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return -1;
+
     string name;
     if (!arrayToString(env, inName, &name)) {
         return -1;
@@ -1306,6 +1340,9 @@ JNIEXPORT jint JNICALL
 JNI_FUNCTION(insertObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId, jbyteArray objData)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return -1;
 
     string name;
     if (!arrayToString(env, inName, &name)) {
@@ -1333,6 +1370,9 @@ JNIEXPORT jbyteArray JNICALL
 JNI_FUNCTION(loadObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jbyteArray objId, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
@@ -1372,6 +1412,9 @@ JNI_FUNCTION(existObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return static_cast<jboolean>(false);
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return static_cast<jboolean>(false);
@@ -1396,6 +1439,9 @@ JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArray eventId, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
@@ -1448,6 +1494,9 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return -1;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -1473,6 +1522,9 @@ JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId
 {
     (void)clazz;
 
+    if (!IS_APP_REPO_OPEN)
+        return 1;
+
     string messageId;
     if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
         return 1;    // 1 is the generic SQL error code
@@ -1493,6 +1545,9 @@ JNIEXPORT jint JNICALL
 JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return 1;
 
     string messageId;
     if (!arrayToString(env, msgId, &messageId) || messageId.empty()) {
@@ -1516,6 +1571,9 @@ JNI_FUNCTION(deleteWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status
     (void)clazz;
     (void)env;
 
+    if (!IS_APP_REPO_OPEN)
+        return 1;
+
     return appRepository->deleteWithAttachmentStatus(status);
 }
 
@@ -1528,6 +1586,9 @@ JNIEXPORT jint JNICALL
 JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId, jbyteArray partnerName, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return -1;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
         return -1;
@@ -1556,6 +1617,9 @@ JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(loadMsgsIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status, jintArray code)
 {
     (void)clazz;
+
+    if (!IS_APP_REPO_OPEN)
+        return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
