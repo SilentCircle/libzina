@@ -515,7 +515,7 @@ JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescripto
 {
     (void)clazz;
 
-    if (messageDescriptor == NULL)
+    if (messageDescriptor == NULL || axoAppInterface == NULL)
         return 0L;
 
     string message;
@@ -563,7 +563,7 @@ JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messa
 {
     (void)clazz;
 
-    if (messageDescriptor == NULL)
+    if (messageDescriptor == NULL || axoAppInterface == NULL)
         return 0L;
 
     string message;
@@ -612,6 +612,9 @@ JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
 
+    if (axoAppInterface == NULL)
+        return NULL;
+
     string* jsonNames = axoAppInterface->getKnownUsers();
     if (jsonNames == NULL)
         return NULL;
@@ -636,6 +639,9 @@ JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
 {
     (void)clazz;
 
+    if (axoAppInterface == NULL)
+        return NULL;
+
     string idKey = axoAppInterface->getOwnIdentityKey();
     jbyteArray key = stringToArray(env, idKey);
     return key;
@@ -652,7 +658,7 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, userName, &name))
+    if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
         return NULL;
 
     list<string>* idKeys = axoAppInterface->getIdentityKeys(name);
@@ -683,7 +689,7 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, userName, &name))
+    if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
         return NULL;
 
     list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
@@ -728,7 +734,7 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
     (void)clazz;
 
     string info;
-    if (code == NULL || env->GetArrayLength(code) < 1)
+    if (code == NULL || env->GetArrayLength(code) < 1 || axoAppInterface == NULL)
         return NULL;
 
     int32_t result = axoAppInterface->registerAxolotlDevice(&info);
@@ -757,7 +763,7 @@ JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceI
     (void)clazz;
 
     string info;
-    if (code == NULL || env->GetArrayLength(code) < 1)
+    if (code == NULL || env->GetArrayLength(code) < 1 || axoAppInterface == NULL)
         return NULL;
 
     string devId;
@@ -791,6 +797,8 @@ JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
 {
     (void)clazz;
     (void)env;
+    if (axoAppInterface == NULL)
+        return -1;
 
     return axoAppInterface->newPreKeys(numbers);
 }
@@ -805,6 +813,8 @@ JNI_FUNCTION(getNumPreKeys) (JNIEnv* env, jclass clazz)
 {
     (void)clazz;
     (void)env;
+    if (axoAppInterface == NULL)
+        return -1;
 
     return axoAppInterface->getNumPreKeys();
 }
@@ -819,6 +829,8 @@ JNI_FUNCTION(getErrorCode)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
     (void)env;
+    if (axoAppInterface == NULL)
+        return -1;
 
     return axoAppInterface->getErrorCode();
 }
@@ -832,6 +844,8 @@ JNIEXPORT jstring JNICALL
 JNI_FUNCTION(getErrorInfo)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
+    if (axoAppInterface == NULL)
+        return NULL;
 
     const string info = axoAppInterface->getErrorInfo();
     jstring errInfo = env->NewStringUTF(info.c_str());
@@ -895,7 +909,7 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
 {
     (void)clazz;
 
-    if (command == NULL)
+    if (command == NULL || axoAppInterface == NULL)
         return NULL;
     const char* cmd = env->GetStringUTFChars(command, 0);
 
