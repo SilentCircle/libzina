@@ -625,7 +625,9 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
             LOGGER(INFO, __func__, " <--");
             return NULL;
         }
+        unique_lock<mutex> lck(convLock);
         vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+        lck.unlock();
         LOGGER(DEBUGGING, "Sent initial pre-key messages to # devices: ", returnMsgIds->size());
         delete msgPairs;
 
@@ -714,13 +716,13 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         supplementsEncrypted->clear();
     }
-    lck.unlock();
 
     vector<int64_t>* returnMsgIds = NULL;
     if (!msgPairs->empty()) {
         returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
         LOGGER(DEBUGGING, "Sent messages to # devices: ", returnMsgIds->size());
     }
+    lck.unlock();
     delete msgPairs;
     LOGGER(INFO, __func__, " <--");
 
