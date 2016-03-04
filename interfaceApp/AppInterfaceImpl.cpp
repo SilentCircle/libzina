@@ -405,10 +405,10 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
         LOGGER(ERROR, __func__, " Own conversation not correctly initialized.");
         return NO_OWN_ID;
     }
-    ownConv->storeConversation();
-    delete ownConv;
 
     string data = myIdPair->getPublicKey().serialize();
+
+    delete ownConv;
 
     b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identity_key", b64Buffer);
