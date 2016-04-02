@@ -135,8 +135,7 @@ void createDerivedKeys(const string& masterSecret, string* root, string* chain, 
     LOGGER(INFO, __func__, " -->");
     uint8_t derivedSecretBytes[256];     // we support upto 128 byte symmetric keys.
 
-    // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes, similar 
-    // to HKDF setup for TextSecure. See https://github.com/WhisperSystems/TextSecure/wiki/ProtocolV2
+    // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes.
     HKDF::deriveSecrets((uint8_t*)masterSecret.data(), masterSecret.size(), 
                         (uint8_t*)SILENT_MESSAGE.data(), SILENT_MESSAGE.size(), derivedSecretBytes, requested*2);
     root->assign((const char*)derivedSecretBytes, requested);
