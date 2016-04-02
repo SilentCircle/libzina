@@ -22,7 +22,7 @@ limitations under the License.
  * 
  * This class manages the state of a Axolotl conversation with a partner. It manages,
  * stores and retrieves keys and other state information. Refer to 
- * https://github.com/trevp/axolotl/wiki to get a full description of all the state
+ * https://github.com/trevp/double_ratchet/wiki to get a full description of all the state
  * information.
  * 
  * In this implementation we don't manage the header keys because we don't use header
