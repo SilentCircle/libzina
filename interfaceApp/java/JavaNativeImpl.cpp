@@ -31,6 +31,7 @@ limitations under the License.
 #include "../../util/cJSON.h"
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"
+#include "../../dataRetention/ScDataRetention.h"
 
 using namespace axolotl;
 using namespace std;
@@ -2831,4 +2832,30 @@ JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyte
         env->DeleteLocalRef(retData);
     }
     return retArray;
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendDrMessageMetadata
+ * Signature: (Ljava/lang/String;[B)[B
+ */
+JNIEXPORT void JNICALL
+JNI_FUNCTION(sendDrMessageMetadata)(JNIEnv* env, jclass clazz, jstring callid, jstring recipient, jlong composedTime, jlong sentTime)
+{
+    (void)clazz;
+
+    if (callid == NULL || recipient == NULL) {
+        return;
+    }
+
+    const char* callidTemp = env->GetStringUTFChars(callid, 0);
+    string callidString(callidTemp);
+    env->ReleaseStringUTFChars(callid, callidTemp);
+
+    const char* recipientTemp = env->GetStringUTFChars(recipient, 0);
+    string recipientString(recipientTemp);
+    env->ReleaseStringUTFChars(recipient, recipientTemp);
+    if (recipientString.empty())
+        return;
+
+    ScDataRetention::sendMessageMetadata(callidString, recipientString, static_cast<long>(composedTime / 1000), static_cast<long>(sentTime / 1000));
 }

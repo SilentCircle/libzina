@@ -733,9 +733,6 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         LOGGER(INFO, "Sending messages to # devices: ", msgPairs->size());
         returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs, messageType);
         LOGGER(DEBUGGING, "Sent messages to # devices: ", returnMsgIds->size());
-
-        // TODO: Extract call id, composed time and sent time
-        ScDataRetention::sendMessageMetadata("", recipient, time(NULL), time(NULL));
     }
     lck.unlock();
     delete msgPairs;
