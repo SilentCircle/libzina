@@ -123,6 +123,13 @@ int DrRequest::getPresignedUrl(const std::string& callid, const std::string& rec
 
     string result;
     int rc = httpHelper_(requestUrl, POST, request, &result);
+    if (rc == 422) {
+        // An Unprocessable Entity error means we sent invalid data. This isn't
+        // correctable by us so we shouldn't retry the request.
+        LOGGER(ERROR, "Unprocessable Entity error using data retention broker: ", result.c_str());
+        return -2;
+    }
+
     if (rc != 200) {
         LOGGER(ERROR, "Could not access data retention broker.");
         return -1;
@@ -213,7 +220,8 @@ bool MessageMetadataRequest::run()
     int rc = getPresignedUrl(callid_, recipient_, sent_, &metadata);
     if (rc < 0) {
       LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
-      return false;
+      // Remove the request from the queue if the error is a failure that cannot be retried.
+      return rc == -2;
     }
 
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
@@ -299,7 +307,8 @@ bool InCircleCallMetadataRequest::run()
     int rc = getPresignedUrl(callid_, recipient_, start_, &metadata);
     if (rc < 0) {
       LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
-      return false;
+      // Remove the request from the queue if the error is a failure that cannot be retried.
+      return rc == -2;
     }
 
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
@@ -427,7 +436,7 @@ void ScDataRetention::processRequests()
                 continue;
             }
             if (!request->run()) {
-                LOGGER(ERROR, "Could not run data retention pending request");
+                LOGGER(ERROR, "Could not run data retention pending request - remaining in the queue to retry later");
                 // If the request failed to run we don't run any further requests. This
                 // is to avoid multiple failures if the drbroker service is down
                 // or network access isn't available. They'll be retried on the next

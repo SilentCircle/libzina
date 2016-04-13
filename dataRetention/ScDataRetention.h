@@ -45,7 +45,7 @@ protected:
      * @param recipient The userid of the recipient of the message.
      * @param startTime The start time of the message or call.
      * @param metadata The data returned by the data retention broker.
-     * @return zero on success, negative number on failure.
+     * @return zero on success, -1 for a failure that can be retried, -2 for a failure that cannot be retried.
      */
     int getPresignedUrl(const std::string& callid,
                         const std::string& recipient,
@@ -71,9 +71,9 @@ public:
     virtual std::string toJSON() = 0;
 
     /**
-     * @brief Run the request. Makes HTTP requests via HTTP helper.
+     * @brief Run the request. Makes HTTP requests via HTTP helper and S3 helper.
      *
-     * @return Serialized request in a JSON string.
+     * @return true if the request should be removed from the queue, false if it should remain to be retried later.
      */
     virtual bool run() = 0;
 
