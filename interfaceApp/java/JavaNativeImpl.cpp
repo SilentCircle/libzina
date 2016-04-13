@@ -529,6 +529,13 @@ static int32_t httpHelper(const string& requestUri, const string& method, const 
 }
 #endif
 
+// In Java implementation the HTTP Helper and S3 Helper use the same Java method.
+// In iOS implementation they are seperate for ease of certificate pinning implementation.
+int32_t s3Helper(const string& requestUri, const string& requestData, string* response)
+{
+  return httpHelper(requestUri, "PUT", requestData, response);
+}
+
 #ifndef EMBEDDED
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
@@ -672,6 +679,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
      * functions 'receiveAxoData' and 'stateReportAxo'
      *********************************************************************************** */
     axoAppInterface->setHttpHelper(httpHelper);
+    axoAppInterface->setS3Helper(s3Helper);
     axoAppInterface->setTransport(sipTransport);
 
     return retVal;

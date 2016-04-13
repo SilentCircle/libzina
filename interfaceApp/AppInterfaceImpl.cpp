@@ -614,6 +614,11 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
     ScDataRetention::setHttpHelper(httpHelper);
 }
 
+void AppInterfaceImpl::setS3Helper(S3_FUNC s3Helper)
+{
+    ScDataRetention::setS3Helper(s3Helper);
+}
+
 // ***** Private functions 
 // *******************************
 

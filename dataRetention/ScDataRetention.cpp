@@ -97,8 +97,9 @@ std::string compress(const std::string& input)
 }
 }
 
-DrRequest::DrRequest(HTTP_FUNC httpHelper, const std::string& authorization) :
+DrRequest::DrRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization) :
     httpHelper_(httpHelper),
+    s3Helper_(s3Helper),
     authorization_(authorization)
 {
 }
@@ -161,12 +162,13 @@ int DrRequest::getPresignedUrl(const std::string& callid, const std::string& rec
 
 
 MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
+                                               S3_FUNC s3Helper,
                                                const std::string& authorization,
                                                const std::string& callid,
                                                const std::string& recipient,
                                                time_t composed,
                                                time_t sent) :
-    DrRequest(httpHelper, authorization),
+    DrRequest(httpHelper, s3Helper, authorization),
     callid_(callid),
     recipient_(recipient),
     composed_(composed),
@@ -174,8 +176,8 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
 {
 }
 
-MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, const std::string& authorization, cJSON* json) :
-    DrRequest(httpHelper, authorization)
+MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json) :
+    DrRequest(httpHelper, s3Helper, authorization)
 {
     callid_ = get_cjson_string(json, "callid");
     recipient_ = get_cjson_string(json, "recipient");
@@ -199,6 +201,10 @@ std::string MessageMetadataRequest::toJSON()
 bool MessageMetadataRequest::run()
 {
     LOGGER(INFO, __func__, " -->");
+    if (!httpHelper_ || !s3Helper_) {
+      LOGGER(ERROR, "HTTP Helper or S3 Helper not set.");
+      return false;
+    }
     MessageMetadata metadata;
     int rc = getPresignedUrl(callid_, recipient_, sent_, &metadata);
     if (rc < 0) {
@@ -226,7 +232,7 @@ bool MessageMetadataRequest::run()
     }
 
     string result;
-    rc = httpHelper_(metadata.url.c_str(), PUT, request, &result);
+    rc = s3Helper_(metadata.url.c_str(), request, &result);
     if (rc != 200) {
         LOGGER(ERROR, "Could not store message metadata.");
         return false;
@@ -237,13 +243,14 @@ bool MessageMetadataRequest::run()
 }
 
 InCircleCallMetadataRequest::InCircleCallMetadataRequest(HTTP_FUNC httpHelper,
+                                                         S3_FUNC s3Helper,
                                                          const std::string& authorization,
                                                          const std::string& callid,
                                                          const std::string direction,
                                                          const std::string recipient,
                                                          time_t start,
                                                          time_t end) :
-    DrRequest(httpHelper, authorization),
+    DrRequest(httpHelper, s3Helper, authorization),
     callid_(callid),
     direction_(direction),
     recipient_(recipient),
@@ -252,8 +259,8 @@ InCircleCallMetadataRequest::InCircleCallMetadataRequest(HTTP_FUNC httpHelper,
 {
 }
 
-InCircleCallMetadataRequest::InCircleCallMetadataRequest(HTTP_FUNC httpHelper, const std::string& authorization, cJSON* json) :
-    DrRequest(httpHelper, authorization)
+InCircleCallMetadataRequest::InCircleCallMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json) :
+    DrRequest(httpHelper, s3Helper, authorization)
 {
     callid_ = get_cjson_string(json, "callid");
     direction_ = get_cjson_string(json, "direction");
@@ -279,6 +286,10 @@ std::string InCircleCallMetadataRequest::toJSON()
 bool InCircleCallMetadataRequest::run()
 {
     LOGGER(INFO, __func__, " -->");
+    if (!httpHelper_ || !s3Helper_) {
+      LOGGER(ERROR, "HTTP Helper or S3 Helper not set.");
+      return false;
+    }
     MessageMetadata metadata;
     int rc = getPresignedUrl(callid_, recipient_, start_, &metadata);
     if (rc < 0) {
@@ -308,7 +319,7 @@ bool InCircleCallMetadataRequest::run()
     }
 
     string result;
-    rc = httpHelper_(metadata.url.c_str(), PUT, request, &result);
+    rc = s3Helper_(metadata.url.c_str(), request, &result);
     if (rc != 200) {
         LOGGER(ERROR, "Could not store in call metadata.");
         return false;
@@ -318,12 +329,18 @@ bool InCircleCallMetadataRequest::run()
     return true;
 }
 
-int32_t (*ScDataRetention::httpHelper_)(const std::string&, const std::string&, const std::string&, std::string*) = NULL;
+HTTP_FUNC ScDataRetention::httpHelper_ = nullptr;
+S3_FUNC ScDataRetention::s3Helper_ = nullptr;
 std::string ScDataRetention::authorization_;
 
-void ScDataRetention::setHttpHelper(int32_t (*httpHelper)( const std::string&, const std::string&, const std::string&, std::string* ))
+void ScDataRetention::setHttpHelper(HTTP_FUNC httpHelper)
 {
     httpHelper_ = httpHelper;
+}
+
+void ScDataRetention::setS3Helper(S3_FUNC s3Helper)
+{
+    s3Helper_ = s3Helper;
 }
 
 void ScDataRetention::setAuthorization(const std::string& authorization)
@@ -343,10 +360,10 @@ DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
 
     string type = get_cjson_string(root.get(), "type");
     if (type == "MessageMetadataRequest") {
-        request.reset(new MessageMetadataRequest(httpHelper_, authorization_, root.get()));
+        request.reset(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, root.get()));
     }
     else if (type == "InCircleCallMetadataRequest") {
-        request.reset(new InCircleCallMetadataRequest(httpHelper_, authorization_, root.get()));
+        request.reset(new InCircleCallMetadataRequest(httpHelper_, s3Helper_, authorization_, root.get()));
     }
     else {
         LOGGER(ERROR, "Invalid DrRequest type.");
@@ -361,7 +378,7 @@ void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::
 {
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
-    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, authorization_, callid, recipient, composed, sent));
+    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, recipient, composed, sent));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");
@@ -371,7 +388,7 @@ void ScDataRetention::sendInCircleCallMetadata(const std::string& callid, const 
 {
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
-    unique_ptr<DrRequest> request(new InCircleCallMetadataRequest(httpHelper_, authorization_, callid, direction, recipient, start, end));
+    unique_ptr<DrRequest> request(new InCircleCallMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, start, end));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");

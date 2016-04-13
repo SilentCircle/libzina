@@ -30,8 +30,10 @@ limitations under the License.
 #include "../util/UUID.h"
 #include "../Constants.h"
 
-// Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
+
+// Same as in ScProvisioning, keep in sync
+typedef int32_t (*S3_FUNC)(const string& region, const string& requestData, string* response);
 
 using namespace std;
 
@@ -149,6 +151,16 @@ public:
      * @param httpHelper Pointer to the helper functions
      */
     static void setHttpHelper(HTTP_FUNC httpHelper);
+
+    /**
+     * @brief Initialization code must set a S3 helper function
+     *
+     * This is used ot post data to Amazon S3 for data retention
+     * purposes. If it is not called then data retention is disabled.
+     *
+     * @param s3Helper Pointer to the helper function
+     */
+    static void setS3Helper(S3_FUNC httpHelper);
 
     void setFlags(int32_t flags)  { flags_ = flags; }
 

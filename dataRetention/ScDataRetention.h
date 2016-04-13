@@ -14,6 +14,8 @@
 
 typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response);
 
+typedef int32_t (*S3_FUNC)(const std::string& requestUri, const std::string& requestData, std::string* response);
+
 struct cJSON;
 
 namespace axolotl {
@@ -23,6 +25,7 @@ private:
     std::string authorization_;
 protected:
     HTTP_FUNC httpHelper_;
+    S3_FUNC s3Helper_;
 
     struct MessageMetadata {
       std::string url;
@@ -54,9 +57,10 @@ public:
      * @brief Base constructor for a Data Retention request
      *
      * @param httpHelper HTTP helper function used to make HTTP requests.
+     * @param s3Helper S3 helper function used to post data to Amazon S3.
      * @param authorization API Key for making AW requests.
      */
-    explicit DrRequest(HTTP_FUNC httpHelper, const std::string& authorization);
+    explicit DrRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization);
     virtual ~DrRequest() { }
 
     /**
@@ -89,6 +93,7 @@ public:
      * @brief Construct a Message data retention request
      *
      * @param httpHelper HTTP helper function used to make HTTP requests.
+     * @param s3Helper S3 helper function used to post data to Amazon S3.
      * @param authorization API Key for making AW requests.
      * @param callid Callid for the message.
      * @param recipient Userid of the recipient of the message.
@@ -96,12 +101,13 @@ public:
      * @param sent Time that the message was sent.
      */
     MessageMetadataRequest(HTTP_FUNC httpHelper,
+                           S3_FUNC s3Helper,
                            const std::string& authorization,
                            const std::string& callid,
                            const std::string& recipient,
                            time_t composed,
                            time_t sent);
-    MessageMetadataRequest(HTTP_FUNC httpHelper, const std::string& authorization, cJSON* json);
+    MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json);
     virtual std::string toJSON() override;
     virtual bool run() override;
 };
@@ -119,6 +125,7 @@ public:
      * @brief Construct an in circle call data retention request
      *
      * @param httpHelper HTTP helper function used to make HTTP requests.
+     * @param s3Helper S3 helper function used to post data to Amazon S3.
      * @param authorization API Key for making AW requests.
      * @param callid Callid for the message.
      * @param direction "placed" or "received" indicating direction of call.
@@ -127,13 +134,14 @@ public:
      * @param end Time that the call ended.
      */
     InCircleCallMetadataRequest(HTTP_FUNC httpHelper,
+                                S3_FUNC s3Helper,
                                 const std::string& authorization_,
                                 const std::string& callid,
                                 const std::string direction,
                                 const std::string recipient,
                                 time_t start,
                                 time_t end);
-    InCircleCallMetadataRequest(HTTP_FUNC httpHelper, const std::string& authorization, cJSON* json);
+    InCircleCallMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json);
     virtual std::string toJSON() override;
     virtual bool run() override;
 };
@@ -144,9 +152,16 @@ public:
     /**
      * @brief Initialization code must set a HTTP helper function
      *
-     * @param httpHelper Pointer to the helper functions
+     * @param httpHelper Pointer to the helper function
      */
     static void setHttpHelper(HTTP_FUNC httpHelper);
+
+    /**
+     * @brief Initialization code must set a S3 helper function
+     *
+     * @param s3Helper Pointer to the helper function
+     */
+    static void setS3Helper(S3_FUNC s3Helper);
 
     /**
      * @brief Initialization code must set the API Key for AW calls.
@@ -171,6 +186,7 @@ private:
      * @return the request return code, usually a HTTP code like 200 or something like that.
      */
     static HTTP_FUNC httpHelper_;
+    static S3_FUNC s3Helper_;
 
     static std::string authorization_;
 
