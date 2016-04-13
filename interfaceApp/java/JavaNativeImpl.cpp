@@ -2844,14 +2844,14 @@ JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyte
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    sendDrMessageMetadata
- * Signature: (Ljava/lang/String;[B)[B
+ * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJ)V
  */
 JNIEXPORT void JNICALL
-JNI_FUNCTION(sendDrMessageMetadata)(JNIEnv* env, jclass clazz, jstring callid, jstring recipient, jlong composedTime, jlong sentTime)
+JNI_FUNCTION(sendDrMessageMetadata)(JNIEnv* env, jclass clazz, jstring callid, jstring direction, jstring recipient, jlong composedTime, jlong sentTime)
 {
     (void)clazz;
 
-    if (callid == NULL || recipient == NULL) {
+    if (callid == NULL || direction == NULL || recipient == NULL) {
         return;
     }
 
@@ -2859,11 +2859,17 @@ JNI_FUNCTION(sendDrMessageMetadata)(JNIEnv* env, jclass clazz, jstring callid, j
     string callidString(callidTemp);
     env->ReleaseStringUTFChars(callid, callidTemp);
 
+    const char* directionTemp = env->GetStringUTFChars(direction, 0);
+    string directionString(directionTemp);
+    env->ReleaseStringUTFChars(direction, directionTemp);
+    if (directionString.empty())
+        return;
+
     const char* recipientTemp = env->GetStringUTFChars(recipient, 0);
     string recipientString(recipientTemp);
     env->ReleaseStringUTFChars(recipient, recipientTemp);
     if (recipientString.empty())
         return;
 
-    ScDataRetention::sendMessageMetadata(callidString, recipientString, static_cast<long>(composedTime / 1000), static_cast<long>(sentTime / 1000));
+    ScDataRetention::sendMessageMetadata(callidString, directionString, recipientString, static_cast<long>(composedTime / 1000), static_cast<long>(sentTime / 1000));
 }

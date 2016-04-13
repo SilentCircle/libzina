@@ -564,10 +564,10 @@ JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadCapturedMsgs
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    sendDrMessageMetadata
- * Signature: (Ljava/lang/String;Ljava/lang/String;JJ)V
+ * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJ)V
  */
 JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_sendDrMessageMetadata
-  (JNIEnv *, jclass, jstring, jstring, jlong, jlong);
+  (JNIEnv *, jclass, jstring, jstring, jstring, jlong, jlong);
 
 #ifdef __cplusplus
 }

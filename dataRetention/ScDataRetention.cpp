@@ -165,11 +165,13 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
                                                S3_FUNC s3Helper,
                                                const std::string& authorization,
                                                const std::string& callid,
+                                               const std::string& direction,
                                                const std::string& recipient,
                                                time_t composed,
                                                time_t sent) :
     DrRequest(httpHelper, s3Helper, authorization),
     callid_(callid),
+    direction_(direction),
     recipient_(recipient),
     composed_(composed),
     sent_(sent)
@@ -180,6 +182,7 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3H
     DrRequest(httpHelper, s3Helper, authorization)
 {
     callid_ = get_cjson_string(json, "callid");
+    direction_ = get_cjson_string(json, "direction");
     recipient_ = get_cjson_string(json, "recipient");
     composed_ = get_cjson_time(json, "composed");
     sent_ = get_cjson_time(json, "sent");
@@ -190,6 +193,7 @@ std::string MessageMetadataRequest::toJSON()
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
     cJSON_AddStringToObject(root.get(), "type", "MessageMetadataRequest");
     cJSON_AddStringToObject(root.get(), "callid", callid_.c_str());
+    cJSON_AddStringToObject(root.get(), "direction", direction_.c_str());
     cJSON_AddStringToObject(root.get(), "recipient", recipient_.c_str());
     cJSON_AddNumberToObject(root.get(), "composed", static_cast<double>(composed_));
     cJSON_AddNumberToObject(root.get(), "sent", static_cast<double>(sent_));
@@ -214,12 +218,13 @@ bool MessageMetadataRequest::run()
 
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
 
+    const bool sent = direction_ == "sent";
     cJSON_AddStringToObject(root.get(), "type", "message");
     cJSON_AddStringToObject(root.get(), "call_id", metadata.callid.c_str());
-    cJSON_AddStringToObject(root.get(), "src_uuid", metadata.src_uuid.c_str());
-    cJSON_AddStringToObject(root.get(), "src_alias", metadata.src_alias.c_str());
-    cJSON_AddStringToObject(root.get(), "dst_uuid", metadata.dst_uuid.c_str());
-    cJSON_AddStringToObject(root.get(), "dst_alias", metadata.dst_alias.c_str());
+    cJSON_AddStringToObject(root.get(), "src_uuid", sent ?  metadata.src_uuid.c_str() : metadata.dst_uuid.c_str());
+    cJSON_AddStringToObject(root.get(), "src_alias", sent ?  metadata.src_alias.c_str() : metadata.dst_alias.c_str());
+    cJSON_AddStringToObject(root.get(), "dst_uuid", sent ? metadata.dst_uuid.c_str() : metadata.src_uuid.c_str());
+    cJSON_AddStringToObject(root.get(), "dst_alias", sent ? metadata.dst_alias.c_str() : metadata.src_alias.c_str());
     cJSON_AddStringToObject(root.get(), "composed_on", time_to_string(composed_).c_str());
     cJSON_AddStringToObject(root.get(), "sent_on", time_to_string(sent_).c_str());
 
@@ -374,11 +379,11 @@ DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
 }
 
 
-void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& recipient, time_t composed, time_t sent)
+void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const std::string& recipient, time_t composed, time_t sent)
 {
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
-    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, recipient, composed, sent));
+    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, composed, sent));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");

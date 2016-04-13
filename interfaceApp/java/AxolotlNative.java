@@ -1365,9 +1365,10 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * configured for data retention.
      *
      * @param callid The call id of the message.
+     * @param direction The direction of the message. "sent" or "received".
      * @param recipient The userid of the recipient.
      * @param composedTime The time the message was composed as an epoch value.
      * @param sentTime The time the message was sent as an epoch value.
      */
-    public static native void sendDrMessageMetadata(String callid, String recipient, long composedTime, long sentTime);
+    public static native void sendDrMessageMetadata(String callid, String direction, String recipient, long composedTime, long sentTime);
 }

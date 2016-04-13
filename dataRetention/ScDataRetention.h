@@ -84,6 +84,7 @@ public:
 class MessageMetadataRequest : public DrRequest {
 private:
     std::string callid_;
+    std::string direction_;
     std::string recipient_;
     time_t composed_;
     time_t sent_;
@@ -96,6 +97,7 @@ public:
      * @param s3Helper S3 helper function used to post data to Amazon S3.
      * @param authorization API Key for making AW requests.
      * @param callid Callid for the message.
+     * @param direction The direction of the message. "sent" or "received".
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
@@ -104,6 +106,7 @@ public:
                            S3_FUNC s3Helper,
                            const std::string& authorization,
                            const std::string& callid,
+                           const std::string& direction,
                            const std::string& recipient,
                            time_t composed,
                            time_t sent);
@@ -209,11 +212,13 @@ public:
      * on the next message or call send.
      *
      * @param callid Callid for the message.
+     * @param direction The direction of the message. "sent" or "received".
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
      */
     static void sendMessageMetadata(const std::string& callid,
+                                    const std::string& direction,
                                     const std::string& recipient,
                                     time_t composed,
                                     time_t sent);
