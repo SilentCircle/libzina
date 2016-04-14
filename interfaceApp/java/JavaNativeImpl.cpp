@@ -2921,3 +2921,16 @@ JNI_FUNCTION(processPendingDrRequests)(JNIEnv * env, jclass clazz)
     ScDataRetention::processRequests();
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    isDrEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL
+JNI_FUNCTION(isDrEnabled)(JNIEnv * env, jclass clazz)
+{
+    bool enabled = false;
+    ScDataRetention::isEnabled(&enabled);
+    return static_cast<jboolean>(enabled);
+}
+
