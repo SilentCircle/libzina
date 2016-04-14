@@ -2907,3 +2907,17 @@ JNI_FUNCTION(sendDrInCircleCallMetadata)(JNIEnv * env, jclass clazz, jstring cal
     ScDataRetention::sendInCircleCallMetadata(callidString, directionString, recipientString, static_cast<long>(start / 1000), static_cast<long>(end / 1000));
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    processPendingDrRequests
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+JNI_FUNCTION(processPendingDrRequests)(JNIEnv * env, jclass clazz)
+{
+    (void)env;
+    (void)clazz;
+
+    ScDataRetention::processRequests();
+}
+

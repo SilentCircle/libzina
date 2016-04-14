@@ -1383,4 +1383,10 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param end Time that the call ended as an epoch value.
      */
     public static native void sendDrInCircleCallMetadata(String callid, String direction, String recipient, long start, long end);
+
+    /**
+     * Process any queued pending Data Retention requests.
+     *
+     */
+    public static native void processPendingDrRequests();
 }

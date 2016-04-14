@@ -577,6 +577,14 @@ JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_sendDrMessageMetadata
 JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_sendDrInCircleCallMetadata
   (JNIEnv *, jclass, jstring, jstring, jstring, jlong, jlong);
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    processPendingDrRequests
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_processPendingDrRequests
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif
