@@ -1371,4 +1371,16 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param sentTime The time the message was sent as an epoch value.
      */
     public static native void sendDrMessageMetadata(String callid, String direction, String recipient, long composedTime, long sentTime);
+
+    /**
+     * Send the in call metadata to the Data Retention S3 bucket if this user is
+     * configured for data retention.
+     *
+     * @param callid The call id for the call.
+     * @param direction "placed" or "received" indicating direction of call.
+     * @param recipient Userid of the recipient of the call.
+     * @param start Time that the call started as an epoch value.
+     * @param end Time that the call ended as an epoch value.
+     */
+    public static native void sendDrInCircleCallMetadata(String callid, String direction, String recipient, long start, long end);
 }
