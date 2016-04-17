@@ -134,7 +134,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "name", sender.c_str());
     cJSON_AddStringToObject(details, "scClientDevId", senderScClientDevId.c_str());
     cJSON_AddStringToObject(details, "otherInfo", msgHex);            // App may use this to retry after fixing the problem
-    cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diganose the issue
+    cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
     cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
 
@@ -1007,5 +1007,79 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
     }
     LOGGER(INFO, __func__, " <--");
     return idKeys;
+}
+
+void AppInterfaceImpl::reSyncConversation(const string &userName, const string& deviceId) {
+    LOGGER(INFO, __func__, " -->");
+
+    if (!store_->isReady()) {
+        LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
+        return;
+    }
+    unique_lock<mutex> lck(convLock);
+
+    // clear data and store the nearly empty conversation
+    AxoConversation* conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
+    conv->reset();
+    conv->storeConversation();
+    delete(conv);
+
+    // Check if server still knows this device, if no device at all -> remove conversation.
+    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    if (devices == NULL || devices->empty()) {
+        delete devices;
+        store_->deleteConversation(userName, deviceId, ownUser_);
+        return;
+    }
+    bool deviceFound = false;
+    string deviceName;
+    for (auto it = devices->cbegin(); it != devices->cend(); ++it) {
+        if (deviceId == (*it).first) {
+            deviceName = (*it).second;
+            deviceFound = true;
+            break;
+        }
+    }
+    delete(devices);
+
+    // The server does not know this device anymore. In this case remove the conversation.
+    if (!deviceFound) {
+        store_->deleteConversation(userName, deviceId, ownUser_);
+        return;
+    }
+
+    string supplements;
+    createSupplementString(Empty, ping, &supplements);
+
+    // Prepare the ping message for this device
+    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
+    uuid_t pingUuid = {0};
+    uuid_string_t uuidString = {0};
+
+    uuid_generate_time(pingUuid);
+    uuid_unparse(pingUuid, uuidString);
+    string msgId(uuidString);
+
+    LOGGER(DEBUGGING, "Send Ping to re-sync device: ", deviceId);
+    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs);
+
+    // This is always a security issue: return immediately, don't process and send a message
+    if (result < 0) {
+        delete msgPairs;
+        return;
+    }
+    lck.unlock();
+
+    if (msgPairs->empty()) {
+        delete msgPairs;
+        return;
+    }
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
+    LOGGER(DEBUGGING, "Sent message to re-sync device: ", returnMsgIds->size());
+
+    delete msgPairs;
+    delete returnMsgIds;
+    LOGGER(INFO, __func__, " <--");
+    return;
 }
 #pragma clang diagnostic pop

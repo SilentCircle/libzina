@@ -81,7 +81,9 @@ public:
 
     void rescanUserDevices(string& userName);
 
-    // **** Below are methods for this implementation, not part of AppInterface.h
+    void reSyncConversation(const string& userName, const string& deviceId);
+
+        // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
      * 
@@ -146,7 +148,10 @@ private:
                                                       const string& attachementDescriptor, const string& messageAttributes);
 
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
-
+    /**
+     * Only the 'Alice' role uses this function to create a pre-key message (msg-type 2)
+     * and sends this to the receiver (the 'Bob' role)
+     */
     int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& recipientDeviceName, const string& message, 
                             const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
     char* tempBuffer_;

@@ -173,7 +173,7 @@ private:
     void deserialize(const std::string& data);
     const std::string* serialize() const;
 
-    // The following data goes to persistant store
+    // The following data goes to persistent store
     AxoContact partner_;
     string  deviceId_;
     string  deviceName_;
@@ -202,7 +202,7 @@ private:
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
     int32_t   zrtpVerifyState;
-    // ***** end of persitent data
+    // ***** end of persistent data
 
     /*
     skipped_HK_MK : A list of stored message keys and associated header keys

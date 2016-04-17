@@ -263,6 +263,20 @@ public:
     virtual void rescanUserDevices(string& userName) = 0;
 
     /**
+     * @brief Resynchronize conversation data and status of a remote user's device.
+     *
+     * Resynchronizes a conversation if it still exists on the server.
+     * The function clears the key material and the conversation status. To create
+     * new key material and status it's necessary to fetch a new pre-key of the
+     * user and setup a new set of keys and status data.
+     *
+     * @param user the name of the user
+     * @param deviceId the user's device
+     *
+     */
+    virtual void reSyncConversation(const string& userName, const string& deviceId) = 0;
+
+    /**
      * @brief Callback to UI to receive a Message from transport 
      *
      * Creates a JSON formatted message descriptor of the received message and forwards it to the UI

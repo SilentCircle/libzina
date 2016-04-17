@@ -65,7 +65,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 {
     LOGGER(INFO, __func__, " -->");
     AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
-    if (conv != NULL) {              // Already a conversation available, no setup necessary
+    if (conv != NULL && !conv->getRK().empty()) {       // Already a conversation available
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
         return AXO_CONV_EXISTS;
     }
@@ -79,7 +79,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
     delete localConv;
 
-    const DhPublicKey* B = bobKeys.first;
+    const DhPublicKey* B = bobKeys.first;       // Bob' identity key, public part
     const DhPublicKey* B0 = bobKeys.second;
 
     uint8_t masterSecret[EcCurveTypes::Curve25519KeyLength*3];
@@ -96,7 +96,8 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     memset_volatile(masterSecret, 0, EcCurveTypes::Curve25519KeyLength*3);
     memset_volatile((void*)master.data(), 0, master.size());
 
-    conv = new AxoConversation(localUser, user, deviceId);
+    if (conv == NULL)
+        conv = new AxoConversation(localUser, user, deviceId);
 
     // Conversation takes over the ownership of the keys.
     conv->setDHIr(B);
@@ -116,7 +117,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 
 /*
  * We are P1 at this point:
- *  The conversation msut be a new conversation state, otherwise clear old state
+ *  The conversation must be a new conversation state, otherwise clear old state
     A  = P2_I   (private data)
     B  = P1_I   (public data)
     A0 = P2_PK1 (private data)
@@ -177,7 +178,7 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     memset_volatile((void*)master.data(), 0, master.size());
 
     conv->setDHRs(A0);              // Actually Bob's pre-key - because of the optimized pre-key handling
-    conv->setDHIs(A);               // Bob's (own) identity keys
+    conv->setDHIs(A);               // Bob's (own) identity key
     conv->setDHIr(B);               // Alice's (remote) identity key
     conv->setRK(root);
     conv->setCKs(chain);

@@ -494,7 +494,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     }
     delete localConv;
     if (result < 0)
-        return shared_ptr<string>();;
+        return shared_ptr<string>();
 
     // Check if conversation is really setup - identity key must be available in any case
     if (conv->getDHIr() == NULL) {
