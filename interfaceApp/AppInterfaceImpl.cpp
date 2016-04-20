@@ -254,7 +254,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     delete axoConv;
     lck.unlock();
 
-    //    Log("After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
+//    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
         char b2hexBuffer[1004] = {0};
 

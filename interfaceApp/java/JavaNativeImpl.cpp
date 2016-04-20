@@ -953,16 +953,19 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
     }
     else if (strcmp("reSyncConversation", cmd) == 0 && !dataContainer.empty()) {
         cJSON* root = cJSON_Parse(dataContainer.c_str());
-        cJSON* details = cJSON_GetObjectItem(root, "details");
+        cJSON* details = NULL;
+        if (root != NULL) {
+            details = cJSON_GetObjectItem(root, "details");
+        }
         if (details != NULL) {
 
             string userName;
-            cJSON *jsonItem = cJSON_GetObjectItem(root, "name");
+            cJSON *jsonItem = cJSON_GetObjectItem(details, "name");
             if (jsonItem != NULL) {
                 userName.assign(jsonItem->valuestring);
             }
             string deviceId;
-            jsonItem = cJSON_GetObjectItem(root, "scClientDevId");
+            jsonItem = cJSON_GetObjectItem(details, "scClientDevId");
             if (jsonItem != NULL) {
                 deviceId.assign(jsonItem->valuestring);
             }
@@ -970,6 +973,7 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
                 axoAppInterface->reSyncConversation(userName, deviceId);
             }
         }
+        cJSON_Delete(root);
     }
     env->ReleaseStringUTFChars(command, cmd);
     return result;
