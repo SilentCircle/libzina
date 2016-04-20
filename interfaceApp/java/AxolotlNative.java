@@ -1377,12 +1377,25 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * configured for data retention.
      *
      * @param callid The call id for the call.
-     * @param direction "placed" or "received" indicating direction of call.
+     * @param isIncoming true if this is an incoming call, false if it is an outgoing call.
      * @param recipient Userid of the recipient of the call.
      * @param start Time that the call started as an epoch value.
      * @param end Time that the call ended as an epoch value.
      */
-    public static native void sendDrInCircleCallMetadata(String callid, String direction, String recipient, long start, long end);
+    public static native void sendDrInCircleCallMetadata(String callid, boolean isIncoming, String recipient, long start, long end);
+
+    /**
+     * Send the Silent World call metadata to the Data Retention S3 bucket if this user is
+     * configured for data retention.
+     *
+     * @param callid The call id for the call.
+     * @param isIncoming true if this is an incoming call, false if it is an outgoing call.
+     * @param srcTn Source PSTN number or empty if none.
+     * @param dstTn PSTN telephone number called in E164 format.
+     * @param start Time that the call started as an epoch value.
+     * @param end Time that the call ended as an epoch value.
+     */
+    public static native void sendDrSilentWorldCallMetadata(String callid, boolean isIncoming, String srcTn, String dstTn, long start, long end);
 
     /**
      * Process any queued pending Data Retention requests.

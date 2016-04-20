@@ -149,6 +149,43 @@ public:
     virtual bool run() override;
 };
 
+class SilentWorldCallMetadataRequest : public DrRequest {
+private:
+    std::string callid_;
+    std::string direction_;
+    std::string srctn_;
+    std::string dsttn_;
+    time_t start_;
+    time_t end_;
+
+public:
+    /**
+     * @brief Construct a Silent World call data retention request
+     *
+     * @param httpHelper HTTP helper function used to make HTTP requests.
+     * @param s3Helper S3 helper function used to post data to Amazon S3.
+     * @param authorization API Key for making AW requests.
+     * @param callid Callid for the message.
+     * @param direction "placed" or "received" indicating direction of call.
+     * @param srctn PSTN number for source or empty for none.
+     * @param dsttn PSTN number for destination.
+     * @param start Time that the call started.
+     * @param end Time that the call ended.
+     */
+    SilentWorldCallMetadataRequest(HTTP_FUNC httpHelper,
+                                   S3_FUNC s3Helper,
+                                   const std::string& authorization_,
+                                   const std::string& callid,
+                                   const std::string direction,
+                                   const std::string srctn,
+                                   const std::string dsttn,
+                                   time_t start,
+                                   time_t end);
+    SilentWorldCallMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json);
+    virtual std::string toJSON() override;
+    virtual bool run() override;
+};
+
 class ScDataRetention
 {
 public:
@@ -239,6 +276,26 @@ public:
                                          const std::string& recipient,
                                          time_t start,
                                          time_t end);
+
+    /**
+     * @brief Store a Silent World call data retention event in the customers Amazon S3 bucket.
+     *
+     * If the request fails it is stored in a sqlite table and will be retried
+     * on the next message or call send.
+     *
+     * @param callid Callid for the message.
+     * @param direction "placed" or "received" indicating direction of call.
+     * @param srctn PSTN number for source or empty for none.
+     * @param dsttn PSTN number for destination.
+     * @param start Time that the call started.
+     * @param end Time that the call ended.
+     */
+    static void sendSilentWorldCallMetadata(const std::string& callid,
+                                            const std::string& direction,
+                                            const std::string& srctn,
+                                            const std::string& dsttn,
+                                            time_t start,
+                                            time_t end);
     /**
      * @brief Run all stored pending data retention requests.
      *

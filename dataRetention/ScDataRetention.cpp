@@ -343,6 +343,97 @@ bool InCircleCallMetadataRequest::run()
     return true;
 }
 
+SilentWorldCallMetadataRequest::SilentWorldCallMetadataRequest(HTTP_FUNC httpHelper,
+                                                               S3_FUNC s3Helper,
+                                                               const std::string& authorization,
+                                                               const std::string& callid,
+                                                               const std::string direction,
+                                                               const std::string srctn,
+                                                               const std::string dsttn,
+                                                               time_t start,
+                                                               time_t end) :
+    DrRequest(httpHelper, s3Helper, authorization),
+    callid_(callid),
+    direction_(direction),
+    srctn_(srctn),
+    dsttn_(dsttn),
+    start_(start),
+    end_(end)
+{
+}
+
+SilentWorldCallMetadataRequest::SilentWorldCallMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json) :
+    DrRequest(httpHelper, s3Helper, authorization)
+{
+    callid_ = get_cjson_string(json, "callid");
+    direction_ = get_cjson_string(json, "direction");
+    srctn_ = get_cjson_string(json, "srctn");
+    dsttn_ = get_cjson_string(json, "dsttn");
+    start_ = get_cjson_time(json, "start");
+    end_ = get_cjson_time(json, "end");
+}
+
+std::string SilentWorldCallMetadataRequest::toJSON()
+{
+    cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
+    cJSON_AddStringToObject(root.get(), "type", "SilentWorldCallMetadataRequest");
+    cJSON_AddStringToObject(root.get(), "callid", callid_.c_str());
+    cJSON_AddStringToObject(root.get(), "direction", direction_.c_str());
+    cJSON_AddStringToObject(root.get(), "srctn", srctn_.c_str());
+    cJSON_AddStringToObject(root.get(), "dsttn", dsttn_.c_str());
+    cJSON_AddNumberToObject(root.get(), "start", static_cast<double>(start_));
+    cJSON_AddNumberToObject(root.get(), "end", static_cast<double>(end_));
+    unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
+    std::string request(out.get());
+    return request;
+}
+
+bool SilentWorldCallMetadataRequest::run()
+{
+    LOGGER(INFO, __func__, " -->");
+    if (!httpHelper_ || !s3Helper_) {
+      LOGGER(ERROR, "HTTP Helper or S3 Helper not set.");
+      return false;
+    }
+    MessageMetadata metadata;
+    int rc = getPresignedUrl(callid_, dsttn_, start_, &metadata);
+    if (rc < 0) {
+      LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
+      // Remove the request from the queue if the error is a failure that cannot be retried.
+      return rc == -2;
+    }
+
+    cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
+
+    cJSON_AddStringToObject(root.get(), "type", "call");
+    cJSON_AddStringToObject(root.get(), "call_id", metadata.callid.c_str());
+    cJSON_AddStringToObject(root.get(), "call_type", "pstn");
+    cJSON_AddStringToObject(root.get(), "call_direction", direction_.c_str());
+    cJSON_AddStringToObject(root.get(), "src_uuid", metadata.src_uuid.c_str());
+    cJSON_AddStringToObject(root.get(), "src_tn", srctn_.c_str());
+    cJSON_AddStringToObject(root.get(), "dst_tn", dsttn_.c_str());
+    cJSON_AddStringToObject(root.get(), "start_on", time_to_string(start_).c_str());
+    cJSON_AddStringToObject(root.get(), "end_on", time_to_string(end_).c_str());
+
+    unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
+    std::string request(out.get());
+    request = compress(request);
+    if (request.empty()) {
+        LOGGER(ERROR, "Could not compress data retention data");
+        return false;
+    }
+
+    string result;
+    rc = s3Helper_(metadata.url.c_str(), request, &result);
+    if (rc != 200) {
+        LOGGER(ERROR, "Could not store in call metadata.");
+        return false;
+    }
+
+    LOGGER(INFO, __func__, " <--");
+    return true;
+}
+
 HTTP_FUNC ScDataRetention::httpHelper_ = nullptr;
 S3_FUNC ScDataRetention::s3Helper_ = nullptr;
 std::string ScDataRetention::authorization_;
@@ -379,6 +470,9 @@ DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
     else if (type == "InCircleCallMetadataRequest") {
         request.reset(new InCircleCallMetadataRequest(httpHelper_, s3Helper_, authorization_, root.get()));
     }
+    else if (type == "SilentWorldCallMetadataRequest") {
+        request.reset(new SilentWorldCallMetadataRequest(httpHelper_, s3Helper_, authorization_, root.get()));
+    }
     else {
         LOGGER(ERROR, "Invalid DrRequest type.");
         return nullptr;
@@ -403,6 +497,16 @@ void ScDataRetention::sendInCircleCallMetadata(const std::string& callid, const 
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
     unique_ptr<DrRequest> request(new InCircleCallMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, start, end));
+    store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
+    processRequests();
+    LOGGER(INFO, __func__, " <--");
+}
+
+void ScDataRetention::sendSilentWorldCallMetadata(const std::string& callid, const std::string& direction, const std::string& srctn, const std::string& dsttn, time_t start, time_t end)
+{
+    LOGGER(INFO, __func__, " -->");
+    AppRepository* store = AppRepository::getStore();
+    unique_ptr<DrRequest> request(new SilentWorldCallMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, srctn, dsttn, start, end));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");

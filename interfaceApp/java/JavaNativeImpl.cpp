@@ -2877,14 +2877,14 @@ JNI_FUNCTION(sendDrMessageMetadata)(JNIEnv* env, jclass clazz, jstring callid, j
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    sendDrInCircleCallMetadata
- * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJ)V
+ * Signature: (Ljava/lang/String;ZLjava/lang/String;JJ)V
  */
 JNIEXPORT void JNICALL
-JNI_FUNCTION(sendDrInCircleCallMetadata)(JNIEnv * env, jclass clazz, jstring callid, jstring direction, jstring recipient, jlong start, jlong end)
+JNI_FUNCTION(sendDrInCircleCallMetadata)(JNIEnv * env, jclass clazz, jstring callid, jboolean isIncoming, jstring recipient, jlong start, jlong end)
 {
     (void)clazz;
 
-    if (callid == NULL || direction == NULL || recipient == NULL) {
+    if (callid == NULL || recipient == NULL) {
         return;
     }
 
@@ -2892,19 +2892,46 @@ JNI_FUNCTION(sendDrInCircleCallMetadata)(JNIEnv * env, jclass clazz, jstring cal
     string callidString(callidTemp);
     env->ReleaseStringUTFChars(callid, callidTemp);
 
-    const char* directionTemp = env->GetStringUTFChars(direction, 0);
-    string directionString(directionTemp);
-    env->ReleaseStringUTFChars(direction, directionTemp);
-    if (directionString.empty())
-        return;
-
     const char* recipientTemp = env->GetStringUTFChars(recipient, 0);
     string recipientString(recipientTemp);
     env->ReleaseStringUTFChars(recipient, recipientTemp);
     if (recipientString.empty())
         return;
 
-    ScDataRetention::sendInCircleCallMetadata(callidString, directionString, recipientString, static_cast<long>(start / 1000), static_cast<long>(end / 1000));
+    ScDataRetention::sendInCircleCallMetadata(callidString, static_cast<bool>(isIncoming) ? "received" : "placed", recipientString, static_cast<long>(start / 1000), static_cast<long>(end / 1000));
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendDrSilentWorldCallMetadata
+ * Signature: (Ljava/lang/String;ZLjava/lang/String;Ljava/lang/String;JJ)V
+ */
+JNIEXPORT void JNICALL
+JNI_FUNCTION(sendDrSilentWorldCallMetadata)(JNIEnv * env, jclass clazz, jstring callid, jboolean isIncoming, jstring srcTn, jstring dstTn, jlong start, jlong end)
+{
+    (void)clazz;
+
+    if (callid == NULL || srcTn == NULL || dstTn == NULL) {
+        return;
+    }
+
+    const char* callidTemp = env->GetStringUTFChars(callid, 0);
+    string callidString(callidTemp);
+    env->ReleaseStringUTFChars(callid, callidTemp);
+
+    const char* srcTnTemp = env->GetStringUTFChars(srcTn, 0);
+    string srcTnString(srcTnTemp);
+    env->ReleaseStringUTFChars(srcTn, srcTnTemp);
+    if (srcTnString.empty())
+        return;
+
+    const char* dstTnTemp = env->GetStringUTFChars(dstTn, 0);
+    string dstTnString(dstTnTemp);
+    env->ReleaseStringUTFChars(dstTn, dstTnTemp);
+    if (dstTnString.empty())
+        return;
+
+    ScDataRetention::sendSilentWorldCallMetadata(callidString, static_cast<bool>(isIncoming) ? "received" : "placed", srcTnString, dstTnString, static_cast<long>(start / 1000), static_cast<long>(end / 1000));
 }
 
 /*

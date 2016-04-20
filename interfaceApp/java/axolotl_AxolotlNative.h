@@ -572,10 +572,18 @@ JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_sendDrMessageMetadata
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    sendDrInCircleCallMetadata
- * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJ)V
+ * Signature: (Ljava/lang/String;ZLjava/lang/String;JJ)V
  */
 JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_sendDrInCircleCallMetadata
-  (JNIEnv *, jclass, jstring, jstring, jstring, jlong, jlong);
+  (JNIEnv *, jclass, jstring, jboolean, jstring, jlong, jlong);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendDrSilentWorldCallMetadata
+ * Signature: (Ljava/lang/String;ZLjava/lang/String;Ljava/lang/String;JJ)V
+ */
+JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_sendDrSilentWorldCallMetadata
+  (JNIEnv *, jclass, jstring, jboolean, jstring, jstring, jlong, jlong);
 
 /*
  * Class:     axolotl_AxolotlNative
