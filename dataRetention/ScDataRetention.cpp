@@ -313,14 +313,15 @@ bool InCircleCallMetadataRequest::run()
 
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
 
+    const bool outgoing = direction_ == "placed";
     cJSON_AddStringToObject(root.get(), "type", "call");
     cJSON_AddStringToObject(root.get(), "call_id", metadata.callid.c_str());
     cJSON_AddStringToObject(root.get(), "call_type", "peer");
     cJSON_AddStringToObject(root.get(), "call_direction", direction_.c_str());
-    cJSON_AddStringToObject(root.get(), "src_uuid", metadata.src_uuid.c_str());
-    cJSON_AddStringToObject(root.get(), "src_alias", metadata.src_alias.c_str());
-    cJSON_AddStringToObject(root.get(), "dst_uuid", metadata.dst_uuid.c_str());
-    cJSON_AddStringToObject(root.get(), "dst_alias", metadata.dst_alias.c_str());
+    cJSON_AddStringToObject(root.get(), "src_uuid", outgoing ? metadata.src_uuid.c_str() : metadata.dst_uuid.c_str());
+    cJSON_AddStringToObject(root.get(), "src_alias", outgoing ? metadata.src_alias.c_str() : metadata.dst_alias.c_str());
+    cJSON_AddStringToObject(root.get(), "dst_uuid", outgoing ? metadata.dst_uuid.c_str() : metadata.src_uuid.c_str());
+    cJSON_AddStringToObject(root.get(), "dst_alias", outgoing ? metadata.dst_alias.c_str() : metadata.src_alias.c_str());
     cJSON_AddStringToObject(root.get(), "start_on", time_to_string(start_).c_str());
     cJSON_AddStringToObject(root.get(), "end_on", time_to_string(end_).c_str());
 
