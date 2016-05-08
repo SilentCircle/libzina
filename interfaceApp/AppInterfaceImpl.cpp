@@ -27,6 +27,7 @@ limitations under the License.
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../logging/AxoLogging.h"
+#include "../storage/MessageCapture.h"
 
 #include <zrtp/crypto/sha256.h>
 
@@ -314,6 +315,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         }
         cJSON_Delete(jsSupplement);
     }
+    MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, attributesDescr, !attachmentDescr.empty());
     receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -654,6 +656,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
                    recipientDeviceId);
             continue;
         }
+        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, messageAttributes, !attachementDescriptor.empty());
 
         shared_ptr<string> supplementsEncrypted = make_shared<string>();
 
@@ -792,6 +795,7 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
             LOGGER(INFO, __func__, " <-- No pre-key message.");
             return NULL;
         }
+        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, messageAttributes, !attachementDescriptor.empty());
     }
     lck.unlock();
     delete devices;

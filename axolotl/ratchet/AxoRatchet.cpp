@@ -321,7 +321,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
     if (supplements.size() > 0 && supplementsPlain) {
         ret = aesCbcDecrypt(MK, iv, supplements, supplementsPlain);
         if (ret != SUCCESS) {
-            LOGGER(ERROR, __func__, " <-- Decrypt failed (supple,ments).");
+            LOGGER(ERROR, __func__, " <-- Decrypt failed (supplements).");
             return ret;
         }
         if (!checkAndRemovePadding(supplementsPlain)) {
@@ -476,14 +476,6 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         return shared_ptr<string>();;
     }
 
-    string recvIdHash;
-
-    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
-    if (localConv != NULL && idHashes != NULL) {
-        const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
-        computeIdHash(idPub, &recvIdHash);
-    }
-
     // This is a message with embedded pre-key and identity key. Need to setup the
     // Axolotl conversation first. According to the optimized pre-key handling this
     // client takes the Axolotl 'Bob' role.
@@ -491,10 +483,9 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
         result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
+        if (result < 0)
+            return shared_ptr<string>();
     }
-    delete localConv;
-    if (result < 0)
-        return shared_ptr<string>();
 
     // Check if conversation is really setup - identity key must be available in any case
     if (conv->getDHIr() == NULL) {
@@ -503,6 +494,13 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     }
 
     if (idHashes != NULL) {
+        string recvIdHash;
+        AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+        if (localConv != NULL) {
+            const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
+            computeIdHash(idPub, &recvIdHash);
+            delete localConv;
+        }
         string senderIdHash;
         const string idPub = conv->getDHIr()->getPublicKey();
         computeIdHash(idPub, &senderIdHash);
@@ -541,8 +539,8 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         }
     }
     else {
-        // Stage the skipped message for the current (old) ratchet, CKp and MK not used at this
-        // point, PNp has the max number of message sent on the old ratchet
+        // Stage the skipped message for the current (old) ratchet, CKp, MK and macKey are not
+        // used at this point, PNp has the max number of message sent on the old ratchet
         stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.PNp, conv->getCKr(), &CKp, &MK, &macKey);
 
         // Save old DHRr, may need to restore in case of failure

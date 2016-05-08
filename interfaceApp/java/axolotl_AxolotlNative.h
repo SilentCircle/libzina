@@ -473,6 +473,14 @@ JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_addAliasToUuid
 JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getDisplayName
   (JNIEnv *, jclass, jstring);
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    loadCapturedMsgs
+ * Signature: ([B[B[B[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_loadCapturedMsgs
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jintArray);
+
 #ifdef __cplusplus
 }
 #endif

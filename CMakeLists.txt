@@ -132,6 +132,7 @@ set (interface_src
 
 set (storage_src
     storage/sqlite/SQLiteStoreConv.cpp
+    storage/MessageCapture.cpp
     storage/NameLookup.cpp
 )
 
