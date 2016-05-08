@@ -120,7 +120,7 @@ TEST_F(AppRepoTestFixture, Event)
     ASSERT_EQ(11, msgNum);
 
     std::list<std::string*> result;
-    store->loadEvents(name, -1, -1, &result, &msgNumber);
+    store->loadEvents(name, -1, -1, -1, &result, &msgNumber);
     ASSERT_EQ(11, result.size());
 
     while (!result.empty()) {
@@ -130,7 +130,7 @@ TEST_F(AppRepoTestFixture, Event)
         delete msg;
     }
 
-    sqlCode = store->loadEvents(name, -1, 5, &result, &msgNumber);
+    sqlCode = store->loadEvents(name, -1, 5, -1, &result, &msgNumber);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
     ASSERT_EQ(5, result.size());
 
@@ -142,7 +142,7 @@ TEST_F(AppRepoTestFixture, Event)
     }
     result.clear();
 
-    sqlCode = store->loadEvents(name, 2, 3, &result, &msgNumber);
+    sqlCode = store->loadEvents(name, 2, 3, 0, &result, &msgNumber);
     ASSERT_FALSE(SQL_FAIL(sqlCode)) << store->getLastError();
     ASSERT_EQ(3, result.size());
 

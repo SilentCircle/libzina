@@ -140,17 +140,67 @@ TEST_F(StoreTestFixture, MsgHashStore)
     result = pks->hasMsgHash(msgHash_2);
     ASSERT_EQ(SQLITE_ROW, result) <<  "Inserted msgHash not found";
 
-    // Now wait for 5 seconds, then delete message hashes older than 4 seconds
-    sqlite3_sleep(5000);
-
-    time_t now_4 = time(0) - 4;
-    pks->deleteMsgHashes(now_4);
+    sqlite3_sleep(2000);
+    time_t now_1 = time(0) - 1;
+    pks->deleteMsgHashes(now_1);
 
     result = pks->hasMsgHash(msgHash_1);
     ASSERT_NE(SQLITE_ROW, result) <<  "msgHash_1 found after delete";
 
     result = pks->hasMsgHash(msgHash_2);
     ASSERT_NE(SQLITE_ROW, result) <<  "msgHash_2 found after delete";
+}
+
+static string name("uabcdefghijklmnoprstvwxy");
+static string msgId("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
+static string devId("a_device");
+static string attrib("{\"cmd\":\"ping\"}");
+
+TEST_F(StoreTestFixture, MsgTraceStore)
+{
+    LOGGER_INSTANCE setLogLevel(VERBOSE);
+
+    // Fresh DB, trace must be empty
+    shared_ptr<list<string> > records = pks->loadMsgTrace(name, empty, empty);
+    ASSERT_TRUE(records->empty());
+
+    // Fresh DB, trace must be empty
+    records = pks->loadMsgTrace(empty, msgId, empty);
+    ASSERT_TRUE(records->empty());
+
+    // Fresh DB, trace must be empty
+    records = pks->loadMsgTrace(empty, empty, devId);
+    ASSERT_TRUE(records->empty());
+
+    // Insert a message trace record
+    int32_t result = pks->insertMsgTrace(name, msgId, devId, attrib, false, false);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    records = pks->loadMsgTrace(name, empty, empty);
+    ASSERT_EQ(1, records->size());
+
+    records = pks->loadMsgTrace(empty, msgId, empty);
+    ASSERT_EQ(1, records->size());
+
+    records = pks->loadMsgTrace(empty, empty, devId);
+    ASSERT_EQ(1, records->size());
+
+    records = pks->loadMsgTrace(empty, msgId, devId);
+    ASSERT_EQ(1, records->size());
+
+    time_t nowMinus1 = time(NULL)-1;
+    pks->deleteMsgTrace(nowMinus1);
+
+    records = pks->loadMsgTrace(name, empty, empty);
+    ASSERT_FALSE(records->empty());
+
+    sqlite3_sleep(2000);
+    nowMinus1 = time(NULL) - 1;
+    // clear old records
+    result = pks->deleteMsgTrace(nowMinus1);
+
+    records = pks->loadMsgTrace(name, empty, empty);
+    ASSERT_TRUE(records->empty());
 }
 
 

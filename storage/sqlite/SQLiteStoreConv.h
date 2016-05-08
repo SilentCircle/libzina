@@ -174,17 +174,63 @@ public:
      * @brief Check if a message hash is in the table.
      * 
      * @param msgHash the hash to insert, no duplicates allowed
-     * @return SQLite code
+     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
      */
     int32_t hasMsgHash(const string& msgHash);
 
     /**
-     * @brief Delete message hashes old than the timestamp.
+     * @brief Delete message hashes older than the timestamp.
      * 
      * @param timestamp the timestamp of oldest hash
-     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
+     * @return SQLite code
      */
     int32_t deleteMsgHashes(time_t timestamp);
+
+    /**
+     * @brief Insert Message Trace record.
+     *
+     * @param name The message sender's/receiver's name (SC uid)
+     * @param messageId The UUID of the message
+     * @param deviceId The sender's device id
+     * @param attribute The message attribute string which contains status information
+     * @param attachment If set the message contained an attachment descriptor
+     * @param received If set then this was a received message.
+     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
+     */
+    int32_t insertMsgTrace(const string& name, const string& messageId, const string& deviceId, const string& attributes,
+                           bool attachment, bool received);
+
+
+    /**
+     * @brief Return a list of message trace record.
+     *
+     * The function selects and returns a list of JSON formatted message trace records, ordered by the
+     * sequence of record insertion. The function supports the following selections:
+     * <ul>
+     * <li>@c name contains data, @c messageId and @c deviceId are empty: return all message trace records
+     *     for this name</li>
+     * <li>@c messageId contains data, @c name and @c deviceId are empty: return all message trace records
+     *     for this messageId</li>
+     * <li>@c deviceId contains data, @c name and @c messageId are empty: return all message trace records
+     *     for this deviceId</li>
+     * <li>@c messageId and @c deviceId contain data, @c name is empty: return all message trace records
+     *     that match the messageId AND deviceId</li>
+     * </ul>
+     * @param name The message sender's/receiver's name (SC uid)
+     * @param messageId The UUID of the message
+     * @param deviceId The sender's device id
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of trace records, maybe empty, never @c NULL
+     */
+    shared_ptr<list<string> > loadMsgTrace(const string& name, const string& messageId, const string& deviceId, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Delete message trace records older than the timestamp.
+     *
+     * @param timestamp the timestamp of oldest message trace
+     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
+     */
+    int32_t deleteMsgTrace(time_t timestamp);
 
     /*
      * @brief For use for debugging and development only

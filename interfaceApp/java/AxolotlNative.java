@@ -1086,4 +1086,27 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return The display name or a {@code null} pointer if none available
      */
     public static native byte[] getDisplayName(String uuid);
+
+    /**
+     * Return an array list of message trace records.
+     *
+     * The function selects and returns a list of JSON formatted message trace records, ordered by the
+     * sequence of record insertion. The function supports the following selections:
+     * <ul>
+     * <li>{@code name} contains data, {@code messageId} and {@code deviceId} are empty: return all message trace records
+     *     for this name</li>
+     * <li>{@code messageId} contains data, {@code name} and {@code deviceId} are empty: return all message trace records
+     *     for this messageId</li>
+     * <li>{@code deviceId} contains data, {@code name} and {@code messageId} are empty: return all message trace records
+     *     for this deviceId</li>
+     * <li>{@code messageId} and {@code} deviceId contain data, {@code} name is empty: return all message trace records
+     *     that match the messageId AND deviceId</li>
+     * </ul>
+     * @param name The message sender's/receiver's name (SC uid)
+     * @param messageId The UUID of the message
+     * @param deviceId The sender's device id
+     * @param errorCode A 1 element integer array that returns the result code/error code.
+     * @return byte array of UTF-8 byte trace records, maybe empty, or {@code null} in case of parameter error.
+     */
+     public static native byte[][] loadCapturedMsgs(byte[] name, byte[] messageId, byte[] deviceId, int[] errorCode);
 }

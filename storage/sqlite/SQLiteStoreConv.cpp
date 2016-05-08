@@ -21,6 +21,7 @@ limitations under the License.
 #include <cryptcommon/ZrtpRandom.h>
 
 #include "../../logging/AxoLogging.h"
+#include "../../util/cJSON.h"
 
 
 /* *****************************************************************************
@@ -34,7 +35,7 @@ limitations under the License.
  *
  * SQLITE_CHK requires:
  * - a cleanup label, the macro goes to that label in case of error
- * - an integer (int) variable with name "rc" that stores return codes from sqlite
+ * - an integer (int) variable with name "sqlResult" that stores return codes from sqlite
  * - ERRMSG
  */
 #define ERRMSG  {snprintf(lastError_, (size_t)DB_CACHE_ERR_BUFF_SIZE, \
@@ -56,7 +57,7 @@ limitations under the License.
 #define SQLITE_PREPARE sqlite3_prepare
 #endif
 
-#define DB_VERSION 2
+#define DB_VERSION 3
 
 static mutex sqlLock;
 
@@ -121,7 +122,7 @@ static const char* deletePreKey = "DELETE FROM PreKeys WHERE keyId=?1;";
 static const char* selectPreKeyAll = "SELECT keyId, preKeyData FROM PreKeys;";
 
 /* *****************************************************************************
- * SQL statements to process the message has table table.
+ * SQL statements to process the message hash table.
  */
 static const char* dropMsgHash = "DROP TABLE MsgHash;";
 static const char* createMsgHash = "CREATE TABLE MsgHash (msgHash BLOB NOT NULL PRIMARY KEY, since TIMESTAMP);";
@@ -129,6 +130,30 @@ static const char* insertMsgHashSql = "INSERT INTO MsgHash (msgHash, since) VALU
 static const char* selectMsgHash = "SELECT msgHash FROM MsgHash WHERE msgHash=?1;";
 static const char* removeMsgHash = "DELETE FROM MsgHash WHERE since < ?1;";
 
+/* *****************************************************************************
+ * SQL statements to process the message trace/state table.
+ *
+ * Flags: hold the booleans attachment and received
+ */
+static const int32_t ATTACHMENT = 1;
+static const int32_t RECEIVED   = 2;
+static const char* dropMsgTrace = "DROP TABLE MsgTrace;";
+static const char* createMsgTrace =
+        "CREATE TABLE MsgTrace (name VARCHAR NOT NULL, messageId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL,"
+        "attributes VARCHAR NOT NULL, stored TIMESTAMP DEFAULT(STRFTIME('%Y-%m-%dT%H:%M:%f', 'NOW')), flags INTEGER);";
+static const char* insertMsgTraceSql =
+        "INSERT INTO MsgTrace (name, messageId, deviceId, attributes, flags) VALUES (?1, ?2, ?3, ?4, ?5);";
+static const char* selectMsgTraceMsgId =
+        "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE messageId=?1 ORDER BY ROWID ASC ;";
+static const char* selectMsgTraceName =
+        "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE name=?1 ORDER BY ROWID ASC ;";
+static const char* selectMsgTraceDevId =
+        "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE deviceId=?1 ORDER BY ROWID ASC ;";
+static const char* selectMsgTraceMsgDevId =
+        "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE messageId=?1 AND deviceId=?2 ORDER BY ROWID ASC ;";
+
+// See comment in deleteMsgTrace regarding the not fully qualified SQL statement to remove olde trace records.
+static const char* removeMsgTrace = "DELETE FROM MsgTrace WHERE STRFTIME('%s', stored)";
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
@@ -284,6 +309,9 @@ int SQLiteStoreConv::openStore(const std::string& name)
         return -1;
     }
     unique_lock<mutex> lck(sqlLock);
+    // Don't try to open twice
+    if (isReady_)
+        return SQLITE_CANTOPEN;
 
     // If name has size 0 then open im-memory DB, handy for testing
     const char *dbName = name.size() == 0 ? ":memory:" : name.c_str();
@@ -385,6 +413,18 @@ int SQLiteStoreConv::createTables()
     }
     sqlite3_finalize(stmt);
 
+    SQLITE_PREPARE(db, dropMsgTrace, -1, &stmt, NULL);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL));
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
     LOGGER(INFO, __func__ , " <-- ", sqlResult);
     return SQLITE_OK;
 
@@ -397,10 +437,9 @@ int SQLiteStoreConv::createTables()
 /* *****************************************************************************
  * The SQLite master table.
  *
- * Used to check if we have valid attachmentStatus table.
+ * Used to check if we have valid message hash table.
  */
 static const char *lookupTables = "SELECT name FROM sqlite_master WHERE type='table' AND name='MsgHash';";
-
 
 int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     sqlite3_stmt *stmt;
@@ -418,12 +457,25 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         if (rc != SQLITE_ROW) {
             sqlCode_ = SQLITE_PREPARE(db, createMsgHash, -1, &stmt, NULL);
             sqlCode_ = sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
             if (sqlCode_ != SQLITE_DONE) {
-                LOGGER(ERROR, __func__, ", SQL error: ", sqlCode_);
+                LOGGER(ERROR, __func__, ", SQL error adding hash table: ", sqlCode_);
                 return sqlCode_;
             }
         }
         oldVersion = 2;
+    }
+
+    // Version 3 adds the message trace table
+    if (oldVersion < 3) {
+        SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        if (sqlCode_ != SQLITE_DONE) {
+            LOGGER(ERROR, __func__, ", SQL error adding trace table: ", sqlCode_);
+            return sqlCode_;
+        }
+        oldVersion = 3;
     }
 
     if (oldVersion != newVersion) {
@@ -1052,3 +1104,161 @@ cleanup:
     LOGGER(INFO, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
+
+int32_t SQLiteStoreConv::insertMsgTrace(const string &name, const string &messageId, const string &deviceId,
+                                        const string &attributes, bool attachment, bool received)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    int32_t flag = attachment ? ATTACHMENT : 0;
+    flag = received ? flag | RECEIVED : flag;
+
+    // char* insertMsgTraceSql = "INSERT INTO MsgTrace (name, messageId, deviceId, attributes, flags) VALUES (?1, ?2, ?3, ?4, ?5);";
+    SQLITE_CHK(SQLITE_PREPARE(db, insertMsgTraceSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 2, messageId.data(), static_cast<int32_t>(messageId.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 3, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 4, attributes.data(), static_cast<int32_t>(attributes.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_int(stmt,  5, flag));
+
+    sqlResult= sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE)
+        ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
+shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, const string &messageId, const string &deviceId, int32_t* sqlCode)
+{
+    sqlite3_stmt *stmt = NULL;
+    int32_t len;
+    int32_t sqlResult;
+    shared_ptr<list<string> > traceRecords = make_shared<list<string> >();
+
+    int32_t selection = 0;
+    if (!messageId.empty() && !deviceId.empty())
+        selection = 1;
+    else if (!name.empty())
+        selection = 2;
+    else if (!messageId.empty())
+        selection = 3;
+    else if (!deviceId.empty())
+        selection = 4;
+
+    switch (selection) {
+        case 1:
+            // char* selectMsgTraceMsgDevId =
+            //"SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE messageId=?1 AND deviceId=?2 ORDER BY ROWID ASC ;";
+            SQLITE_CHK(SQLITE_PREPARE(db, selectMsgTraceMsgDevId, -1, &stmt, NULL));
+            SQLITE_CHK(sqlite3_bind_text(stmt, 1, messageId.data(), static_cast<int32_t>(messageId.size()), SQLITE_STATIC));
+            SQLITE_CHK(sqlite3_bind_text(stmt, 2, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
+            break;
+        case 2:
+            // char* selectMsgTraceName =
+            //      "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE name=?1 ORDER BY ROWID ASC ;";
+            SQLITE_CHK(SQLITE_PREPARE(db, selectMsgTraceName, -1, &stmt, NULL));
+            SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC));
+            break;
+        case 3:
+            // char* selectMsgTraceMsgId =
+            //     "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE messageId=?1 ORDER BY ROWID ASC ;";
+            SQLITE_CHK(SQLITE_PREPARE(db, selectMsgTraceMsgId, -1, &stmt, NULL));
+            SQLITE_CHK(sqlite3_bind_text(stmt, 1, messageId.data(), static_cast<int32_t>(messageId.size()), SQLITE_STATIC));
+            break;
+        case 4:
+            // char* selectMsgTraceDevId =
+            //     "SELECT name, messageId, deviceId, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE deviceId=?1 ORDER BY ROWID ASC ;";
+            SQLITE_CHK(SQLITE_PREPARE(db, selectMsgTraceDevId, -1, &stmt, NULL));
+            SQLITE_CHK(sqlite3_bind_text(stmt, 1, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
+            break;
+        default:
+            sqlResult = SQLITE_ERROR;
+            goto cleanup;
+            break;
+    }
+
+    sqlResult= sqlite3_step(stmt);
+    ERRMSG;
+    if (sqlResult != SQLITE_ROW) {        // No stored records for this selection
+        LOGGER(INFO, __func__, " <-- No message trace records for: ", name, messageId, deviceId);
+        goto cleanup;
+    }
+    while (sqlResult == SQLITE_ROW) {
+        // Get trace fields and create a JSON formatted string
+        cJSON* root = cJSON_CreateObject();
+        // name is usually the SC UID string
+        cJSON_AddStringToObject(root, "name", (const char*)sqlite3_column_text(stmt, 0));
+        cJSON_AddStringToObject(root, "msgId", (const char*)sqlite3_column_text(stmt, 1));
+        cJSON_AddStringToObject(root, "devId", (const char*)sqlite3_column_text(stmt, 2));
+        cJSON_AddStringToObject(root, "attr", (const char*)sqlite3_column_text(stmt, 3));
+        cJSON_AddStringToObject(root, "time", (const char*)sqlite3_column_text(stmt, 4));
+
+        int32_t flag = sqlite3_column_int(stmt, 5);
+        cJSON_AddNumberToObject(root, "received", ((flag & RECEIVED) == RECEIVED) ? 1 : 0);
+        cJSON_AddNumberToObject(root, "attachment", ((flag & ATTACHMENT) == ATTACHMENT) ? 1 : 0);
+
+        char *out = cJSON_PrintUnformatted(root);
+        string traceRecord(out);
+        cJSON_Delete(root); free(out);
+        traceRecords->push_back(traceRecord);
+        LOGGER(INFO, __func__, " record : ", traceRecord);
+
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+
+    return traceRecords;
+}
+
+
+int32_t SQLiteStoreConv::deleteMsgTrace(time_t timestamp)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    int cleaned;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // Bind with two strftime functions and compar them with < doesn't seem to work. Thus
+    // we use the trick and compile the full SQL statement as string and then prepare it.
+    // This is also required because for the trace records we strote the timestamp in ISO
+    // format with fractions of a second to get a more precise timestamp. Otherwise we would
+    // have a timestamp with a precision of a full second. To remove old trace records it's
+    // OK to use a second based timestamp.
+
+    // char* removeMsgTrace = "DELETE FROM MsgTrace WHERE STRFTIME('%s', stored)";
+    char strfTime[400];
+    snprintf(strfTime, sizeof(strfTime)-1, "%s < strftime('%%s', %ld, 'unixepoch');", removeMsgTrace, timestamp);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, strfTime, -1, &stmt, NULL));
+
+    // The following sequence somehow doesn't wotk eben if the removeMsgTrace terminates with ' <?1;'
+//    SQLITE_CHK(SQLITE_PREPARE(db, removeMsgTrace, -1, &stmt, NULL));
+//    SQLITE_CHK(sqlite3_bind_text(stmt, 1, strfTime, -1, SQLITE_STATIC));
+
+//    sqlResult= sqlite3_step(stmt);
+//    cleaned = sqlite3_changes(db);
+//    LOGGER(INFO, __func__, " Number of removed old traces: ", cleaned);
+    if (sqlResult != SQLITE_DONE)
+        ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+

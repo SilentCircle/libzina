@@ -2306,3 +2306,42 @@ JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid)
     return retData;
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    loadCapturedMsgs
+ * Signature: ([B[B[B[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyteArray msgId, jbyteArray devId, jintArray code)
+{
+    (void)clazz;
+
+    string nameString;
+    arrayToString(env, name, &nameString);
+
+    string msgIdString;
+    arrayToString(env, msgId, &msgIdString);
+
+    string devIdString;
+    arrayToString(env, devId, &devIdString);
+
+    int32_t errorCode;
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    shared_ptr<list<string> > records = store->loadMsgTrace(nameString, msgIdString, devIdString, &errorCode);
+
+    if (code != NULL && env->GetArrayLength(code) >= 1) {
+        setReturnCode(env, code, errorCode);
+    }
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(records->size()), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    while (!records->empty()) {
+        string s = records->front();
+        records->pop_front();
+        jbyteArray retData = stringToArray(env, s);
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
+}
