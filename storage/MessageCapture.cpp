@@ -43,6 +43,13 @@ static int32_t filterAttributes(const string& attributes, shared_ptr<string> fil
     return OK;
 }
 
+static void cleanupTrace(SQLiteStoreConv* store )
+{
+    // Cleanup old traces, currently using the same time as for the Message Key cleanup
+    time_t timestamp = time(0) - MK_STORE_TIME;
+    store->deleteStagedMk(timestamp);
+}
+
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
                                                const string &convState, const string &attributes, bool attachments)
 {
@@ -60,6 +67,7 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
         LOGGER(ERROR, __func__, " <-- Cannot store received message trace data.", result);
         return result;
     }
+    cleanupTrace(store);
     LOGGER(INFO, __func__ , " <-- ");
     return OK;
 }
@@ -80,6 +88,7 @@ int32_t MessageCapture::captureSendMessage(const string &receiver, const string 
         LOGGER(ERROR, __func__, " <-- Cannot store sent message trace data.", result);
         return result;
     }
+    cleanupTrace(store);
     LOGGER(INFO, __func__ , " <-- ");
     return OK;
 }
