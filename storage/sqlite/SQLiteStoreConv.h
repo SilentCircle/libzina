@@ -197,8 +197,8 @@ public:
      * @param received If set then this was a received message.
      * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
      */
-    int32_t insertMsgTrace(const string& name, const string& messageId, const string& deviceId, const string& attributes,
-                           bool attachment, bool received);
+    int32_t insertMsgTrace(const string& name, const string& messageId, const string& deviceId, const string& convState,
+                           const string& attributes, bool attachment, bool received);
 
 
     /**

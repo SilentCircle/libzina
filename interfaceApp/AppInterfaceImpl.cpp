@@ -250,13 +250,23 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     shared_ptr<string> supplementsPlain = make_shared<string>();
     shared_ptr<const string> messagePlain;
 
+    cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
+
     messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
     errorCode_ = axoConv->getErrorCode();
+    convJson = axoConv->prepareForCapture(convJson, false);
+
     delete axoConv;
     lck.unlock();
 
 //    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
+
+        char *out = cJSON_PrintUnformatted(convJson);
+        string convState(out);
+        cJSON_Delete(convJson); free(out);
+
+        MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"failed\"}"), false);
         char b2hexBuffer[1004] = {0};
 
         if (oldMessage)
@@ -315,7 +325,12 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         }
         cJSON_Delete(jsSupplement);
     }
-    MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, attributesDescr, !attachmentDescr.empty());
+    out = cJSON_PrintUnformatted(convJson);
+    string convState(out);
+    cJSON_Delete(convJson); free(out);
+
+    MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, attributesDescr, !attachmentDescr.empty());
+
     receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -568,7 +583,9 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         string msgId(uuidString);
 
         LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
-        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs);
+        shared_ptr<string> convState = make_shared<string>();
+        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs, convState);
+        convState->clear();
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
 
@@ -656,17 +673,28 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
                    recipientDeviceId);
             continue;
         }
-        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, messageAttributes, !attachementDescriptor.empty());
 
         shared_ptr<string> supplementsEncrypted = make_shared<string>();
+
+        cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
 
         // Encrypt the user's message and the supplementary data if necessary
         pair<string, string> idHashes;
         shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
         axoConv->storeConversation();
+
+        convJson = axoConv->prepareForCapture(convJson, false);
+
         delete axoConv;
         if (!wireMessage)
             continue;
+
+        char* out = cJSON_PrintUnformatted(convJson);
+        string convState(out);
+        cJSON_Delete(convJson); free(out);
+
+        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, convState, messageAttributes, !attachementDescriptor.empty());
+
         bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
         /*
          * Create the message envelope:
@@ -777,8 +805,8 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         if (toSibling && recipientDeviceId == scClientDevId_) {
             continue;
         }
-
-        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, recipientDeviceName, message, supplements, msgId, msgPairs);
+        shared_ptr<string> convState = make_shared<string>();
+        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, recipientDeviceName, message, supplements, msgId, msgPairs, convState);
         if (result == 0) {  // no pre-key bundle available for name/device-id combination
             LOGGER(DEBUGGING, "No pre-key bundle available for recipient ", recipient, ", device id: ", recipientDeviceId);
             continue;
@@ -795,7 +823,8 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
             LOGGER(INFO, __func__, " <-- No pre-key message.");
             return NULL;
         }
-        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, messageAttributes, !attachementDescriptor.empty());
+        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, *convState, messageAttributes, !attachementDescriptor.empty());
+        convState->clear();
     }
     lck.unlock();
     delete devices;
@@ -867,7 +896,7 @@ cleanup:
 
 int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string& recipientDeviceId, const string& recipientDeviceName,
                                           const string& message, const string& supplements,
-                                          const string& msgId, vector<pair<string, string> >* msgPairs)
+                                          const string& msgId, vector<pair<string, string> >* msgPairs, shared_ptr<string> convState)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -892,10 +921,13 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
 
     shared_ptr<string> supplementsEncrypted = make_shared<string>();
 
+    cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
+
     // Encrypt the user's message and the supplementary data if necessary
     pair<string, string> idHashes;
     shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
     axoConv->storeConversation();
+    convJson = axoConv->prepareForCapture(convJson, true);
     delete axoConv;
 
     if (!wireMessage) {
@@ -903,6 +935,10 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         LOGGER(INFO, __func__, " <-- Encryption failed.");
         return 0;
     }
+    char* out = cJSON_PrintUnformatted(convJson);
+    convState->assign(out);
+    cJSON_Delete(convJson); free(out);
+
     bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
     /*
      * Create the message envelope:
@@ -1065,7 +1101,9 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     string msgId(uuidString);
 
     LOGGER(DEBUGGING, "Send Ping to re-sync device: ", deviceId);
-    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs);
+    shared_ptr<string> convState = make_shared<string>();
+    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs, convState);
+    convState->clear();
 
     // This is always a security issue: return immediately, don't process and send a message
     if (result < 0) {

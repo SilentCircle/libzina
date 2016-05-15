@@ -153,7 +153,7 @@ private:
      * and sends this to the receiver (the 'Bob' role)
      */
     int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& recipientDeviceName, const string& message, 
-                            const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs );
+                            const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs, shared_ptr<string> convState);
     char* tempBuffer_;
     size_t tempBufferSize_;
     string ownUser_;

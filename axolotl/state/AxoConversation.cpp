@@ -352,7 +352,7 @@ const string* AxoConversation::serialize() const
     cJSON_AddNumberToObject(root, "ratchet", (ratchetFlag) ? 1 : 0);
     cJSON_AddNumberToObject(root, "zrtpState", zrtpVerifyState);
 
-    char *out = cJSON_Print(root);
+    char *out = cJSON_PrintUnformatted(root);
     string* data = new string(out);
     cJSON_Delete(root); free(out);
 
@@ -383,4 +383,71 @@ void AxoConversation::reset()
     Nr = Ns = PNs = preKeyId = 0;
     ratchetFlag = false;
     LOGGER(INFO, __func__, " <--");
+}
+
+
+cJSON *AxoConversation::prepareForCapture(cJSON *existingRoot, bool beforeAction) {
+    LOGGER(INFO, __func__, " -->");
+    char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
+
+    cJSON* root = (existingRoot == nullptr) ? cJSON_CreateObject() : existingRoot;
+
+    cJSON* jsonItem;
+    cJSON_AddItemToObject(root, beforeAction ? "before" : "after", jsonItem = cJSON_CreateObject());
+
+    cJSON_AddStringToObject(jsonItem, "name", partner_.getName().c_str());
+    cJSON_AddStringToObject(jsonItem, "alias", partner_.getAlias().c_str());
+
+    cJSON_AddStringToObject(jsonItem, "deviceId", deviceId_.c_str());
+    cJSON_AddStringToObject(jsonItem, "localUser", localUser_.c_str());
+    cJSON_AddStringToObject(jsonItem, "deviceName", deviceName_.c_str());
+
+    if (DHRs != NULL) {
+        b64Encode((const uint8_t*)DHRs->getPublicKey().serialize().data(), DHRs->getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        cJSON_AddStringToObject(jsonItem, "DHRs", b64Buffer);
+    }
+    else
+        cJSON_AddStringToObject(jsonItem, "DHRs", "");
+
+    // DHRr key, public
+    if (DHRr != NULL) {
+        b64Encode((const uint8_t*)DHRr->serialize().data(), DHRr->getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        cJSON_AddStringToObject(jsonItem, "DHRr", b64Buffer);
+    }
+    else
+        cJSON_AddStringToObject(jsonItem, "DHRr", "");
+
+    // DHIs key, public
+    if (DHIs != NULL) {
+        b64Encode((const uint8_t*)DHIs->getPublicKey().serialize().data(), DHIs->getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        cJSON_AddStringToObject(jsonItem, "DHIs", b64Buffer);
+    }
+    else
+        cJSON_AddStringToObject(jsonItem, "DHIs", "");
+
+    // DHIr key, public
+    if (DHIr != NULL) {
+        b64Encode((const uint8_t*)DHIr->serialize().data(), DHIr->getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        cJSON_AddStringToObject(jsonItem, "DHIr", b64Buffer);
+    }
+    else
+        cJSON_AddStringToObject(jsonItem, "DHIr", "");
+
+
+    // A0 key, public
+    if (A0 != NULL) {
+        b64Encode((const uint8_t*)A0->getPublicKey().serialize().data(), A0->getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        cJSON_AddStringToObject(jsonItem, "A0", b64Buffer);
+    }
+    else
+        cJSON_AddStringToObject(jsonItem, "A0", "");
+
+    cJSON_AddNumberToObject(jsonItem, "Ns", Ns);
+    cJSON_AddNumberToObject(jsonItem, "Nr", Nr);
+    cJSON_AddNumberToObject(jsonItem, "PNs", PNs);
+    cJSON_AddNumberToObject(jsonItem, "ratchet", (ratchetFlag) ? 1 : 0);
+    cJSON_AddNumberToObject(jsonItem, "zrtpState", zrtpVerifyState);
+
+    LOGGER(INFO, __func__, " <--");
+    return root;
 }

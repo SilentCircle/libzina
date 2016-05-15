@@ -44,6 +44,7 @@ limitations under the License.
 #include "../crypto/DhKeyPair.h"
 #include "../state/AxoContact.h"
 #include "../crypto/Ec255PublicKey.h"
+#include "../../util/cJSON.h"
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
@@ -164,6 +165,21 @@ public:
     list<string>* stagedMk;
 
     void reset();
+
+    /**
+     * @brief Prepare data for capture.
+     *
+     * The functions prepares the ratchet status data to capture it. The function does not
+     * copy security relevant information.
+     *
+     * @param existingRoot If this is @c NULL then create a new cJSON data structure,
+     *                     otherwise append to the existing structure
+     * @param beforeAction If @c true then this capture is before an encrypt or decrypt
+     *                     action with the current ratchet.
+     * @return a pointer to the created/used cJSON structure. The caller is responsible to
+     *         free the pointer.
+     */
+    cJSON* prepareForCapture(cJSON* existingRoot, bool beforeAction);
 
 #ifdef UNITTESTS
     const std::string* dump() const         { return serialize(); }

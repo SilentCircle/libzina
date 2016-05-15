@@ -155,6 +155,7 @@ static string name("uabcdefghijklmnoprstvwxy");
 static string msgId("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
 static string devId("a_device");
 static string attrib("{\"cmd\":\"ping\"}");
+static string convState("Some ratchet state");
 
 TEST_F(StoreTestFixture, MsgTraceStore)
 {
@@ -173,7 +174,7 @@ TEST_F(StoreTestFixture, MsgTraceStore)
     ASSERT_TRUE(records->empty());
 
     // Insert a message trace record
-    int32_t result = pks->insertMsgTrace(name, msgId, devId, attrib, false, false);
+    int32_t result = pks->insertMsgTrace(name, msgId, devId, convState, attrib, false, false);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     records = pks->loadMsgTrace(name, empty, empty);

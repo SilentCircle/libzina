@@ -35,11 +35,12 @@ public:
      * @param sender The message sender's name (SC uid)
      * @param messageId The UUID of the message
      * @param deviceId The sender's device id
+     * @param convState the relevant data of the ratchet state
      * @param attribute The message attribute string which contains status information
      * @param attachments If set the message contained an attachment descriptor
      */
     static int32_t captureReceivedMessage(const string& sender, const string& messageId, const string& deviceId,
-                                          const string& attributes, bool attachments);
+                                          const string &convState, const string& attributes, bool attachments);
 
     /**
      * @brief Capture send message trace data.
@@ -47,11 +48,12 @@ public:
      * @param receiver The message receiver's name (SC uid)
      * @param deviceId The sender's device id
      * @param deviceId The receiver's device id
+     * @param convState the relevant data of the ratchet state
      * @param attribute The message attribute string which contains status information
      * @param attachments If set the message contained an attachment descriptor
      */
     static int32_t captureSendMessage(const string& receiver, const string& messageId, const string& deviceId,
-                                      const string& attributes, bool attachments);
+                                      const string &convState, const string& attributes, bool attachments);
 
     /**
      * @brief Return a list of message trace records.

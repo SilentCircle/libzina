@@ -40,21 +40,24 @@ static int32_t filterAttributes(const string& attributes, shared_ptr<string> fil
     filteredAttributes->append(out);
     free(out);
     LOGGER(INFO, __func__ , " <-- ");
-
+    return OK;
 }
 
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
-                                               const string &attributes, bool attachments)
+                                               const string &convState, const string &attributes, bool attachments)
 {
     LOGGER(INFO, __func__ , " -->");
     shared_ptr<string> filteredAttributes = make_shared<string>();
     int32_t result = filterAttributes(attributes, filteredAttributes);
-    if (result < 0)
+    if (result < 0) {
+        LOGGER(ERROR, __func__, " Cannot parse received message attributes: ", attributes);
         return result;
+    }
+
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    result = store->insertMsgTrace(sender, messageId, deviceId, *filteredAttributes, attachments, true);
+    result = store->insertMsgTrace(sender, messageId, deviceId, convState, *filteredAttributes, attachments, true);
     if (SQL_FAIL(result)) {
-        LOGGER(ERROR, __func__, " <-- Cannot store message trace data.", result);
+        LOGGER(ERROR, __func__, " <-- Cannot store received message trace data.", result);
         return result;
     }
     LOGGER(INFO, __func__ , " <-- ");
@@ -62,18 +65,19 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
 }
 
 int32_t MessageCapture::captureSendMessage(const string &receiver, const string &messageId,const string &deviceId,
-                                           const string &attributes, bool attachments)
-{
-    LOGGER(INFO, __func__ , " -->");
+                                           const string &convState, const string &attributes, bool attachments) {
+    LOGGER(INFO, __func__, " -->");
     shared_ptr<string> filteredAttributes = make_shared<string>();
     int32_t result = filterAttributes(attributes, filteredAttributes);
-    if (result < 0)
+    if (result < 0) {
+        LOGGER(ERROR, __func__, " Cannot parse sent message attributes: ", attributes);
         return result;
+    }
 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    result = store->insertMsgTrace(receiver, messageId, deviceId, *filteredAttributes, attachments, false);
+    result = store->insertMsgTrace(receiver, messageId, deviceId, convState, *filteredAttributes, attachments, false);
     if (SQL_FAIL(result)) {
-        LOGGER(ERROR, __func__, " <-- Cannot store message trace data.", result);
+        LOGGER(ERROR, __func__, " <-- Cannot store sent message trace data.", result);
         return result;
     }
     LOGGER(INFO, __func__ , " <-- ");
