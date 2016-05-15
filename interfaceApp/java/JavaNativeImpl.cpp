@@ -2840,6 +2840,46 @@ JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyte
         env->DeleteLocalRef(retData);
     }
     return retArray;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendDrMessageData
+ * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL
+JNI_FUNCTION(sendDrMessageData)(JNIEnv* env, jclass clazz, jstring callid, jstring direction, jstring recipient, jlong composedTime, jlong sentTime, jstring message)
+{
+    (void)clazz;
+
+    if (callid == NULL || direction == NULL || recipient == NULL || message == NULL) {
+        return;
+    }
+
+    const char* callidTemp = env->GetStringUTFChars(callid, 0);
+    string callidString(callidTemp);
+    env->ReleaseStringUTFChars(callid, callidTemp);
+
+    const char* directionTemp = env->GetStringUTFChars(direction, 0);
+    string directionString(directionTemp);
+    env->ReleaseStringUTFChars(direction, directionTemp);
+    if (directionString.empty())
+        return;
+
+    const char* recipientTemp = env->GetStringUTFChars(recipient, 0);
+    string recipientString(recipientTemp);
+    env->ReleaseStringUTFChars(recipient, recipientTemp);
+    if (recipientString.empty())
+        return;
+
+    const char* messageTemp = env->GetStringUTFChars(message, 0);
+    string messageString(messageTemp);
+    env->ReleaseStringUTFChars(message, messageTemp);
+    if (messageString.empty())
+        return;
+
+    ScDataRetention::sendMessageData(callidString, directionString, recipientString, static_cast<long>(composedTime / 1000), static_cast<long>(sentTime / 1000), messageString);
+}
 
 /*
  * Class:     axolotl_AxolotlNative

@@ -1361,6 +1361,19 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      public static native byte[][] loadCapturedMsgs(byte[] name, byte[] messageId, byte[] deviceId, int[] errorCode);
 
     /**
+     * Send the message data to the Data Retention S3 bucket if this user is
+     * configured for data retention.
+     *
+     * @param callid The call id of the message.
+     * @param direction The direction of the message. "sent" or "received".
+     * @param recipient The userid of the recipient.
+     * @param composedTime The time the message was composed as an epoch value.
+     * @param sentTime The time the message was sent as an epoch value.
+     * @param message The plain text of the message.
+     */
+    public static native void sendDrMessageData(String callid, String direction, String recipient, long composedTime, long sentTime, String message);
+
+    /**
      * Send the message metadata to the Data Retention S3 bucket if this user is
      * configured for data retention.
      *

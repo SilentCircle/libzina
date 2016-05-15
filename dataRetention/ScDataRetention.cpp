@@ -104,7 +104,7 @@ DrRequest::DrRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& 
 {
 }
 
-int DrRequest::getPresignedUrl(const std::string& callid, const std::string& recipient, time_t startTime, DrRequest::MessageMetadata* metadata)
+int DrRequest::getPresignedUrl(const std::string& url_suffix, const std::string& callid, const std::string& recipient, time_t startTime, DrRequest::MessageMetadata* metadata)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -115,6 +115,7 @@ int DrRequest::getPresignedUrl(const std::string& callid, const std::string& rec
     cJSON_AddStringToObject(root.get(), "api_key", authorization_.c_str());
     cJSON_AddStringToObject(root.get(), "call_id", callid.c_str());
     cJSON_AddStringToObject(root.get(), "dst_alias", recipient.c_str());
+    cJSON_AddStringToObject(root.get(), "url_suffix", url_suffix.c_str());
     cJSON_AddNumberToObject(root.get(), "start_time", static_cast<double>(startTime));
     cJSON_AddBoolToObject  (root.get(), "compressed", true);
 
@@ -167,6 +168,83 @@ int DrRequest::getPresignedUrl(const std::string& callid, const std::string& rec
     return 0;
 }
 
+MessageRequest::MessageRequest(HTTP_FUNC httpHelper,
+                               S3_FUNC s3Helper,
+                               const std::string& authorization,
+                               const std::string& callid,
+                               const std::string& direction,
+                               const std::string& recipient,
+                               time_t composed,
+                               time_t sent,
+                               const std::string& message) :
+    DrRequest(httpHelper, s3Helper, authorization),
+    callid_(callid),
+    direction_(direction),
+    recipient_(recipient),
+    composed_(composed),
+    sent_(sent),
+    message_(message)
+{
+}
+
+MessageRequest::MessageRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json) :
+    DrRequest(httpHelper, s3Helper, authorization)
+{
+    callid_ = get_cjson_string(json, "callid");
+    direction_ = get_cjson_string(json, "direction");
+    recipient_ = get_cjson_string(json, "recipient");
+    composed_ = get_cjson_time(json, "composed");
+    sent_ = get_cjson_time(json, "sent");
+    message_ = get_cjson_string(json, "message");
+}
+
+std::string MessageRequest::toJSON()
+{
+    cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
+    cJSON_AddStringToObject(root.get(), "type", "MessageRequest");
+    cJSON_AddStringToObject(root.get(), "callid", callid_.c_str());
+    cJSON_AddStringToObject(root.get(), "direction", direction_.c_str());
+    cJSON_AddStringToObject(root.get(), "recipient", recipient_.c_str());
+    cJSON_AddNumberToObject(root.get(), "composed", static_cast<double>(composed_));
+    cJSON_AddNumberToObject(root.get(), "sent", static_cast<double>(sent_));
+    cJSON_AddStringToObject(root.get(), "message", message_.c_str());
+    unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
+    std::string request(out.get());
+    return request;
+}
+
+bool MessageRequest::run()
+{
+    LOGGER(INFO, __func__, " -->");
+    if (!httpHelper_ || !s3Helper_) {
+      LOGGER(ERROR, "HTTP Helper or S3 Helper not set.");
+      return false;
+    }
+    MessageMetadata metadata;
+    int rc = getPresignedUrl("message.txt", callid_, recipient_, sent_, &metadata);
+    if (rc < 0) {
+      LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
+      // Remove the request from the queue if the error is a failure that cannot be retried.
+      return rc == -2;
+    }
+
+    std::string request = compress(message_);
+    if (request.empty()) {
+        LOGGER(ERROR, "Could not compress data retention data");
+        return false;
+    }
+
+    string result;
+    rc = s3Helper_(metadata.url.c_str(), request, &result);
+    if (rc != 200) {
+        LOGGER(ERROR, "Could not store message metadata.");
+        return false;
+    }
+
+    LOGGER(INFO, __func__, " <--");
+    return true;
+}
+
 
 MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
                                                S3_FUNC s3Helper,
@@ -217,7 +295,7 @@ bool MessageMetadataRequest::run()
       return false;
     }
     MessageMetadata metadata;
-    int rc = getPresignedUrl(callid_, recipient_, sent_, &metadata);
+    int rc = getPresignedUrl("event.json", callid_, recipient_, sent_, &metadata);
     if (rc < 0) {
       LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
       // Remove the request from the queue if the error is a failure that cannot be retried.
@@ -304,7 +382,7 @@ bool InCircleCallMetadataRequest::run()
       return false;
     }
     MessageMetadata metadata;
-    int rc = getPresignedUrl(callid_, recipient_, start_, &metadata);
+    int rc = getPresignedUrl("event.json", callid_, recipient_, start_, &metadata);
     if (rc < 0) {
       LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
       // Remove the request from the queue if the error is a failure that cannot be retried.
@@ -397,7 +475,7 @@ bool SilentWorldCallMetadataRequest::run()
       return false;
     }
     MessageMetadata metadata;
-    int rc = getPresignedUrl(callid_, dsttn_, start_, &metadata);
+    int rc = getPresignedUrl("event.json", callid_, dsttn_, start_, &metadata);
     if (rc < 0) {
       LOGGER(ERROR, "Invalid presigned URL returned from data retention broker.");
       // Remove the request from the queue if the error is a failure that cannot be retried.
@@ -474,6 +552,9 @@ DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
     else if (type == "SilentWorldCallMetadataRequest") {
         request.reset(new SilentWorldCallMetadataRequest(httpHelper_, s3Helper_, authorization_, root.get()));
     }
+    else if (type == "MessageRequest") {
+        request.reset(new MessageRequest(httpHelper_, s3Helper_, authorization_, root.get()));
+    }
     else {
         LOGGER(ERROR, "Invalid DrRequest type.");
         return nullptr;
@@ -482,6 +563,16 @@ DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
     return request.release();
 }
 
+
+void ScDataRetention::sendMessageData(const std::string& callid, const std::string& direction, const std::string& recipient, time_t composed, time_t sent, const std::string& message)
+{
+    LOGGER(INFO, __func__, " -->");
+    AppRepository* store = AppRepository::getStore();
+    unique_ptr<DrRequest> request(new MessageRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, composed, sent, message));
+    store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
+    processRequests();
+    LOGGER(INFO, __func__, " <--");
+}
 
 void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const std::string& recipient, time_t composed, time_t sent)
 {

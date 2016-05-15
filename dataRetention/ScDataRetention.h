@@ -41,13 +41,15 @@ protected:
      *
      * This uses httpHelper to make a request to the Data Retention Broker.
      *
+     * @param url_suffix The suffix of the presigned URL (eg. "event.json", "audio.opus", etc)
      * @param callid The callid of the message or call.
      * @param recipient The userid of the recipient of the message.
      * @param startTime The start time of the message or call.
      * @param metadata The data returned by the data retention broker.
      * @return zero on success, -1 for a failure that can be retried, -2 for a failure that cannot be retried.
      */
-    int getPresignedUrl(const std::string& callid,
+    int getPresignedUrl(const std::string& url_suffix,
+                        const std::string& callid,
                         const std::string& recipient,
                         time_t startTime,
                         MessageMetadata* metadata);
@@ -81,6 +83,44 @@ public:
     void operator=(DrRequest const&); // = delete;
 };
 
+class MessageRequest : public DrRequest {
+private:
+    std::string callid_;
+    std::string direction_;
+    std::string recipient_;
+    time_t composed_;
+    time_t sent_;
+    std::string message_;
+
+public:
+    /**
+     * @brief Construct a Message data retention request
+     *
+     * @param httpHelper HTTP helper function used to make HTTP requests.
+     * @param s3Helper S3 helper function used to post data to Amazon S3.
+     * @param authorization API Key for making AW requests.
+     * @param callid Callid for the message.
+     * @param direction The direction of the message. "sent" or "received".
+     * @param recipient Userid of the recipient of the message.
+     * @param composed Time that the message was composed.
+     * @param sent Time that the message was sent.
+     * @param message Plain text of sent message.
+     */
+    MessageRequest(HTTP_FUNC httpHelper,
+                   S3_FUNC s3Helper,
+                   const std::string& authorization,
+                   const std::string& callid,
+                   const std::string& direction,
+                   const std::string& recipient,
+                   time_t composed,
+                   time_t sent,
+                   const std::string& message);
+    MessageRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization, cJSON* json);
+    virtual std::string toJSON() override;
+    virtual bool run() override;
+};
+
+
 class MessageMetadataRequest : public DrRequest {
 private:
     std::string callid_;
@@ -91,7 +131,7 @@ private:
 
 public:
     /**
-     * @brief Construct a Message data retention request
+     * @brief Construct a Message metadata data retention request
      *
      * @param httpHelper HTTP helper function used to make HTTP requests.
      * @param s3Helper S3 helper function used to post data to Amazon S3.
@@ -242,6 +282,25 @@ public:
      */
     static DrRequest* requestFromJSON(const std::string& json);
 
+    /**
+     * @brief Store message data in the customers Amazon S3 bucket.
+     *
+     * If the request fails it is stored in a sqlite table and will be retried
+     * on the next message or call send.
+     *
+     * @param callid Callid for the message.
+     * @param direction The direction of the message. "sent" or "received".
+     * @param recipient Userid of the recipient of the message.
+     * @param composed Time that the message was composed.
+     * @param sent Time that the message was sent.
+     * @param message Plain text of message.
+     */
+    static void sendMessageData(const std::string& callid,
+                                const std::string& direction,
+                                const std::string& recipient,
+                                time_t composed,
+                                time_t sent,
+                                const std::string& message);
     /**
      * @brief Store a message data retention event in the customers Amazon S3 bucket.
      *
