@@ -32,6 +32,8 @@ limitations under the License.
 #include "android/jni/sqlcipher/sqlite3.h"
 #else
 #include <sqlcipher/sqlite3.h>
+#include <iostream>
+#include "../../util/cJSON.h"
 #endif
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
@@ -40,6 +42,10 @@ limitations under the License.
 #define SQL_FAIL(code) ((code) > SQLITE_OK && (code) < SQLITE_ROW)
 
 using namespace std;
+
+auto cJSON_deleter = [](cJSON* json) {
+    cJSON_Delete(json); json = nullptr;
+};
 
 namespace axolotl {
 
@@ -150,7 +156,7 @@ public:
 
     void deleteStagedMk(time_t timestamp, int32_t* sqlCode = NULL);
 
-    // Pre key storage. The functions encrypt, decrypt and store/retrive Pre-key JSON strings
+    // Pre key storage. The functions encrypt, decrypt and store/retrieve Pre-key JSON strings
     string* loadPreKey(int32_t preKeyId, int32_t* sqlCode = NULL) const;
 
     void storePreKey(int32_t preKeyId, const string& preKeyData, int32_t* sqlCode = NULL);
@@ -195,7 +201,7 @@ public:
      * @param attribute The message attribute string which contains status information
      * @param attachment If set the message contained an attachment descriptor
      * @param received If set then this was a received message.
-     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
+     * @return SQLite code
      */
     int32_t insertMsgTrace(const string& name, const string& messageId, const string& deviceId, const string& convState,
                            const string& attributes, bool attachment, bool received);
@@ -232,8 +238,133 @@ public:
      */
     int32_t deleteMsgTrace(time_t timestamp);
 
+    // Functions to handle groups and group member data
+
+    /**
+     * @brief Create a new chat group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID), must be unique
+     * @param name group's human readable name
+     * @param ownerUuid the group owner's UUID (SC UID)
+     * @return SQLite code
+     */
+    int32_t insertGroup(const string& groupUuid, const string& name, const string& ownerUuid);
+
+    /**
+     * @brief Delete a group record.
+     *
+     * Deletes a record only if no member records exist for this group. Enforced by
+     * database referential integrity.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @return SQLite code
+     */
+    int32_t deleteGroup(const string& groupUuid);
+
+    /**
+     * @brief List data of all known groups.
+     *
+     * Creates and returns a list of shared pointers to cJSON data structures that contain
+     * the groups' data. The shared pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
+     */
+    shared_ptr<list<shared_ptr<cJSON> > >listAllGroups(int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Get data of a group.
+     *
+     * Returns a shared pointer to a cJSON data structure that contains the group's
+     * data. The shared pointer has a special deleter that calls @c cJSON_delete to free
+     * the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return cJSON shared pointer to group data structure, maybe @c NULL (false)
+     */
+    shared_ptr<cJSON> listGroup(const string& groupUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Set a new maximum number of group members
+     *
+     * The function just sets the new value in the database group record, it does
+     * not the if the number of current group members is already above the new maximum.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param macMembers The new value of maximum group members
+     * @return SQLite code
+     */
+    int32_t modifyGroupMaxMembers(const string& groupUuid, int maxMembers);
+
+    /**
+     * @brief Create a group member
+     *
+     * Create a new member record. The @c memberUuid / @c deviceId combination must
+     * match an existing ratchet conversation record. The group member record uses
+     * the @memberUuid (aka SC uid), @c deviceId and the @c ownName as foreign keys
+     * to refer to the appropriate conversation record which defies these three fields
+     * as its primary key.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @param deviceId the new member's device id to support multi-device support
+     * @return SQLite code
+     */
+    int32_t insertMember(const string& groupUuid, const string& memberUuid,const string& deviceId, const string& ownName);
+
+    /**
+     * @brief Deletes all group records of this member in the specified group.
+     *
+     * If a group member has several devices, thus more than one group member record,
+     * then the function deletes all records.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @return SQLite code
+     */
+    int32_t deleteMember(const string& groupUuid, const string& memberUuid);
+
+    /**
+     * @brief Deletes a device specific group record of this member in the specified group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @param deviceId the member's device id to support multi-device support
+     * @return SQLite code
+     */
+    int32_t deleteMemberDevice(const string& groupUuid, const string& memberUuid, const string& deviceId);
+
+    /**
+     * @brief List all members of a specified group.
+     *
+     * Creates and returns a list of shared pointers to cJSON data structures that contain the group's
+     * members data. The shared pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
+     */
+    shared_ptr<list<shared_ptr<cJSON> > >listAllGroupMembers(const string& groupUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief List a member of a specified group.
+     *
+     * Creates and returns a shared pointer to a cJSON data structure that contains the member's
+     * data. The member may have more than one record, one for each device. The shared pointer
+     * has a special deleter that calls @c cJSON_delete to free the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
+     */
+    shared_ptr<cJSON> listGroupMember(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
+
     /*
-     * @brief For use for debugging and development only
+     * @brief Use for debugging and development only.
      */
     int32_t resetStore() { return createTables(); }
 

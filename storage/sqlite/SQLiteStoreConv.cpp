@@ -21,7 +21,6 @@ limitations under the License.
 #include <cryptcommon/ZrtpRandom.h>
 
 #include "../../logging/AxoLogging.h"
-#include "../../util/cJSON.h"
 
 
 /* *****************************************************************************
@@ -154,6 +153,35 @@ static const char* selectMsgTraceMsgDevId =
 
 // See comment in deleteMsgTrace regarding the not fully qualified SQL statement to remove olde trace records.
 static const char* removeMsgTrace = "DELETE FROM MsgTrace WHERE STRFTIME('%s', stored)";
+
+/* *****************************************************************************
+ * SQL statements to process group chat table
+ *
+ */
+static const char* dropGroups = "DROP TABLE groups;";
+static const char* createGroups =
+        "CREATE TABLE groups (groupId VARCHAR NOT NULL PRIMARY KEY, name VARCHAR NOT NULL, ownerId VARCHAR NOT NULL, maxMembers INTEGER);";
+static const char* insertGroupsSql = "INSERT INTO groups (groupId, name, ownerId, maxMembers) VALUES (?1, ?2, ?3, ?4);";
+static const char* selectAllGroups = "SELECT groupId, name, ownerId, maxMembers FROM groups;";
+static const char* selectGroup = "SELECT groupId, name, ownerId, maxMembers FROM groups WHERE groupId=?1;";
+static const char* updateGroupMaxMember = "UPDATE groups SET maxMember=?1 WHERE groupId=?2;";
+static const char* removeGroup = "DELETE FROM groups WHERE groupId=?1";
+
+/* *****************************************************************************
+ * SQL statements to process group member table
+ *
+ */
+static const char* dropMembers = "DROP TABLE members;";
+static const char* createMembers =
+        "CREATE TABLE members (groupId VARCHAR NOT NULL, memberId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL, ownName VARCHAR NOT NULL, "
+        "FOREIGN KEY(groupId) REFERENCES groups(groupId), "
+        "FOREIGN KEY(memberId, deviceId, ownName) REFERENCES Conversations(name, longDevId, ownName));";
+static const char* insertMemberSql = "INSERT INTO members (groupId, memberId, deviceId, ownName) VALUES (?1, ?2, ?3, ?4);";
+static const char* removeMember = "DELETE FROM members WHERE groupId=?1 AND memberId=?2";
+static const char* removeMemberDevice = "DELETE FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3";
+static const char* selectAllMembers = "SELECT groupId, memberId, deviceId FROM members WHERE groupId=?1;";
+static const char* selectMembers = "SELECT groupId, memberId, deviceId FROM members WHERE groupId=?1 AND memberId=?2;";
+
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
@@ -290,6 +318,17 @@ int SQLiteStoreConv::rollbackTransaction()
     return sqlResult;
 }
 
+static int32_t enableForeignKeys(sqlite3* db)
+{
+    sqlite3_stmt *stmt;
+
+    sqlite3_prepare(db, "PRAGMA foreign_keys=ON;", -1, &stmt, NULL);
+    int32_t rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return rc;
+}
+
 /*
  * SQLite uses the following table structure to manage some internal data
  *
@@ -326,6 +365,8 @@ int SQLiteStoreConv::openStore(const std::string& name)
 
     memset_volatile((void*)keyData_->data(), 0, keyData_->size());
     delete keyData_; keyData_ = NULL;
+
+    enableForeignKeys(db);
 
     int32_t version = getUserVersion(db);
     if (version != 0) {
@@ -418,6 +459,30 @@ int SQLiteStoreConv::createTables()
     sqlite3_finalize(stmt);
 
     SQLITE_CHK(SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL));
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
+    SQLITE_PREPARE(db, dropGroups, -1, &stmt, NULL);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, createGroups, -1, &stmt, NULL));
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
+    SQLITE_PREPARE(db, dropMembers, -1, &stmt, NULL);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, createMembers, -1, &stmt, NULL));
     sqlResult = sqlite3_step(stmt);
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
@@ -1275,5 +1340,59 @@ cleanup:
     sqlCode_ = sqlResult;
     LOGGER(INFO, __func__, " <-- ", sqlResult);
     return sqlResult;
+}
+
+
+int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name, const string &ownerUuid)
+{
+    return 0;
+}
+
+int32_t SQLiteStoreConv::deleteGroup(const string &groupUuid)
+{
+    return 0;
+}
+
+shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroups(int32_t *sqlCode)
+{
+    return shared_ptr<list<shared_ptr<cJSON> > >();
+}
+
+shared_ptr<cJSON>SQLiteStoreConv::listGroup(const string &groupUuid, int32_t *sqlCode)
+{
+    return shared_ptr<cJSON>();
+}
+
+int32_t SQLiteStoreConv::modifyGroupMaxMembers(const string &groupUuid, int maxMembers)
+{
+    return 0;
+}
+
+int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &memberUuid, const string &deviceId,
+                                      const string &ownName)
+{
+    return 0;
+}
+
+int32_t SQLiteStoreConv::deleteMember(const string &groupUuid, const string &memberUuid)
+{
+    return 0;
+}
+
+int32_t SQLiteStoreConv::deleteMemberDevice(const string &groupUuid, const string &memberUuid, const string &deviceId)
+{
+    return 0;
+}
+
+shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroupMembers(const string &groupUuid, int32_t *sqlCode)
+{
+    return std::shared_ptr<list<shared_ptr<cJSON> > >();
+}
+
+shared_ptr<cJSON>SQLiteStoreConv::listGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode)
+{
+    cJSON* root = cJSON_Parse("{\"cmd\":\"ping\"}");
+    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+    return sharedRoot;
 }
 
