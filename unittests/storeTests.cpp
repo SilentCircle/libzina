@@ -200,11 +200,152 @@ TEST_F(StoreTestFixture, MsgTraceStore)
 
     records = pks->loadMsgTrace(name, empty, empty);
     ASSERT_TRUE(records->empty());
-
-    shared_ptr<cJSON>someRoot = pks->listGroupMember(empty, empty);
-    ASSERT_TRUE((bool)someRoot);
 }
 
+static string groupId_1("6ba7b810-9dad-11d1-80b4-00c04fd43001");
+static string groupId_2("6ba7b810-9dad-11d1-80b4-00c04fd43002");
+
+static string groupName_1("group1");
+static string groupName_2("group2");
+
+static string ownName("ulocalowner");
+static string groupOwner("ugroupowner");
+
+static string groupDescription("This is a description");
+
+static string memberId_1("6ba7b810-9dad-11d1-80b4-00c04fd43101");
+static string memberId_2("6ba7b810-9dad-11d1-80b4-00c04fd43102");
+
+static string deviceId_1("device_1");
+static string deviceId_2("device_2");
+
+static int32_t getJsonInt(cJSON* root, const char* tag, int32_t error)
+{
+    cJSON* jsonItem = cJSON_GetObjectItem(root, tag);
+    if (jsonItem == NULL)
+        return error;
+    return jsonItem->valueint;
+}
+
+static const char* getJsonString(cJSON* root, const char* tag, const char* error)
+{
+    cJSON* jsonItem = cJSON_GetObjectItem(root, tag);
+    if (jsonItem == NULL)
+        return error;
+    return jsonItem->valuestring;
+}
+
+TEST_F(StoreTestFixture, GroupChatStore)
+{
+    // Fresh DB, groups must be empty
+    shared_ptr<list<shared_ptr<cJSON> > > groups = pks->listAllGroups();
+    ASSERT_TRUE(groups->empty());
+
+    shared_ptr<cJSON> group = pks->listGroup(groupId_1);
+    ASSERT_FALSE((bool)group);
+
+    // Fresh DB, members must be empty
+    shared_ptr<list<shared_ptr<cJSON> > > members = pks->listAllGroupMembers(groupId_1);
+    ASSERT_TRUE(members->empty());
+
+    shared_ptr<cJSON> member = pks->listGroupMember(groupId_1, memberId_1);
+    ASSERT_FALSE((bool)member);
+
+    int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    groups = pks->listAllGroups(&result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, groups->size());
+    cJSON* root = groups->front().get();
+    ASSERT_EQ(10, getJsonInt(root, "maxMembers", -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(10, getJsonInt(root, "maxMembers", -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+
+    result = pks->modifyGroupMaxMembers(groupId_1, 30);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(30, getJsonInt(root, "maxMembers", -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+
+    // Try to add a member without having a ratchet conversation for the member
+    // SQLite operation must fail with code 19 (SQLITE_CONSTRAINT)
+    result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
+    ASSERT_TRUE(SQL_FAIL(result));
+    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
+
+    // Add a ratchet conversation for the member, use some dummy data. Keys are
+    // important here
+    pks->storeConversation(memberId_1, deviceId_1, ownName, attrib, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Add member again. This time the insertion must succeed.
+    result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // List all members of a group, should return a list with size 1 and the correct data
+    members = pks->listAllGroupMembers(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, members->size());
+    root = members->front().get();
+    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+    ASSERT_EQ(memberId_1, string(getJsonString(root, "memberId", "")));
+    ASSERT_EQ(deviceId_1, string(getJsonString(root, "deviceId", "")));
+
+    // List one member of a group
+    member = pks->listGroupMember(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = member.get();
+    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+    ASSERT_EQ(memberId_1, string(getJsonString(root, "memberId", "")));
+    ASSERT_EQ(deviceId_1, string(getJsonString(root, "deviceId", "")));
+
+    // Try to delete the group with existing member, must fail with code 19 (SQLITE_CONSTRAINT)
+    result = pks->deleteGroup(groupId_1);
+    ASSERT_TRUE(SQL_FAIL(result));
+    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
+
+    // Try to delete conversation of the group member, must fail with code 19 (SQLITE_CONSTRAINT)
+    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
+    ASSERT_TRUE(SQL_FAIL(result));
+    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
+
+    // Delete the only member
+    result = pks->deleteMember(groupId_1, memberId_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // The member list operations must return empty list or data
+    members = pks->listAllGroupMembers(groupId_1);
+    ASSERT_TRUE(members->empty());
+
+    member = pks->listGroupMember(groupId_1, memberId_1);
+    ASSERT_FALSE((bool)member);
+
+    // Delete the group, must succeed now
+    result = pks->deleteGroup(groupId_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    // The group list operations must return empty list or data
+    groups = pks->listAllGroups();
+    ASSERT_TRUE(groups->empty());
+
+    group = pks->listGroup(groupId_1);
+    ASSERT_FALSE((bool)group);
+
+    // Delete conversation of the group member, must succeed now
+    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
+    ASSERT_FALSE(SQL_FAIL(result));
+}
 
 class NameLookTestFixture: public ::testing::Test {
 public:

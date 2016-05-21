@@ -246,9 +246,11 @@ public:
      * @param groupUuid The group's UUID (RFC4122 time based UUID), must be unique
      * @param name group's human readable name
      * @param ownerUuid the group owner's UUID (SC UID)
+     * @parm maxMembers Initial number of member allowed in this group
+     * @param description Group description
      * @return SQLite code
      */
-    int32_t insertGroup(const string& groupUuid, const string& name, const string& ownerUuid);
+    int32_t insertGroup(const string& groupUuid, const string& name, const string& ownerUuid, string& description, int32_t maxMembers);
 
     /**
      * @brief Delete a group record.
@@ -310,6 +312,7 @@ public:
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
      * @param memberUuid the new member's UID
      * @param deviceId the new member's device id to support multi-device support
+     * @param ownName This is the 'own name' used in the ratchet conversation, not the group owner
      * @return SQLite code
      */
     int32_t insertMember(const string& groupUuid, const string& memberUuid,const string& deviceId, const string& ownName);
