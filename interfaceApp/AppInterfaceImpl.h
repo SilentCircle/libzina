@@ -27,6 +27,8 @@ limitations under the License.
 
 #include "AppInterface.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
+#include "../util/UUID.h"
+#include "MessageEnvelope.pb.h"
 
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
@@ -83,7 +85,16 @@ public:
 
     void reSyncConversation(const string& userName, const string& deviceId);
 
-        // **** Below are methods for this implementation, not part of AppInterface.h
+    string createNewGroup(string& groupName, string& groupDescription);
+
+    int32_t createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner);
+
+    bool modifyGroupSize(string& groupId, int32_t newSize);
+
+    int32_t inviteUser(string& groupUuid, string& userId);
+
+
+    // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
      * 
@@ -141,11 +152,13 @@ private:
     AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
     bool operator== ( const AppInterfaceImpl& other ) const  = delete;
 
-    vector<int64_t>* sendMessageInternal(const string& recipient, const string& msgId, const string& message,
-                                         const string& attachementDescriptor, const string& messageAttributes);
+    vector<int64_t>*
+    sendMessageInternal(const string& recipient, const string& msgId, const string& message,
+                        const string& attachmentDescriptor, const string& messageAttributes, uint32_t messageType=0);
 
-    vector<pair<string, string> >* sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
-                                                      const string& attachementDescriptor, const string& messageAttributes);
+    vector<int64_t>*
+    sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
+                       const string& attachmentDescriptor, const string& messageAttributes, uint32_t messageType=0);
 
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
     /**
@@ -153,7 +166,20 @@ private:
      * and sends this to the receiver (the 'Bob' role)
      */
     int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& recipientDeviceName, const string& message, 
-                            const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs, shared_ptr<string> convState);
+                            const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs, shared_ptr<string> convState,
+                            uint32_t messageType=0);
+
+    int32_t processReceivedGroupMsg(MessageEnvelope& envelope, string& msgDescriptor, string& attachmentDescr, string& attributesDescr);
+
+    static string generateMsgId() {
+        uuid_t uuid = {0};
+        uuid_string_t uuidString = {0};
+
+        uuid_generate_time(uuid);
+        uuid_unparse(uuid, uuidString);
+        return string(uuidString);
+    }
+
     char* tempBuffer_;
     size_t tempBufferSize_;
     string ownUser_;

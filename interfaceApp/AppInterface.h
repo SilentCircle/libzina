@@ -35,6 +35,9 @@ typedef int32_t (*RECV_FUNC)(const string&, const string&, const string&);
 typedef void (*STATE_FUNC)(int64_t, int32_t, const string&);
 typedef void (*NOTIFY_FUNC)(int32_t, const string&, const string&);
 
+typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string&);
+typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string&, const string&, const string&);
+
 namespace axolotl {
 class AppInterface
 {
@@ -254,6 +257,10 @@ public:
      */
     virtual int32_t getNumPreKeys() const = 0;
 
+    // *************************************************************
+    // Device handling functions
+    // *************************************************************
+
     /**
      * @brief Rescan user device.
      *
@@ -275,6 +282,70 @@ public:
      *
      */
     virtual void reSyncConversation(const string& userName, const string& deviceId) = 0;
+
+    // *************************************************************
+    // Group chat functions
+    // *************************************************************
+
+    /**
+     * @brief Create a new group and assign ownership to the creator
+     *
+     * The function creates a new group and assigns the group's ownership to the creator. This is
+     * different to the @c createGroup(string& groupName, string& groupDescription, string& owner)
+     * function which creates a group for an invited member.
+     *
+     * The function sets the group's size to @c Constants::DEFAULT_GROUP_SIZE.
+     *
+     * @param groupName The name of the new group
+     * @param groupDescription Group description, purpose of the group, etc
+     * @return the group's UUID, if the string is empty then group creation failed, use
+     *         @c AppInterfaceImpl::getErrorInfo() to get error string.
+     */
+    virtual string createNewGroup(string& groupName, string& groupDescription) = 0;
+
+    /**
+     * @brief Create a new group and assign ownership to the creator
+     *
+     * The function creates a group and assigns the group's ownership to the specified owner. This
+     * function creates the group data for invited members. The UI part usually never calls this
+     * function, it's handled internally when the client receives an invite message
+     *
+     * @param groupUuid The group id, part of the invite message
+     * @param groupName The name of the new group
+     * @param groupDescription Group description, purpose of the group, etc
+     * @param owner The owner/creator of the group
+     * @return @c SUCCESS or SQL error code, use @c AppInterfaceImpl::getErrorInfo() to get error string.
+     */
+    virtual int32_t createInvitedGroup(string& groupUud, string& groupName, string& groupDescription, string& owner) = 0;
+
+    /**
+     * @brief Modify number maximum group member.
+     *
+     * Only the group owner can modify the number of maximum members.
+     *
+     * If the new size would be less than current active group member the function fails
+     * and returns @c false.
+     *
+     * @param newSize New maximum group members
+     * @param groupUuid The group id
+     * @return @c true if new size could be set, @c false otherwise, use
+     *         @c AppInterfaceImpl::getErrorInfo() to get error string.
+     */
+    virtual bool modifyGroupSize(string& groupUuid, int32_t newSize) = 0;
+
+
+    /**
+     * @brief Invite a user to a group.
+     *
+     * @param groupUuid Invite for this group
+     * @param userId The invited user's unique id
+     * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t inviteUser(string& groupUuid, string& userId) = 0;
+
+    // *************************************************************
+    // Callback functions to UI part
+    // *************************************************************
 
     /**
      * @brief Callback to UI to receive a Message from transport 
@@ -346,6 +417,30 @@ public:
      *                           the device identifiers separated with a colon.
      */
     NOTIFY_FUNC notifyCallback_;
+
+    /**
+     * @brief Callback to UI to receive a normal group message.
+     *
+     * JSON format TBD
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor   A string that contains an attachment descriptor. An empty string
+     *                               shows that no attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return Either success of an error code (to be defined)
+     */
+    GROUP_MSG_RECV_FUNC groupMsgCallback_;
+
+    /**
+     * @brief Callback to UI to receive a group command message.
+     *
+     * JSON format TBD
+     *
+     * @param messageAttributes      A JSON formatted string that contains the command message.
+     * @return Either success of an error code (to be defined)
+     */
+    GROUP_CMD_RECV_FUNC groupCmdRecvFunc;
 };
 } // namespace
 

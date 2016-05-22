@@ -56,7 +56,7 @@ struct StaticDescriptorInitializer_MessageEnvelope_2eproto {
 #ifndef _MSC_VER
 const int MessageEnvelope::kNameFieldNumber;
 const int MessageEnvelope::kScClientDevIdFieldNumber;
-const int MessageEnvelope::kDeviceIdFieldNumber;
+const int MessageEnvelope::kMsgTypeFieldNumber;
 const int MessageEnvelope::kSupplementFieldNumber;
 const int MessageEnvelope::kMessageFieldNumber;
 const int MessageEnvelope::kMsgIdFieldNumber;
@@ -88,7 +88,7 @@ void MessageEnvelope::SharedCtor() {
   _cached_size_ = 0;
   name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   scclientdevid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  device_id_ = 0u;
+  msgtype_ = 0u;
   supplement_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
@@ -176,7 +176,7 @@ void MessageEnvelope::Clear() {
         scclientdevid_->clear();
       }
     }
-    device_id_ = 0u;
+    msgtype_ = 0u;
     if (has_supplement()) {
       if (supplement_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         supplement_->clear();
@@ -259,18 +259,18 @@ bool MessageEnvelope::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
-        if (input->ExpectTag(24)) goto parse_device_id;
+        if (input->ExpectTag(24)) goto parse_msgType;
         break;
       }
 
-      // optional uint32 device_id = 3;
+      // optional uint32 msgType = 3;
       case 3: {
         if (tag == 24) {
-         parse_device_id:
+         parse_msgType:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 input, &device_id_)));
-          set_has_device_id();
+                 input, &msgtype_)));
+          set_has_msgtype();
         } else {
           goto handle_unusual;
         }
@@ -419,9 +419,9 @@ void MessageEnvelope::SerializeWithCachedSizes(
       2, this->scclientdevid(), output);
   }
 
-  // optional uint32 device_id = 3;
-  if (has_device_id()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->device_id(), output);
+  // optional uint32 msgType = 3;
+  if (has_msgtype()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->msgtype(), output);
   }
 
   // optional bytes supplement = 4;
@@ -495,11 +495,11 @@ int MessageEnvelope::ByteSize() const {
           this->scclientdevid());
     }
 
-    // optional uint32 device_id = 3;
-    if (has_device_id()) {
+    // optional uint32 msgType = 3;
+    if (has_msgtype()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
-          this->device_id());
+          this->msgtype());
     }
 
     // optional bytes supplement = 4;
@@ -583,8 +583,8 @@ void MessageEnvelope::MergeFrom(const MessageEnvelope& from) {
     if (from.has_scclientdevid()) {
       set_scclientdevid(from.scclientdevid());
     }
-    if (from.has_device_id()) {
-      set_device_id(from.device_id());
+    if (from.has_msgtype()) {
+      set_msgtype(from.msgtype());
     }
     if (from.has_supplement()) {
       set_supplement(from.supplement());
@@ -631,7 +631,7 @@ void MessageEnvelope::Swap(MessageEnvelope* other) {
   if (other != this) {
     std::swap(name_, other->name_);
     std::swap(scclientdevid_, other->scclientdevid_);
-    std::swap(device_id_, other->device_id_);
+    std::swap(msgtype_, other->msgtype_);
     std::swap(supplement_, other->supplement_);
     std::swap(message_, other->message_);
     std::swap(msgid_, other->msgid_);

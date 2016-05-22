@@ -13,22 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include <limits.h>
 
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
 #include "../axolotl/crypto/DhKeyPair.h"
 #include "../axolotl/crypto/Ec255PrivateKey.h"
 #include "../axolotl/crypto/Ec255PublicKey.h"
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
 
 #include "gtest/gtest.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
 #include "../logging/AxoLogging.h"
-#include <iostream>
-#include <string>
+#include "../interfaceApp/GroupJsonStrings.h"
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
@@ -258,15 +255,15 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, groups->size());
     cJSON* root = groups->front().get();
-    ASSERT_EQ(10, getJsonInt(root, "maxMembers", -1));
-    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+    ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 
     group = pks->listGroup(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = group.get();
-    ASSERT_EQ(10, getJsonInt(root, "maxMembers", -1));
-    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+    ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 
     result = pks->modifyGroupMaxMembers(groupId_1, 30);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
@@ -274,8 +271,8 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = group.get();
-    ASSERT_EQ(30, getJsonInt(root, "maxMembers", -1));
-    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
+    ASSERT_EQ(30, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 
     // Try to add a member without having a ratchet conversation for the member
     // SQLite operation must fail with code 19 (SQLITE_CONSTRAINT)
@@ -297,25 +294,25 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = group.get();
-    ASSERT_EQ(1, getJsonInt(root, "memberCount", -1));
+    ASSERT_EQ(1, getJsonInt(root, GROUP_MEMBER_COUNT, -1));
 
     // List all members of a group, should return a list with size 1 and the correct data
     members = pks->listAllGroupMembers(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, members->size());
     root = members->front().get();
-    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
-    ASSERT_EQ(memberId_1, string(getJsonString(root, "memberId", "")));
-    ASSERT_EQ(deviceId_1, string(getJsonString(root, "deviceId", "")));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+    ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
+    ASSERT_EQ(deviceId_1, string(getJsonString(root, DEVICE_ID, "")));
 
     // List one member of a group
     member = pks->listGroupMember(groupId_1, memberId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = member.get();
-    ASSERT_EQ(groupId_1, string(getJsonString(root, "groupId", "")));
-    ASSERT_EQ(memberId_1, string(getJsonString(root, "memberId", "")));
-    ASSERT_EQ(deviceId_1, string(getJsonString(root, "deviceId", "")));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+    ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
+    ASSERT_EQ(deviceId_1, string(getJsonString(root, DEVICE_ID, "")));
 
     // Try to delete the group with existing member, must fail with code 19 (SQLITE_CONSTRAINT)
     result = pks->deleteGroup(groupId_1);
@@ -343,7 +340,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = group.get();
-    ASSERT_EQ(0, getJsonInt(root, "memberCount", -1));
+    ASSERT_EQ(0, getJsonInt(root, GROUP_MEMBER_COUNT, -1));
 
     // Delete the group, must succeed now
     result = pks->deleteGroup(groupId_1);

@@ -20,6 +20,7 @@ limitations under the License.
 #include <cryptcommon/ZrtpRandom.h>
 
 #include "../../logging/AxoLogging.h"
+#include "../../interfaceApp/GroupJsonStrings.h"
 
 
 /* *****************************************************************************
@@ -1416,12 +1417,12 @@ static cJSON* createGroupJson(sqlite3_stmt *stmt)
     cJSON* root = cJSON_CreateObject();
 
     // name is usually the SC UID string
-    cJSON_AddStringToObject(root, "groupId", (const char*)sqlite3_column_text(stmt, 0));
-    cJSON_AddStringToObject(root, "name",    (const char*)sqlite3_column_text(stmt, 1));
-    cJSON_AddStringToObject(root, "ownerId", (const char*)sqlite3_column_text(stmt, 2));
-    cJSON_AddStringToObject(root, "description", (const char*)sqlite3_column_text(stmt, 3));
-    cJSON_AddNumberToObject(root, "maxMembers", sqlite3_column_int(stmt, 4));
-    cJSON_AddNumberToObject(root, "memberCount", sqlite3_column_int(stmt, 5));
+    cJSON_AddStringToObject(root, GROUP_ID, (const char*)sqlite3_column_text(stmt, 0));
+    cJSON_AddStringToObject(root, GROUP_NAME, (const char*)sqlite3_column_text(stmt, 1));
+    cJSON_AddStringToObject(root, GROUP_OWNER, (const char*)sqlite3_column_text(stmt, 2));
+    cJSON_AddStringToObject(root, GROUP_DESC, (const char*)sqlite3_column_text(stmt, 3));
+    cJSON_AddNumberToObject(root, GROUP_MAX_MEMBERS, sqlite3_column_int(stmt, 4));
+    cJSON_AddNumberToObject(root, GROUP_MEMBER_COUNT, sqlite3_column_int(stmt, 5));
 
     return root;
 }
@@ -1623,6 +1624,17 @@ cleanup:
     return sqlResult;
 }
 
+static cJSON* createMemberJson(sqlite3_stmt *stmt)
+{
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(root, GROUP_ID,  (const char*)sqlite3_column_text(stmt, 0));
+    cJSON_AddStringToObject(root, MEMBER_ID, (const char*)sqlite3_column_text(stmt, 1));
+    cJSON_AddStringToObject(root, DEVICE_ID, (const char*)sqlite3_column_text(stmt, 2));
+
+    return root;
+}
+
 shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroupMembers(const string &groupUuid, int32_t *sqlCode)
 {
     sqlite3_stmt *stmt;
@@ -1639,16 +1651,8 @@ shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroupMembers(const
 
     while (sqlResult == SQLITE_ROW) {
         // Get member records and create a JSON object, wrap it in a shared_ptr with a custom delete
-        cJSON* root = cJSON_CreateObject();
-        shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
-
-        // name is usually the SC UID string
-        cJSON_AddStringToObject(root, "groupId",  (const char*)sqlite3_column_text(stmt, 0));
-        cJSON_AddStringToObject(root, "memberId", (const char*)sqlite3_column_text(stmt, 1));
-        cJSON_AddStringToObject(root, "deviceId", (const char*)sqlite3_column_text(stmt, 2));
-
+        shared_ptr<cJSON> sharedRoot(createMemberJson(stmt), cJSON_deleter);
         members->push_back(sharedRoot);
-
         sqlResult = sqlite3_step(stmt);
     }
 
@@ -1677,14 +1681,7 @@ shared_ptr<cJSON>SQLiteStoreConv::listGroupMember(const string &groupUuid, const
         ERRMSG;
 
     if (sqlResult == SQLITE_ROW) {
-        // Get member record and create a JSON object, wrap it in a shared_ptr with a custom delete
-        cJSON* root = cJSON_CreateObject();
-
-        cJSON_AddStringToObject(root, "groupId",  (const char*)sqlite3_column_text(stmt, 0));
-        cJSON_AddStringToObject(root, "memberId", (const char*)sqlite3_column_text(stmt, 1));
-        cJSON_AddStringToObject(root, "deviceId", (const char*)sqlite3_column_text(stmt, 2));
-
-        sharedJson = shared_ptr<cJSON>(root, cJSON_deleter);
+        sharedJson = shared_ptr<cJSON>(createMemberJson(stmt), cJSON_deleter);
     }
 
 cleanup:

@@ -40,6 +40,15 @@ namespace axolotl {
 
     static const int NUM_PRE_KEYS          = 100;
     static const int MIN_NUM_PRE_KEYS      = 30;
+    static const uint32_t MSG_NORMAL       = 0;
+    static const uint32_t MSG_CMD          = 1;
+
+    static const int DEFAULT_GROUP_SIZE    = 10;
+
+    // Group message types, value for normal message must be the lowest
+    static const uint32_t GROUP_MSG_NORMAL = 10;
+    static const uint32_t GROUP_MSG_CMD    = 11;        //!< To simplify check if this is a pure group command message
+
 
     static const std::string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
     static const std::string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");
@@ -82,6 +91,10 @@ namespace axolotl {
     // Error codes for encryption/decryption, HMAC
     static const int32_t WRONG_BLK_SIZE = -300;         //!< The IV or other data length did not match the cipher's blocksize
     static const int32_t UNSUPPORTED_KEY_SIZE = -301;   //!< Key size not supported for this cipher
+
+    // Error codes group chat
+    static const int32_t GROUP_ERROR_BASE = -400;       //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
+    static const int32_t MAX_MEMBERS_REACHED = -450;    //!< Maximum members for this group reached
 
 }  // namespace
 

@@ -128,7 +128,7 @@ set (interface_src
     interfaceApp/MessageEnvelope.pb.cc
     interfaceApp/java/JavaNativeImpl.cpp
     interfaceTransport/sip/SipTransport.cpp
-)
+    interfaceApp/GroupInterfaceImpl.cpp)
 
 set (storage_src
     storage/sqlite/SQLiteStoreConv.cpp
