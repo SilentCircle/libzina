@@ -292,6 +292,13 @@ TEST_F(StoreTestFixture, GroupChatStore)
     result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
+    // Get group again, check member count - must be 1
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(1, getJsonInt(root, "memberCount", -1));
+
     // List all members of a group, should return a list with size 1 and the correct data
     members = pks->listAllGroupMembers(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
@@ -330,6 +337,13 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     member = pks->listGroupMember(groupId_1, memberId_1);
     ASSERT_FALSE((bool)member);
+
+    // Get group again, check member count - must be 0
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(0, getJsonInt(root, "memberCount", -1));
 
     // Delete the group, must succeed now
     result = pks->deleteGroup(groupId_1);
