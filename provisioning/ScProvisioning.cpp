@@ -17,7 +17,7 @@ limitations under the License.
 
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../axolotl/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
 #include "../logging/AxoLogging.h"

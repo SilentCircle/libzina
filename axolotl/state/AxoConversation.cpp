@@ -17,7 +17,7 @@ limitations under the License.
 #include "../../storage/sqlite/SQLiteStoreConv.h"
 #include "../../util/cJSON.h"
 #include "../../util/b64helper.h"
-#include "../Constants.h"
+#include "../../Constants.h"
 #include "../crypto/EcCurve.h"
 #include "../../logging/AxoLogging.h"
 

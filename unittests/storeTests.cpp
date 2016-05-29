@@ -251,6 +251,23 @@ TEST_F(StoreTestFixture, GroupChatStore)
     int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
+    // Group attributes are initialized to 0
+    shared_ptr<pair<int32_t, time_t> > attrTime = pks->getGroupAttribute(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(0, attrTime->first);
+
+    // Set two attribute bits
+    result = pks->setGroupAttribute(groupId_1, 3);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Clear lowest bit
+    result = pks->clearGroupAttribute(groupId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    attrTime = pks->getGroupAttribute(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(2, attrTime->first);
+
     groups = pks->listAllGroups(&result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, groups->size());
@@ -285,9 +302,30 @@ TEST_F(StoreTestFixture, GroupChatStore)
     pks->storeConversation(memberId_1, deviceId_1, ownName, attrib, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
+    // Add ratchet conversation for a second member
+    pks->storeConversation(memberId_2, deviceId_2, ownName, attrib, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
     // Add member again. This time the insertion must succeed.
     result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Member attributes are initialized to 0
+    attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(0, attrTime->first);
+
+    // Set two attribute bits
+    result = pks->setMemberAttribute(groupId_1, memberId_1, 3);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Clear lowest bit
+    result = pks->clearMemberAttribute(groupId_1, memberId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(2, attrTime->first);
 
     // Get group again, check member count - must be 1
     group = pks->listGroup(groupId_1, &result);
@@ -305,6 +343,10 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
     ASSERT_EQ(deviceId_1, string(getJsonString(root, DEVICE_ID, "")));
 
+    // Add a second member. This time the insertion must succeed.
+    result = pks->insertMember(groupId_1, memberId_2, deviceId_2, ownName);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
     // List one member of a group
     member = pks->listGroupMember(groupId_1, memberId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
@@ -314,7 +356,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
     ASSERT_EQ(deviceId_1, string(getJsonString(root, DEVICE_ID, "")));
 
-    // Try to delete the group with existing member, must fail with code 19 (SQLITE_CONSTRAINT)
+    // Try to delete the group with existing members, must fail with code 19 (SQLITE_CONSTRAINT)
     result = pks->deleteGroup(groupId_1);
     ASSERT_TRUE(SQL_FAIL(result));
     ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
@@ -324,15 +366,26 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_TRUE(SQL_FAIL(result));
     ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
 
-    // Delete the only member
+    // Delete the first member
     result = pks->deleteMember(groupId_1, memberId_1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    // The member list operations must return empty list or data
+    // The member list operations must not return empty list or data
+    members = pks->listAllGroupMembers(groupId_1);
+    ASSERT_FALSE(members->empty());
+
+    member = pks->listGroupMember(groupId_1, memberId_1);
+    ASSERT_FALSE((bool)member);
+
+    // Delete the second member
+    result = pks->deleteMember(groupId_1, memberId_2);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // The member list operations must return empty list or data now
     members = pks->listAllGroupMembers(groupId_1);
     ASSERT_TRUE(members->empty());
 
-    member = pks->listGroupMember(groupId_1, memberId_1);
+    member = pks->listGroupMember(groupId_1, memberId_2);
     ASSERT_FALSE((bool)member);
 
     // Get group again, check member count - must be 0

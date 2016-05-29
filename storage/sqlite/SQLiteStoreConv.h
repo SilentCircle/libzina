@@ -295,10 +295,45 @@ public:
      * not the if the number of current group members is already above the new maximum.
      *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
-     * @param macMembers The new value of maximum group members
+     * @param maxMembers The new value of maximum group members
      * @return SQLite code
      */
-    int32_t modifyGroupMaxMembers(const string& groupUuid, int maxMembers);
+    int32_t modifyGroupMaxMembers(const string& groupUuid, int32_t maxMembers);
+
+    /**
+     * @brief Get the group's attribute bits.
+     *
+     * The function reads and returns the group's attribute bits.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A pair containing the attribute bit and the time the group record was last modified
+     */
+    shared_ptr<pair<int32_t, time_t> >  getGroupAttribute(const string& groupUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Set/add the bits in the attribute mask to the group's attribute bits.
+     *
+     * The function adds the bits in the attribute mask to the existing group's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param attributeMask Attribute bits to set
+     * @return SQLite code
+     */
+    int32_t setGroupAttribute(const string& groupUuid, int32_t attributeMask);
+
+    /**
+     * @brief Clears/removes the bits in the attribute mask from the group's attribute bits.
+     *
+     * The function remove the bits in the attribute mask from the existing group's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param attributeMask Attribute bits to remove
+     * @return SQLite code
+     */
+    int32_t clearGroupAttribute(const string& groupUuid, int32_t attributeMask);
 
     /**
      * @brief Create a group member
@@ -365,6 +400,44 @@ public:
      * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
      */
     shared_ptr<cJSON> listGroupMember(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Get the member's attribute bits.
+     *
+     * The function reads and returns the member's attribute bits.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A pair containing the attribute bit and the time the member record was last modified
+     */
+    shared_ptr<pair<int32_t, time_t> > getMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Set/add the bits in the attribute mask to the member's attribute bits.
+     *
+     * The function adds the bits in the attribute mask to the existing member's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @param attributeMask Attribute bits to set
+     * @return SQLite code
+     */
+    int32_t setMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t attributeMask);
+
+    /**
+     * @brief Clears/removes the bits in the attribute mask from the member's attribute bits.
+     *
+     * The function remove the bits in the attribute mask from the existing member's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @param attributeMask Attribute bits to remove
+     * @return SQLite code
+     */
+    int32_t clearMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t attributeMask);
 
     /*
      * @brief Use for debugging and development only.

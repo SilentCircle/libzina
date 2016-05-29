@@ -21,7 +21,7 @@ limitations under the License.
 #include "NameLookup.h"
 #include <mutex>          // std::mutex, std::unique_lock
 #include "../util/cJSON.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../provisioning/Provisioning.h"
 #include "../logging/AxoLogging.h"
 

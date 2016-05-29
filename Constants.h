@@ -23,7 +23,7 @@ limitations under the License.
  * @{
  * 
  * This file contains constants like error codes, return codes, fixed strings
- * and global C macros. This file should not have any dependcies on other includes
+ * and global C macros. This file should not have any dependencies on other includes
  * or modules other then system includes.
  * 
  */
@@ -36,7 +36,7 @@ namespace axolotl {
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
     static const int SYMMETRIC_KEY_LENGTH  = 32;      //!< Use 256 bit keys for symmetric crypto
 
-    static const int MK_STORE_TIME      = 31*86400;    //!< cleanup stored MKs and message hashes after 31 days
+    static const int MK_STORE_TIME      = 31*86400;   //!< cleanup stored MKs and message hashes after 31 days
 
     static const int NUM_PRE_KEYS          = 100;
     static const int MIN_NUM_PRE_KEYS      = 30;
@@ -47,19 +47,22 @@ namespace axolotl {
 
     // Group message types, value for normal message must be the lowest
     static const uint32_t GROUP_MSG_NORMAL = 10;
-    static const uint32_t GROUP_MSG_CMD    = 11;        //!< To simplify check if this is a pure group command message
+    static const uint32_t GROUP_MSG_CMD    = 11;      //!< To simplify check if this is a pure group command message
 
+    // Group/member attributes, bit field data
+    static const int32_t ACTIVE       = 1;            //!< The group/member is active in this client
+    static const int32_t INACTIVE     = 2;            //!< The group/member is active in this client, no more message processing
 
-    static const std::string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
-    static const std::string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");
-    static const std::string SILENT_MESSAGE("SilentCircleMessage");
+    static const string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
+    static const string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");
+    static const string SILENT_MESSAGE("SilentCircleMessage");
 
     static const int32_t SUCCESS           = 0;       //!< Success, same as SQLITE SUCCESS
     static const int32_t OK = 1;                      //!< Is @c true 
 
     // Error codes for message processing, between -10 and -99, code -1 used for other purposes already
     static const int32_t GENERIC_ERROR     = -10;     //!< Generic error code, unspecified error
-    static const int32_t VERSION_NO_SUPPORTED = -11;  //!< Unspported protocol version
+    static const int32_t VERSION_NO_SUPPORTED = -11;  //!< Unsupported protocol version
     static const int32_t BUFFER_TOO_SMALL  = -12;     //!< Buffer too small to store some data
     static const int32_t NOT_DECRYPTABLE = -13;       //!< Could not decrypt received message
     static const int32_t NO_OWN_ID  = -14;            //!< Found no own identity for registration
@@ -89,12 +92,12 @@ namespace axolotl {
     static const int32_t IDENTITY_KEY_TYPE_MISMATCH = -200;  //!< Their identity key and our identity key use different curve types
 
     // Error codes for encryption/decryption, HMAC
-    static const int32_t WRONG_BLK_SIZE = -300;         //!< The IV or other data length did not match the cipher's blocksize
-    static const int32_t UNSUPPORTED_KEY_SIZE = -301;   //!< Key size not supported for this cipher
+    static const int32_t WRONG_BLK_SIZE = -300;       //!< The IV or other data length did not match the cipher's blocksize
+    static const int32_t UNSUPPORTED_KEY_SIZE = -301; //!< Key size not supported for this cipher
 
     // Error codes group chat
-    static const int32_t GROUP_ERROR_BASE = -400;       //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
-    static const int32_t MAX_MEMBERS_REACHED = -450;    //!< Maximum members for this group reached
+    static const int32_t GROUP_ERROR_BASE = -400;     //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
+    static const int32_t MAX_MEMBERS_REACHED = -450;  //!< Maximum members for this group reached
 
 }  // namespace
 

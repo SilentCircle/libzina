@@ -16,7 +16,7 @@ limitations under the License.
 #include "AesCbc.h"
 
 #include <cryptcommon/aescpp.h>
-#include "../Constants.h"
+#include "../../Constants.h"
 #include "../../logging/AxoLogging.h"
 
 using namespace axolotl;

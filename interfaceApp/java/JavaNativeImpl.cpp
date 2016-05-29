@@ -27,7 +27,7 @@ limitations under the License.
 #include "../../interfaceTransport/sip/SipTransport.h"
 #include "../../axolotl/state/AxoConversation.h"
 #include "../../axolotl/crypto/EcCurve.h"
-#include "../../axolotl/Constants.h"
+#include "../../Constants.h"
 #include "../../util/cJSON.h"
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"

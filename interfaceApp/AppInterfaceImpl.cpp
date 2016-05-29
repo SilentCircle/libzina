@@ -15,7 +15,7 @@ limitations under the License.
 */
 #include "AppInterfaceImpl.h"
 
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../axolotl/AxoPreKeyConnector.h"
 #include "../axolotl/ratchet/AxoRatchet.h"
 

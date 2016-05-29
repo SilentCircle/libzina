@@ -6,7 +6,7 @@
 
 #include "AppInterfaceImpl.h"
 
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 
 #include "../util/UUID.h"
 #include "../logging/AxoLogging.h"

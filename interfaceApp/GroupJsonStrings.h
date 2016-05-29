@@ -13,9 +13,11 @@ namespace axolotl {
     static const char* GROUP_DESC = "description";
     static const char* GROUP_MAX_MEMBERS = "maxMembers";
     static const char* GROUP_MEMBER_COUNT = "memberCount";
+    static const char* GROUP_ATTRIBUTE = "groupAttribute";
 
     static const char* MEMBER_ID = "memberId";
     static const char* DEVICE_ID = "deviceId";
+    static const char* MEMBER_ATTRIBUTE = "memberAttribute";
 
     static const char* INVITE_TOKEN = "inviteToken";
 

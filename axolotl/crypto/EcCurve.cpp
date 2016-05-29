@@ -17,7 +17,7 @@ limitations under the License.
 
 #include "EcCurve.h"
 #include "Ec255PublicKey.h"
-#include "../Constants.h"
+#include "../../Constants.h"
 #include "../../logging/AxoLogging.h"
 
 using namespace axolotl;
