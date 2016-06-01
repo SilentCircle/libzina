@@ -97,16 +97,15 @@ int32_t AxoConversation::renameConversation(const string& localUserOld, const st
 }
 #endif
 
-void AxoConversation::storeStagedMks()
-{
+void AxoConversation::storeStagedMks() {
     LOGGER(INFO, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    while (!stagedMk->empty()) {
+    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
+    while (stagedMk && !stagedMk->empty()) {
         string mkivmac = stagedMk->front();
         stagedMk->pop_front();
         store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkivmac);
     }
-    delete stagedMk; stagedMk = NULL;
+    stagedMk.reset();
 
     // Cleanup old MKs
     time_t timestamp = time(0) - MK_STORE_TIME;
@@ -117,10 +116,12 @@ void AxoConversation::storeStagedMks()
 shared_ptr<list<string> > AxoConversation::loadStagedMks()
 {
     LOGGER(INFO, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    shared_ptr<list<string> > mks = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
+    if (!stagedMk) {
+        SQLiteStoreConv *store = SQLiteStoreConv::getStore();
+        stagedMk = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
+    }
     LOGGER(INFO, __func__, " <--");
-    return mks;
+    return stagedMk;
 }
 
 void AxoConversation::deleteStagedMk(string& mkiv)

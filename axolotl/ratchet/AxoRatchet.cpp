@@ -345,17 +345,14 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
         return NO_STAGED_KEYS;
     }
 
-    // During the while loop we expect that decryptAndCheck fails
-    while (!mks->empty()) {
-        string MKiv = mks->front();
-        mks->pop_front();
+    // During the loop we expect that decryptAndCheck fails
+    for (auto it = mks->begin(); it != mks->end(); ++it) {
+        string MKiv = *it;
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
         if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == OK) {
             memset_volatile((void*)MK.data(), 0, MK.size());
-            conv->deleteStagedMk(MKiv);
-            mks->clear();
             LOGGER(INFO, __func__, " <--");
             return retVal;
         }
@@ -379,7 +376,7 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
     uint32_t macLen;
     *CKp = CKr;
 
-    conv->stagedMk = new list<string>;
+    conv->stagedMk = make_shared<list<string> >();
     for (int32_t i = Nr; i < Np; i++) {
         deriveMk(*CKp, &MK, &iv, &mKey);
         string mkivmac(MK);
@@ -389,7 +386,6 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
         // Hash CK with "1"
         hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, mac, &macLen);
         CKp->assign((const char*)mac, macLen);
-
     }
     deriveMk(*CKp, &MK, &iv, &mKey);
     MKp->first = MK;

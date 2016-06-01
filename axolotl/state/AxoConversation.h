@@ -162,7 +162,7 @@ public:
     void setZrtpVerifyState(int32_t state)  { zrtpVerifyState = state; }
     int32_t getZrtpVerifyState() const      { return zrtpVerifyState; }
 
-    list<string>* stagedMk;
+    shared_ptr<list<string> > stagedMk;
 
     void reset();
 
