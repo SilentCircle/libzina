@@ -467,8 +467,10 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     }
 
     // Version 3 adds the message trace table
+    int did_call_msg_trace = 0;
+   
     if (oldVersion < 3) {
-        SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL);
+        SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL); did_call_msg_trace = 1;
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
         if (sqlCode_ != SQLITE_DONE) {
@@ -479,12 +481,14 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     }
 
     if (oldVersion < 4) {
-        SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
-        sqlCode_ = sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-        if (sqlCode_ != SQLITE_DONE) {
-            LOGGER(ERROR, __func__, ", SQL error adding convstate column: ", sqlCode_);
-            return sqlCode_;
+        if(!did_call_msg_trace){
+            SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
+            sqlCode_ = sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+            if (sqlCode_ != SQLITE_DONE) {
+                LOGGER(ERROR, __func__, ", SQL error adding convstate column: ", sqlCode_);
+                return sqlCode_;
+            }
         }
         oldVersion = 4;
     }
