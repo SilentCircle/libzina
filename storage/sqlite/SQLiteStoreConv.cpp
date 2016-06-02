@@ -543,8 +543,12 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     }
 
     // Version 3 adds the message trace table
+    const char* traceTable =
+            "CREATE TABLE MsgTrace (name VARCHAR NOT NULL, messageId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL, "
+                    "attributes VARCHAR NOT NULL, stored TIMESTAMP DEFAULT(STRFTIME('%Y-%m-%dT%H:%M:%f', 'NOW')), flags INTEGER);";
+
     if (oldVersion < DB_VERSION) {
-        SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL);
+        SQLITE_PREPARE(db, traceTable, -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
         if (sqlCode_ != SQLITE_DONE) {
@@ -554,6 +558,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         oldVersion = 3;
     }
 
+    // Version 4 adds the conversation state column to the trace table
     if (oldVersion < DB_VERSION) {
         SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
@@ -1244,6 +1249,7 @@ cleanup:
 shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, const string &messageId, const string &deviceId, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt = NULL;
+    int32_t len;
     int32_t sqlResult;
     shared_ptr<list<string> > traceRecords = make_shared<list<string> >();
 
