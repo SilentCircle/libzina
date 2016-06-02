@@ -147,7 +147,11 @@ int32_t AppInterfaceImpl::inviteUser(string& groupUuid, string& userId)
     free(out);
 
     // Command send: has a message id, Empty message and attachment, invite command as attribute
-    sendMessageInternal(userId, msgId, Empty, Empty, inviteCommand, GROUP_MSG_CMD);
+    vector<int64_t>* sipMsgIds = sendMessageInternal(userId, msgId, Empty, Empty, inviteCommand, GROUP_MSG_CMD);
+    if (sipMsgIds == nullptr) {
+        return errorCode_;
+    }
+    delete(sipMsgIds);
 
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;

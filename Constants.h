@@ -40,6 +40,7 @@ namespace axolotl {
 
     static const int NUM_PRE_KEYS          = 100;
     static const int MIN_NUM_PRE_KEYS      = 30;
+
     static const uint32_t MSG_NORMAL       = 0;
     static const uint32_t MSG_CMD          = 1;
 

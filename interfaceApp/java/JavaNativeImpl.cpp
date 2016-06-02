@@ -707,10 +707,9 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
     if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
         return NULL;
 
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
 
-    if (devices == NULL || devices->empty()) {
-        delete devices;
+    if (!devices || devices->empty()) {
         return NULL;
     }
 
@@ -728,7 +727,6 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
         cJSON_AddItemToArray(devArray, devInfo);
     }
 
-    delete devices;
     char *out = cJSON_Print(root);
     string json(out);
     cJSON_Delete(root); free(out);

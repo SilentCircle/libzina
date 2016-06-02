@@ -510,9 +510,8 @@ static string ping("{\"cmd\":\"ping\"}");
 void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(INFO, __func__, " -->");
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(userName, authorization_);
-    if (devices == NULL || devices->empty()) {
-        delete devices;
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    if (!devices|| devices->empty()) {
         return;
     }
 
@@ -592,12 +591,10 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         // This is always a security issue: return immediately, don't process and send a message
         if (result < 0) {
             delete msgPairs;
-            delete devices;
             return;
         }
     }
     lck.unlock();
-    delete devices;
 
     if (msgPairs->empty()) {
         delete msgPairs;
@@ -757,12 +754,13 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
 
     bool toSibling = recipient == ownUser_;
 
-    list<pair<string, string> >* devices = NULL;
+    shared_ptr<list<pair<string, string> > > devices;
+
     int32_t errorCode = 0;
     if (!toSibling || !ownChecked_) {
         devices = Provisioning::getAxoDeviceIds(recipient, authorization_, &errorCode);
     }
-    if (devices == NULL) {
+    if (!devices) {
         char tmpBuff[20];
         snprintf(tmpBuff, 10, "%d", errorCode);
         string errorString(tmpBuff);
@@ -776,7 +774,6 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
     if (devices->empty()) {
         errorCode_ = NO_DEVS_FOUND;
         errorInfo_ = recipient;
-        delete devices;
         LOGGER(DEBUGGING, "No device registered for recipient: ", recipient);
         LOGGER(INFO, __func__, " <-- No device.");
         return NULL;
@@ -805,7 +802,6 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
         // This is always a security issue: return immediately, don't process and send a message
         if (result < 0) {
             delete msgPairs;
-            delete devices;
             errorCode_ = result;
             errorInfo_ = recipientDeviceId;
             LOGGER(ERROR, "Failed to create pre-key message, code ", result, ", recipient: ", recipient,
@@ -816,7 +812,6 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
         MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, *convState, messageAttributes, !attachmentDescriptor.empty());
         convState->clear();
     }
-    delete devices;
 
     if (msgPairs->empty()) {
         delete msgPairs;
@@ -921,7 +916,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     pair<string, string> idHashes;
     shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
     axoConv->storeConversation();
-    convJson = axoConv->prepareForCapture(convJson, true);
+    convJson = axoConv->prepareForCapture(convJson, false);
     delete axoConv;
 
     if (!wireMessage) {
@@ -1060,9 +1055,8 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     delete(conv);
 
     // Check if server still knows this device, if no device at all -> remove conversation.
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(userName, authorization_);
-    if (devices == NULL || devices->empty()) {
-        delete devices;
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    if (!devices || devices->empty()) {
         store_->deleteConversation(userName, deviceId, ownUser_);
         return;
     }
@@ -1075,7 +1069,6 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
             break;
         }
     }
-    delete(devices);
 
     // The server does not know this device anymore. In this case remove the conversation.
     if (!deviceFound) {

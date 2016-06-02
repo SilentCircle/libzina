@@ -47,7 +47,7 @@ static void cleanupTrace(SQLiteStoreConv* store )
 {
     // Cleanup old traces, currently using the same time as for the Message Key cleanup
     time_t timestamp = time(0) - MK_STORE_TIME;
-    store->deleteStagedMk(timestamp);
+    store->deleteMsgTrace(timestamp);
 }
 
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
