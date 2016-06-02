@@ -467,10 +467,12 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     }
 
     // Version 3 adds the message trace table
-    int did_call_msg_trace = 0;
-   
+    const char* traceTable =
+            "CREATE TABLE MsgTrace (name VARCHAR NOT NULL, messageId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL, "
+                    "attributes VARCHAR NOT NULL, stored TIMESTAMP DEFAULT(STRFTIME('%Y-%m-%dT%H:%M:%f', 'NOW')), flags INTEGER);";
+
     if (oldVersion < 3) {
-        SQLITE_PREPARE(db, createMsgTrace, -1, &stmt, NULL); did_call_msg_trace = 1;
+        SQLITE_PREPARE(db, traceTable, -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
         if (sqlCode_ != SQLITE_DONE) {
@@ -480,15 +482,14 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         oldVersion = 3;
     }
 
+    // Version 4 adds the conversation state column to the trace table
     if (oldVersion < 4) {
-        if(!did_call_msg_trace){
-            SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
-            sqlCode_ = sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-            if (sqlCode_ != SQLITE_DONE) {
-                LOGGER(ERROR, __func__, ", SQL error adding convstate column: ", sqlCode_);
-                return sqlCode_;
-            }
+        SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        if (sqlCode_ != SQLITE_DONE) {
+            LOGGER(ERROR, __func__, ", SQL error adding convstate column: ", sqlCode_);
+            return sqlCode_;
         }
         oldVersion = 4;
     }
