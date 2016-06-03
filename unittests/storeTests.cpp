@@ -159,8 +159,6 @@ static string convState("Some ratchet state");
 
 TEST_F(StoreTestFixture, MsgTraceStore)
 {
-    LOGGER_INSTANCE setLogLevel(VERBOSE);
-
     // Fresh DB, trace must be empty
     shared_ptr<list<string> > records = pks->loadMsgTrace(name, empty, empty);
     ASSERT_TRUE(records->empty());
