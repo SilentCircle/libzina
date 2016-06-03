@@ -101,6 +101,21 @@ enum LoggingLogType {
     else if (level > LOGGER_INSTANCE getLogLevel()) ; \
     else LOGGER_INSTANCE print<LoggingLogLevel::level >(args);}
 
+/**
+ * @brief Starts a logging code block.
+ *
+ * The marco works in the same way as the @c LOGGER marco, thus the code between @c LOGGER_BEGIN
+ * and @c LOGGER_END exists only if the level is less or equal the valuve defined in @c LOG_LEVEL.
+ */
+#define LOGGER_BEGIN(level) \
+    if (level > LOG_MAX_LEVEL) ;\
+    else if (level > LOGGER_INSTANCE getLogLevel()) ; \
+    else {
+
+/**
+ * @brief Closes a logging code block.
+ */
+#define LOGGER_END }
 
 namespace logging {
 
