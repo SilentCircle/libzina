@@ -344,6 +344,8 @@ public:
      * to refer to the appropriate conversation record which defies these three fields
      * as its primary key.
      *
+     * The functions sets the new member's attribute to @c ACTIVE.
+     *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
      * @param memberUuid the new member's UID
      * @param deviceId the new member's device id to support multi-device support
@@ -438,6 +440,23 @@ public:
      * @return SQLite code
      */
     int32_t clearMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t attributeMask);
+
+
+
+    /**
+     * @brief Compute a SHA-256 hash of all member ids in a group.
+     *
+     * The function remove the bits in the attribute mask from the existing member's
+     * attribute bits. To select to member ids the function uses a SQL select statement
+     * similar to:
+     *
+     * SELECT DISTINCT memberId FROM Members WHERE groupId=groupUuid AND attributes&ACTIVE ORDER BY memberId ASC;
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param hash Pointer to a buffer of at least 32 bytes which receives the computed hash
+     * @return SQLite code
+     */
+    int32_t memberListHash(const string& groupUuid, uint8_t* hash);
 
     /*
      * @brief Use for debugging and development only.

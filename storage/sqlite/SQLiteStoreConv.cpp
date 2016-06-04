@@ -18,9 +18,12 @@ limitations under the License.
 #include <mutex>          // std::mutex, std::unique_lock
 
 #include <cryptcommon/ZrtpRandom.h>
+#include <zrtp/crypto/sha256.h>
+#include <zrtp/crypto/sha2.h>
 
 #include "../../logging/AxoLogging.h"
 #include "../../interfaceApp/GroupJsonStrings.h"
+#include "../../Constants.h"
 
 
 /* *****************************************************************************
@@ -192,7 +195,7 @@ static const char* selectMember = "SELECT groupId, memberId, deviceId, attribute
 static const char* setMemberAttributeSql = "UPDATE members SET attributes=attributes|?1, lastModified=?2 WHERE groupId=?3 AND memberId=?4;";
 static const char* clearMemberAttributeSql = "UPDATE members SET attributes=attributes&~?1, lastModified=?2  WHERE groupId=?3 AND memberId=?4;";
 static const char* selectMemberAttributeSql = "SELECT attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2;";
-
+static const char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE groupId=?1 AND attributes&?2 ORDER BY memberId ASC;";
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
@@ -1645,7 +1648,7 @@ int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &mem
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 4, ownName.data(), static_cast<int32_t>(ownName.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_int(stmt,  5, 0));
+    SQLITE_CHK(sqlite3_bind_int(stmt,  5, ACTIVE));
 
     beginTransaction();
     sqlResultIncrement = incrementMemberCount(db, groupUuid);
@@ -1866,3 +1869,35 @@ cleanup:
     LOGGER(INFO, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
+
+
+int32_t SQLiteStoreConv::memberListHash(const string &groupUuid, uint8_t *hash)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    sha256_ctx* ctx;
+
+            // char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE groupId=?1 AND attributes&?2 ORDER BY memberId ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectForHash, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_int(stmt,  2, ACTIVE));
+    sqlResult = sqlite3_step(stmt);
+
+    ctx = reinterpret_cast<sha256_ctx*>(createSha256Context());
+
+    while (sqlResult == SQLITE_ROW) {
+        const uint8_t* data = sqlite3_column_text(stmt, 0);
+        int32_t length = sqlite3_column_bytes(stmt, 0);
+        sha256Ctx(ctx, const_cast<uint8_t *>(data), static_cast<uint32_t >(length));
+        sqlResult = sqlite3_step(stmt);
+    }
+    closeSha256Context(ctx, hash);
+
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+

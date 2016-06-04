@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#include <zrtp/crypto/sha256.h>
+#include <zrtp/crypto/sha2.h>
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
 #include "../axolotl/crypto/DhKeyPair.h"
@@ -26,6 +28,7 @@ limitations under the License.
 #include "../storage/NameLookup.h"
 #include "../logging/AxoLogging.h"
 #include "../interfaceApp/GroupJsonStrings.h"
+#include "../Constants.h"
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
@@ -234,6 +237,15 @@ static const char* getJsonString(cJSON* root, const char* tag, const char* error
 
 TEST_F(StoreTestFixture, GroupChatStore)
 {
+    uint8_t hash_1[SHA256_DIGEST_LENGTH];
+    sha256((uint8_t*)memberId_1.c_str(), static_cast<uint32_t >(memberId_1.length()), hash_1);
+
+    uint8_t hash_2[SHA256_DIGEST_LENGTH];
+    sha256_ctx *ctx = reinterpret_cast<sha256_ctx*>(createSha256Context());
+    sha256Ctx(ctx, (uint8_t*)memberId_1.c_str(), static_cast<uint32_t >(memberId_1.length()));
+    sha256Ctx(ctx, (uint8_t*)memberId_2.c_str(), static_cast<uint32_t >(memberId_2.length()));
+    closeSha256Context(ctx, hash_2);
+
     // Fresh DB, groups must be empty
     shared_ptr<list<shared_ptr<cJSON> > > groups = pks->listAllGroups();
     ASSERT_TRUE(groups->empty());
@@ -310,17 +322,21 @@ TEST_F(StoreTestFixture, GroupChatStore)
     result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    // Member attributes are initialized to 0
+    uint8_t hash_db[SHA256_DIGEST_LENGTH];
+    result = pks->memberListHash(groupId_1, hash_db);
+    ASSERT_EQ(0, memcmp(hash_db, hash_1, SHA256_DIGEST_LENGTH));
+
+    // Member attributes are initialized to ACTIVE
     attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(0, attrTime->first);
+    ASSERT_EQ(ACTIVE, attrTime->first);
 
     // Set two attribute bits
     result = pks->setMemberAttribute(groupId_1, memberId_1, 3);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    // Clear lowest bit
-    result = pks->clearMemberAttribute(groupId_1, memberId_1, 1);
+    // Clear lowest bit - the ACTIVE bit
+    result = pks->clearMemberAttribute(groupId_1, memberId_1, ACTIVE);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
@@ -346,6 +362,19 @@ TEST_F(StoreTestFixture, GroupChatStore)
     // Add a second member. This time the insertion must succeed.
     result = pks->insertMember(groupId_1, memberId_2, deviceId_2, ownName);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Because the first member has its ACTIVE bit cleared above that record
+    // is not part of the has, thus this must fail
+    result = pks->memberListHash(groupId_1, hash_db);
+    ASSERT_NE(0, memcmp(hash_db, hash_2, SHA256_DIGEST_LENGTH));
+
+    // set the member's ACTIVE bit, repeat hash check, this time it must
+    // succeed
+    result = pks->setMemberAttribute(groupId_1, memberId_1, ACTIVE);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    result = pks->memberListHash(groupId_1, hash_db);
+    ASSERT_EQ(0, memcmp(hash_db, hash_2, SHA256_DIGEST_LENGTH));
 
     // List one member of a group
     member = pks->listGroupMember(groupId_1, memberId_1, &result);
