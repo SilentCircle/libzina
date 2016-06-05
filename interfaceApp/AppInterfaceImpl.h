@@ -65,8 +65,6 @@ public:
 
     int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias);
 
-    void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation);
-
     string* getKnownUsers();
 
     string getOwnIdentityKey() const;
@@ -93,6 +91,7 @@ public:
 
     int32_t inviteUser(string& groupUuid, string& userId);
 
+    int32_t answerInvitation(const string& command, bool accept, const string& reason);
 
     // **** Below are methods for this implementation, not part of AppInterface.h
     /**
@@ -146,6 +145,11 @@ public:
 
     bool isRegistered()           {return ((flags_ & 0x1) == 1); }
 
+#ifdef UNITTESTS
+        void setStore(SQLiteStoreConv* store) { store_ = store; }
+        void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }
+#endif
+
 private:
     // do not support copy, assignment and equals
     AppInterfaceImpl (const AppInterfaceImpl& other ) = delete;
@@ -161,6 +165,7 @@ private:
                        const string& attachmentDescriptor, const string& messageAttributes, uint32_t messageType=0);
 
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
+
     /**
      * Only the 'Alice' role uses this function to create a pre-key message (msg-type 2)
      * and sends this to the receiver (the 'Bob' role)
@@ -169,9 +174,26 @@ private:
                             const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs, shared_ptr<string> convState,
                             uint32_t messageType=0);
 
-    int32_t processReceivedGroupMsg(MessageEnvelope& envelope, string& msgDescriptor, string& attachmentDescr, string& attributesDescr);
+    /**
+     * @brief Handle a group message, either a command or a normal message.
+     *
+     * The normal receiver function already decrypted the message, attribute, and attachment data.
+     */
+    int32_t processReceivedGroupMsg(const MessageEnvelope& envelope, const string& msgDescriptor, const string& attachmentDescr, const string& attributesDescr);
 
-    static string generateMsgId() {
+    /**
+     * @brief Process a group command.
+     *
+     * The @c processReceivedGroupMsg function calls this function after it checked
+     * the message type.
+     */
+    int32_t processGroupCommand(const string& commandIn);
+
+    int32_t sendGroupCommand(const string& recipient, const string& msgId, const string &command);
+
+    int32_t sendGroupCommandSibling(const string& msgId, const string &command);
+
+    static string generateMsgIdTime() {
         uuid_t uuid = {0};
         uuid_string_t uuidString = {0};
 

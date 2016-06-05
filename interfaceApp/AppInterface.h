@@ -31,12 +31,13 @@ limitations under the License.
 
 using namespace std;
 
-typedef int32_t (*RECV_FUNC)(const string&, const string&, const string&);
-typedef void (*STATE_FUNC)(int64_t, int32_t, const string&);
-typedef void (*NOTIFY_FUNC)(int32_t, const string&, const string&);
+typedef int32_t (*RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
+typedef void (*STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
+typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const string& userId, const string& actionInformation);
 
-typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string&);
-typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string&, const string&, const string&);
+typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string& commandMessage);
+typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
+typedef void (*GROUP_STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
 
 namespace axolotl {
 class AppInterface
@@ -44,7 +45,8 @@ class AppInterface
 public:
     static const int DEVICE_SCAN = 1;
 
-    AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL), notifyCallback_(NULL) {}
+    AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL), notifyCallback_(NULL), groupMsgCallback_(NULL),
+    groupCmdCallback_(NULL), groupStateReportCallback_(NULL) {}
 
     AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback) : 
                  receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback), notifyCallback_(notifyCallback) {}
@@ -154,25 +156,6 @@ public:
      * @return Either success or an error code
      */
     virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
-
-    /**
-     * @brief Send a message state report to the application.
-     *
-     * The library reports state changes of message that it cannot process, for example decryption failed
-     * for a received message.
-     *
-     * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this 
-     *                           report belongs to a received message and the library failed to 
-     *                           process it.
-     *
-     * @param statusCode         The status code. Usually like HTTP or SIP codes. If less 0 then the 
-     *                           messageIdentfier may be 0 and this would indicate a problem with a 
-     *                           received message.
-     * 
-     * @param stateInformation   JSON formatted stat information block that contains the details about
-     *                           the new state or some error information.
-     */
-    virtual void messageStateReport(int64_t messageIdentfier, int32_t stateCode, const string& stateInformation) = 0;
 
     /**
      * @brief Request names of known trusted Axolotl user identities
@@ -339,9 +322,29 @@ public:
      *
      * @param groupUuid Invite for this group
      * @param userId The invited user's unique id
-     * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
+     * @return @c OK if function could send invitation, error code (<0) otherwise
      */
     virtual int32_t inviteUser(string& groupUuid, string& userId) = 0;
+
+    /**
+     * @brief Answer a group Invitation.
+     *
+     * The invited user may accept or decline a group invitation. In case the user accepts
+     * the invitation the functions prepares the group data structures in this client, sends
+     * out a synchronization command to its siblings and then sends an invite accepted
+     * to the inviting user.
+     *
+     * If the user declines the invitation the functions just sends a invitation declined with
+     * an optional reason string to the inviting user.
+     *
+     * @param command the command string as received in the @c groupCmdCallback_. The callback
+     *                function should not modify this command string.
+     * @param accept If true the user accepted the invitation, if false the user declined the invitation.
+     * @param reason In case the user declined a reason why the user declined the invitation. The
+     *               string maybe empty.
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t answerInvitation(const string& command, bool accept, const string& reason) = 0;
 
     // *************************************************************
     // Callback functions to UI part
@@ -394,12 +397,13 @@ public:
      * @brief Callback to UI for a Message state change report
      *
      * The Axolotl library uses this callback function to report message state changes to the UI.
-     * The library reports state changes of message it got for sending and it also reports if it
+     * The library reports message state changes for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
      * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this 
      *                           report belongs to a received message and the library failed to 
      *                           process it.
+     * @param errorCode          The error code
      * @param stateInformation   JSON formatted stat information block that contains the details about
      *                           the new state or some error information.
      */
@@ -412,7 +416,7 @@ public:
      *
      * @param notifyActionCode   This code defines which action to perform, for example re-scan a
      *                           user's Axolotl devices
-     * 
+     * @param userId             The user id for which the SIP server sent the NOTIFY
      * @param actionInformation  string that contains details required for the action, currently
      *                           the device identifiers separated with a colon.
      */
@@ -437,10 +441,26 @@ public:
      *
      * JSON format TBD
      *
-     * @param messageAttributes      A JSON formatted string that contains the command message.
+     * @param commandMessage  A JSON formatted string that contains the command message.
      * @return Either success of an error code (to be defined)
      */
-    GROUP_CMD_RECV_FUNC groupCmdRecvFunc;
+    GROUP_CMD_RECV_FUNC groupCmdCallback_;
+
+    /**
+     * @brief Callback to UI for a Group Message state change report
+     *
+     * The Axolotl library uses this callback function to report message state changes to the UI.
+     * The library reports message state changes for sending and it also reports if it
+     * received a message but could not process it, for example decryption failed.
+     *
+     * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this
+     *                           report belongs to a received message and the library failed to
+     *                           process it.
+     * @param errorCode          The error code
+     * @param stateInformation   JSON formatted stat information block that contains the details about
+     *                           the new state or some error information.
+     */
+    GROUP_STATE_FUNC groupStateReportCallback_;
 };
 } // namespace
 

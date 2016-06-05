@@ -273,7 +273,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         size_t msgLen = min(message.size(), (size_t)500);
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
-        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
+        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
         LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         return errorCode_;
     }
@@ -329,36 +329,16 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, attributesDescr, !attachmentDescr.empty());
 
     if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL) {
-        return processReceivedGroupMsg(envelope, msgDescriptor, attachmentDescr, attributesDescr);
+        int32_t result = processReceivedGroupMsg(envelope, msgDescriptor, attachmentDescr, attributesDescr);
+        if (result != OK) {
+            groupStateReportCallback_(0, result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId));
+        }
     }
-    receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+    else {
+        receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+    }
     LOGGER(INFO, __func__, " <--");
     return OK;
-}
-
-/*
-JSON state information block:
-{   
-    "version":    <int32_t>,            # Version of the JSON known users structure,
-                                        # 1 for the first implementation
-    "code":       <int32_t>,            # success, error codes (code values to be 
-                                        # defined)
-    "details": {                        # optional, in case of error code it includes
-                                        # detail information
-        "name":      <string>,          # optional, name of sender/recipient of message,
-                                        # if known
-        "scClientDevId" : <string>,     # the same string as used to register the 
-                                        # device (v1/me/device/{device_id}/)
-        "otherInfo": <string>           # optional, additional info, e.g. SIP server 
-                                        # messages
-    }
-}
-*/
-void AppInterfaceImpl::messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation)
-{
-    LOGGER(INFO, __func__, " -->");
-    stateReportCallback_(messageIdentfier, statusCode, stateInformation);
-    LOGGER(INFO, __func__, " <--");
 }
 
 string* AppInterfaceImpl::getKnownUsers()
@@ -574,16 +554,10 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             }
             continue;
         }
-        uuid_t pingUuid = {0};
-        uuid_string_t uuidString = {0};
-
-        uuid_generate_time(pingUuid);
-        uuid_unparse(pingUuid, uuidString);
-        string msgId(uuidString);
 
         LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
         shared_ptr<string> convState = make_shared<string>();
-        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs, convState);
+        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, generateMsgIdTime(), msgPairs, convState);
         convState->clear();
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
@@ -706,7 +680,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         uint8_t binDevId[20];
         size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
-        if (res != 0)
+        if (res == 0)
             envelope.set_recvdevidbin(binDevId, 4);
 //        envelope.set_recvdeviceid(recipientDeviceId);
 
@@ -951,9 +925,9 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         envelope.set_senderidhash(idHashes.second.data(), 4);
     }
 
-    uint8_t binDevId[20];
+    uint8_t binDevId[20] = {0};
     size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
-    if (res != 0)
+    if (res == 0)
         envelope.set_recvdevidbin(binDevId, 4);
 //    envelope.set_recvdeviceid(recipientDeviceId);
     wireMessage.reset();
@@ -1081,11 +1055,10 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
     // Prepare the ping message for this device
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
-    const string& msgId = generateMsgId();
 
     LOGGER(DEBUGGING, "Send Ping to re-sync device: ", deviceId);
     shared_ptr<string> convState = make_shared<string>();
-    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs, convState);
+    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, generateMsgIdTime(), msgPairs, convState);
     convState->clear();
 
     // This is always a security issue: return immediately, don't process and send a message

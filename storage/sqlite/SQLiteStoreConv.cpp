@@ -1442,7 +1442,7 @@ static cJSON* createGroupJson(sqlite3_stmt *stmt)
     cJSON_AddNumberToObject(root, GROUP_MAX_MEMBERS, sqlite3_column_int(stmt, 4));
     cJSON_AddNumberToObject(root, GROUP_MEMBER_COUNT, sqlite3_column_int(stmt, 5));
     cJSON_AddNumberToObject(root, GROUP_ATTRIBUTE, sqlite3_column_int(stmt, 6));
-    cJSON_AddNumberToObject(root, GROUP_ATTRIBUTE, sqlite3_column_int64(stmt, 7));
+    cJSON_AddNumberToObject(root, GROUP_MOD_TIME, sqlite3_column_int64(stmt, 7));
 
     return root;
 }
@@ -1726,9 +1726,9 @@ static cJSON* createMemberJson(sqlite3_stmt *stmt)
 
     cJSON_AddStringToObject(root, GROUP_ID,  (const char*)sqlite3_column_text(stmt, 0));
     cJSON_AddStringToObject(root, MEMBER_ID, (const char*)sqlite3_column_text(stmt, 1));
-    cJSON_AddStringToObject(root, DEVICE_ID, (const char*)sqlite3_column_text(stmt, 2));
+    cJSON_AddStringToObject(root, MEMBER_DEVICE_ID, (const char*)sqlite3_column_text(stmt, 2));
     cJSON_AddNumberToObject(root, MEMBER_ATTRIBUTE, sqlite3_column_int(stmt, 3));
-    cJSON_AddNumberToObject(root, MEMBER_ATTRIBUTE, sqlite3_column_int64(stmt, 4));
+    cJSON_AddNumberToObject(root, MEMBER_MOD_TIME, sqlite3_column_int64(stmt, 4));
 
     return root;
 }

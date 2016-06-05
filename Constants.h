@@ -99,6 +99,9 @@ namespace axolotl {
     // Error codes group chat
     static const int32_t GROUP_ERROR_BASE = -400;     //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
     static const int32_t MAX_MEMBERS_REACHED = -450;  //!< Maximum members for this group reached
+    static const int32_t GROUP_CMD_MISSING_DATA = -451; //<! Message has type group command but no data
+    static const int32_t GROUP_CMD_DATA_INCONSISTENT = -452; //<! Message is group command but has no command
+    static const int32_t GROUP_MSG_DATA_INCONSISTENT = -453; //<! Message is normal group message command but has no data
 
 }  // namespace
 

@@ -51,7 +51,7 @@ add_executable(scloud_test scloudTest.cpp)
 target_link_libraries(scloud_test gtest_main ${axoLibName})
 
 add_executable(group_invite_test groupInvite.cpp)
-target_link_libraries(group_invite_test gtest_main ${axoLibName})
+target_link_libraries(group_invite_test ${axoLibName})
 
 # 
 # ############## Java testing #####################
