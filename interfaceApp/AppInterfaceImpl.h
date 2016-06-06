@@ -28,7 +28,6 @@ limitations under the License.
 #include "AppInterface.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../util/UUID.h"
-#include "MessageEnvelope.pb.h"
 
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
@@ -37,6 +36,7 @@ using namespace std;
 
 namespace axolotl {
 class SipTransport;
+class MessageEnvelope;
 
 class AppInterfaceImpl : public AppInterface
 {
@@ -190,8 +190,6 @@ private:
     int32_t processGroupCommand(const string& commandIn);
 
     int32_t sendGroupCommand(const string& recipient, const string& msgId, const string &command);
-
-    int32_t sendGroupCommandSibling(const string& msgId, const string &command);
 
     static string generateMsgIdTime() {
         uuid_t uuid = {0};

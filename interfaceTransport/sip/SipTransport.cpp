@@ -28,9 +28,9 @@ limitations under the License.
 
 using namespace axolotl;
 
-#if defined (EMBEDDED)
 static int32_t getNumOfSlots()
 {
+#if defined (EMBEDDED)
     void *getAccountByID(int id);
     int getInfo(void *pEng, const char *key, char *p, int iMax);
 
@@ -43,8 +43,11 @@ static int32_t getNumOfSlots()
     }
 
     return atoi(tmp);
-}
+#else
+    return 1000;
 #endif
+}
+
 
 vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs)
 {
@@ -53,7 +56,6 @@ vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pa
 
     vector<int64_t>* msgIdsReturn = new std::vector<int64_t>;
 
-#if defined (EMBEDDED)
     int32_t availableSlots = getNumOfSlots();
     int32_t sumWaitTime = 0;
 
@@ -69,7 +71,6 @@ vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pa
         sumWaitTime += 150;
         availableSlots = getNumOfSlots();
     }
-#endif
 
     uint8_t** names = new uint8_t*[numPairs+1];
     uint8_t** devIds = new uint8_t*[numPairs+1];

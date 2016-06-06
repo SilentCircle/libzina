@@ -10,6 +10,7 @@
 
 #include "../logging/AxoLogging.h"
 #include "GroupJsonStrings.h"
+#include "MessageEnvelope.pb.h"
 
 using namespace std;
 using namespace axolotl;

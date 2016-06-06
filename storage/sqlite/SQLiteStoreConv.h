@@ -33,8 +33,8 @@ limitations under the License.
 #else
 #include <sqlcipher/sqlite3.h>
 #include <iostream>
-#include "../../util/cJSON.h"
 #endif
+#include "../../util/cJSON.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32

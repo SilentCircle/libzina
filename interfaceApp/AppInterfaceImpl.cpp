@@ -25,6 +25,7 @@ limitations under the License.
 #include "../provisioning/ScProvisioning.h"
 #include "../logging/AxoLogging.h"
 #include "../storage/MessageCapture.h"
+#include "MessageEnvelope.pb.h"
 
 #include <zrtp/crypto/sha256.h>
 
