@@ -334,6 +334,8 @@ public:
      * out a synchronization command to its siblings and then sends an invite accepted
      * to the inviting user.
      *
+     * Only the invited user calls this function.
+     *
      * If the user declines the invitation the functions just sends a invitation declined with
      * an optional reason string to the inviting user.
      *

@@ -101,10 +101,11 @@ vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, 
         LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
         return NULL;
     }
-    return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes);
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
+    return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes, devices);
 }
 
-vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, 
+vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor,
                                                          const string& messageAttributes)
 {
     string recipient;
@@ -118,7 +119,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
         LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
         return NULL;
     }
-    return sendMessageInternal(ownUser_, msgId, message, attachementDescriptor, messageAttributes);
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(ownUser_, ownUser_);
+    return sendMessageInternal(ownUser_, msgId, message, attachmentDescriptor, messageAttributes, devices);
 }
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, 
@@ -330,7 +332,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, attributesDescr, !attachmentDescr.empty());
 
     if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL) {
-        int32_t result = processReceivedGroupMsg(envelope, msgDescriptor, attachmentDescr, attributesDescr);
+        int32_t result = processGroupMessage(envelope, msgDescriptor, attachmentDescr, attributesDescr);
         if (result != OK) {
             groupStateReportCallback_(0, result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId));
         }
@@ -485,9 +487,6 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
 // and if yes send a "ping" message to the new devices to create an Axolotl conversation
 // for the new devices.
 
-// This is the ping command the code sends to new devices to create an Axolotl setup
-static string ping("{\"cmd\":\"ping\"}");
-
 void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(INFO, __func__, " -->");
@@ -594,7 +593,7 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 
 vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, const string& msgId, const string& message,
                                                        const string& attachmentDescriptor, const string& messageAttributes,
-                                                       uint32_t messageType)
+                                                       shared_ptr<list<string> > devices, uint32_t messageType)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -602,12 +601,10 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
     bool toSibling = recipient == ownUser_;
 
-    shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
     size_t numDevices = devices->size();
-
     // No device -> this is a new user, prepare setup, get pre-keys, etc.
     if (numDevices == 0) {
-        return sendMessagePreKeys(recipient, msgId, message, attachmentDescriptor, messageAttributes, messageType);
+        return sendMessagePreKeys(recipient, msgId, message, attachmentDescriptor, messageAttributes, shared_ptr<list<string> >(), messageType);
     }
 
     string supplements;
@@ -720,7 +717,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 vector<int64_t>*
 AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
                                      const string& attachmentDescriptor, const string& messageAttributes,
-                                     uint32_t messageType)
+                                     shared_ptr<list<string> > toDeviceOnly, uint32_t messageType)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -728,6 +725,12 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
     createSupplementString(attachmentDescriptor, messageAttributes, &supplements);
 
     bool toSibling = recipient == ownUser_;
+
+    string toThisDevice;
+    if (toDeviceOnly && toDeviceOnly->size() == 1) {
+        toThisDevice = toDeviceOnly->front();
+        toDeviceOnly->pop_front();
+    }
 
     shared_ptr<list<pair<string, string> > > devices;
 
@@ -762,6 +765,10 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
         string recipientDeviceId = devices->front().first;
         string recipientDeviceName = devices->front().second;
         devices->pop_front();
+
+        // Send only to the selected device
+        if (!toThisDevice.empty() && toThisDevice != recipientDeviceId)
+            continue;
 
         // Don't send this to sender device, even when sending to my sibling devices
         if (toSibling && recipientDeviceId == scClientDevId_) {

@@ -27,6 +27,8 @@ namespace axolotl {
     // The following string follow the GROUP_COMMAND and identify the command action
     static const char* INVITE = "inv";          //!< Group Invitation
     static const char* INVITE_ANSWER = "ian";   //!< Invitation answer
+    static const char* MEMBER_LIST = "mls";     //!< Command contain a group's member list
+    static const char* HELLO = "hel";           //!< Introduce myself as a new member of the list
 
     static const char* INVITE_SYNC = "s_inv";   //!< Sync accepted Group Invitation
 
@@ -34,6 +36,9 @@ namespace axolotl {
     static const char* TOKEN = "tok";
     static const char* ACCEPTED = "acc";
     static const char* REASON = "rsn";
+    static const char* MEMBERS = "mbrs";
+    static const char* INITIAL_LIST = "initial";
+
 
 }
 #endif //LIBAXOLOTL_GROUPJSONSTRINGS_H

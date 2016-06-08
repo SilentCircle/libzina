@@ -190,8 +190,9 @@ static const char* createMembers =
 static const char* insertMemberSql = "INSERT INTO members (groupId, memberId, deviceId, ownName, attributes, lastModified) VALUES (?1, ?2, ?3, ?4, ?5, ?6);";
 static const char* removeMember = "DELETE FROM members WHERE groupId=?1 AND memberId=?2;";
 static const char* removeMemberDevice = "DELETE FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3;";
-static const char* selectAllMembers = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1;";
-static const char* selectMember = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2;";
+static const char* selectAllMembers = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
+static const char* selectMember =
+        "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3 ORDER BY memberId ASC;";
 static const char* setMemberAttributeSql = "UPDATE members SET attributes=attributes|?1, lastModified=?2 WHERE groupId=?3 AND memberId=?4;";
 static const char* clearMemberAttributeSql = "UPDATE members SET attributes=attributes&~?1, lastModified=?2  WHERE groupId=?3 AND memberId=?4;";
 static const char* selectMemberAttributeSql = "SELECT attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2;";
@@ -1395,7 +1396,7 @@ int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name
     SQLITE_CHK(sqlite3_bind_text(stmt, 4, description.data(), static_cast<int32_t>(description.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_int(stmt,  5, maxMembers));
     SQLITE_CHK(sqlite3_bind_int(stmt,  6, 0));
-    SQLITE_CHK(sqlite3_bind_int(stmt,  7, 0));
+    SQLITE_CHK(sqlite3_bind_int(stmt,  7, ACTIVE));
 
     sqlResult= sqlite3_step(stmt);
     if (sqlResult != SQLITE_DONE)
@@ -1527,7 +1528,7 @@ cleanup:
     return sqlResult;
 }
 
-shared_ptr<pair<int32_t, time_t> > SQLiteStoreConv::getGroupAttribute(const string& groupUuid, int32_t* sqlCode)
+shared_ptr<pair<int32_t, time_t> > SQLiteStoreConv::getGroupAttribute(const string& groupUuid, int32_t* sqlCode) const
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -1764,16 +1765,17 @@ cleanup:
     return members;
 }
 
-shared_ptr<cJSON>SQLiteStoreConv::listGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode)
+shared_ptr<cJSON>SQLiteStoreConv::listGroupMember(const string &groupUuid, const string &memberUuid, const string& deviceId, int32_t *sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
     shared_ptr<cJSON> sharedJson;
 
-    // char* selectMember = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2;";
+    // char* selectMember = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectMember, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 3, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
         ERRMSG;

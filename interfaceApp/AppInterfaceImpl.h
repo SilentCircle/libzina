@@ -28,6 +28,7 @@ limitations under the License.
 #include "AppInterface.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../util/UUID.h"
+#include "../Constants.h"
 
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
@@ -37,6 +38,9 @@ using namespace std;
 namespace axolotl {
 class SipTransport;
 class MessageEnvelope;
+
+// This is the ping command the code sends to new devices to create an Axolotl setup
+static string ping("{\"cmd\":\"ping\"}");
 
 class AppInterfaceImpl : public AppInterface
 {
@@ -57,9 +61,9 @@ public:
 
     Transport* getTransport()               { return transport_; }
 
-    vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes);
+    vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
-    vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes);
+    vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
     int32_t receiveMessage(const string& messageEnvelope);
 
@@ -156,13 +160,55 @@ private:
     AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
     bool operator== ( const AppInterfaceImpl& other ) const  = delete;
 
+    /**
+     * @brief Internal function to send a message.
+     *
+     * Sends a message to a receiver and the devices in the devices list.
+     *
+     * @param recipient The message receiver
+     * @msgId The message id (UUID)
+     * @param message The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @param devices a list of the recipient's devices
+     * @messageType Identifies which type of message, see @c Constants.h for details
+     * @return unique message identifiers if the messages were processed for sending, 0 if processing
+     *         failed.
+     *
+     */
     vector<int64_t>*
     sendMessageInternal(const string& recipient, const string& msgId, const string& message,
-                        const string& attachmentDescriptor, const string& messageAttributes, uint32_t messageType=0);
+                        const string& attachmentDescriptor, const string& messageAttributes,
+                        shared_ptr<list<string> > devices, uint32_t messageType=MSG_NORMAL);
 
+    /**
+     * @brief Internal function to send a message to a new user.
+     *
+     * Sends a message to new recipient, optionally restricting to give device.
+     *
+     * For a new recipient we don't have a ratchet setup, this functions prepares the ratchet
+     * and send the message. If the device list pointer is valid it may contain one device and
+     * the function restricts the ratchet setup to this device
+     *
+     * @param recipient The message receiver
+     * @msgId The message id (UUID)
+     * @param message The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @param devices a list of the recipient's devices
+     * @messageType Identifies which type of message, see @c Constants.h for details
+     * @return unique message identifiers if the messages were processed for sending, 0 if processing
+     *         failed.
+     *
+     */
     vector<int64_t>*
     sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
-                       const string& attachmentDescriptor, const string& messageAttributes, uint32_t messageType=0);
+                       const string& attachmentDescriptor, const string& messageAttributes,
+                       shared_ptr<list<string> > devices, uint32_t messageType=MSG_NORMAL);
 
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
 
@@ -175,21 +221,44 @@ private:
                             uint32_t messageType=0);
 
     /**
-     * @brief Handle a group message, either a command or a normal message.
+     * @brief Handle a group message, either a normal or a command message.
      *
      * The normal receiver function already decrypted the message, attribute, and attachment data.
      */
-    int32_t processReceivedGroupMsg(const MessageEnvelope& envelope, const string& msgDescriptor, const string& attachmentDescr, const string& attributesDescr);
+    int32_t processGroupMessage(const MessageEnvelope &envelope, const string &msgDescriptor,
+                                const string &attachmentDescr, const string &attributesDescr);
 
     /**
-     * @brief Process a group command.
+     * @brief Process a group command message.
      *
-     * The @c processReceivedGroupMsg function calls this function after it checked
+     * The @c processGroupMessage function calls this function after it checked
      * the message type.
      */
     int32_t processGroupCommand(const string& commandIn);
 
-    int32_t sendGroupCommand(const string& recipient, const string& msgId, const string &command);
+    int32_t sendGroupCommandAllDevices(const string &recipient, const string &msgId, const string &command);
+
+    int32_t sendGroupCommandToDevice(const string &recipient, const string& deviceId, const string &msgId, const string &command);
+
+    int32_t sendGroupCommandNewUserDevice(const string &recipient, const string &deviceId, const string &msgId,
+                                          const string &command);
+
+    int32_t invitationAccepted(const cJSON *root);
+
+    int32_t createMemberListAnswer(const cJSON* root);
+
+    /**
+     * @brief Process a member list answer.
+     *
+     * Another client sent a member list answer because this client requested it or as the
+     * final answer if the invitation flow. The functions adds missing member nut does not
+     * check the member-list hash value. The next group message or group command processing
+     * performs this.
+     *
+     * @param root The parsed cJSON data structure of the member list command.
+     * @return OK if the message list was processed without error.
+     */
+    int32_t processMemberListAnswer(const cJSON* root);
 
     static string generateMsgIdTime() {
         uuid_t uuid = {0};

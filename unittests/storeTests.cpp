@@ -257,7 +257,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     shared_ptr<list<shared_ptr<cJSON> > > members = pks->listAllGroupMembers(groupId_1);
     ASSERT_TRUE(members->empty());
 
-    shared_ptr<cJSON> member = pks->listGroupMember(groupId_1, memberId_1);
+    shared_ptr<cJSON> member = pks->listGroupMember(groupId_1, memberId_1, deviceId_1);
     ASSERT_FALSE((bool)member);
 
     int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
@@ -266,7 +266,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     // Group attributes are initialized to 0
     shared_ptr<pair<int32_t, time_t> > attrTime = pks->getGroupAttribute(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(0, attrTime->first);
+    ASSERT_EQ(1, attrTime->first);
 
     // Set two attribute bits
     result = pks->setGroupAttribute(groupId_1, 3);
@@ -357,7 +357,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     root = members->front().get();
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
-    ASSERT_EQ(deviceId_1, string(getJsonString(root, DEVICE_ID, "")));
+    ASSERT_EQ(deviceId_1, string(getJsonString(root, MEMBER_DEVICE_ID, "")));
 
     // Add a second member. This time the insertion must succeed.
     result = pks->insertMember(groupId_1, memberId_2, deviceId_2, ownName);
@@ -377,13 +377,13 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(0, memcmp(hash_db, hash_2, SHA256_DIGEST_LENGTH));
 
     // List one member of a group
-    member = pks->listGroupMember(groupId_1, memberId_1, &result);
+    member = pks->listGroupMember(groupId_1, memberId_1, deviceId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = member.get();
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
-    ASSERT_EQ(deviceId_1, string(getJsonString(root, DEVICE_ID, "")));
+    ASSERT_EQ(deviceId_1, string(getJsonString(root, MEMBER_DEVICE_ID, "")));
 
     // Try to delete the group with existing members, must fail with code 19 (SQLITE_CONSTRAINT)
     result = pks->deleteGroup(groupId_1);
@@ -403,7 +403,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     members = pks->listAllGroupMembers(groupId_1);
     ASSERT_FALSE(members->empty());
 
-    member = pks->listGroupMember(groupId_1, memberId_1);
+    member = pks->listGroupMember(groupId_1, memberId_1, deviceId_1);
     ASSERT_FALSE((bool)member);
 
     // Delete the second member
@@ -414,7 +414,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     members = pks->listAllGroupMembers(groupId_1);
     ASSERT_TRUE(members->empty());
 
-    member = pks->listGroupMember(groupId_1, memberId_2);
+    member = pks->listGroupMember(groupId_1, memberId_2, deviceId_2);
     ASSERT_FALSE((bool)member);
 
     // Get group again, check member count - must be 0

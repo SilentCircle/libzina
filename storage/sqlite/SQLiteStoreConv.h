@@ -35,6 +35,7 @@ limitations under the License.
 #include <iostream>
 #endif
 #include "../../util/cJSON.h"
+#include "../../logging/AxoLogging.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
@@ -309,7 +310,7 @@ public:
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return A pair containing the attribute bit and the time the group record was last modified
      */
-    shared_ptr<pair<int32_t, time_t> >  getGroupAttribute(const string& groupUuid, int32_t* sqlCode = NULL);
+    shared_ptr<pair<int32_t, time_t> > getGroupAttribute(const string& groupUuid, int32_t* sqlCode = NULL) const;
 
     /**
      * @brief Set/add the bits in the attribute mask to the group's attribute bits.
@@ -398,10 +399,11 @@ public:
      *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
      * @param memberUuid the new member's UID
+     * @param deviceId select the member with this specific device id
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
      */
-    shared_ptr<cJSON> listGroupMember(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
+    shared_ptr<cJSON> listGroupMember(const string& groupUuid, const string& memberUuid, const string& deviceId, int32_t* sqlCode = NULL);
 
     /**
      * @brief Get the member's attribute bits.

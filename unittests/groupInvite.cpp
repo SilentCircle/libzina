@@ -16,6 +16,8 @@
 #include "../provisioning/ScProvisioning.h"
 #include "../util/b64helper.h"
 #include "../keymanagment/PreKeys.h"
+#include "../interfaceApp/GroupJsonStrings.h"
+#include "../util/Utilities.h"
 
 using namespace axolotl;
 
@@ -28,22 +30,30 @@ static string groupId;
 
 static string memberId_1("uAGroupMember1");
 static string longDevId_1("def11fed");
-static const DhKeyPair* member_1_IdKeyPair;
 static string apiKey_1("api_key_1");
 static string memberDb_1("member_1.db");
+
 // static pair<int32_t, const DhKeyPair*> member_1_PreKey;
+static const DhKeyPair* member_1_IdKeyPair;
 AppInterfaceImpl* appInterface_1;
 static SQLiteStoreConv* store_1;
 
 
 static string memberId_2("uAGroupMember2");
 static string longDevId_2("def22fed");
-static const DhKeyPair* member_2_IdKeyPair;
-static pair<int32_t, const DhKeyPair*> member_2_PreKey;
 static string apiKey_2("api_key_2");
 static string memberDb_2("member_2.db");
+
+static const DhKeyPair* member_2_IdKeyPair;
+static pair<int32_t, const DhKeyPair*> member_2_PreKey;
 AppInterfaceImpl* appInterface_2;
 static SQLiteStoreConv* store_2;
+
+static string otherMemberId_1("uAnOtherGroupMember1");
+static string otherLongDevId_1("def11fed1");
+
+static string otherMemberId_2("uAnOtherGroupMember2");
+static string otherLongDevId_2("def11fed2");
 
 const string* messageEnvelope;
 
@@ -58,24 +68,25 @@ static void sendDataTestFunction(uint8_t* names[] , uint8_t* devIds[], uint8_t* 
 }
 
 
-// Setup the global environment for group testing/simulatio, actually following Gtest structures
+// Setup the global environment for group testing/simulation, actually following Gtest structures
 // to setup global and per test data and tear them down afterwards. However, because this
 // test/simulation requires a controlled sequence we run it manually
 
-/* The setup is:
- * - create a database for the inviting user, all variable/names end with _1
+/* The global setup is:
+ * - for inviting user all variable/names end with _1
+ * - create a database for the inviting user
  * - create necessary keys and ratchet state for member 1
  * - prepare the interface class and callbacks
  * - add a empty group
  *
+ * - for invited user all variable/names end with _2
  * - create a second data base for the the invited party
  * - create necessary keys and ratchet state for member 2
  * - prepare the interface class and callbacks
  *
  * Because the data base is a singleton the test simulation needs to close the database
  * of member 1 and open the database of member 2 if it switches between the two parties.
- * For this we use the test fixture of Gtest, however this requires that the test cases
- * run in a particular order - which is usually not allowed in unit tests ;-) .
+ * For this we use a test fixture similar to Gtest .
  */
 class GroupEnvironment {
 public:
@@ -106,6 +117,15 @@ public:
         appInterface_1->setTransport(sipTransport);
 
         groupId = appInterface_1->createNewGroup(groupName_1, groupDescription);
+
+        // Add a ratchet conversations for two other members, use some dummy data.
+        store_1->storeConversation(otherMemberId_1, otherLongDevId_1, appInterface_1->getOwnUser(), string("just dummy data"));
+        store_1->storeConversation(otherMemberId_2, otherLongDevId_2, appInterface_1->getOwnUser(), string("just dummy data"));
+
+
+        // Add other members again.
+        store_1->insertMember(groupId, otherMemberId_1, otherLongDevId_1, appInterface_1->getOwnUser());
+        store_1->insertMember(groupId, otherMemberId_2, otherLongDevId_2, appInterface_1->getOwnUser());
 
         SQLiteStoreConv::closeStore();
 
@@ -139,6 +159,10 @@ public:
 
     void TearDown() {
         LOGGER(INFO, __func__, " -->");
+        delete appInterface_1; delete appInterface_2;
+        delete member_1_IdKeyPair;
+        delete member_2_IdKeyPair;
+
         LOGGER(INFO, __func__, " <--");
     }
 };
@@ -164,6 +188,8 @@ public:
         appInterface = appInterface_1;
         appInterface->setStore(store_1);
     }
+
+    const SQLiteStoreConv& getStore() {return *store_1; }
 
     void TearDown( ) {
         // code here will be called just after the test completes
@@ -199,6 +225,8 @@ public:
         appInterface = appInterface_2;
         appInterface->setStore(store_2);
     }
+
+    const SQLiteStoreConv& getStore() {return *store_2; }
 
     void TearDown( ) {
         // code here will be called just after the test completes
@@ -276,7 +304,8 @@ static int32_t respondDevIds_M2(const std::string& requestUrl, const std::string
     LOGGER(INFO, __func__, " --> ", method, ", ", requestUrl);
 
     size_t idx = requestUrl.find(longDevId_2);
-    if (idx != string::npos) {
+    size_t idxMember = requestUrl.find(memberId_2);
+    if (idx != string::npos && idxMember != string::npos) {
         return requestPreKey_M2(requestUrl, method, data, response);
     }
     cJSON *root;
@@ -300,30 +329,9 @@ static int32_t respondDevIds_M2(const std::string& requestUrl, const std::string
     LOGGER(INFO, __func__, " <-- ", *response);
     return 200;
 }
-
-class GroupInviteSend: public GroupInviteSendFixture
-{
-public:
-    bool runInvite() {
-        ScProvisioning::setHttpHelper(respond400);
-
-        LOGGER(INFO, __func__, " -->");
-        int32_t result = appInterface->inviteUser(groupId, memberId_2);
-
-        ScProvisioning::setHttpHelper(respondDevIds_M2);
-        result = appInterface->inviteUser(groupId, memberId_2);
-        LOGGER(INFO, __func__, " <--");
-    }
-
-    bool receiverAnswer() {
-        LOGGER_INSTANCE setLogLevel(VERBOSE);
-        appInterface->receiveMessage(*messageEnvelope);
-    }
-};
-
 static string callbackCommand;
 
-int32_t groupCmdCallback(const string& command)
+static int32_t groupCmdCallback(const string& command)
 {
     LOGGER(ERROR, __func__, " -->");
     callbackCommand = command;
@@ -331,10 +339,65 @@ int32_t groupCmdCallback(const string& command)
     LOGGER(ERROR, __func__, " <--");
 }
 
+class GroupInviteSend: public GroupInviteSendFixture
+{
+public:
+    bool runInvite() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
+//        ScProvisioning::setHttpHelper(respond400);
+
+//        LOGGER(INFO, __func__, " -->");
+//        int32_t result = appInterface->inviteUser(groupId, memberId_2);
+
+        ScProvisioning::setHttpHelper(respondDevIds_M2);
+        int32_t result = appInterface->inviteUser(groupId, memberId_2);
+        LOGGER(INFO, __func__, " <--");
+        return true;
+    }
+
+    bool receiveAnswer() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER(INFO, __func__, " -->");
+        appInterface->setGroupCmdCallback(groupCmdCallback);
+        appInterface->receiveMessage(*messageEnvelope);
+        LOGGER(INFO, __func__, " <--");
+    }
+};
+
+
+static bool checkGroupInDb(const SQLiteStoreConv& store, const string& command)
+{
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(command.c_str()), cJSON_deleter);
+    string groupId(Utilities::getJsonString(sharedRoot.get(), GROUP_ID, ""));
+    int32_t result;
+    shared_ptr<pair<int32_t, time_t> > attrib_time = store.getGroupAttribute(groupId, &result);
+    if (attrib_time->first == ACTIVE) {
+        LOGGER(INFO, __func__, " Invited user: Group ACTIVE after accepting invite");
+        return true;
+    }
+    LOGGER(ERROR, __func__, " Invited user: No ACTIVE group after accepting invite");
+    return false;
+}
+
+static bool checkAnotherMemberInDb(SQLiteStoreConv& store)
+{
+    shared_ptr<cJSON> dbMember = store.listGroupMember(groupId, otherMemberId_1, otherLongDevId_1);
+    if (!dbMember) {
+        LOGGER(ERROR, __func__, "Other member_1 missing after member list answer processing");
+        return false;
+    }
+    dbMember = store.listGroupMember(groupId, otherMemberId_2, otherLongDevId_2);
+    if (!dbMember) {
+        LOGGER(ERROR, __func__, "Other member_2 missing after member list answer processing");
+        return false;
+    }
+    return true;
+}
+
 class GroupInviteReceive : public GroupInviteReceiveFixture {
 public:
     bool runDecline() {
-        LOGGER_INSTANCE setLogLevel(VERBOSE);
+        LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         callbackCommand.clear();
@@ -348,8 +411,36 @@ public:
         LOGGER(INFO, __func__, " <--");
         return true;
     }
-};
 
+    bool runAccept() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER(INFO, __func__, " -->");
+        appInterface->setGroupCmdCallback(groupCmdCallback);
+        callbackCommand.clear();
+        appInterface->receiveMessage(*messageEnvelope);
+
+        if (callbackCommand.empty()) {
+            LOGGER(ERROR, __func__, "No INVITE command available.")
+            return false;
+        }
+        appInterface->answerInvitation(callbackCommand, true, string("Accepted."));
+        bool result = checkGroupInDb(*store_2, callbackCommand);
+        LOGGER(INFO, __func__, " <--");
+        return result;
+    }
+
+
+    bool runMembers() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER(INFO, __func__, " -->");
+        appInterface->receiveMessage(*messageEnvelope);
+        bool result = checkAnotherMemberInDb(*store_2);
+
+        LOGGER(INFO, __func__, " <--");
+        return true;
+    }
+
+};
 
 static void inviteAndDecline()
 {
@@ -361,12 +452,41 @@ static void inviteAndDecline()
 
     send.SetUp(); send.runInvite(); send.TearDown();
     receive.SetUp(); receive.runDecline(); receive.TearDown();
-    send.SetUp(); send.receiverAnswer(); send.TearDown();
+    send.SetUp();
+    send.receiveAnswer(); send.TearDown();
+
+    environment.TearDown();
+}
+
+static void inviteAndAccept()
+{
+    GroupEnvironment environment;
+    environment.SetUp();
+
+    GroupInviteSend send;
+    GroupInviteReceive receive;
+
+    send.SetUp();
+    assert(send.runInvite());
+    send.TearDown();
+
+    receive.SetUp();
+    assert(receive.runAccept());
+    receive.TearDown();
+
+    send.SetUp();
+    send.receiveAnswer();
+    send.TearDown();
+
+    receive.SetUp();
+    assert(receive.runMembers());
+    receive.TearDown();
 
     environment.TearDown();
 }
 
 int main(int argc, char** argv)
 {
-    inviteAndDecline();
+//    inviteAndDecline();
+    inviteAndAccept();
 }

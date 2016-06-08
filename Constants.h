@@ -102,6 +102,7 @@ namespace axolotl {
     static const int32_t GROUP_CMD_MISSING_DATA = -451; //<! Message has type group command but no data
     static const int32_t GROUP_CMD_DATA_INCONSISTENT = -452; //<! Message is group command but has no command
     static const int32_t GROUP_MSG_DATA_INCONSISTENT = -453; //<! Message is normal group message command but has no data
+    static const int32_t GROUP_MEMBER_NOT_STORED = -454; //<! Cannot store a new member
 
 }  // namespace
 
