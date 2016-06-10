@@ -97,7 +97,9 @@ public:
 
     int32_t answerInvitation(const string& command, bool accept, const string& reason);
 
-    // **** Below are methods for this implementation, not part of AppInterface.h
+    int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
+
+        // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
      * 
@@ -152,6 +154,17 @@ public:
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
         void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }
+        void setGroupMsgCallback(GROUP_MSG_RECV_FUNC callback) { groupMsgCallback_ = callback; }
+
+        static string generateMsgIdTime() {
+            uuid_t uuid = {0};
+            uuid_string_t uuidString = {0};
+
+            uuid_generate_time(uuid);
+            uuid_unparse(uuid, uuidString);
+            return string(uuidString);
+        }
+
 #endif
 
 private:
@@ -236,17 +249,13 @@ private:
      */
     int32_t processGroupCommand(const string& commandIn);
 
-    int32_t sendGroupCommandAllDevices(const string &recipient, const string &msgId, const string &command);
-
-    int32_t sendGroupCommandToDevice(const string &recipient, const string& deviceId, const string &msgId, const string &command);
-
-    int32_t sendGroupCommandNewUserDevice(const string &recipient, const string &deviceId, const string &msgId,
-                                          const string &command);
+    int32_t sendGroupCommand(const string &recipient, const string &msgId, const string &command);
 
     int32_t invitationAccepted(const cJSON *root);
 
     int32_t createMemberListAnswer(const cJSON* root);
 
+    void checkHash(const string &msgDescriptor, const string &messageAttributes);
     /**
      * @brief Process a member list answer.
      *
@@ -260,6 +269,7 @@ private:
      */
     int32_t processMemberListAnswer(const cJSON* root);
 
+#ifndef UNITTESTS
     static string generateMsgIdTime() {
         uuid_t uuid = {0};
         uuid_string_t uuidString = {0};
@@ -268,6 +278,7 @@ private:
         uuid_unparse(uuid, uuidString);
         return string(uuidString);
     }
+#endif
 
     char* tempBuffer_;
     size_t tempBufferSize_;

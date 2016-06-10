@@ -26,6 +26,7 @@ limitations under the License.
 #include "../logging/AxoLogging.h"
 #include "../storage/MessageCapture.h"
 #include "MessageEnvelope.pb.h"
+#include "JsonStrings.h"
 
 #include <zrtp/crypto/sha256.h>
 
@@ -93,9 +94,10 @@ vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, 
     string recipient;
     string msgId;
     string message;
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
     LOGGER(INFO, __func__, " -->");
+
+    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
     if (parseResult < 0) {
         errorCode_ = parseResult;
         LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
@@ -824,43 +826,43 @@ int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, st
     cJSON* cjTemp;
     char* jsString;
 
-    cJSON* root = cJSON_Parse(messageDescriptor.c_str());
+    // wrap the cJSON root into a shared pointer with custom cJSON deleter, this
+    // will always free the cJSON root when we leave the function :-) .
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageDescriptor.c_str()), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
     if (root == NULL) {
         errorInfo_ = "root";
-        goto cleanup;
+        return GENERIC_ERROR;
     }
-    cjTemp = cJSON_GetObjectItem(root, "recipient");
+    cjTemp = cJSON_GetObjectItem(root, MSG_RECIPIENT);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = "recipient";
-        goto cleanup;
+        errorInfo_ = MSG_RECIPIENT;
+        return JS_FIELD_MISSING;
     }
     recipient->assign(jsString);
 
     // Get the message id
-    cjTemp = cJSON_GetObjectItem(root, "msgId");
+    cjTemp = cJSON_GetObjectItem(root, MSG_ID);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = "msgId";
-        goto cleanup;
+        errorInfo_ = MSG_ID;
+        return JS_FIELD_MISSING;
     }
     msgId->assign(jsString);
 
     // Get the message
-    cjTemp = cJSON_GetObjectItem(root, "message");
+    cjTemp = cJSON_GetObjectItem(root, MSG_MESSAGE);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = "message";
-        goto cleanup;
+        errorInfo_ = MSG_MESSAGE;
+        return JS_FIELD_MISSING;
     }
     message->assign(jsString);
-    cJSON_Delete(root);    // Done with JSON root for message data
-    return OK;
 
-cleanup:
-    cJSON_Delete(root);    // Done with JSON root for message data
-    LOGGER(INFO, __func__, " <-- with error: ", errorInfo_);
-    return JS_FIELD_MISSING;
+    LOGGER(INFO, __func__, " -->");
+    return OK;
 }
 
 

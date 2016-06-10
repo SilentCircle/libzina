@@ -68,7 +68,7 @@ public:
     virtual Transport* getTransport() = 0;
 
     /**
-     * @brief Send a message with an optional attachment.
+     * @brief Send a message with an optional attachment and attributes
      *
      * Takes JSON formatted message descriptor and send the message. The function accepts
      * an optional JSON formatted attachment descriptor and sends the attachment data to the
@@ -347,6 +347,30 @@ public:
      * @return @c OK if function could send invitation, error code (<0) otherwise
      */
     virtual int32_t answerInvitation(const string& command, bool accept, const string& reason) = 0;
+
+    /**
+     * @brief Send a message to a group with an optional attachment and attributes.
+     *
+     * Takes JSON formatted message descriptor and send the message. The function accepts
+     * an optional JSON formatted attachment descriptor and sends the attachment data to the
+     * recipient together with the message.
+     *
+     * This is a blocking call and the function returns after the transport layer accepted the
+     * message and returns.
+     *
+     * The @c sendMessage function does not interpret or re-format the attachment descriptor. It takes
+     * the string, encrypts it with the same key as the message data and puts it into the message
+     * bundle. The same is true for the message attributes.
+     *
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return @c OK if function could send the message, error code (<0) otherwise
+     */
+    virtual int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
 
     // *************************************************************
     // Callback functions to UI part

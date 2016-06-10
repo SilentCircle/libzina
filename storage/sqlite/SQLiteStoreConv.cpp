@@ -22,7 +22,7 @@ limitations under the License.
 #include <zrtp/crypto/sha2.h>
 
 #include "../../logging/AxoLogging.h"
-#include "../../interfaceApp/GroupJsonStrings.h"
+#include "../../interfaceApp/JsonStrings.h"
 #include "../../Constants.h"
 
 
@@ -180,23 +180,24 @@ static const char* removeGroup = "DELETE FROM groups WHERE groupId=?1;";
 /* *****************************************************************************
  * SQL statements to process group member table
  *
+ * The columns 'deviceId' and 'ownName' are available for possible future extensions, currently not used.
  */
 static const char* dropMembers = "DROP TABLE members;";
 static const char* createMembers =
-        "CREATE TABLE members (groupId VARCHAR NOT NULL, memberId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL, ownName VARCHAR NOT NULL,"
+        "CREATE TABLE members (memberId VARCHAR NOT NULL, groupId VARCHAR NOT NULL, deviceId VARCHAR, ownName VARCHAR, "
         "attributes INTEGER, lastModified TIMESTAMP DEFAULT(strftime('%s', 'NOW')), "
-        "FOREIGN KEY(groupId) REFERENCES groups(groupId), "
-        "FOREIGN KEY(memberId, deviceId, ownName) REFERENCES Conversations(name, longDevId, ownName));";
-static const char* insertMemberSql = "INSERT INTO members (groupId, memberId, deviceId, ownName, attributes, lastModified) VALUES (?1, ?2, ?3, ?4, ?5, ?6);";
+        "PRIMARY KEY(memberId, groupId), FOREIGN KEY(groupId) REFERENCES groups(groupId));";
+static const char* insertMemberSql = "INSERT INTO members (groupId, memberId, attributes) VALUES (?1, ?2, ?3);";
 static const char* removeMember = "DELETE FROM members WHERE groupId=?1 AND memberId=?2;";
-static const char* removeMemberDevice = "DELETE FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3;";
-static const char* selectAllMembers = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
+static const char* selectGroupMembers = "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
 static const char* selectMember =
-        "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3 ORDER BY memberId ASC;";
+        "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 ORDER BY memberId ASC;";
 static const char* setMemberAttributeSql = "UPDATE members SET attributes=attributes|?1, lastModified=?2 WHERE groupId=?3 AND memberId=?4;";
 static const char* clearMemberAttributeSql = "UPDATE members SET attributes=attributes&~?1, lastModified=?2  WHERE groupId=?3 AND memberId=?4;";
 static const char* selectMemberAttributeSql = "SELECT attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2;";
 static const char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE groupId=?1 AND attributes&?2 ORDER BY memberId ASC;";
+static const char* isMemberOfGroupSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE groupId=?1 AND memberId=?2) WHEN 1 THEN 1 ELSE 0 END;";
+static const char* isGroupMemberSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE memberId=?1) WHEN 1 THEN 1 ELSE 0 END;";
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
@@ -824,7 +825,7 @@ cleanup:
 
 void SQLiteStoreConv::deleteConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode)
 {
-    sqlite3_stmt *stmt;
+    sqlite3_stmt *stmt = NULL;
     int32_t sqlResult;
 
     const char* devId;
@@ -839,6 +840,11 @@ void SQLiteStoreConv::deleteConversation(const string& name, const string& longD
         devId = dummyId;
         devIdLen = static_cast<int32_t>(strlen(dummyId));
     }
+    if (isGroupMember(name)) {
+        sqlResult = SQLITE_CONSTRAINT;
+        goto cleanup;
+    }
+
     //removeConversation = "DELETE FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeConversation, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC));
@@ -1637,19 +1643,16 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &memberUuid, const string &deviceId,
-                                      const string &ownName)
+int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &memberUuid)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult, sqlResultIncrement;
 
-    // char* insertMemberSql = "INSERT INTO members (groupId, memberId, deviceId, ownName, attributes) VALUES (?1, ?2, ?3, ?4, ?5);";
+    // char* insertMemberSql = "INSERT INTO members (groupId, memberId, attributes) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMemberSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 3, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 4, ownName.data(), static_cast<int32_t>(ownName.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_int(stmt,  5, ACTIVE));
+    SQLITE_CHK(sqlite3_bind_int(stmt,  3, ACTIVE));
 
     beginTransaction();
     sqlResultIncrement = incrementMemberCount(db, groupUuid);
@@ -1699,50 +1702,27 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::deleteMemberDevice(const string &groupUuid, const string &memberUuid, const string &deviceId)
-{
-    sqlite3_stmt *stmt;
-    int32_t sqlResult;
-
-    // char* removeMemberDevice = "DELETE FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3;";
-    SQLITE_CHK(SQLITE_PREPARE(db, removeMemberDevice, -1, &stmt, NULL));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 2, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 3, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
-
-    sqlResult= sqlite3_step(stmt);
-    if (sqlResult != SQLITE_DONE)
-        ERRMSG;
-
-cleanup:
-    sqlite3_finalize(stmt);
-    sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
-    return sqlResult;
-}
-
 static cJSON* createMemberJson(sqlite3_stmt *stmt)
 {
     cJSON* root = cJSON_CreateObject();
 
     cJSON_AddStringToObject(root, GROUP_ID,  (const char*)sqlite3_column_text(stmt, 0));
     cJSON_AddStringToObject(root, MEMBER_ID, (const char*)sqlite3_column_text(stmt, 1));
-    cJSON_AddStringToObject(root, MEMBER_DEVICE_ID, (const char*)sqlite3_column_text(stmt, 2));
-    cJSON_AddNumberToObject(root, MEMBER_ATTRIBUTE, sqlite3_column_int(stmt, 3));
-    cJSON_AddNumberToObject(root, MEMBER_MOD_TIME, sqlite3_column_int64(stmt, 4));
+    cJSON_AddNumberToObject(root, MEMBER_ATTRIBUTE, sqlite3_column_int(stmt, 2));
+    cJSON_AddNumberToObject(root, MEMBER_MOD_TIME, sqlite3_column_int64(stmt, 3));
 
     return root;
 }
 
-shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroupMembers(const string &groupUuid, int32_t *sqlCode)
+shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, int32_t *sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
     shared_ptr<list<shared_ptr<cJSON> > > members = make_shared<list<shared_ptr<cJSON> > >();
 
-    // char* selectAllMembers = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1;";
-    SQLITE_CHK(SQLITE_PREPARE(db, selectAllMembers, -1, &stmt, NULL));
+    // char* selectGroupMembers = "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectGroupMembers, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
@@ -1765,17 +1745,16 @@ cleanup:
     return members;
 }
 
-shared_ptr<cJSON>SQLiteStoreConv::listGroupMember(const string &groupUuid, const string &memberUuid, const string& deviceId, int32_t *sqlCode)
+shared_ptr<cJSON>SQLiteStoreConv::getGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
     shared_ptr<cJSON> sharedJson;
 
-    // char* selectMember = "SELECT groupId, memberId, deviceId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 AND deviceId=?3;";
+    // char* selectMember = "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 ORDER BY memberId ASC;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectMember, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 2, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
-    SQLITE_CHK(sqlite3_bind_text(stmt, 3, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
         ERRMSG;
@@ -1879,7 +1858,7 @@ int32_t SQLiteStoreConv::memberListHash(const string &groupUuid, uint8_t *hash)
     int32_t sqlResult;
     sha256_ctx* ctx;
 
-            // char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE groupId=?1 AND attributes&?2 ORDER BY memberId ASC;";
+    // char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE groupId=?1 AND attributes&?2 ORDER BY memberId ASC;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectForHash, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_int(stmt,  2, ACTIVE));
@@ -1902,4 +1881,58 @@ cleanup:
     LOGGER(INFO, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
+
+
+bool SQLiteStoreConv::isMemberOfGroup(const string &groupUuid, const string &memberUuid, int32_t *sqlCode) {
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    int32_t exists;
+
+    // char* isMemberOfGroupSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE groupId=?1 AND memberId=?2) WHEN 1 THEN 1 ELSE 0 END;";
+    SQLITE_CHK(SQLITE_PREPARE(db, isMemberOfGroupSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 2, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_ROW)
+        ERRMSG;
+
+    exists = sqlite3_column_int(stmt, 1);
+
+cleanup:
+    sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+
+    return exists == 1;
+}
+
+
+bool SQLiteStoreConv::isGroupMember(const string &memberUuid, int32_t *sqlCode) {
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    int32_t exists;
+
+    // char* isGroupMember = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE memberId=?1) WHEN 1 THEN 1 ELSE 0 END;";
+    SQLITE_CHK(SQLITE_PREPARE(db, isGroupMemberSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, memberUuid.data(), static_cast<int32_t>(memberUuid.size()), SQLITE_STATIC));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_ROW)
+        ERRMSG;
+
+    exists = sqlite3_column_int(stmt, 1);
+
+cleanup:
+    sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+
+    return exists == 1;
+}
+
 

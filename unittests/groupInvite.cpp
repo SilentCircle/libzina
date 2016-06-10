@@ -16,7 +16,7 @@
 #include "../provisioning/ScProvisioning.h"
 #include "../util/b64helper.h"
 #include "../keymanagment/PreKeys.h"
-#include "../interfaceApp/GroupJsonStrings.h"
+#include "../interfaceApp/JsonStrings.h"
 #include "../util/Utilities.h"
 
 using namespace axolotl;
@@ -117,15 +117,6 @@ public:
         appInterface_1->setTransport(sipTransport);
 
         groupId = appInterface_1->createNewGroup(groupName_1, groupDescription);
-
-        // Add a ratchet conversations for two other members, use some dummy data.
-        store_1->storeConversation(otherMemberId_1, otherLongDevId_1, appInterface_1->getOwnUser(), string("just dummy data"));
-        store_1->storeConversation(otherMemberId_2, otherLongDevId_2, appInterface_1->getOwnUser(), string("just dummy data"));
-
-
-        // Add other members again.
-        store_1->insertMember(groupId, otherMemberId_1, otherLongDevId_1, appInterface_1->getOwnUser());
-        store_1->insertMember(groupId, otherMemberId_2, otherLongDevId_2, appInterface_1->getOwnUser());
 
         SQLiteStoreConv::closeStore();
 
@@ -292,6 +283,21 @@ static int32_t requestPreKey_M2(const std::string& requestUrl, const std::string
     return 200;
 }
 
+static string createMessageDescriptor(const string& groupId, AppInterfaceImpl* appInterface)
+{
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, MSG_RECIPIENT, groupId.c_str());
+    cJSON_AddStringToObject(root, MSG_ID, appInterface->generateMsgIdTime().c_str());
+    cJSON_AddStringToObject(root, MSG_MESSAGE, "Group test message.");
+
+    char* out = cJSON_Print(root);
+    string response(out);
+    free(out);
+    return response;
+}
+
 /*
  * Returns the device ids for member 2.
  * {
@@ -339,10 +345,33 @@ static int32_t groupCmdCallback(const string& command)
     LOGGER(ERROR, __func__, " <--");
 }
 
+static string callbackMessage;
+
+static int groupMsgCallback(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes)
+{
+    LOGGER(ERROR, __func__, " -->");
+    callbackMessage = messageDescriptor;
+    LOGGER(ERROR, messageDescriptor);
+    LOGGER(ERROR, __func__, " <--");
+}
+
+static bool checkMembersInDb(SQLiteStoreConv& store)
+{
+    if (!store.isMemberOfGroup(groupId, memberId_1)) {
+        LOGGER(ERROR, __func__, "Member_1 missing after member list answer processing");
+        return false;
+    }
+    if (!store.isMemberOfGroup(groupId, memberId_2)) {
+        LOGGER(ERROR, __func__, "Member_2 missing after member list answer processing");
+        return false;
+    }
+    return true;
+}
+
 class GroupInviteSend: public GroupInviteSendFixture
 {
 public:
-    bool runInvite() {
+    bool runSendInvite() {
         LOGGER_INSTANCE setLogLevel(ERROR);
 //        ScProvisioning::setHttpHelper(respond400);
 
@@ -355,12 +384,21 @@ public:
         return true;
     }
 
-    bool receiveAnswer() {
+    bool runReceiveAnswer() {
         LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         appInterface->receiveMessage(*messageEnvelope);
         LOGGER(INFO, __func__, " <--");
+        return checkMembersInDb(*store_1);
+    }
+
+    bool runSendMessage() {
+        LOGGER(INFO, __func__, " -->");
+        string message = createMessageDescriptor(groupId, appInterface);
+        appInterface->sendGroupMessage(message, Empty, Empty);
+        LOGGER(INFO, __func__, " -->");
+        return true;
     }
 };
 
@@ -379,20 +417,6 @@ static bool checkGroupInDb(const SQLiteStoreConv& store, const string& command)
     return false;
 }
 
-static bool checkAnotherMemberInDb(SQLiteStoreConv& store)
-{
-    shared_ptr<cJSON> dbMember = store.listGroupMember(groupId, otherMemberId_1, otherLongDevId_1);
-    if (!dbMember) {
-        LOGGER(ERROR, __func__, "Other member_1 missing after member list answer processing");
-        return false;
-    }
-    dbMember = store.listGroupMember(groupId, otherMemberId_2, otherLongDevId_2);
-    if (!dbMember) {
-        LOGGER(ERROR, __func__, "Other member_2 missing after member list answer processing");
-        return false;
-    }
-    return true;
-}
 
 class GroupInviteReceive : public GroupInviteReceiveFixture {
 public:
@@ -434,10 +458,20 @@ public:
         LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->receiveMessage(*messageEnvelope);
-        bool result = checkAnotherMemberInDb(*store_2);
+        bool result = checkMembersInDb(*store_2);
+        assert(result);
 
         LOGGER(INFO, __func__, " <--");
-        return true;
+        return result;
+    }
+
+    bool runReceiveMessage() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER(INFO, __func__, " -->");
+        appInterface->setGroupMsgCallback(groupMsgCallback);
+        appInterface->receiveMessage(*messageEnvelope);
+        LOGGER(INFO, __func__, " <--");
+        return checkMembersInDb(*store_2);
     }
 
 };
@@ -450,10 +484,11 @@ static void inviteAndDecline()
     GroupInviteSend send;
     GroupInviteReceive receive;
 
-    send.SetUp(); send.runInvite(); send.TearDown();
+    send.SetUp();
+    send.runSendInvite(); send.TearDown();
     receive.SetUp(); receive.runDecline(); receive.TearDown();
     send.SetUp();
-    send.receiveAnswer(); send.TearDown();
+    send.runReceiveAnswer(); send.TearDown();
 
     environment.TearDown();
 }
@@ -467,7 +502,7 @@ static void inviteAndAccept()
     GroupInviteReceive receive;
 
     send.SetUp();
-    assert(send.runInvite());
+    assert(send.runSendInvite());
     send.TearDown();
 
     receive.SetUp();
@@ -475,11 +510,19 @@ static void inviteAndAccept()
     receive.TearDown();
 
     send.SetUp();
-    send.receiveAnswer();
+    send.runReceiveAnswer();
     send.TearDown();
 
     receive.SetUp();
     assert(receive.runMembers());
+    receive.TearDown();
+
+    send.SetUp();
+    send.runSendMessage();
+    send.TearDown();
+
+    receive.SetUp();
+    receive.runReceiveMessage();
     receive.TearDown();
 
     environment.TearDown();

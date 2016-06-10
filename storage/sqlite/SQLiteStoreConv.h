@@ -339,21 +339,15 @@ public:
     /**
      * @brief Create a group member
      *
-     * Create a new member record. The @c memberUuid / @c deviceId combination must
-     * match an existing ratchet conversation record. The group member record uses
-     * the @memberUuid (aka SC uid), @c deviceId and the @c ownName as foreign keys
-     * to refer to the appropriate conversation record which defies these three fields
-     * as its primary key.
+     * Create a new member record. The @c memberUuid must unique.
      *
      * The functions sets the new member's attribute to @c ACTIVE.
      *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
      * @param memberUuid the new member's UID
-     * @param deviceId the new member's device id to support multi-device support
-     * @param ownName This is the 'own name' used in the ratchet conversation, not the group owner
      * @return SQLite code
      */
-    int32_t insertMember(const string& groupUuid, const string& memberUuid,const string& deviceId, const string& ownName);
+    int32_t insertMember(const string &groupUuid, const string &memberUuid);
 
     /**
      * @brief Deletes all group records of this member in the specified group.
@@ -368,17 +362,7 @@ public:
     int32_t deleteMember(const string& groupUuid, const string& memberUuid);
 
     /**
-     * @brief Deletes a device specific group record of this member in the specified group.
-     *
-     * @param groupUuid The group's UUID (RFC4122 time based UUID)
-     * @param memberUuid the new member's UID
-     * @param deviceId the member's device id to support multi-device support
-     * @return SQLite code
-     */
-    int32_t deleteMemberDevice(const string& groupUuid, const string& memberUuid, const string& deviceId);
-
-    /**
-     * @brief List all members of a specified group.
+     * @brief Get all members of a specified group.
      *
      * Creates and returns a list of shared pointers to cJSON data structures that contain the group's
      * members data. The shared pointers have a special deleter that calls @c cJSON_delete
@@ -388,10 +372,10 @@ public:
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
      */
-    shared_ptr<list<shared_ptr<cJSON> > >listAllGroupMembers(const string& groupUuid, int32_t* sqlCode = NULL);
+    shared_ptr<list<shared_ptr<cJSON> > >getAllGroupMembers(const string &groupUuid, int32_t *sqlCode = NULL);
 
     /**
-     * @brief List a member of a specified group.
+     * @brief Get a member of a specified group.
      *
      * Creates and returns a shared pointer to a cJSON data structure that contains the member's
      * data. The member may have more than one record, one for each device. The shared pointer
@@ -399,11 +383,31 @@ public:
      *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
      * @param memberUuid the new member's UID
-     * @param deviceId select the member with this specific device id
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
      */
-    shared_ptr<cJSON> listGroupMember(const string& groupUuid, const string& memberUuid, const string& deviceId, int32_t* sqlCode = NULL);
+    shared_ptr<cJSON> getGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode = NULL);
+
+
+    /**
+    * @brief Check if this member is in this group.
+    *
+    * @param groupUuid The group's UUID (RFC4122 time based UUID)
+    * @param memberUuid the new member's UID
+    * @param sqlCode If not @c NULL returns the SQLite return/error code
+    * @return @c true if the group contains this member, @c false otherwise
+    */
+    bool isMemberOfGroup(const string &groupUuid, const string &memberUuid, int32_t *sqlCode = NULL);
+
+    /**
+    * @brief Check if this member of some group.
+    *
+    * @param groupUuid The group's UUID (RFC4122 time based UUID)
+    * @param memberUuid the new member's UID
+    * @param sqlCode If not @c NULL returns the SQLite return/error code
+    * @return @c true if the member is in some group, @c false otherwise
+    */
+    bool isGroupMember(const string &memberUuid, int32_t *sqlCode = NULL);
 
     /**
      * @brief Get the member's attribute bits.
@@ -442,8 +446,6 @@ public:
      * @return SQLite code
      */
     int32_t clearMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t attributeMask);
-
-
 
     /**
      * @brief Compute a SHA-256 hash of all member ids in a group.

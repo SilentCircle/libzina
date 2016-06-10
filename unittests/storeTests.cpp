@@ -27,7 +27,7 @@ limitations under the License.
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
 #include "../logging/AxoLogging.h"
-#include "../interfaceApp/GroupJsonStrings.h"
+#include "../interfaceApp/JsonStrings.h"
 #include "../Constants.h"
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
@@ -254,10 +254,10 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE((bool)group);
 
     // Fresh DB, members must be empty
-    shared_ptr<list<shared_ptr<cJSON> > > members = pks->listAllGroupMembers(groupId_1);
+    shared_ptr<list<shared_ptr<cJSON> > > members = pks->getAllGroupMembers(groupId_1);
     ASSERT_TRUE(members->empty());
 
-    shared_ptr<cJSON> member = pks->listGroupMember(groupId_1, memberId_1, deviceId_1);
+    shared_ptr<cJSON> member = pks->getGroupMember(groupId_1, memberId_1);
     ASSERT_FALSE((bool)member);
 
     int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
@@ -303,12 +303,6 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(30, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 
-    // Try to add a member without having a ratchet conversation for the member
-    // SQLite operation must fail with code 19 (SQLITE_CONSTRAINT)
-    result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
-    ASSERT_TRUE(SQL_FAIL(result));
-    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
-
     // Add a ratchet conversation for the member, use some dummy data. Keys are
     // important here
     pks->storeConversation(memberId_1, deviceId_1, ownName, attrib, &result);
@@ -318,8 +312,8 @@ TEST_F(StoreTestFixture, GroupChatStore)
     pks->storeConversation(memberId_2, deviceId_2, ownName, attrib, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    // Add member again. This time the insertion must succeed.
-    result = pks->insertMember(groupId_1, memberId_1, deviceId_1, ownName);
+    // Add a group member.
+    result = pks->insertMember(groupId_1, memberId_1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     uint8_t hash_db[SHA256_DIGEST_LENGTH];
@@ -351,16 +345,15 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(1, getJsonInt(root, GROUP_MEMBER_COUNT, -1));
 
     // List all members of a group, should return a list with size 1 and the correct data
-    members = pks->listAllGroupMembers(groupId_1, &result);
+    members = pks->getAllGroupMembers(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, members->size());
     root = members->front().get();
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
-    ASSERT_EQ(deviceId_1, string(getJsonString(root, MEMBER_DEVICE_ID, "")));
 
-    // Add a second member. This time the insertion must succeed.
-    result = pks->insertMember(groupId_1, memberId_2, deviceId_2, ownName);
+    // Add a second group member.
+    result = pks->insertMember(groupId_1, memberId_2);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // Because the first member has its ACTIVE bit cleared above that record
@@ -376,14 +369,21 @@ TEST_F(StoreTestFixture, GroupChatStore)
     result = pks->memberListHash(groupId_1, hash_db);
     ASSERT_EQ(0, memcmp(hash_db, hash_2, SHA256_DIGEST_LENGTH));
 
+    bool isAMember = pks->isMemberOfGroup(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(isAMember);
+
+    isAMember = pks->isGroupMember(memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(isAMember);
+
     // List one member of a group
-    member = pks->listGroupMember(groupId_1, memberId_1, deviceId_1, &result);
+    member = pks->getGroupMember(groupId_1, memberId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE((bool)group);
     root = member.get();
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
-    ASSERT_EQ(deviceId_1, string(getJsonString(root, MEMBER_DEVICE_ID, "")));
 
     // Try to delete the group with existing members, must fail with code 19 (SQLITE_CONSTRAINT)
     result = pks->deleteGroup(groupId_1);
@@ -400,10 +400,10 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // The member list operations must not return empty list or data
-    members = pks->listAllGroupMembers(groupId_1);
+    members = pks->getAllGroupMembers(groupId_1);
     ASSERT_FALSE(members->empty());
 
-    member = pks->listGroupMember(groupId_1, memberId_1, deviceId_1);
+    member = pks->getGroupMember(groupId_1, memberId_1);
     ASSERT_FALSE((bool)member);
 
     // Delete the second member
@@ -411,10 +411,10 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // The member list operations must return empty list or data now
-    members = pks->listAllGroupMembers(groupId_1);
+    members = pks->getAllGroupMembers(groupId_1);
     ASSERT_TRUE(members->empty());
 
-    member = pks->listGroupMember(groupId_1, memberId_2, deviceId_2);
+    member = pks->getGroupMember(groupId_1, memberId_2);
     ASSERT_FALSE((bool)member);
 
     // Get group again, check member count - must be 0
