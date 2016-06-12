@@ -805,9 +805,9 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
         }
         else {
             ownChecked_ = true;
+            errorCode_ = OK;
         }
-        LOGGER(DEBUGGING, "No pre-key message sent to: ", recipient);
-        LOGGER(INFO, __func__, " <-- No pre-key message sent.");
+        LOGGER(INFO, __func__, " <-- No pre-key message sent, sibling: ", toSibling);
         return NULL;
     }
     vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);

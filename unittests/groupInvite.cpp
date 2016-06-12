@@ -355,14 +355,15 @@ static int groupMsgCallback(const string& messageDescriptor, const string& attac
     LOGGER(ERROR, __func__, " <--");
 }
 
-static bool checkMembersInDb(SQLiteStoreConv& store)
+static bool checkMembersInDb(SQLiteStoreConv& store, bool member2Only = false)
 {
     if (!store.isMemberOfGroup(groupId, memberId_1)) {
-        LOGGER(ERROR, __func__, "Member_1 missing after member list answer processing");
-        return false;
+        LOGGER(ERROR, __func__, " Member_1 missing after member list answer processing");
+        if (!member2Only)
+            return false;
     }
     if (!store.isMemberOfGroup(groupId, memberId_2)) {
-        LOGGER(ERROR, __func__, "Member_2 missing after member list answer processing");
+        LOGGER(ERROR, __func__, " Member_2 missing after member list answer processing");
         return false;
     }
     return true;
@@ -394,9 +395,19 @@ public:
     }
 
     bool runSendMessage() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         string message = createMessageDescriptor(groupId, appInterface);
         appInterface->sendGroupMessage(message, Empty, Empty);
+        LOGGER(INFO, __func__, " -->");
+        return true;
+    }
+
+    bool runLeaveGroup() {
+        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER(INFO, __func__, " -->");
+        appInterface->setOwnChecked(false);
+        appInterface->leaveGroup(groupId);
         LOGGER(INFO, __func__, " -->");
         return true;
     }
@@ -408,8 +419,8 @@ static bool checkGroupInDb(const SQLiteStoreConv& store, const string& command)
     shared_ptr<cJSON> sharedRoot(cJSON_Parse(command.c_str()), cJSON_deleter);
     string groupId(Utilities::getJsonString(sharedRoot.get(), GROUP_ID, ""));
     int32_t result;
-    shared_ptr<pair<int32_t, time_t> > attrib_time = store.getGroupAttribute(groupId, &result);
-    if (attrib_time->first == ACTIVE) {
+    pair<int32_t, time_t> attrib_time = store.getGroupAttribute(groupId, &result);
+    if (attrib_time.first == ACTIVE) {
         LOGGER(INFO, __func__, " Invited user: Group ACTIVE after accepting invite");
         return true;
     }
@@ -440,6 +451,7 @@ public:
         LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
+        appInterface->setGroupMsgCallback(groupMsgCallback);
         callbackCommand.clear();
         appInterface->receiveMessage(*messageEnvelope);
 
@@ -454,7 +466,7 @@ public:
     }
 
 
-    bool runMembers() {
+    bool runReceive() {
         LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->receiveMessage(*messageEnvelope);
@@ -465,13 +477,15 @@ public:
         return result;
     }
 
-    bool runReceiveMessage() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+    bool runReceiveAfterLeave() {
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
-        appInterface->setGroupMsgCallback(groupMsgCallback);
         appInterface->receiveMessage(*messageEnvelope);
+        bool result = checkMembersInDb(*store_2, true);
+        assert(result);
+
         LOGGER(INFO, __func__, " <--");
-        return checkMembersInDb(*store_2);
+        return result;
     }
 
 };
@@ -493,7 +507,7 @@ static void inviteAndDecline()
     environment.TearDown();
 }
 
-static void inviteAndAccept()
+static void inviteAndAcceptSendMessage()
 {
     GroupEnvironment environment;
     environment.SetUp();
@@ -514,7 +528,7 @@ static void inviteAndAccept()
     send.TearDown();
 
     receive.SetUp();
-    assert(receive.runMembers());
+    assert(receive.runReceive());
     receive.TearDown();
 
     send.SetUp();
@@ -522,7 +536,23 @@ static void inviteAndAccept()
     send.TearDown();
 
     receive.SetUp();
-    receive.runReceiveMessage();
+    receive.runReceive();
+    receive.TearDown();
+
+    send.SetUp();
+    send.runLeaveGroup();
+    send.TearDown();
+
+    receive.SetUp();
+    receive.runReceiveAfterLeave();
+    receive.TearDown();
+
+    send.SetUp();
+    send.runSendMessage();
+    send.TearDown();
+
+    receive.SetUp();
+    receive.runReceiveAfterLeave();
     receive.TearDown();
 
     environment.TearDown();
@@ -531,5 +561,5 @@ static void inviteAndAccept()
 int main(int argc, char** argv)
 {
 //    inviteAndDecline();
-    inviteAndAccept();
+    inviteAndAcceptSendMessage();
 }

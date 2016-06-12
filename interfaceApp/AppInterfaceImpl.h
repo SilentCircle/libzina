@@ -99,7 +99,9 @@ public:
 
     int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
-        // **** Below are methods for this implementation, not part of AppInterface.h
+    int32_t leaveGroup(const string& groupId);
+
+    // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
      * 
@@ -155,6 +157,7 @@ public:
         void setStore(SQLiteStoreConv* store) { store_ = store; }
         void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }
         void setGroupMsgCallback(GROUP_MSG_RECV_FUNC callback) { groupMsgCallback_ = callback; }
+        void setOwnChecked(bool value) {ownChecked_ = value; }
 
         static string generateMsgIdTime() {
             uuid_t uuid = {0};
@@ -255,7 +258,8 @@ private:
 
     int32_t createMemberListAnswer(const cJSON* root);
 
-    void checkHash(const string &msgDescriptor, const string &messageAttributes);
+    bool checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes);
+
     /**
      * @brief Process a member list answer.
      *
@@ -268,6 +272,33 @@ private:
      * @return OK if the message list was processed without error.
      */
     int32_t processMemberListAnswer(const cJSON* root);
+
+    /**
+     * @brief Process a leave group command.
+     *
+     * The receiver of the command removes the member from the group. If the receiver is a
+     * sibling device, i.e. has the same member id, then it removes all group member data
+     * and then the group data. The function only removes/clears group related data, it
+     * does not remove/clear the normal ratchet data of the removed group members.
+     *
+     * @param root The parsed cJSON data structure of the leave group command.
+     * @return OK if the message list was processed without error.
+     */
+    int32_t processLeaveGroupCommand(const cJSON* root);
+
+    /**
+     * @brief Checks if the group exists or is active.
+     *
+     * If the client receives a group command message (except commands of the Invite flow)
+     * or a group message but the group does not exist or is inactive on this client then
+     * this function prepares and sends a "not a group member" response to the sender and
+     * returns false.
+     *
+     * @param groupId The group to check
+     * @param sender  The command/message sender
+     * @return @c true if the group exists/is active, @c false otherwise
+     */
+    bool isGroupActive(const string& groupId, const string& sender);
 
 #ifndef UNITTESTS
     static string generateMsgIdTime() {

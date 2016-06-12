@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef Included_scPubTypes_h   /* [ */
+#ifndef Included_scPubTypes_h
 #define Included_scPubTypes_h
 
 #include <limits.h>
@@ -23,17 +23,6 @@ limitations under the License.
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-//#include <time.h>
-
-#ifdef __GNUC__
-#define DEPRECATED(func) func __attribute__ ((deprecated))
-#elif defined(_MSC_VER)
-#define DEPRECATED(func) __declspec(deprecated) func
-#else
-#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
-#define DEPRECATED(func) func
-#endif
-
 
 #if ( DEBUG == 1 )
 #define STATUS_LOG(...)  printf(__VA_ARGS__)

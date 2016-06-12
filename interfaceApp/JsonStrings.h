@@ -33,7 +33,9 @@ namespace axolotl {
     static const char* INVITE_ANSWER = "ian";   //!< Invitation answer
     static const char* MEMBER_LIST = "mls";     //!< Command contain a group's member list
     static const char* HELLO = "hel";           //!< Introduce myself as a new member of the list
-    static const char* REQUEST_MEMBER_LIST = "rls"; //!< Command to request a group's member list
+    static const char* REQ_MEMBER_LIST = "rls"; //!< Command to request a group's member list
+    static const char* LEAVE = "lve";           //!< Leave a group
+    static const char* NOT_MEMBER = "nmbr";     //!< Not a member of the group
 
     static const char* INVITE_SYNC = "s_inv";   //!< Sync accepted Group Invitation
 

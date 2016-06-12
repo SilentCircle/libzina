@@ -265,6 +265,14 @@ public:
     int32_t deleteGroup(const string& groupUuid);
 
     /**
+     * @brief Check if a group exists.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @return @c true if the group exists, @c false otherwise
+     */
+    bool hasGroup(const string& groupUuid, int32_t* sqlCode = NULL);
+
+    /**
      * @brief List data of all known groups.
      *
      * Creates and returns a list of shared pointers to cJSON data structures that contain
@@ -310,7 +318,7 @@ public:
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return A pair containing the attribute bit and the time the group record was last modified
      */
-    shared_ptr<pair<int32_t, time_t> > getGroupAttribute(const string& groupUuid, int32_t* sqlCode = NULL) const;
+    pair<int32_t, time_t> getGroupAttribute(const string& groupUuid, int32_t* sqlCode = NULL) const;
 
     /**
      * @brief Set/add the bits in the attribute mask to the group's attribute bits.
@@ -350,16 +358,21 @@ public:
     int32_t insertMember(const string &groupUuid, const string &memberUuid);
 
     /**
-     * @brief Deletes all group records of this member in the specified group.
-     *
-     * If a group member has several devices, thus more than one group member record,
-     * then the function deletes all records.
+     * @brief Deletes group record of this member in the specified group.
      *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
-     * @param memberUuid the new member's UID
+     * @param memberUuid the member's UID
      * @return SQLite code
      */
     int32_t deleteMember(const string& groupUuid, const string& memberUuid);
+
+    /**
+     * @brief Deletes all member records of the group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @return SQLite code
+     */
+    int32_t deleteAllMembers(const string &groupUuid);
 
     /**
      * @brief Get all members of a specified group.
@@ -419,7 +432,7 @@ public:
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return A pair containing the attribute bit and the time the member record was last modified
      */
-    shared_ptr<pair<int32_t, time_t> > getMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
+    pair<int32_t, time_t> getMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
 
     /**
      * @brief Set/add the bits in the attribute mask to the member's attribute bits.

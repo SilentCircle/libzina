@@ -260,13 +260,19 @@ TEST_F(StoreTestFixture, GroupChatStore)
     shared_ptr<cJSON> member = pks->getGroupMember(groupId_1, memberId_1);
     ASSERT_FALSE((bool)member);
 
+    bool has = pks->hasGroup(groupId_1);
+    ASSERT_FALSE(has);
+
     int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
+    has = pks->hasGroup(groupId_1);
+    ASSERT_TRUE(has);
+
     // Group attributes are initialized to 0
-    shared_ptr<pair<int32_t, time_t> > attrTime = pks->getGroupAttribute(groupId_1, &result);
+    pair<int32_t, time_t> attrTime = pks->getGroupAttribute(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(1, attrTime->first);
+    ASSERT_EQ(1, attrTime.first);
 
     // Set two attribute bits
     result = pks->setGroupAttribute(groupId_1, 3);
@@ -278,7 +284,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     attrTime = pks->getGroupAttribute(groupId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(2, attrTime->first);
+    ASSERT_EQ(2, attrTime.first);
 
     groups = pks->listAllGroups(&result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
@@ -323,7 +329,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     // Member attributes are initialized to ACTIVE
     attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(ACTIVE, attrTime->first);
+    ASSERT_EQ(ACTIVE, attrTime.first);
 
     // Set two attribute bits
     result = pks->setMemberAttribute(groupId_1, memberId_1, 3);
@@ -335,7 +341,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(2, attrTime->first);
+    ASSERT_EQ(2, attrTime.first);
 
     // Get group again, check member count - must be 1
     group = pks->listGroup(groupId_1, &result);

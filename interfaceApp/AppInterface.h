@@ -372,6 +372,18 @@ public:
      */
     virtual int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
 
+    /**
+     * @brief Leave a group.
+     *
+     * The application (UI part) calls this function to remove this member from the
+     * group. The functions sends a 'leave group' command to all members of the group,
+     * including it's own sibling devices.
+     *
+     * @param groupId The group to leave
+     * @return @c OK if 'leave group' processing was OK, error code (<0) otherwise
+     */
+    virtual int32_t leaveGroup(const string& groupId) = 0;
+
     // *************************************************************
     // Callback functions to UI part
     // *************************************************************
