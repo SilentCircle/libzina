@@ -113,6 +113,9 @@ static const char* removeStagedMk = "DELETE FROM stagedMk WHERE name=?1 AND long
 
 static const char* removeStagedMkTime = "DELETE FROM stagedMk WHERE since < ?1;";
 
+static const char* hasStagedMkSql =
+        "SELECT NULL, CASE EXISTS (SELECT 0 FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3 AND ivkeymk=?4) WHEN 1 THEN 1 ELSE 0 END;";
+
 /* *****************************************************************************
  * SQL statements to process the Pre-key table.
  */
@@ -925,8 +928,10 @@ shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, con
     while (sqlResult == SQLITE_ROW) {
         // Get the MK and its iv
         len = sqlite3_column_bytes(stmt, 0);
-        string mkivenc((const char*)sqlite3_column_blob(stmt, 0), static_cast<size_t>(len));
-        keys->push_back(mkivenc);
+        if (len > 0) {
+            string mkivenc((const char *) sqlite3_column_blob(stmt, 0), static_cast<size_t>(len));
+            keys->push_back(mkivenc);
+        }
         sqlResult = sqlite3_step(stmt);
     }
 
@@ -939,10 +944,37 @@ cleanup:
     return keys;
 }
 
-void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode)
+static bool hasStagedMk(sqlite3* db, const string& name, const string& longDevId, const string& ownName, const string& MKiv)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
+    int32_t exists = 0;
+
+    // char* hasStagedMkSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM stagedMk WHERE name=?1 AND longDevId=?2 AND ownName=?3 AND ivkeymk=?4) WHEN 1 THEN 1 ELSE 0 END;";
+    SQLITE_PREPARE(db, hasStagedMkSql, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt,  1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  2, longDevId.data(), static_cast<int32_t>(longDevId.size()), SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  3, ownName.data(), static_cast<int32_t>(ownName.size()), SQLITE_STATIC);
+    sqlite3_bind_blob(stmt,  4, MKiv.data(), static_cast<int32_t>(MKiv.size()), SQLITE_STATIC);
+
+    sqlResult = sqlite3_step(stmt);
+
+    if (sqlResult == SQLITE_ROW) {
+        exists = sqlite3_column_int(stmt, 1);
+    }
+    else
+        LOGGER(INFO, __func__, " SQL error: ", sqlResult);
+
+
+    sqlite3_finalize(stmt);
+    LOGGER(INFO, __func__, " <-- ", exists);
+    return exists == 1;
+}
+
+void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult = SQLITE_OK;
 
     const char* devId;
     int32_t devIdLen;
@@ -956,7 +988,15 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
         devId = dummyId;
         devIdLen = static_cast<int32_t>(strlen(dummyId));
     }
-    
+
+    if (hasStagedMk(db, name, string(devId), ownName, MKiv)) {
+        if (sqlCode != NULL)
+            *sqlCode = sqlResult;
+        sqlCode_ = sqlResult;
+        LOGGER(INFO, __func__, " <-- MK exists in DB, skip");
+        return;
+    }
+
 //     insertStagedMkSql = 
 //     "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, otherkey, ivkeymk, ivkeyhdr) "
 //     "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7);";
@@ -970,7 +1010,7 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
     SQLITE_CHK(sqlite3_bind_null(stmt,  7));
 
     sqlResult = sqlite3_step(stmt);
-    ERRMSG;
+        ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
@@ -1028,7 +1068,7 @@ void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)
 
     sqlResult= sqlite3_step(stmt);
 //    cleaned = sqlite3_changes(db);
-//    Log("Number of removed old MK: %d", cleaned);
+//    LOGGER(ERROR, "Number of removed old MK: ", cleaned);
     ERRMSG;
 
 cleanup:

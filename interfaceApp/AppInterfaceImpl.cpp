@@ -177,7 +177,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         return OK;
     }
     store_->insertMsgHash(msgHash);
-    lck.unlock();
 
     // Cleanup old message hashes
     time_t timestamp = time(0) - MK_STORE_TIME;
@@ -193,6 +192,12 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
+
+    // ****** TODO -- remove once group chat becomes availabe
+    // **** this is for backward compatibility only --- remove once group chat becomes availabe
+    if (envelope.has_msgtype() && envelope.msgtype() >= 11)
+        return OK;
+    // **** Until here
 
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
@@ -241,7 +246,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         idHashes.first = recvIdHash;
         idHashes.second = senderIdHash;
     }
-    lck.lock();
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
     // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills

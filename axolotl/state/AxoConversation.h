@@ -56,10 +56,10 @@ namespace axolotl {
 class AxoConversation
 {
 public:
-    AxoConversation(const string& localUser, const string& user, const string& deviceId) : stagedMk(NULL), partner_(user, emptyString),
+    AxoConversation(const string& localUser, const string& user, const string& deviceId) : partner_(user, emptyString),
                     deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0), 
                     Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), errorCode_(0)
-                    { }
+                    { stagedMk = make_shared<list<string> >(); }
 
 
    ~AxoConversation() { reset(); }
