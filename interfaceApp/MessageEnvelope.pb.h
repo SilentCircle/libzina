@@ -121,12 +121,12 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_scclientdevid();
   inline void set_allocated_scclientdevid(::std::string* scclientdevid);
 
-  // optional uint32 device_id = 3;
-  inline bool has_device_id() const;
-  inline void clear_device_id();
-  static const int kDeviceIdFieldNumber = 3;
-  inline ::google::protobuf::uint32 device_id() const;
-  inline void set_device_id(::google::protobuf::uint32 value);
+  // optional uint32 msgType = 3;
+  inline bool has_msgtype() const;
+  inline void clear_msgtype();
+  static const int kMsgTypeFieldNumber = 3;
+  inline ::google::protobuf::uint32 msgtype() const;
+  inline void set_msgtype(::google::protobuf::uint32 value);
 
   // optional bytes supplement = 4;
   inline bool has_supplement() const;
@@ -230,8 +230,8 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline void clear_has_name();
   inline void set_has_scclientdevid();
   inline void clear_has_scclientdevid();
-  inline void set_has_device_id();
-  inline void clear_has_device_id();
+  inline void set_has_msgtype();
+  inline void clear_has_msgtype();
   inline void set_has_supplement();
   inline void clear_has_supplement();
   inline void set_has_message();
@@ -263,7 +263,7 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   ::std::string* recvdeviceid_;
   ::std::string* recvdevidbin_;
   ::std::string* uid_;
-  ::google::protobuf::uint32 device_id_;
+  ::google::protobuf::uint32 msgtype_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
   #else
@@ -434,28 +434,28 @@ inline void MessageEnvelope::set_allocated_scclientdevid(::std::string* scclient
   // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.scClientDevId)
 }
 
-// optional uint32 device_id = 3;
-inline bool MessageEnvelope::has_device_id() const {
+// optional uint32 msgType = 3;
+inline bool MessageEnvelope::has_msgtype() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void MessageEnvelope::set_has_device_id() {
+inline void MessageEnvelope::set_has_msgtype() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void MessageEnvelope::clear_has_device_id() {
+inline void MessageEnvelope::clear_has_msgtype() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void MessageEnvelope::clear_device_id() {
-  device_id_ = 0u;
-  clear_has_device_id();
+inline void MessageEnvelope::clear_msgtype() {
+  msgtype_ = 0u;
+  clear_has_msgtype();
 }
-inline ::google::protobuf::uint32 MessageEnvelope::device_id() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.device_id)
-  return device_id_;
+inline ::google::protobuf::uint32 MessageEnvelope::msgtype() const {
+  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.msgType)
+  return msgtype_;
 }
-inline void MessageEnvelope::set_device_id(::google::protobuf::uint32 value) {
-  set_has_device_id();
-  device_id_ = value;
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.device_id)
+inline void MessageEnvelope::set_msgtype(::google::protobuf::uint32 value) {
+  set_has_msgtype();
+  msgtype_ = value;
+  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.msgType)
 }
 
 // optional bytes supplement = 4;

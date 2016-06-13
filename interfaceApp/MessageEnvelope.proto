@@ -18,7 +18,7 @@ option optimize_for = LITE_RUNTIME;
 message MessageEnvelope {
   optional string name           = 1;
   optional string scClientDevId  = 2;
-  optional uint32 device_id      = 3;
+  optional uint32 msgType        = 3;
   optional bytes  supplement     = 4;
   optional bytes  message        = 5;
   optional string msgId          = 6;
