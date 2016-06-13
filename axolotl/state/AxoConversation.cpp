@@ -101,9 +101,15 @@ void AxoConversation::storeStagedMks() {
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     while (stagedMk && !stagedMk->empty()) {
-        string mkivmac = stagedMk->front();
+        string mkIvMac = stagedMk->front();
         stagedMk->pop_front();
-        store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkivmac);
+        if (!mkIvMac.empty()) {
+            store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac);
+        }
+        else {
+            store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac);
+        }
+        memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size());
     }
     stagedMk.reset();
 
@@ -116,7 +122,7 @@ void AxoConversation::storeStagedMks() {
 shared_ptr<list<string> > AxoConversation::loadStagedMks()
 {
     LOGGER(INFO, __func__, " -->");
-    if (!stagedMk) {
+    if (!stagedMk || stagedMk->empty()) {
         SQLiteStoreConv *store = SQLiteStoreConv::getStore();
         stagedMk = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
     }

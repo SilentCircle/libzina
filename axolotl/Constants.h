@@ -36,10 +36,12 @@ namespace axolotl {
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
     static const int SYMMETRIC_KEY_LENGTH  = 32;      //!< Use 256 bit keys for symmetric crypto
 
-    static const int MK_STORE_TIME      = 31*86400;    //!< cleanup stored MKs and message hashes after 31 days
+    static const int MK_STORE_TIME     = 31*86400;    //!< cleanup stored MKs and message hashes after 31 days
 
     static const int NUM_PRE_KEYS          = 100;
     static const int MIN_NUM_PRE_KEYS      = 30;
+
+    static const int SHORT_MAC_LENGTH      = 8;
 
     static const std::string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
     static const std::string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");

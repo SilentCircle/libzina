@@ -296,7 +296,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
 
     // During the trySkippedMessageKeys we expect MAC failure because we try the staged
     // message keys in a "brute-force" mode ;-)
-    int32_t result = memcmp(computedMac, mac.data(), 8);
+    int32_t result = memcmp(computedMac, mac.data(), SHORT_MAC_LENGTH);
     if (result != 0) {
         if (expectFail) {
             LOGGER(INFO, __func__, " <-- MAC check failed - expected.");
@@ -340,7 +340,7 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
 
     int32_t retVal = 0;
     shared_ptr<list<string> > mks = conv->loadStagedMks();
-    if (!mks) {
+    if (!mks || mks->empty()) {
         LOGGER(INFO, __func__, " <-- No staged keys.");
         return NO_STAGED_KEYS;
     }
@@ -348,18 +348,18 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
     // During the loop we expect that decryptAndCheck fails
     for (auto it = mks->begin(); it != mks->end(); ++it) {
         string MKiv = *it;
+        if (MKiv.size() < SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE + SHORT_MAC_LENGTH)
+            continue;
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
         if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == OK) {
             memset_volatile((void*)MK.data(), 0, MK.size());
-            LOGGER(INFO, __func__, " <--");
-            return retVal;
+            mks->erase(it);
+            break;
         }
-        memset_volatile((void*)MK.data(), 0, MK.size());
     }
-    mks->clear();
-    LOGGER(INFO, __func__, " <-- no matching MK found.");
+    LOGGER(INFO, __func__, " <-- ", (retVal != OK) ? "no matching MK found." : "matching MK found");
     return retVal;
 }
 
@@ -376,12 +376,12 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
     uint32_t macLen;
     *CKp = CKr;
 
-    conv->stagedMk = make_shared<list<string> >();
+    shared_ptr<list<string> > mks = conv->loadStagedMks();
     for (int32_t i = Nr; i < Np; i++) {
         deriveMk(*CKp, &MK, &iv, &mKey);
         string mkivmac(MK);
         mkivmac.append(iv).append(mKey);
-        conv->stagedMk->push_back(mkivmac);
+        mks->push_back(mkivmac);
 
         // Hash CK with "1"
         hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, mac, &macLen);
@@ -512,6 +512,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
 
     string mac((const char*)msgStruct.mac, 8);
     if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain) == OK) {
+        conv->storeStagedMks();
         return decrypted;
     }
 
@@ -522,7 +523,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     string CKp;
     string macKey;
     pair <string, string> MK;
-//    Log("Decrypt message from: %s, newRatchet: %d, Nr: %d, Np: %d, PNp: %d", conv->getPartner().getName().c_str(), newRatchet, conv->getNr(), msgStruct.Np, msgStruct.PNp);
+//    LOGGER(ERROR, "++++ Decrypt message from: ", conv->getPartner().getName(), " Nr: ", conv->getNr(), " Np: ", msgStruct.Np, " PNp: ", msgStruct.PNp, "newR: ", newRatchet);
 
     if (!newRatchet) {
         delete(DHRp);

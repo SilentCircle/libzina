@@ -175,7 +175,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         return OK;
     }
     store_->insertMsgHash(msgHash);
-    lck.unlock();
 
     // Cleanup old message hashes
     time_t timestamp = time(0) - MK_STORE_TIME;
@@ -245,7 +244,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         idHashes.first = recvIdHash;
         idHashes.second = senderIdHash;
     }
-    lck.lock();
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
     // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills
