@@ -367,6 +367,8 @@ string* AppInterfaceImpl::getKnownUsers()
         return NULL;
     }
     size_t size = names->size();
+    if (size == 0)
+        return NULL;
 
     cJSON *root,*nameArray;
     root=cJSON_CreateObject();
