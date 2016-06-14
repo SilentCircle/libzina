@@ -528,6 +528,8 @@ shared_ptr<list<string> > SQLiteStoreConv::getKnownConversations(const string& o
         string name((const char*)sqlite3_column_text(stmt, 0), static_cast<size_t>(nameLen));
         names->push_back(name);
     }
+
+cleanup:
     sqlite3_finalize(stmt);
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
@@ -535,13 +537,6 @@ shared_ptr<list<string> > SQLiteStoreConv::getKnownConversations(const string& o
     LOGGER(INFO, __func__, " <-- ", sqlResult);
     return names;
 
-cleanup:
-    sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
-    sqlCode_ = sqlResult;
-    LOGGER(ERROR, __func__, ", SQL error: ", sqlResult, ", ", lastError_);
-    return shared_ptr<list<string> >();
 }
 
 shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode)
@@ -565,20 +560,14 @@ shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, 
             continue;
         devIds->push_back(id);
     }
-    sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
-    sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
-    return devIds;
 
 cleanup:
     sqlite3_finalize(stmt);
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(ERROR, __func__, ", SQL error: ", sqlResult, ", ", lastError_);
-    return shared_ptr<list<string> >();
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return devIds;
 }
 
 
@@ -809,15 +798,8 @@ shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, con
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), static_cast<int32_t>(ownName.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
-    ERRMSG;
-    if (sqlResult != SQLITE_ROW) {        // No stored MKs
-        sqlite3_finalize(stmt);
-        if (sqlCode != NULL)
-            *sqlCode = sqlResult;
-        sqlCode_ = sqlResult;
-        LOGGER(INFO, __func__, " <-- No stored message key");
-        return shared_ptr<list<string> >();
-    }
+        ERRMSG;
+
     while (sqlResult == SQLITE_ROW) {
         // Get the MK and its iv
         len = sqlite3_column_bytes(stmt, 0);
