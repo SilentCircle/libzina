@@ -37,7 +37,7 @@ typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const string& userId, cons
 
 typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string& commandMessage);
 typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
-typedef void (*GROUP_STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
+typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const string& stateInformation);
 
 namespace axolotl {
 class AppInterface
@@ -491,9 +491,6 @@ public:
      * The library reports message state changes for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
-     * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this
-     *                           report belongs to a received message and the library failed to
-     *                           process it.
      * @param errorCode          The error code
      * @param stateInformation   JSON formatted stat information block that contains the details about
      *                           the new state or some error information.

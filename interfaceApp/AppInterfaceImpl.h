@@ -153,6 +153,8 @@ public:
 
     bool isRegistered()           {return ((flags_ & 0x1) == 1); }
 
+    SQLiteStoreConv* getStore()   {return store_; }
+
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
         void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }

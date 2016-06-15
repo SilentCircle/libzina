@@ -15,13 +15,10 @@ limitations under the License.
 */
 #include "SQLiteStoreConv.h"
 
-#include <mutex>          // std::mutex, std::unique_lock
-
 #include <cryptcommon/ZrtpRandom.h>
 #include <zrtp/crypto/sha256.h>
 #include <zrtp/crypto/sha2.h>
 
-#include "../../logging/AxoLogging.h"
 #include "../../interfaceApp/JsonStrings.h"
 #include "../../Constants.h"
 
@@ -395,7 +392,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
         beginTransaction();
         if (updateDb(version, DB_VERSION) != SQLITE_OK) {
             sqlite3_close(db);
-            LOGGER(ERROR, __func__ , " <-- update failed.");
+            LOGGER(ERROR, __func__ , " <-- update failed, existing version: ", version);
             return SQLITE_ERROR;
         }
         commitTransaction();
@@ -534,7 +531,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     LOGGER(INFO, __func__, " -->");
 
     // Version 2 adds the message hash table
-    if (oldVersion < DB_VERSION) {
+    if (oldVersion == 1) {
         // check if MsgHash table is already available
         SQLITE_PREPARE(db, lookupTables, -1, &stmt, NULL);
         int32_t rc = sqlite3_step(stmt);
@@ -558,7 +555,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
             "CREATE TABLE MsgTrace (name VARCHAR NOT NULL, messageId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL, "
                     "attributes VARCHAR NOT NULL, stored TIMESTAMP DEFAULT(STRFTIME('%Y-%m-%dT%H:%M:%f', 'NOW')), flags INTEGER);";
 
-    if (oldVersion < DB_VERSION) {
+    if (oldVersion == 2) {
         SQLITE_PREPARE(db, traceTable, -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
@@ -570,7 +567,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     }
 
     // Version 4 adds the conversation state column to the trace table
-    if (oldVersion < DB_VERSION) {
+    if (oldVersion == 3) {
         SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
@@ -581,7 +578,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         oldVersion = 4;
     }
 
-    if (oldVersion < DB_VERSION) {
+    if (oldVersion == 4) {
         SQLITE_PREPARE(db, createGroups, -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
@@ -1284,7 +1281,6 @@ cleanup:
 shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, const string &messageId, const string &deviceId, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt = NULL;
-    int32_t len;
     int32_t sqlResult;
     shared_ptr<list<string> > traceRecords = make_shared<list<string> >();
 

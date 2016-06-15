@@ -86,6 +86,7 @@ namespace axolotl {
     static const int32_t RECV_DATA_LENGTH = -29;      //!< Expected length of data does not match received length
     static const int32_t WRONG_RECV_DEV_ID = -30;     //!< Expected device id does not match actual device id
     static const int32_t NETWORK_ERROR = -31;         //!< The HTTP request returned an code >400 or SIP failed
+    static const int32_t DATA_MISSING = -32;          //!< Some data for a function is missing
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported

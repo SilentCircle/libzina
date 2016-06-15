@@ -340,7 +340,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL) {
         int32_t result = processGroupMessage(envelope, msgDescriptor, attachmentDescr, attributesDescr);
         if (result != OK) {
-            groupStateReportCallback_(0, result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId));
+            groupStateReportCallback_(result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId));
         }
     }
     else {

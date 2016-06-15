@@ -131,6 +131,86 @@ JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_axoCommand
 
 /*
  * Class:     axolotl_AxolotlNative
+ * Method:    createNewGroup
+ * Signature: ([B[B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_createNewGroup
+  (JNIEnv *, jclass, jbyteArray, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    modifyGroupSize
+ * Signature: (Ljava/lang/String;I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_axolotl_AxolotlNative_modifyGroupSize
+  (JNIEnv *, jclass, jstring, jint);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    listAllGroups
+ * Signature: ([I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_listAllGroups
+  (JNIEnv *, jclass, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getGroup
+ * Signature: (Ljava/lang/String;[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getGroup
+  (JNIEnv *, jclass, jstring, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getAllGroupMembers
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_axolotl_AxolotlNative_getAllGroupMembers
+  (JNIEnv *, jclass, jstring, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getGroupMember
+ * Signature: (Ljava/lang/String;[B[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_axolotl_AxolotlNative_getGroupMember
+  (JNIEnv *, jclass, jstring, jbyteArray, jintArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    inviteUser
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_inviteUser
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    answerInvitation
+ * Signature: ([BZ[B)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_answerInvitation
+  (JNIEnv *, jclass, jbyteArray, jboolean, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendGroupMessage
+ * Signature: ([B[B[B)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_sendGroupMessage
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    leaveGroup
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_leaveGroup
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     axolotl_AxolotlNative
  * Method:    repoOpenDatabase
  * Signature: (Ljava/lang/String;[B)I
  */
