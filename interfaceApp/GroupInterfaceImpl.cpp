@@ -113,10 +113,31 @@ static string leaveNotMemberCommand(const string& groupId, const string& memberI
     return command;
 }
 
+static string syncNewGroupCommand(const string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers)
+{
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+    cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_GROUP_SYNC);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(root, GROUP_NAME, groupName.c_str());
+    cJSON_AddStringToObject(root, GROUP_DESC, groupDescription.c_str());
+    cJSON_AddStringToObject(root, GROUP_OWNER, owner.c_str());
+    cJSON_AddNumberToObject(root, GROUP_MAX_MEMBERS, maxMembers);
+
+    char *out = cJSON_PrintUnformatted(root);
+    string command(out);
+    free(out);
+
+    return command;
+}
+
 // ****** Public instance functions
 // *******************************************************
-string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription) {
+string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
     LOGGER(INFO, __func__, " -->");
+
+    if (maxMembers > MAXIMUM_GROUP_SIZE)
+        return Empty;
 
     uuid_t groupUuid = {0};
     uuid_string_t uuidString = {0};
@@ -125,19 +146,21 @@ string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescript
     uuid_unparse(groupUuid, uuidString);
     string groupId(uuidString);
 
-    store_->insertGroup(groupId, groupName, ownUser_, groupDescription, DEFAULT_GROUP_SIZE);
+    store_->insertGroup(groupId, groupName, ownUser_, groupDescription, maxMembers);
 
-    // Add myself to the new group, this saves us a "send to sibling" group function
+    // Add myself to the new group, this saves us a "send to sibling" group function, then inform my sibling about
+    // the new group
     store_->insertMember(groupId, ownUser_);
+    sendGroupCommand(ownUser_, generateMsgIdTime(), syncNewGroupCommand(groupId, groupName, groupDescription, ownUser_, maxMembers));
 
     LOGGER(INFO, __func__, " <--");
     return groupId;
 }
 
-int32_t AppInterfaceImpl::createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner)
+int32_t AppInterfaceImpl::createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers)
 {
     LOGGER(INFO, __func__, " -->");
-    int32_t result = store_->insertGroup(groupId, groupName,  owner, groupDescription, DEFAULT_GROUP_SIZE);
+    int32_t result = store_->insertGroup(groupId, groupName,  owner, groupDescription, maxMembers);
 
     // Add myself to the new group, this saves us a "send to sibling" group function
     store_->insertMember(groupId, ownUser_);
@@ -209,7 +232,6 @@ int32_t AppInterfaceImpl::inviteUser(string& groupUuid, string& userId)
         LOGGER(ERROR, __func__, errorInfo_);
         return MAX_MEMBERS_REACHED;
     }
-    cJSON_DeleteItemFromObject(root, GROUP_MEMBER_COUNT);
     cJSON_DeleteItemFromObject(root, GROUP_MOD_TIME);
 
     string tokenString = getRandomToken();
@@ -248,8 +270,11 @@ int32_t AppInterfaceImpl::answerInvitation(const string &command, bool accept, c
     string groupName(Utilities::getJsonString(root, GROUP_NAME, ""));
     string description(Utilities::getJsonString(root, GROUP_DESC, ""));
     string owner(Utilities::getJsonString(root, GROUP_OWNER, ""));
+    int32_t maxMember = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
+    if (maxMember <= 0 || maxMember > MAXIMUM_GROUP_SIZE)
+        return MAX_MEMBERS_REACHED;
 
-    createInvitedGroup(groupId, groupName, description, owner);
+    createInvitedGroup(groupId, groupName, description, owner, maxMember);
 
     // If this is a invite-sync command then just return, all necessary actions done.
     string grpCmd(Utilities::getJsonString(root, GROUP_COMMAND, ""));
@@ -392,6 +417,8 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
             return OK;
         }
         groupCmdCallback_(commandIn);
+    } else if (groupCommand.compare(NEW_GROUP_SYNC) == 0) {
+        syncNewGroup(root);
     } else if (groupCommand.compare(INVITE_SYNC) == 0) {
         answerInvitation(commandIn, true, Empty);
     } else if (groupCommand.compare(INVITE_ANSWER) == 0) {
@@ -649,6 +676,25 @@ int32_t AppInterfaceImpl::processLeaveGroupCommand(const cJSON* root) {
         returnCode = GROUP_ERROR_BASE + result;
     }
     return returnCode;
+}
+
+int32_t AppInterfaceImpl::syncNewGroup(const cJSON *root) {
+    // User accepted invitation, get necessary data and create group data in database
+    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
+    string groupName(Utilities::getJsonString(root, GROUP_NAME, ""));
+    string description(Utilities::getJsonString(root, GROUP_DESC, ""));
+    string owner(Utilities::getJsonString(root, GROUP_OWNER, ""));
+    int32_t maxMember = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
+    if (maxMember <= 0 || maxMember > MAXIMUM_GROUP_SIZE)
+        return MAX_MEMBERS_REACHED;
+
+    if (owner != ownUser_) {
+        return GROUP_CMD_DATA_INCONSISTENT;
+    }
+    int32_t result = store_->insertGroup(groupId, groupName,  owner, description, maxMember);
+    store_->insertMember(groupId, ownUser_);
+
+    return OK;
 }
 
 

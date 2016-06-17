@@ -87,9 +87,9 @@ public:
 
     void reSyncConversation(const string& userName, const string& deviceId);
 
-    string createNewGroup(string& groupName, string& groupDescription);
+    string createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers);
 
-    int32_t createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner);
+    int32_t createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers);
 
     bool modifyGroupSize(string& groupId, int32_t newSize);
 
@@ -255,6 +255,8 @@ private:
     int32_t processGroupCommand(const string& commandIn);
 
     int32_t sendGroupCommand(const string &recipient, const string &msgId, const string &command);
+
+    int32_t syncNewGroup(const cJSON *root);
 
     int32_t invitationAccepted(const cJSON *root);
 

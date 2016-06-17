@@ -1003,7 +1003,7 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
  * Signature: ([B[B)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jbyteArray groupDescription)
+JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jbyteArray groupDescription, jint maxMembers)
 {
     (void)clazz;
 
@@ -1018,7 +1018,9 @@ JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jb
     if (!arrayToString(env, groupDescription, &description)) {
         return NULL;
     }
-    string groupUuid = axoAppInterface->createNewGroup(group, description);
+    string groupUuid = axoAppInterface->createNewGroup(group, description, maxMembers);
+    if (groupUuid.empty())
+        return NULL;
     jstring uuidJava = env->NewStringUTF(groupUuid.c_str());
     return uuidJava;
 }

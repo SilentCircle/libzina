@@ -67,6 +67,14 @@ static void sendDataTestFunction(uint8_t* names[] , uint8_t* devIds[], uint8_t* 
     LOGGER(INFO, __func__, " <--");
 }
 
+// This simulates an answer from the provisioning server responding 400
+//
+static int32_t respond400(const std::string& requestUrl, const std::string& method, const std::string& data, std::string* response)
+{
+    LOGGER(INFO, __func__, " --> ", method, ", ", requestUrl);
+    return 400;
+}
+
 
 // Setup the global environment for group testing/simulation, actually following Gtest structures
 // to setup global and per test data and tear them down afterwards. However, because this
@@ -115,8 +123,9 @@ public:
         Transport* sipTransport = new SipTransport(appInterface_1);
         sipTransport->setSendDataFunction(sendDataTestFunction);
         appInterface_1->setTransport(sipTransport);
+        appInterface_1->setHttpHelper(respond400);
 
-        groupId = appInterface_1->createNewGroup(groupName_1, groupDescription);
+        groupId = appInterface_1->createNewGroup(groupName_1, groupDescription, 10);
 
         SQLiteStoreConv::closeStore();
 
@@ -234,13 +243,6 @@ public:
     AppInterfaceImpl* appInterface;
 };
 
-// This simulates an answer from the provisioning server responding 400
-//
-static int32_t respond400(const std::string& requestUrl, const std::string& method, const std::string& data, std::string* response)
-{
-    LOGGER(INFO, __func__, " --> ", method, ", ", requestUrl);
-    return 400;
-}
 
 // This simulates an answer from the provisioning server responding to a get pre key request
 // Returns a pre-key bundle for member 2, also initializes its long term id key if not yet available.
@@ -386,7 +388,7 @@ public:
     }
 
     bool runReceiveAnswer() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         appInterface->receiveMessage(*messageEnvelope);
@@ -448,7 +450,7 @@ public:
     }
 
     bool runAccept() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         appInterface->setGroupMsgCallback(groupMsgCallback);

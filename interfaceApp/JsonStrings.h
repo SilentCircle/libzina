@@ -36,6 +36,7 @@ namespace axolotl {
     static const char* REQ_MEMBER_LIST = "rls"; //!< Command to request a group's member list
     static const char* LEAVE = "lve";           //!< Leave a group
     static const char* NOT_MEMBER = "nmbr";     //!< Not a member of the group
+    static const char* NEW_GROUP_SYNC = "ngrp"; //!< sent to siblings to sync a group creation
 
     static const char* INVITE_SYNC = "s_inv";   //!< Sync accepted Group Invitation
 

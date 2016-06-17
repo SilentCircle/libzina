@@ -46,7 +46,7 @@ namespace axolotl {
     static const uint32_t MSG_NORMAL       = 0;
     static const uint32_t MSG_CMD          = 1;
 
-    static const int DEFAULT_GROUP_SIZE    = 10;
+    static const int MAXIMUM_GROUP_SIZE   = 30;
 
     // Group message types, value for normal message must be the lowest
     static const uint32_t GROUP_MSG_NORMAL = 10;

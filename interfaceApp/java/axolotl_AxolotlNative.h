@@ -132,10 +132,10 @@ JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_axoCommand
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    createNewGroup
- * Signature: ([B[B)Ljava/lang/String;
+ * Signature: ([B[BI)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_axolotl_AxolotlNative_createNewGroup
-  (JNIEnv *, jclass, jbyteArray, jbyteArray);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jint);
 
 /*
  * Class:     axolotl_AxolotlNative

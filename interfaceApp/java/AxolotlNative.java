@@ -410,10 +410,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * @param groupName The name of the new group
      * @param groupDescription Group description, purpose of the group, etc
+     * @param maxMembers Maximum number of group members. If this number is bigger than a system
+     *                   defined maximum number then the function does not create the group.
      * @return the group's UUID, if the string is empty then group creation failed, use
      *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
      */
-    public static native String createNewGroup(/*!@NonNull!*/ byte[] groupName, /*!@NonNull!*/ byte[] groupDescription);
+    public static native String createNewGroup(/*!@NonNull!*/ byte[] groupName, /*!@NonNull!*/ byte[] groupDescription, int maxMembers);
 
     /**
      * Modify number maximum group member.

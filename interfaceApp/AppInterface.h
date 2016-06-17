@@ -281,10 +281,12 @@ public:
      *
      * @param groupName The name of the new group
      * @param groupDescription Group description, purpose of the group, etc
+     * @param maxMembers Maximum number of group members. If this number is bigger than a system
+     *                   defined maximum number then the function does not create the group.
      * @return the group's UUID, if the string is empty then group creation failed, use
      *         @c AppInterfaceImpl::getErrorInfo() to get error string.
      */
-    virtual string createNewGroup(string& groupName, string& groupDescription) = 0;
+    virtual string createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) = 0;
 
     /**
      * @brief Create a new group and assign ownership to the creator
@@ -296,10 +298,12 @@ public:
      * @param groupUuid The group id, part of the invite message
      * @param groupName The name of the new group
      * @param groupDescription Group description, purpose of the group, etc
+     * @param maxMembers Maximum number of group members. If this number is bigger than a system
+     *                   defined maximum number then the function does not create the group.
      * @param owner The owner/creator of the group
      * @return @c SUCCESS or SQL error code, use @c AppInterfaceImpl::getErrorInfo() to get error string.
      */
-    virtual int32_t createInvitedGroup(string& groupUud, string& groupName, string& groupDescription, string& owner) = 0;
+    virtual int32_t createInvitedGroup(string& groupUud, string& groupName, string& groupDescription, string& owner, int32_t maxMembers) = 0;
 
     /**
      * @brief Modify number maximum group member.
