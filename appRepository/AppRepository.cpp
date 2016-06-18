@@ -298,7 +298,7 @@ int32_t AppRepository::updateDb(int32_t oldVersion, int32_t newVersion)
     LOGGER(INFO, __func__, " -->");
     sqlite3_stmt* stmt;
 
-    if (oldVersion < 2) {
+    if (oldVersion == 1) {
         // check if attachmentStatus table is already available
         SQLITE_PREPARE(db, lookupTables, -1, &stmt, NULL);
         int32_t rc = sqlite3_step(stmt);

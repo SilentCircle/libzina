@@ -450,7 +450,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     LOGGER(INFO, __func__, " -->");
 
     // Version 2 adds the message hash table
-    if (oldVersion < 2) {
+    if (oldVersion == 1) {
         // check if MsgHash table is already available
         SQLITE_PREPARE(db, lookupTables, -1, &stmt, NULL);
         int32_t rc = sqlite3_step(stmt);
@@ -474,7 +474,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
             "CREATE TABLE MsgTrace (name VARCHAR NOT NULL, messageId VARCHAR NOT NULL, deviceId VARCHAR NOT NULL, "
                     "attributes VARCHAR NOT NULL, stored TIMESTAMP DEFAULT(STRFTIME('%Y-%m-%dT%H:%M:%f', 'NOW')), flags INTEGER);";
 
-    if (oldVersion < 3) {
+    if (oldVersion == 2) {
         SQLITE_PREPARE(db, traceTable, -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
@@ -486,7 +486,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     }
 
     // Version 4 adds the conversation state column to the trace table
-    if (oldVersion < 4) {
+    if (oldVersion == 3) {
         SQLITE_PREPARE(db, "ALTER TABLE MsgTrace ADD COLUMN convstate VARCHAR;", -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
