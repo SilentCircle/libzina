@@ -39,9 +39,10 @@ using namespace axolotl;
 void Log(const char* format, ...);
 
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
-                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback):
-                                   AppInterface(receiveCallback, stateReportCallback, notifyCallback), tempBuffer_(NULL), tempBufferSize_(0),
-                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
+                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                                   GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
+                                   AppInterface(receiveCallback, stateReportCallback, notifyCallback, groupMsgCallback, groupCmdCallback, groupStateCallback),
+                                   tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
                                    errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false)
 {
     store_ = SQLiteStoreConv::getStore();
@@ -156,7 +157,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 {
     return receiveMessage(messageEnvelope, Empty, Empty);
 }
-
 
 int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName)
 {

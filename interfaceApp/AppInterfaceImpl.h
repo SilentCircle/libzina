@@ -52,7 +52,8 @@ public:
                     store_(store), transport_(NULL), ownChecked_(false) {}
 #endif
     AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
-                     RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback);
+                     RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                     GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback);
 
     ~AppInterfaceImpl();
 
@@ -154,6 +155,11 @@ public:
     bool isRegistered()           {return ((flags_ & 0x1) == 1); }
 
     SQLiteStoreConv* getStore()   {return store_; }
+
+    /**
+     * This is a functions we need only during development and testing.
+     */
+    void clearGroupData();
 
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }

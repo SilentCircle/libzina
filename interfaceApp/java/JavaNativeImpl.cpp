@@ -71,7 +71,7 @@ static jmethodID httpHelperCallback = NULL;
 static jmethodID javaNotifyCallback = NULL;
 static jmethodID groupMsgReceiveCallback = NULL;
 static jmethodID groupCmdReceiveCallback = NULL;
-static jmethodID groupStateCallbackCallback = NULL;
+static jmethodID groupStateCallback = NULL;
 
 static int32_t debugLevel = 1;
 
@@ -255,11 +255,79 @@ int32_t receiveMessage(const string& messageDescriptor, const string& attachemen
 }
 
 /*
+ * Receive message callback for AppInterfaceImpl.
+ *
+ * "([B[B[B)I"
+ */
+int32_t receiveGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
+{
+    if (axolotlCallbackObject == NULL)
+        return -1;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return -2;
+
+    jbyteArray message = stringToArray(env, messageDescriptor);
+    Log("receiveGroupMessage: '%s' - length: %d", messageDescriptor.c_str(), messageDescriptor.size());
+
+    jbyteArray attachment = NULL;
+    if (!attachmentDescriptor.empty()) {
+        attachment = stringToArray(env, attachmentDescriptor);
+        if (attachment == NULL) {
+            return -4;
+        }
+    }
+    jbyteArray attributes = NULL;
+    if (!messageAttributes.empty()) {
+        attributes = stringToArray(env, messageAttributes);
+        if (attributes == NULL) {
+            return -4;
+        }
+    }
+    int32_t result = env->CallIntMethod(axolotlCallbackObject, groupMsgReceiveCallback, message, attachment, attributes);
+
+    env->DeleteLocalRef(message);
+    if (attachment != NULL)
+        env->DeleteLocalRef(attachment);
+    if (attributes != NULL)
+        env->DeleteLocalRef(attributes);
+
+    return result;
+}
+
+/*
+ * Receive message callback for AppInterfaceImpl.
+ *
+ * "([B[B[B)I"
+ */
+int32_t receiveGroupCommand(const string& commandMessage)
+{
+    if (axolotlCallbackObject == NULL)
+        return -1;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return -2;
+
+    jbyteArray message = stringToArray(env, commandMessage);
+    Log("receiveGroupCommand: '%s' - length: %d", commandMessage.c_str(), commandMessage.size());
+
+    int32_t result = env->CallIntMethod(axolotlCallbackObject, groupCmdReceiveCallback, message);
+
+    env->DeleteLocalRef(message);
+
+    return result;
+}
+
+/*
  * State change callback for AppInterfaceImpl.
  * 
  * "(J[B)V"
  */
-void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation)
+void messageStateReport(int64_t messageIdentifier, int32_t statusCode, const string& stateInformation)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -273,7 +341,31 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const stri
     if (!stateInformation.empty()) {
         information = stringToArray(env, stateInformation);
     }
-    env->CallVoidMethod(axolotlCallbackObject, stateReportCallback, messageIdentfier, statusCode, information);
+    env->CallVoidMethod(axolotlCallbackObject, stateReportCallback, messageIdentifier, statusCode, information);
+    if (information != NULL)
+        env->DeleteLocalRef(information);
+}
+
+/*
+ * State change callback for AppInterfaceImpl.
+ *
+ * "(J[B)V"
+ */
+void groupStateReport(int32_t statusCode, const string& stateInformation)
+{
+    if (axolotlCallbackObject == NULL)
+        return;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return;
+
+    jbyteArray information = NULL;
+    if (!stateInformation.empty()) {
+        information = stringToArray(env, stateInformation);
+    }
+    env->CallVoidMethod(axolotlCallbackObject, groupStateCallback, statusCode, information);
     if (information != NULL)
         env->DeleteLocalRef(information);
 }
@@ -447,8 +539,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         if (groupCmdReceiveCallback == NULL) {
             return -21;
         }
-        groupStateCallbackCallback = env->GetMethodID(callbackClass, "groupStateCallback", "(I[B)V");
-        if (groupStateCallbackCallback == NULL) {
+        groupStateCallback = env->GetMethodID(callbackClass, "groupStateCallback", "(I[B)V");
+        if (groupStateCallback == NULL) {
             return -22;
         }
     }
@@ -505,7 +597,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     }
     delete ownAxoConv;    // Not needed anymore here
 
-    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback);
+    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback, receiveGroupMessage,
+                                           receiveGroupCommand, groupStateReport);
     Transport* sipTransport = new SipTransport(axoAppInterface);
 
     /* ***********************************************************************************
@@ -986,6 +1079,8 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
             }
         }
         cJSON_Delete(root);
+    } else if (strcmp("clearGroupData", cmd) == 0) {
+        axoAppInterface->clearGroupData();
     }
     env->ReleaseStringUTFChars(command, cmd);
     return result;

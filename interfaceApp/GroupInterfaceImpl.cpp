@@ -698,3 +698,17 @@ int32_t AppInterfaceImpl::syncNewGroup(const cJSON *root) {
 }
 
 
+void AppInterfaceImpl::clearGroupData()
+{
+    shared_ptr<list<shared_ptr<cJSON> > > groups = store_->listAllGroups();
+
+    while (groups && !groups->empty()) {
+        shared_ptr<cJSON> group = groups->front();
+        groups->pop_front();
+        string groupId(Utilities::getJsonString(group.get(), GROUP_ID, ""));
+        store_->deleteAllMembers(groupId);
+        store_->deleteGroup(groupId);
+    }
+}
+
+

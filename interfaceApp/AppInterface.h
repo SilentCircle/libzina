@@ -48,8 +48,11 @@ public:
     AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL), notifyCallback_(NULL), groupMsgCallback_(NULL),
     groupCmdCallback_(NULL), groupStateReportCallback_(NULL) {}
 
-    AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback) : 
-                 receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback), notifyCallback_(notifyCallback) {}
+    AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                 GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback) :
+            receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback), notifyCallback_(notifyCallback),
+            groupMsgCallback_(groupMsgCallback), groupCmdCallback_(groupCmdCallback), groupStateReportCallback_(groupStateCallback)
+    {}
 
     virtual ~AppInterface() {}
 
