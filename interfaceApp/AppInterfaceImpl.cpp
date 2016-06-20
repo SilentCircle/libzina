@@ -1035,6 +1035,10 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         devices->pop_front();
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, user, recipientDeviceId);
         const DhPublicKey* idKey = axoConv->getDHIr();
+        if (idKey == NULL) {
+            delete axoConv;
+            continue;
+        }
 
         b64Encode(idKey->getPublicKeyPointer(), idKey->getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
