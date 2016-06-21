@@ -310,6 +310,16 @@ private:
      */
     bool isGroupActive(const string& groupId, const string& sender);
 
+    /**
+     * @brief Process a Hello group command.
+     *
+     * The receiver of the command inserts the member to the group.
+     *
+     * @param root The parsed cJSON data structure of the leave group command.
+     * @return OK if the message list was processed without error.
+     */
+    int32_t processHelloCommand(const cJSON* root);
+
 #ifndef UNITTESTS
     static string generateMsgIdTime() {
         uuid_t uuid = {0};

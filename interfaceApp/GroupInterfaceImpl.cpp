@@ -331,6 +331,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     }
     shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
     root = sharedRoot.get();
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, LIST_HASH, b64Hash.c_str());
 
     char *out = cJSON_PrintUnformatted(root);
@@ -342,7 +343,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     for (auto it = members->begin(); it != members->end(); ++it) {
         string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
         shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
-        vector<int64_t> *sipMsgIds = sendMessageInternal(recipient, msgId, messageDescriptor, attachmentDescriptor, newAttributes, devices, GROUP_MSG_NORMAL);
+        vector<int64_t> *sipMsgIds = sendMessageInternal(recipient, msgId, message, attachmentDescriptor, newAttributes, devices, GROUP_MSG_NORMAL);
         // If errorCode is 1: send to sibling devices and don't have a sibling
         if (sipMsgIds == nullptr && errorCode_ < 0) {
             LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
@@ -431,8 +432,10 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
         processMemberListAnswer(root);
     } else if (groupCommand.compare(REQ_MEMBER_LIST) == 0) {
         createMemberListAnswer(root);
-    } else if (groupCommand.compare(LEAVE) == 0 || groupCommand.compare(NOT_MEMBER)) {
+    } else if (groupCommand.compare(LEAVE) == 0 || groupCommand.compare(NOT_MEMBER) == 0) {
         processLeaveGroupCommand(root);
+    } else if (groupCommand.compare(HELLO) == 0) {
+        processHelloCommand(root);
     }
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -537,6 +540,7 @@ int32_t AppInterfaceImpl::processMemberListAnswer(const cJSON* root) {
     shared_ptr<cJSON> sharedHello(cJSON_CreateObject(), cJSON_deleter);
     cJSON* hello = sharedHello.get();
     cJSON_AddStringToObject(hello, GROUP_COMMAND, HELLO);
+    cJSON_AddStringToObject(hello, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(hello, MEMBER_ID, ownUser_.c_str());
 
     char *out = cJSON_PrintUnformatted(hello);
@@ -564,22 +568,20 @@ int32_t AppInterfaceImpl::processMemberListAnswer(const cJSON* root) {
     return OK;
 }
 
-bool AppInterfaceImpl::checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes) {
+bool AppInterfaceImpl::checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes)
+{
     LOGGER(INFO, __func__, " -->");
 
     // Get the member list hash computed by sender of message
     shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageAttributes.c_str()), cJSON_deleter);
     cJSON* root = sharedRoot.get();
     string remoteHash(Utilities::getJsonString(root, LIST_HASH, ""));
+    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
 
     // Get the group id (the recipient) and the message sender
     sharedRoot = shared_ptr<cJSON>(cJSON_Parse(msgDescriptor.c_str()), cJSON_deleter);
     root = sharedRoot.get();
     string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
-
-    shared_ptr<cJSON> sharedMessage(cJSON_Parse(Utilities::getJsonString(root, MSG_MESSAGE, "")), cJSON_deleter);
-    cJSON* message = sharedMessage.get();
-    string groupId(Utilities::getJsonString(message, MSG_RECIPIENT, ""));
 
     if (!isGroupActive(groupId, sender)) {
         LOGGER(INFO, __func__, " <-- no active group: ", groupId);
@@ -611,6 +613,8 @@ bool AppInterfaceImpl::isGroupActive(const string& groupId, const string& sender
 
 static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* store)
 {
+    LOGGER(INFO, __func__, " --> ");
+
     int32_t returnCode = OK;
     int32_t result = store->deleteAllMembers(groupId);
     if (SQL_FAIL(result)) {
@@ -636,7 +640,6 @@ static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* sto
 int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
     LOGGER(INFO, __func__, " -->");
 
-
     int32_t result;
     string msgId = generateMsgIdTime();
     string leaveCommand = leaveNotMemberCommand(groupId, ownUser_, true);
@@ -659,6 +662,8 @@ int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
 
 int32_t AppInterfaceImpl::processLeaveGroupCommand(const cJSON* root) {
 
+    LOGGER(INFO, __func__, " --> ");
+
     const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
     const string memberId(Utilities::getJsonString(root, MEMBER_ID, ""));
 
@@ -679,6 +684,8 @@ int32_t AppInterfaceImpl::processLeaveGroupCommand(const cJSON* root) {
 }
 
 int32_t AppInterfaceImpl::syncNewGroup(const cJSON *root) {
+    LOGGER(INFO, __func__, " --> ");
+
     // User accepted invitation, get necessary data and create group data in database
     string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
     string groupName(Utilities::getJsonString(root, GROUP_NAME, ""));
@@ -700,6 +707,7 @@ int32_t AppInterfaceImpl::syncNewGroup(const cJSON *root) {
 
 void AppInterfaceImpl::clearGroupData()
 {
+    LOGGER(INFO, __func__, " --> ");
     shared_ptr<list<shared_ptr<cJSON> > > groups = store_->listAllGroups();
 
     while (groups && !groups->empty()) {
@@ -708,6 +716,22 @@ void AppInterfaceImpl::clearGroupData()
         string groupId(Utilities::getJsonString(group.get(), GROUP_ID, ""));
         store_->deleteAllMembers(groupId);
         store_->deleteGroup(groupId);
+    }
+}
+
+
+int32_t AppInterfaceImpl::processHelloCommand(const cJSON *root) {
+    LOGGER(INFO, __func__, " --> ");
+
+    const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
+    const string memberId(Utilities::getJsonString(root, MEMBER_ID, ""));
+
+    if (!store_->isMemberOfGroup(groupId, memberId)) {
+        int32_t result = store_->insertMember(groupId, memberId);
+        if (SQL_FAIL(result)) {
+            LOGGER(ERROR, __func__, "Cannot store member: ", memberId, ", ", result);
+            return GROUP_MEMBER_NOT_STORED;
+        }
     }
 }
 

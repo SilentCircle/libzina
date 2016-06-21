@@ -369,6 +369,8 @@ public:
      * the string, encrypts it with the same key as the message data and puts it into the message
      * bundle. The same is true for the message attributes.
      *
+     * The function either amends existing message attributes with the JSON labels 'hash' and 'grpId'
+     * or creates a new set of message attributes that contains these two labels and their values.
      *
      * @param messageDescriptor      The JSON formatted message descriptor, required
      * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string

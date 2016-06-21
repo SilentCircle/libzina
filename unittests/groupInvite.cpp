@@ -354,6 +354,7 @@ static int groupMsgCallback(const string& messageDescriptor, const string& attac
     LOGGER(ERROR, __func__, " -->");
     callbackMessage = messageDescriptor;
     LOGGER(ERROR, messageDescriptor);
+    LOGGER(ERROR, messageAttributes);
     LOGGER(ERROR, __func__, " <--");
 }
 
@@ -388,7 +389,7 @@ public:
     }
 
     bool runReceiveAnswer() {
-        LOGGER_INSTANCE setLogLevel(VERBOSE);
+        LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         appInterface->receiveMessage(*messageEnvelope);
@@ -397,7 +398,7 @@ public:
     }
 
     bool runSendMessage() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
         string message = createMessageDescriptor(groupId, appInterface);
         appInterface->sendGroupMessage(message, Empty, Empty);
@@ -469,7 +470,7 @@ public:
 
 
     bool runReceive() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
         appInterface->receiveMessage(*messageEnvelope);
         bool result = checkMembersInDb(*store_2);
@@ -480,7 +481,7 @@ public:
     }
 
     bool runReceiveAfterLeave() {
-        LOGGER_INSTANCE setLogLevel(VERBOSE);
+        LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->receiveMessage(*messageEnvelope);
         bool result = checkMembersInDb(*store_2, true);
