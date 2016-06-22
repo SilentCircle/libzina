@@ -1213,8 +1213,11 @@ JNI_FUNCTION(getGroup)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray c
 
     setReturnCode(env, code, result);
     char *out = cJSON_PrintUnformatted(groupJson.get());
-    jbyteArray retArray = stringToArray(env, out);
-    free(out);
+    jbyteArray retArray = NULL;
+    if (out != NULL) {
+        retArray = stringToArray(env, out);
+        free(out);
+    }
     return retArray;
 }
 
