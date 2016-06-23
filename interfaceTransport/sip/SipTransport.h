@@ -47,7 +47,7 @@ public:
 
     SEND_DATA_FUNC getTransport() { return sendAxoData_; }
 
-    vector<int64_t>* sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs);
+    vector<int64_t>* sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs, uint32_t messageType);
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 

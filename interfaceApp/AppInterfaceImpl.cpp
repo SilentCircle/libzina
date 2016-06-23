@@ -56,15 +56,15 @@ AppInterfaceImpl::~AppInterfaceImpl()
     LOGGER(INFO, __func__, " <--");
 }
 
-static void createSupplementString(const string& attachementDesc, const string& messageAttrib, string* supplement)
+static void createSupplementString(const string& attachmentDesc, const string& messageAttrib, string* supplement)
 {
     LOGGER(INFO, __func__, " -->");
-    if (!attachementDesc.empty() || !messageAttrib.empty()) {
+    if (!attachmentDesc.empty() || !messageAttrib.empty()) {
         cJSON* msgSupplement = cJSON_CreateObject();
 
-        if (!attachementDesc.empty()) {
+        if (!attachmentDesc.empty()) {
             LOGGER(DEBUGGING, "Adding an attachment descriptor supplement");
-            cJSON_AddStringToObject(msgSupplement, "a", attachementDesc.c_str());
+            cJSON_AddStringToObject(msgSupplement, "a", attachmentDesc.c_str());
         }
 
         if (!messageAttrib.empty()) {
@@ -576,7 +576,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         delete msgPairs;
         return;
     }
-    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs, MSG_NORMAL);
     LOGGER(DEBUGGING, "Found new devices: ", returnMsgIds->size());
 
     delete msgPairs;
@@ -706,7 +706,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
     vector<int64_t>* returnMsgIds = NULL;
     if (!msgPairs->empty()) {
-        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+        LOGGER(INFO, "Sending messages to # devices: ", msgPairs->size());
+        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs, messageType);
         LOGGER(DEBUGGING, "Sent messages to # devices: ", returnMsgIds->size());
     }
     lck.unlock();
@@ -810,7 +811,7 @@ AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgI
         LOGGER(INFO, __func__, " <-- No pre-key message sent, sibling: ", toSibling);
         return NULL;
     }
-    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs, messageType);
     lck.unlock();
     LOGGER(DEBUGGING, "Sent initial pre-key messages to # devices: ", returnMsgIds->size());
     delete msgPairs;
@@ -1082,7 +1083,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
         delete msgPairs;
         return;
     }
-    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs, MSG_NORMAL);
     LOGGER(DEBUGGING, "Sent message to re-sync device: ", returnMsgIds->size());
 
     delete msgPairs;

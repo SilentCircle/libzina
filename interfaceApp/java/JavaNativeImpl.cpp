@@ -92,19 +92,19 @@ void Log(char const *format, ...) {
 // typedef void (*SEND_DATA_FUNC)(uint8_t* [], uint8_t* [], uint8_t* [], size_t [], uint64_t []);
 #ifdef UNITTESTS
 // names, devIds, envelopes, sizes, msgIds
-static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[])
+static bool sendDataFuncTesting(uint8_t* names, uint8_t* devIds, uint8_t* envelopes, size_t sizes, uint64_t msgIds)
 {
-    Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
+    Log("sendData: %s - %s - %s\n", names, devIds, envelopes);
 
-    string fName((const char*)names[0]);
-    fName.append((const char*)devIds[0]).append(".msg");
+    string fName((const char*)names);
+    fName.append((const char*)devIds).append(".msg");
 
     FILE* msgFile = fopen(fName.c_str(), "w");
 
-    size_t num = fwrite(envelopes[0], 1, sizes[0], msgFile);
+    size_t num = fwrite(envelopes, 1, sizes, msgFile);
     Log("Message file written: %d bytes\n", num);
     fclose(msgFile);
-    msgIds[0] = 4711;
+    return true;
 }
 
 static void receiveData(const string &msgFileName)
@@ -216,7 +216,7 @@ void loadAxolotl()
  * 
  * "([B[B[B)I"
  */
-int32_t receiveMessage(const string& messageDescriptor, const string& attachementDescriptor = string(), const string& messageAttributes = string())
+static int32_t receiveMessage(const string& messageDescriptor, const string& attachementDescriptor = string(), const string& messageAttributes = string())
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -259,7 +259,7 @@ int32_t receiveMessage(const string& messageDescriptor, const string& attachemen
  *
  * "([B[B[B)I"
  */
-int32_t receiveGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
+static int32_t receiveGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -302,7 +302,7 @@ int32_t receiveGroupMessage(const string& messageDescriptor, const string& attac
  *
  * "([B[B[B)I"
  */
-int32_t receiveGroupCommand(const string& commandMessage)
+static int32_t receiveGroupCommand(const string& commandMessage)
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -327,7 +327,7 @@ int32_t receiveGroupCommand(const string& commandMessage)
  * 
  * "(J[B)V"
  */
-void messageStateReport(int64_t messageIdentifier, int32_t statusCode, const string& stateInformation)
+static void messageStateReport(int64_t messageIdentifier, int32_t statusCode, const string& stateInformation)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -351,7 +351,7 @@ void messageStateReport(int64_t messageIdentifier, int32_t statusCode, const str
  *
  * "(J[B)V"
  */
-void groupStateReport(int32_t statusCode, const string& stateInformation)
+static void groupStateReport(int32_t statusCode, const string& stateInformation)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -375,7 +375,7 @@ void groupStateReport(int32_t statusCode, const string& stateInformation)
  * 
  * "(I[B[B)V"
  */
-void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
+static void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -412,7 +412,7 @@ void notifyCallback(int32_t notifyAction, const string& actionInformation, const
  */
 #define JAVA_HELPER
 #if defined JAVA_HELPER || defined UNITTESTS
-int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
+static int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -609,10 +609,11 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 #elif defined (EMBEDDED)
     // Functions defined in t_a_main module of silentphone library, this sends the data
     // via SIP message
-    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+//    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+    bool g_sendDataFuncAxoNew(uint8_t* names, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgIds);
     void t_setAxoTransport(Transport *transport);
 
-    sipTransport->setSendDataFunction(g_sendDataFuncAxo);
+    sipTransport->setSendDataFunction(g_sendDataFuncAxoNew);
     t_setAxoTransport(sipTransport);
 #else
 #error "***** Missing initialization."
