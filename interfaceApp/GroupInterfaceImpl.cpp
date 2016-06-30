@@ -435,6 +435,7 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
     } else if (groupCommand.compare(LEAVE) == 0 || groupCommand.compare(NOT_MEMBER) == 0) {
         processLeaveGroupCommand(root);
     } else if (groupCommand.compare(HELLO) == 0) {
+        groupCmdCallback_(commandIn);
         processHelloCommand(root);
     }
     LOGGER(INFO, __func__, " <--");
