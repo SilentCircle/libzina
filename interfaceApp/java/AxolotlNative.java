@@ -55,7 +55,7 @@ package axolotl;
  * it just works the other way around. This is the reason why the interface uses {@code byte[]}
  * and not {@code String}.
  */
-
+//**ANN** @SuppressWarnings({"unused", "JniMissingFunction"})
 public abstract class AxolotlNative { //  extends Service {  -- depends on the implementation of the real Java class
 
     /**
@@ -121,12 +121,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *         {@code getErrorInfo} have the details.
      */
     //**ANN** @WorkerThread
-    public static native long[] sendMessage(byte[] messageDescriptor, byte[] attachmentDescriptor, byte[] messageAttributes);
+    public static native long[] sendMessage(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
+                                            /*!@Nullable!*/ byte[] messageAttributes);
 
     /**
      * Send message to sibling devices.
      *
-     * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
+     * Similar to {@code sendMessage, however send this data to sibling devices, i.e. to other devices that
      * belong to a user. The client uses function for send synchronization message to the siblings to
      * keep them in sync.
      *
@@ -139,7 +140,8 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *         failed.
      */
     //**ANN** @WorkerThread
-    public static native long[] sendMessageToSiblings(byte[] messageDescriptor, byte[] attachmentDescriptor, byte[] messageAttributes);
+    public static native long[] sendMessageToSiblings(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
+                                                      /*!@Nullable!*/ byte[] messageAttributes);
 
     /**
      * Request names of known trusted Axolotl user identities.
@@ -391,6 +393,215 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     //**ANN** @WorkerThread
     public abstract void notifyCallback(int notifyActionCode, byte[] actionInformation, byte[] deviceId);
 
+
+    // *************************************************************
+    // Group chat functions and callbacks
+    // *************************************************************
+
+    /**
+     * Create a new group and assign ownership to the creator
+     *
+     * The function creates a new group and assigns the group's ownership to the creator.
+     *
+     * The function sets the group's size to {@code Constants::DEFAULT_GROUP_SIZE}.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param groupName The name of the new group
+     * @param groupDescription Group description, purpose of the group, etc
+     * @param maxMembers Maximum number of group members. If this number is bigger than a system
+     *                   defined maximum number then the function does not create the group.
+     * @return the group's UUID, if the string is empty then group creation failed, use
+     *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
+     */
+    public static native String createNewGroup(/*!@NonNull!*/ byte[] groupName, /*!@NonNull!*/ byte[] groupDescription, int maxMembers);
+
+    /**
+     * Modify number maximum group member.
+     *
+     * Only the group owner can modify the number of maximum members.
+     *
+     * If the new size would be less than current active group member the function fails
+     * and returns {@code false.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param newSize New maximum group members
+     * @param groupUuid The group id
+     * @return {@code} true if new size could be set, {@code false} otherwise, use
+     *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
+     */
+    public static native boolean modifyGroupSize(/*!@NonNull!*/ String groupUuid, int newSize);
+
+    /**
+     * Get data of all known groups.
+     *
+     * Creates and returns JSON data structures that contain the groups' data.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
+     * @return Byte array of JSON formatted data as byte array.
+     */
+    public static native byte[][] listAllGroups(/*!@NonNull!*/ int[] code);
+
+    /**
+     * Get data of a single group.
+     *
+     * Returns a JSON data structure that contains the group's data.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
+     * @return Byte array of JSON formatted data
+     */
+    public static native byte[] getGroup(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ int[] code);
+
+    /**
+     * Get all members of a specified group.
+     *
+     * Creates and returns a list of JSON data structures that contain the group's
+     * members data.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
+     * @return Byte array of JSON formatted data as byte array.
+     */
+    public static native byte[][]  getAllGroupMembers(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ int[] code);
+
+    /**
+     * Get a member of a specified group.
+     *
+     * Creates and returns a JSON data structure that contains the member's data.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
+     * @return Byte array of JSON formatted data
+     */
+    public static native byte[] getGroupMember(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[]memberUuid, /*!@NonNull!*/ int[] code);
+
+    /**
+     * Invite a user to a group.
+     *
+     * @param groupUuid Invite for this group
+     * @param userId The invited user's unique id
+     * @return {@code OK} if function could send invitation, error code (<0) otherwise
+     */
+    //**ANN** @WorkerThread
+    public static native int inviteUser(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[] userId);
+
+    /**
+     * Answer a group Invitation.
+     *
+     * The invited user may accept or decline a group invitation. In case the user accepts
+     * the invitation the functions prepares the group data structures in this client, sends
+     * out a synchronization command to its siblings and then sends an invite accepted
+     * to the inviting user.
+     *
+     * Only the invited user calls this function.
+     *
+     * If the user declines the invitation the functions just sends a invitation declined with
+     * an optional reason string to the inviting user.
+     *
+     * @param command the command string as received in the {@code groupCmdReceive}. The callback
+     *                function should not modify this command string.
+     * @param accept If true the user accepted the invitation, if false the user declined the invitation.
+     * @param reason In case the user declined a reason why the user declined the invitation. The
+     *               string maybe empty.
+     * @return {@code OK} if function could send invitation, error code (<0) otherwise
+     */
+    //**ANN** @WorkerThread
+    public static native int answerInvitation(/*!@NonNull!*/ byte[] command, boolean accept, /*!@Nullable!*/ byte[] reason);
+
+    /**
+     * Send a message to a group with an optional attachment and attributes.
+     *
+     * Takes JSON formatted message descriptor and send the message. The function accepts
+     * an optional JSON formatted attachment descriptor and sends the attachment data to the
+     * recipient together with the message.
+     *
+     * This is a blocking call and the function returns after the transport layer accepted the
+     * message and returns.
+     *
+     * The {@code sendMessage} function does not interpret or re-format the attachment descriptor. It takes
+     * the string, encrypts it with the same key as the message data and puts it into the message
+     * bundle. The same is true for the message attributes.
+     *
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return {@code OK} if function could send the message, error code (<0) otherwise
+     */
+    //**ANN** @WorkerThread
+    public static native int sendGroupMessage(/*!@NonNull!*/ byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
+                                              /*!@Nullable!*/ byte[] messageAttributes);
+
+    /**
+     * Leave a group.
+     *
+     * The application (UI part) calls this function to remove this member from the
+     * group. The functions sends a 'leave group' command to all members of the group,
+     * including it's own sibling devices and then removes the group data.
+     *
+     * @param groupId The group to leave
+     * @return {@code OK} if 'leave group' processing was OK, error code (<0) otherwise
+     */
+    //**ANN** @WorkerThread
+    public static native int leaveGroup(/*!@NonNull!*/ String groupId);
+
+    /**
+     * Callback to UI to receive a normal group message.
+     *
+     * JSON format TBD
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor   A string that contains an attachment descriptor. An empty string
+     *                               shows that no attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return Either success of an error code (to be defined)
+     */
+    public abstract int groupMsgReceive(byte[]messageDescriptor, byte[]attachmentDescriptor, byte[] messageAttributes);
+
+    /**
+     * Callback to UI to receive a group command message.
+     *
+     * JSON format TBD
+     *
+     * @param commandMessage  A JSON formatted string that contains the command message.
+     * @return Either success of an error code (to be defined)
+     */
+    public abstract int groupCmdReceive(byte[] commandMessage);
+
+    /**
+     * Callback to UI for a Group Message state change report
+     *
+     * The Axolotl library uses this callback function to report message state changes to the UI.
+     * The library reports message state changes for sending and it also reports if it
+     * received a message but could not process it, for example decryption failed.
+     *
+     * @param errorCode          The error code
+     * @param stateInformation   JSON formatted stat information block that contains the details about
+     *                           the new state or some error information.
+     */
+    public abstract void groupStateCallback(int errorCode, byte[] stateInformation);
+
+
     /*
      ***************************************************************
      * Below the native interfaces for the repository database
@@ -545,22 +756,22 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * is the newest message. This function provides several ways to select the set of message
      * records to return:
      *
-     * If @c direction is -1 then the functions takes offset (in case of -1 the highest available
-     * message number) and retrieves @c number messages. It sorts the message
+     * If {@code direction} is -1 then the functions takes offset (in case of -1 the highest available
+     * message number) and retrieves {@code number} messages. It sorts the message
      * records is descending order, thus the newest message is the first in the returned vector.
      *
-     * If @c direction is 1 then the function takes @c offset as a sequence number of a
-     * record and starts to select @c number of records or until the end of the record table,
+     * If {@code direction} is 1 then the function takes {@code offset} as a sequence number of a
+     * record and starts to select {@code number} of records or until the end of the record table,
      * sorted in ascending order.
      *
-     * If @c offset and @c number are both -1 the the functions return all message records,
+     * If {@code offset} and {@code number} are both -1 the the functions return all message records,
      * sorted in descending order.
      *
-     * If @c direction is not -1 or 1 and if @c offset and @c number are not -1 then the function
-     * selects records between @c offset and @c offset+number-1 .
+     * If {@code direction} is not -1 or 1 and if {@code offset} and {@code number} are not -1 then the function
+     * selects records between {@code offset} and {@code offset+number-1} .
      *
      * The functions returns the sequence number of the last (oldest) event record, i.e. the
-     * smallest found sequence number in case @c direction is -1 and largest sequence number in
+     * smallest found sequence number in case {@code direction} is -1 and largest sequence number in
      * all other cases.
      *
      * This function does no trigger any network actions, save to run from UI thread, maybe
@@ -999,7 +1210,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * The function accesses the provisioning server to get a fresh set of user data.
      *
      * @param alias the alias name/number or the UUID
-     * @param authorization the authorization data, can be empty if @c cacheOnly is @c true
+     * @param authorization the authorization data, can be empty if {@code cacheOnly} is {@code true}
      * @param cacheOnly If true only look in the cache, don't contact server if not in cache
      * @return  a JSON formatted string as UTF byte array or {@code null} if no user data exists
      *         for the alias.

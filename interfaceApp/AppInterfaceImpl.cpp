@@ -14,20 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include "AppInterfaceImpl.h"
-#include "MessageEnvelope.pb.h"
 
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../axolotl/AxoPreKeyConnector.h"
 #include "../axolotl/ratchet/AxoRatchet.h"
 
 #include "../keymanagment/PreKeys.h"
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
-#include "../util/UUID.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../logging/AxoLogging.h"
 #include "../storage/MessageCapture.h"
+#include "MessageEnvelope.pb.h"
+#include "JsonStrings.h"
 
 #include <zrtp/crypto/sha256.h>
 
@@ -40,9 +39,10 @@ using namespace axolotl;
 void Log(const char* format, ...);
 
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
-                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback):
-                                   AppInterface(receiveCallback, stateReportCallback, notifyCallback), tempBuffer_(NULL), tempBufferSize_(0),
-                                   ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
+                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                                   GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
+                                   AppInterface(receiveCallback, stateReportCallback, notifyCallback, groupMsgCallback, groupCmdCallback, groupStateCallback),
+                                   tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
                                    errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false)
 {
     store_ = SQLiteStoreConv::getStore();
@@ -56,15 +56,15 @@ AppInterfaceImpl::~AppInterfaceImpl()
     LOGGER(INFO, __func__, " <--");
 }
 
-static void createSupplementString(const string& attachementDesc, const string& messageAttrib, string* supplement)
+static void createSupplementString(const string& attachmentDesc, const string& messageAttrib, string* supplement)
 {
     LOGGER(INFO, __func__, " -->");
-    if (!attachementDesc.empty() || !messageAttrib.empty()) {
+    if (!attachmentDesc.empty() || !messageAttrib.empty()) {
         cJSON* msgSupplement = cJSON_CreateObject();
 
-        if (!attachementDesc.empty()) {
+        if (!attachmentDesc.empty()) {
             LOGGER(DEBUGGING, "Adding an attachment descriptor supplement");
-            cJSON_AddStringToObject(msgSupplement, "a", attachementDesc.c_str());
+            cJSON_AddStringToObject(msgSupplement, "a", attachmentDesc.c_str());
         }
 
         if (!messageAttrib.empty()) {
@@ -95,18 +95,20 @@ vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, 
     string recipient;
     string msgId;
     string message;
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
 
     LOGGER(INFO, __func__, " -->");
+
+    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
     if (parseResult < 0) {
         errorCode_ = parseResult;
         LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
         return NULL;
     }
-    return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes);
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
+    return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes, devices);
 }
 
-vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachementDescriptor, 
+vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor,
                                                          const string& messageAttributes)
 {
     string recipient;
@@ -120,7 +122,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
         LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
         return NULL;
     }
-    return sendMessageInternal(ownUser_, msgId, message, attachementDescriptor, messageAttributes);
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(ownUser_, ownUser_);
+    return sendMessageInternal(ownUser_, msgId, message, attachmentDescriptor, messageAttributes, devices);
 }
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, 
@@ -154,7 +157,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope)
 {
     return receiveMessage(messageEnvelope, Empty, Empty);
 }
-
 
 int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName)
 {
@@ -190,12 +192,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
-
-    // ****** TODO -- remove once group chat becomes availabe
-    // **** this is for backward compatibility only --- remove once group chat becomes availabe
-    if (envelope.has_msgtype() && envelope.msgtype() >= 11)
-        return OK;
-    // **** Until here
 
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
@@ -280,7 +276,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         size_t msgLen = min(message.size(), (size_t)500);
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
-        messageStateReport(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
+        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
         LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         return errorCode_;
     }
@@ -335,34 +331,17 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, attributesDescr, !attachmentDescr.empty());
 
-    receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+    if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL) {
+        int32_t result = processGroupMessage(envelope, msgDescriptor, attachmentDescr, attributesDescr);
+        if (result != OK) {
+            groupStateReportCallback_(result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId));
+        }
+    }
+    else {
+        receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+    }
     LOGGER(INFO, __func__, " <--");
     return OK;
-}
-
-/*
-JSON state information block:
-{   
-    "version":    <int32_t>,            # Version of the JSON known users structure,
-                                        # 1 for the first implementation
-    "code":       <int32_t>,            # success, error codes (code values to be 
-                                        # defined)
-    "details": {                        # optional, in case of error code it includes
-                                        # detail information
-        "name":      <string>,          # optional, name of sender/recipient of message,
-                                        # if known
-        "scClientDevId" : <string>,     # the same string as used to register the 
-                                        # device (v1/me/device/{device_id}/)
-        "otherInfo": <string>           # optional, additional info, e.g. SIP server 
-                                        # messages
-    }
-}
-*/
-void AppInterfaceImpl::messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation)
-{
-    LOGGER(INFO, __func__, " -->");
-    stateReportCallback_(messageIdentfier, statusCode, stateInformation);
-    LOGGER(INFO, __func__, " <--");
 }
 
 string* AppInterfaceImpl::getKnownUsers()
@@ -476,7 +455,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
     }
     delete preList;
 
-    char *out = cJSON_Print(root);
+    char *out = cJSON_PrintUnformatted(root);
     string registerRequest(out);
     cJSON_Delete(root); free(out);
 
@@ -510,15 +489,11 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
 // and if yes send a "ping" message to the new devices to create an Axolotl conversation
 // for the new devices.
 
-// This is the ping command the code sends to new devices to create an Axolotl setup
-static string ping("{\"cmd\":\"ping\"}");
-
 void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(INFO, __func__, " -->");
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(userName, authorization_);
-    if (devices == NULL || devices->empty()) {
-        delete devices;
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    if (!devices|| devices->empty()) {
         return;
     }
 
@@ -581,16 +556,10 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             }
             continue;
         }
-        uuid_t pingUuid = {0};
-        uuid_string_t uuidString = {0};
-
-        uuid_generate_time(pingUuid);
-        uuid_unparse(pingUuid, uuidString);
-        string msgId(uuidString);
 
         LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
         shared_ptr<string> convState = make_shared<string>();
-        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs, convState);
+        int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, generateMsgIdTime(), msgPairs, convState);
         convState->clear();
         if (result == 0)   // no pre-key bundle available for name/device-id combination
             continue;
@@ -598,18 +567,16 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         // This is always a security issue: return immediately, don't process and send a message
         if (result < 0) {
             delete msgPairs;
-            delete devices;
             return;
         }
     }
     lck.unlock();
-    delete devices;
 
     if (msgPairs->empty()) {
         delete msgPairs;
         return;
     }
-    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs, MSG_NORMAL);
     LOGGER(DEBUGGING, "Found new devices: ", returnMsgIds->size());
 
     delete msgPairs;
@@ -627,7 +594,8 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 // *******************************
 
 vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, const string& msgId, const string& message,
-                                                       const string& attachementDescriptor, const string& messageAttributes)
+                                                       const string& attachmentDescriptor, const string& messageAttributes,
+                                                       shared_ptr<list<string> > devices, uint32_t messageType)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -635,30 +603,14 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
     bool toSibling = recipient == ownUser_;
 
-    shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
     size_t numDevices = devices->size();
-
+    // No device -> this is a new user, prepare setup, get pre-keys, etc.
     if (numDevices == 0) {
-        vector<pair<string, string> >* msgPairs = sendMessagePreKeys(recipient, msgId, message, attachementDescriptor, messageAttributes);
-
-        // Either no device registered for recipient or some error occurred.
-        if (msgPairs == NULL) {
-            LOGGER(DEBUGGING, "Cannot send initial pre-key message to: ", recipient, ", code: ", errorCode_);
-            LOGGER(INFO, __func__, " <--");
-            return NULL;
-        }
-        unique_lock<mutex> lck(convLock);
-        vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
-        lck.unlock();
-        LOGGER(DEBUGGING, "Sent initial pre-key messages to # devices: ", returnMsgIds->size());
-        delete msgPairs;
-
-        LOGGER(INFO, __func__, " <-- Initial pre-key message sent.");
-        return returnMsgIds;
+        return sendMessagePreKeys(recipient, msgId, message, attachmentDescriptor, messageAttributes, shared_ptr<list<string> >(), messageType);
     }
 
     string supplements;
-    createSupplementString(attachementDescriptor, messageAttributes, &supplements);
+    createSupplementString(attachmentDescriptor, messageAttributes, &supplements);
 
     // Prepare the messages for all known device of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
@@ -668,7 +620,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         string recipientDeviceId = devices->front();
         devices->pop_front();
 
-        // Don't send this to sender device, even when sending to my sibbling devices
+        // Don't send this to sender device, even when sending to my sibling devices
         if (toSibling && recipientDeviceId == scClientDevId_) {
             continue;
         }
@@ -699,7 +651,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         string convState(out);
         cJSON_Delete(convJson); free(out);
 
-        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, convState, messageAttributes, !attachementDescriptor.empty());
+        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, convState, messageAttributes, !attachmentDescriptor.empty());
 
         bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
         /*
@@ -716,6 +668,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         envelope.set_name(ownUser_);
         envelope.set_scclientdevid(scClientDevId_);
         envelope.set_msgid(msgId);
+        envelope.set_msgtype(messageType);
         if (!supplementsEncrypted->empty())
             envelope.set_supplement(*supplementsEncrypted);
         envelope.set_message(*wireMessage);
@@ -727,7 +680,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
         uint8_t binDevId[20];
         size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
-        if (res != 0)
+        if (res == 0)
             envelope.set_recvdevidbin(binDevId, 4);
 //        envelope.set_recvdeviceid(recipientDeviceId);
 
@@ -753,7 +706,8 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
 
     vector<int64_t>* returnMsgIds = NULL;
     if (!msgPairs->empty()) {
-        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs);
+        LOGGER(INFO, "Sending messages to # devices: ", msgPairs->size());
+        returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs, messageType);
         LOGGER(DEBUGGING, "Sent messages to # devices: ", returnMsgIds->size());
     }
     lck.unlock();
@@ -763,22 +717,31 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
     return returnMsgIds;
 }
 
-vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
-                                                                    const string& attachementDescriptor, const string& messageAttributes)
+vector<int64_t>*
+AppInterfaceImpl::sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
+                                     const string& attachmentDescriptor, const string& messageAttributes,
+                                     shared_ptr<list<string> > toDeviceOnly, uint32_t messageType)
 {
     LOGGER(INFO, __func__, " -->");
 
     string supplements;
-    createSupplementString(attachementDescriptor, messageAttributes, &supplements);
+    createSupplementString(attachmentDescriptor, messageAttributes, &supplements);
 
     bool toSibling = recipient == ownUser_;
 
-    list<pair<string, string> >* devices = NULL;
+    string toThisDevice;
+    if (toDeviceOnly && toDeviceOnly->size() == 1) {
+        toThisDevice = toDeviceOnly->front();
+        toDeviceOnly->pop_front();
+    }
+
+    shared_ptr<list<pair<string, string> > > devices;
+
     int32_t errorCode = 0;
     if (!toSibling || !ownChecked_) {
         devices = Provisioning::getAxoDeviceIds(recipient, authorization_, &errorCode);
     }
-    if (devices == NULL) {
+    if (!devices) {
         char tmpBuff[20];
         snprintf(tmpBuff, 10, "%d", errorCode);
         string errorString(tmpBuff);
@@ -792,7 +755,6 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
     if (devices->empty()) {
         errorCode_ = NO_DEVS_FOUND;
         errorInfo_ = recipient;
-        delete devices;
         LOGGER(DEBUGGING, "No device registered for recipient: ", recipient);
         LOGGER(INFO, __func__, " <-- No device.");
         return NULL;
@@ -807,12 +769,16 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         string recipientDeviceName = devices->front().second;
         devices->pop_front();
 
+        // Send only to the selected device
+        if (!toThisDevice.empty() && toThisDevice != recipientDeviceId)
+            continue;
+
         // Don't send this to sender device, even when sending to my sibling devices
         if (toSibling && recipientDeviceId == scClientDevId_) {
             continue;
         }
         shared_ptr<string> convState = make_shared<string>();
-        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, recipientDeviceName, message, supplements, msgId, msgPairs, convState);
+        int32_t result = createPreKeyMsg(recipient, recipientDeviceId, recipientDeviceName, message, supplements, msgId, msgPairs, convState, messageType);
         if (result == 0) {  // no pre-key bundle available for name/device-id combination
             LOGGER(DEBUGGING, "No pre-key bundle available for recipient ", recipient, ", device id: ", recipientDeviceId);
             continue;
@@ -821,7 +787,6 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         // This is always a security issue: return immediately, don't process and send a message
         if (result < 0) {
             delete msgPairs;
-            delete devices;
             errorCode_ = result;
             errorInfo_ = recipientDeviceId;
             LOGGER(ERROR, "Failed to create pre-key message, code ", result, ", recipient: ", recipient,
@@ -829,11 +794,9 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
             LOGGER(INFO, __func__, " <-- No pre-key message.");
             return NULL;
         }
-        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, *convState, messageAttributes, !attachementDescriptor.empty());
+        MessageCapture::captureSendMessage(recipient, msgId, recipientDeviceId, *convState, messageAttributes, !attachmentDescriptor.empty());
         convState->clear();
     }
-    lck.unlock();
-    delete devices;
 
     if (msgPairs->empty()) {
         delete msgPairs;
@@ -843,13 +806,18 @@ vector<pair<string, string> >* AppInterfaceImpl::sendMessagePreKeys(const string
         }
         else {
             ownChecked_ = true;
+            errorCode_ = OK;
         }
-        LOGGER(DEBUGGING, "No pre-key message sent to: ", recipient);
-        LOGGER(INFO, __func__, " <-- No pre-key message sent.");
+        LOGGER(INFO, __func__, " <-- No pre-key message sent, sibling: ", toSibling);
         return NULL;
     }
-    LOGGER(INFO, __func__, " <--");
-    return msgPairs;
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(recipient, msgPairs, messageType);
+    lck.unlock();
+    LOGGER(DEBUGGING, "Sent initial pre-key messages to # devices: ", returnMsgIds->size());
+    delete msgPairs;
+
+    LOGGER(INFO, __func__, " <-- Initial pre-key message sent.");
+    return returnMsgIds;
 }
 
 
@@ -859,50 +827,50 @@ int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, st
     cJSON* cjTemp;
     char* jsString;
 
-    cJSON* root = cJSON_Parse(messageDescriptor.c_str());
+    // wrap the cJSON root into a shared pointer with custom cJSON deleter, this
+    // will always free the cJSON root when we leave the function :-) .
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageDescriptor.c_str()), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
     if (root == NULL) {
         errorInfo_ = "root";
-        goto cleanup;
+        return GENERIC_ERROR;
     }
-    cjTemp = cJSON_GetObjectItem(root, "recipient");
+    cjTemp = cJSON_GetObjectItem(root, MSG_RECIPIENT);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = "recipient";
-        goto cleanup;
+        errorInfo_ = MSG_RECIPIENT;
+        return JS_FIELD_MISSING;
     }
     recipient->assign(jsString);
 
     // Get the message id
-    cjTemp = cJSON_GetObjectItem(root, "msgId");
+    cjTemp = cJSON_GetObjectItem(root, MSG_ID);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = "msgId";
-        goto cleanup;
+        errorInfo_ = MSG_ID;
+        return JS_FIELD_MISSING;
     }
     msgId->assign(jsString);
 
     // Get the message
-    cjTemp = cJSON_GetObjectItem(root, "message");
+    cjTemp = cJSON_GetObjectItem(root, MSG_MESSAGE);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = "message";
-        goto cleanup;
+        errorInfo_ = MSG_MESSAGE;
+        return JS_FIELD_MISSING;
     }
     message->assign(jsString);
-    cJSON_Delete(root);    // Done with JSON root for message data
-//    LOGGER(INFO, __func__, " <--");
-    return OK;
 
-cleanup:
-    cJSON_Delete(root);    // Done with JSON root for message data
-    LOGGER(INFO, __func__, " <-- with error: ", errorInfo_);
-    return JS_FIELD_MISSING;
+    LOGGER(INFO, __func__, " -->");
+    return OK;
 }
 
 
 int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string& recipientDeviceId, const string& recipientDeviceName,
                                           const string& message, const string& supplements,
-                                          const string& msgId, vector<pair<string, string> >* msgPairs, shared_ptr<string> convState)
+                                          const string& msgId, vector<pair<string, string> >* msgPairs, shared_ptr<string> convState,
+                                          uint32_t messageType)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -933,7 +901,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     pair<string, string> idHashes;
     shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
     axoConv->storeConversation();
-    convJson = axoConv->prepareForCapture(convJson, true);
+    convJson = axoConv->prepareForCapture(convJson, false);
     delete axoConv;
 
     if (!wireMessage) {
@@ -959,6 +927,7 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
     envelope.set_msgid(msgId);
+    envelope.set_msgtype(messageType);
     if (!supplementsEncrypted->empty())
         envelope.set_supplement(*supplementsEncrypted);
     envelope.set_message(*wireMessage);
@@ -967,9 +936,9 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
         envelope.set_senderidhash(idHashes.second.data(), 4);
     }
 
-    uint8_t binDevId[20];
+    uint8_t binDevId[20] = {0};
     size_t res = hex2bin(recipientDeviceId.c_str(), binDevId);
-    if (res != 0)
+    if (res == 0)
         envelope.set_recvdevidbin(binDevId, 4);
 //    envelope.set_recvdeviceid(recipientDeviceId);
     wireMessage.reset();
@@ -1075,9 +1044,8 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     delete(conv);
 
     // Check if server still knows this device, if no device at all -> remove conversation.
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(userName, authorization_);
-    if (devices == NULL || devices->empty()) {
-        delete devices;
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    if (!devices || devices->empty()) {
         store_->deleteConversation(userName, deviceId, ownUser_);
         return;
     }
@@ -1090,7 +1058,6 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
             break;
         }
     }
-    delete(devices);
 
     // The server does not know this device anymore. In this case remove the conversation.
     if (!deviceFound) {
@@ -1103,16 +1070,10 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
     // Prepare the ping message for this device
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
-    uuid_t pingUuid = {0};
-    uuid_string_t uuidString = {0};
-
-    uuid_generate_time(pingUuid);
-    uuid_unparse(pingUuid, uuidString);
-    string msgId(uuidString);
 
     LOGGER(DEBUGGING, "Send Ping to re-sync device: ", deviceId);
     shared_ptr<string> convState = make_shared<string>();
-    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, msgId, msgPairs, convState);
+    int32_t result = createPreKeyMsg(userName, deviceId, deviceName, Empty, supplements, generateMsgIdTime(), msgPairs, convState);
     convState->clear();
 
     // This is always a security issue: return immediately, don't process and send a message
@@ -1126,7 +1087,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
         delete msgPairs;
         return;
     }
-    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs);
+    vector<int64_t>* returnMsgIds = transport_->sendAxoMessage(userName, msgPairs, MSG_NORMAL);
     LOGGER(DEBUGGING, "Sent message to re-sync device: ", returnMsgIds->size());
 
     delete msgPairs;

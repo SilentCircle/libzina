@@ -13,22 +13,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include <limits.h>
 
+#include <zrtp/crypto/sha256.h>
+#include <zrtp/crypto/sha2.h>
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
 #include "../axolotl/crypto/DhKeyPair.h"
 #include "../axolotl/crypto/Ec255PrivateKey.h"
 #include "../axolotl/crypto/Ec255PublicKey.h"
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
 
 #include "gtest/gtest.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
 #include "../logging/AxoLogging.h"
-#include <iostream>
-#include <string>
+#include "../interfaceApp/JsonStrings.h"
+#include "../Constants.h"
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
@@ -202,6 +202,249 @@ TEST_F(StoreTestFixture, MsgTraceStore)
     ASSERT_TRUE(records->empty());
 }
 
+static string groupId_1("6ba7b810-9dad-11d1-80b4-00c04fd43001");
+static string groupId_2("6ba7b810-9dad-11d1-80b4-00c04fd43002");
+
+static string groupName_1("group1");
+static string groupName_2("group2");
+
+static string ownName("ulocalowner");
+static string groupOwner("ugroupowner");
+
+static string groupDescription("This is a description");
+
+static string memberId_1("6ba7b810-9dad-11d1-80b4-00c04fd43101");
+static string memberId_2("6ba7b810-9dad-11d1-80b4-00c04fd43102");
+
+static string deviceId_1("device_1");
+static string deviceId_2("device_2");
+
+static int32_t getJsonInt(cJSON* root, const char* tag, int32_t error)
+{
+    cJSON* jsonItem = cJSON_GetObjectItem(root, tag);
+    if (jsonItem == NULL)
+        return error;
+    return jsonItem->valueint;
+}
+
+static const char* getJsonString(cJSON* root, const char* tag, const char* error)
+{
+    cJSON* jsonItem = cJSON_GetObjectItem(root, tag);
+    if (jsonItem == NULL)
+        return error;
+    return jsonItem->valuestring;
+}
+
+TEST_F(StoreTestFixture, GroupChatStore)
+{
+    uint8_t hash_1[SHA256_DIGEST_LENGTH];
+    sha256((uint8_t*)memberId_1.c_str(), static_cast<uint32_t >(memberId_1.length()), hash_1);
+
+    uint8_t hash_2[SHA256_DIGEST_LENGTH];
+    sha256_ctx *ctx = reinterpret_cast<sha256_ctx*>(createSha256Context());
+    sha256Ctx(ctx, (uint8_t*)memberId_1.c_str(), static_cast<uint32_t >(memberId_1.length()));
+    sha256Ctx(ctx, (uint8_t*)memberId_2.c_str(), static_cast<uint32_t >(memberId_2.length()));
+    closeSha256Context(ctx, hash_2);
+
+    // Fresh DB, groups must be empty
+    shared_ptr<list<shared_ptr<cJSON> > > groups = pks->listAllGroups();
+    ASSERT_TRUE(groups->empty());
+
+    shared_ptr<cJSON> group = pks->listGroup(groupId_1);
+    ASSERT_FALSE((bool)group);
+
+    // Fresh DB, members must be empty
+    shared_ptr<list<shared_ptr<cJSON> > > members = pks->getAllGroupMembers(groupId_1);
+    ASSERT_TRUE(members->empty());
+
+    shared_ptr<cJSON> member = pks->getGroupMember(groupId_1, memberId_1);
+    ASSERT_FALSE((bool)member);
+
+    bool has = pks->hasGroup(groupId_1);
+    ASSERT_FALSE(has);
+
+    int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    has = pks->hasGroup(groupId_1);
+    ASSERT_TRUE(has);
+
+    // Group attributes are initialized to 0
+    pair<int32_t, time_t> attrTime = pks->getGroupAttribute(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, attrTime.first);
+
+    // Set two attribute bits
+    result = pks->setGroupAttribute(groupId_1, 3);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Clear lowest bit
+    result = pks->clearGroupAttribute(groupId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    attrTime = pks->getGroupAttribute(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(2, attrTime.first);
+
+    groups = pks->listAllGroups(&result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, groups->size());
+    cJSON* root = groups->front().get();
+    ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+
+    result = pks->modifyGroupMaxMembers(groupId_1, 30);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(30, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+
+    // Add a ratchet conversation for the member, use some dummy data. Keys are
+    // important here
+    pks->storeConversation(memberId_1, deviceId_1, ownName, attrib, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Add ratchet conversation for a second member
+    pks->storeConversation(memberId_2, deviceId_2, ownName, attrib, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Add a group member.
+    result = pks->insertMember(groupId_1, memberId_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    uint8_t hash_db[SHA256_DIGEST_LENGTH];
+    result = pks->memberListHash(groupId_1, hash_db);
+    ASSERT_EQ(0, memcmp(hash_db, hash_1, SHA256_DIGEST_LENGTH));
+
+    // Member attributes are initialized to ACTIVE
+    attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(ACTIVE, attrTime.first);
+
+    // Set two attribute bits
+    result = pks->setMemberAttribute(groupId_1, memberId_1, 3);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Clear lowest bit - the ACTIVE bit
+    result = pks->clearMemberAttribute(groupId_1, memberId_1, ACTIVE);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    attrTime = pks->getMemberAttribute(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(2, attrTime.first);
+
+    // Get group again, check member count - must be 1
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(1, getJsonInt(root, GROUP_MEMBER_COUNT, -1));
+
+    // List all members of a group, should return a list with size 1 and the correct data
+    members = pks->getAllGroupMembers(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, members->size());
+    root = members->front().get();
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+    ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
+
+    // Add a second group member.
+    result = pks->insertMember(groupId_1, memberId_2);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Because the first member has its ACTIVE bit cleared above that record
+    // is not part of the has, thus this must fail
+    result = pks->memberListHash(groupId_1, hash_db);
+    ASSERT_NE(0, memcmp(hash_db, hash_2, SHA256_DIGEST_LENGTH));
+
+    // set the member's ACTIVE bit, repeat hash check, this time it must
+    // succeed
+    result = pks->setMemberAttribute(groupId_1, memberId_1, ACTIVE);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    result = pks->memberListHash(groupId_1, hash_db);
+    ASSERT_EQ(0, memcmp(hash_db, hash_2, SHA256_DIGEST_LENGTH));
+
+    bool isAMember = pks->isMemberOfGroup(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(isAMember);
+
+    isAMember = pks->isGroupMember(memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(isAMember);
+
+    // List one member of a group
+    member = pks->getGroupMember(groupId_1, memberId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = member.get();
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+    ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
+
+    // Try to delete the group with existing members, must fail with code 19 (SQLITE_CONSTRAINT)
+    result = pks->deleteGroup(groupId_1);
+    ASSERT_TRUE(SQL_FAIL(result));
+    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
+
+    // Try to delete conversation of the group member, must fail with code 19 (SQLITE_CONSTRAINT)
+    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
+    ASSERT_TRUE(SQL_FAIL(result));
+    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
+
+    // Delete the first member
+    result = pks->deleteMember(groupId_1, memberId_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // The member list operations must not return empty list or data
+    members = pks->getAllGroupMembers(groupId_1);
+    ASSERT_FALSE(members->empty());
+
+    member = pks->getGroupMember(groupId_1, memberId_1);
+    ASSERT_FALSE((bool)member);
+
+    // Delete the second member
+    result = pks->deleteMember(groupId_1, memberId_2);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // The member list operations must return empty list or data now
+    members = pks->getAllGroupMembers(groupId_1);
+    ASSERT_TRUE(members->empty());
+
+    member = pks->getGroupMember(groupId_1, memberId_2);
+    ASSERT_FALSE((bool)member);
+
+    // Get group again, check member count - must be 0
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(0, getJsonInt(root, GROUP_MEMBER_COUNT, -1));
+
+    // Delete the group, must succeed now
+    result = pks->deleteGroup(groupId_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    // The group list operations must return empty list or data
+    groups = pks->listAllGroups();
+    ASSERT_TRUE(groups->empty());
+
+    group = pks->listGroup(groupId_1);
+    ASSERT_FALSE((bool)group);
+
+    // Delete conversation of the group member, must succeed now
+    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
+    ASSERT_FALSE(SQL_FAIL(result));
+}
 
 class NameLookTestFixture: public ::testing::Test {
 public:

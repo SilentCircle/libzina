@@ -27,7 +27,7 @@ limitations under the License.
 #include "../../interfaceTransport/sip/SipTransport.h"
 #include "../../axolotl/state/AxoConversation.h"
 #include "../../axolotl/crypto/EcCurve.h"
-#include "../../axolotl/Constants.h"
+#include "../../Constants.h"
 #include "../../util/cJSON.h"
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"
@@ -69,6 +69,9 @@ static jmethodID receiveMessageCallback = NULL;
 static jmethodID stateReportCallback = NULL;
 static jmethodID httpHelperCallback = NULL;
 static jmethodID javaNotifyCallback = NULL;
+static jmethodID groupMsgReceiveCallback = NULL;
+static jmethodID groupCmdReceiveCallback = NULL;
+static jmethodID groupStateCallback = NULL;
 
 static int32_t debugLevel = 1;
 
@@ -89,22 +92,22 @@ void Log(char const *format, ...) {
 // typedef void (*SEND_DATA_FUNC)(uint8_t* [], uint8_t* [], uint8_t* [], size_t [], uint64_t []);
 #ifdef UNITTESTS
 // names, devIds, envelopes, sizes, msgIds
-static void sendDataFuncTesting(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[])
+static bool sendDataFuncTesting(uint8_t* names, uint8_t* devIds, uint8_t* envelopes, size_t sizes, uint64_t msgIds)
 {
-    Log("sendData: %s - %s - %s\n", names[0], devIds[0], envelopes[0]);
+    Log("sendData: %s - %s - %s\n", names, devIds, envelopes);
 
-    string fName((const char*)names[0]);
-    fName.append((const char*)devIds[0]).append(".msg");
+    string fName((const char*)names);
+    fName.append((const char*)devIds).append(".msg");
 
     FILE* msgFile = fopen(fName.c_str(), "w");
 
-    size_t num = fwrite(envelopes[0], 1, sizes[0], msgFile);
+    size_t num = fwrite(envelopes, 1, sizes, msgFile);
     Log("Message file written: %d bytes\n", num);
     fclose(msgFile);
-    msgIds[0] = 4711;
+    return true;
 }
 
-static void recieveData(const string& msgFileName)
+static void receiveData(const string &msgFileName)
 {
     uint8_t msgData[2000];
     FILE* msgFile = fopen(msgFileName.c_str(), "r");
@@ -213,7 +216,7 @@ void loadAxolotl()
  * 
  * "([B[B[B)I"
  */
-int32_t receiveMessage(const string& messageDescriptor, const string& attachementDescriptor = string(), const string& messageAttributes = string())
+static int32_t receiveMessage(const string& messageDescriptor, const string& attachementDescriptor = string(), const string& messageAttributes = string())
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -252,11 +255,79 @@ int32_t receiveMessage(const string& messageDescriptor, const string& attachemen
 }
 
 /*
+ * Receive message callback for AppInterfaceImpl.
+ *
+ * "([B[B[B)I"
+ */
+static int32_t receiveGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
+{
+    if (axolotlCallbackObject == NULL)
+        return -1;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return -2;
+
+    jbyteArray message = stringToArray(env, messageDescriptor);
+    Log("receiveGroupMessage: '%s' - length: %d", messageDescriptor.c_str(), messageDescriptor.size());
+
+    jbyteArray attachment = NULL;
+    if (!attachmentDescriptor.empty()) {
+        attachment = stringToArray(env, attachmentDescriptor);
+        if (attachment == NULL) {
+            return -4;
+        }
+    }
+    jbyteArray attributes = NULL;
+    if (!messageAttributes.empty()) {
+        attributes = stringToArray(env, messageAttributes);
+        if (attributes == NULL) {
+            return -4;
+        }
+    }
+    int32_t result = env->CallIntMethod(axolotlCallbackObject, groupMsgReceiveCallback, message, attachment, attributes);
+
+    env->DeleteLocalRef(message);
+    if (attachment != NULL)
+        env->DeleteLocalRef(attachment);
+    if (attributes != NULL)
+        env->DeleteLocalRef(attributes);
+
+    return result;
+}
+
+/*
+ * Receive message callback for AppInterfaceImpl.
+ *
+ * "([B[B[B)I"
+ */
+static int32_t receiveGroupCommand(const string& commandMessage)
+{
+    if (axolotlCallbackObject == NULL)
+        return -1;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return -2;
+
+    jbyteArray message = stringToArray(env, commandMessage);
+    Log("receiveGroupCommand: '%s' - length: %d", commandMessage.c_str(), commandMessage.size());
+
+    int32_t result = env->CallIntMethod(axolotlCallbackObject, groupCmdReceiveCallback, message);
+
+    env->DeleteLocalRef(message);
+
+    return result;
+}
+
+/*
  * State change callback for AppInterfaceImpl.
  * 
  * "(J[B)V"
  */
-void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const string& stateInformation)
+static void messageStateReport(int64_t messageIdentifier, int32_t statusCode, const string& stateInformation)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -270,7 +341,31 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const stri
     if (!stateInformation.empty()) {
         information = stringToArray(env, stateInformation);
     }
-    env->CallVoidMethod(axolotlCallbackObject, stateReportCallback, messageIdentfier, statusCode, information);
+    env->CallVoidMethod(axolotlCallbackObject, stateReportCallback, messageIdentifier, statusCode, information);
+    if (information != NULL)
+        env->DeleteLocalRef(information);
+}
+
+/*
+ * State change callback for AppInterfaceImpl.
+ *
+ * "(J[B)V"
+ */
+static void groupStateReport(int32_t statusCode, const string& stateInformation)
+{
+    if (axolotlCallbackObject == NULL)
+        return;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return;
+
+    jbyteArray information = NULL;
+    if (!stateInformation.empty()) {
+        information = stringToArray(env, stateInformation);
+    }
+    env->CallVoidMethod(axolotlCallbackObject, groupStateCallback, statusCode, information);
     if (information != NULL)
         env->DeleteLocalRef(information);
 }
@@ -280,7 +375,7 @@ void messageStateReport(int64_t messageIdentfier, int32_t statusCode, const stri
  * 
  * "(I[B[B)V"
  */
-void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
+static void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
 {
     if (axolotlCallbackObject == NULL)
         return;
@@ -317,7 +412,7 @@ void notifyCallback(int32_t notifyAction, const string& actionInformation, const
  */
 #define JAVA_HELPER
 #if defined JAVA_HELPER || defined UNITTESTS
-int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
+static int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -436,7 +531,18 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         if (javaNotifyCallback == NULL) {
             return -6;
         }
-
+        groupMsgReceiveCallback = env->GetMethodID(callbackClass, "groupMsgReceive", "([B[B[B)I");
+        if (groupMsgReceiveCallback == NULL) {
+            return -20;
+        }
+        groupCmdReceiveCallback = env->GetMethodID(callbackClass, "groupCmdReceive", "([B)I");
+        if (groupCmdReceiveCallback == NULL) {
+            return -21;
+        }
+        groupStateCallback = env->GetMethodID(callbackClass, "groupStateCallback", "(I[B)V");
+        if (groupStateCallback == NULL) {
+            return -22;
+        }
     }
     string name;
     if (!arrayToString(env, userName, &name)) {
@@ -491,7 +597,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     }
     delete ownAxoConv;    // Not needed anymore here
 
-    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback);
+    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback, receiveGroupMessage,
+                                           receiveGroupCommand, groupStateReport);
     Transport* sipTransport = new SipTransport(axoAppInterface);
 
     /* ***********************************************************************************
@@ -502,10 +609,11 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 #elif defined (EMBEDDED)
     // Functions defined in t_a_main module of silentphone library, this sends the data
     // via SIP message
-    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+//    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
+    bool g_sendDataFuncAxoNew(uint8_t* names, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgIds);
     void t_setAxoTransport(Transport *transport);
 
-    sipTransport->setSendDataFunction(g_sendDataFuncAxo);
+    sipTransport->setSendDataFunction(g_sendDataFuncAxoNew);
     t_setAxoTransport(sipTransport);
 #else
 #error "***** Missing initialization."
@@ -707,10 +815,9 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
     if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
         return NULL;
 
-    list<pair<string, string> >* devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
 
-    if (devices == NULL || devices->empty()) {
-        delete devices;
+    if (!devices || devices->empty()) {
         return NULL;
     }
 
@@ -728,7 +835,6 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
         cJSON_AddItemToArray(devArray, devInfo);
     }
 
-    delete devices;
     char *out = cJSON_Print(root);
     string json(out);
     cJSON_Delete(root); free(out);
@@ -901,7 +1007,7 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
     }
 
     if (strcmp("read", cmd) == 0) {
-        recieveData(dataContainer);
+        receiveData(dataContainer);
     }
 #endif
     if (strcmp("resetaxodb", cmd) == 0) {
@@ -974,10 +1080,343 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
             }
         }
         cJSON_Delete(root);
+    } else if (strcmp("clearGroupData", cmd) == 0) {
+        axoAppInterface->clearGroupData();
     }
     env->ReleaseStringUTFChars(command, cmd);
     return result;
 }
+
+/*
+ * **************************************************************
+ * Below the native functions for group chat
+ * *************************************************************
+ */
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    createNewGroup
+ * Signature: ([B[B)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL
+JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jbyteArray groupDescription, jint maxMembers)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return NULL;
+
+    string group;
+    if (!arrayToString(env, groupName, &group)) {
+        return NULL;
+    }
+    string description;
+    if (!arrayToString(env, groupDescription, &description)) {
+        return NULL;
+    }
+    string groupUuid = axoAppInterface->createNewGroup(group, description, maxMembers);
+    if (groupUuid.empty())
+        return NULL;
+    jstring uuidJava = env->NewStringUTF(groupUuid.c_str());
+    return uuidJava;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    modifyGroupSize
+ * Signature: (Ljava/lang/String;I)Z
+ */
+JNIEXPORT jboolean
+JNICALL JNI_FUNCTION(modifyGroupSize)(JNIEnv *env, jclass clazz, jstring groupUuid, jint newSize)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return JNI_FALSE;
+
+    if (groupUuid == NULL)
+        return JNI_FALSE;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+    bool result = axoAppInterface->modifyGroupSize(group, newSize);
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    listAllGroups
+ * Signature: ([I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    int32_t result;
+    shared_ptr<list<shared_ptr<cJSON> > > groups = axoAppInterface->getStore()->listAllGroups( &result);
+    setReturnCode(env, code, result);
+
+    size_t size = groups->size();
+    if (size == 0)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    for (auto it = groups->begin(); it != groups->end(); ++it) {
+        char *out = cJSON_PrintUnformatted(it->get());
+        jbyteArray retData = stringToArray(env, out);
+        free(out);
+
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
+
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getGroup
+ * Signature: (Ljava/lang/String;[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getGroup)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray code)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    if (groupUuid == NULL)
+        return NULL;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    int32_t result;
+    shared_ptr<cJSON> groupJson = axoAppInterface->getStore()->listGroup(group, &result);
+
+    setReturnCode(env, code, result);
+    char *out = cJSON_PrintUnformatted(groupJson.get());
+    jbyteArray retArray = NULL;
+    if (out != NULL) {
+        retArray = stringToArray(env, out);
+        free(out);
+    }
+    return retArray;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getAllGroupMembers
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray code)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    if (groupUuid == NULL)
+        return NULL;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    int32_t result;
+    shared_ptr<list<shared_ptr<cJSON> > > members = axoAppInterface->getStore()->getAllGroupMembers(group, &result);
+    setReturnCode(env, code, result);
+
+    size_t size = members->size();
+    if (size == 0)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    for (auto it = members->begin(); it != members->end(); ++it) {
+        char *out = cJSON_PrintUnformatted(it->get());
+        jbyteArray retData = stringToArray(env, out);
+        free(out);
+
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    getGroupMember
+ * Signature: (Ljava/lang/String;[B[I)[B
+ */
+JNIEXPORT jbyteArray JNICALL
+JNI_FUNCTION(getGroupMember) (JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray memberUuid, jintArray code)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    if (groupUuid == NULL)
+        return NULL;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string memberId;
+    if (!arrayToString(env, memberUuid, &memberId)) {
+        return NULL;
+    }
+
+    int32_t result;
+    shared_ptr<cJSON> memberJson = axoAppInterface->getStore()->getGroupMember(group, memberId, &result);
+    setReturnCode(env, code, result);
+
+    char *out = cJSON_PrintUnformatted(memberJson.get());
+    jbyteArray retArray = stringToArray(env, out);
+    free(out);
+    return retArray;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    inviteUser
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(inviteUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray userId)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string usr;
+    if (!arrayToString(env, userId, &usr)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    return axoAppInterface->inviteUser(group, usr);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    answerInvitation
+ * Signature: ([BZ[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(answerInvitation)(JNIEnv *env, jclass clazz, jbyteArray command, jboolean accept, jbyteArray reason)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    string cmd;
+    if (!arrayToString(env, command, &cmd)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    string rsn;
+    if (reason != NULL) {
+        arrayToString(env, reason, &rsn);
+    }
+    return axoAppInterface->answerInvitation(cmd, accept != 0, rsn);
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    sendGroupMessage
+ * Signature: ([B[B[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachmentDescriptor, jbyteArray messageAttributes)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    string message;
+    if (!arrayToString(env, messageDescriptor, &message)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    Log("sendGroupMessage - message: '%s' - length: %d", message.c_str(), message.size());
+
+    string attachment;
+    if (attachmentDescriptor != NULL) {
+        arrayToString(env, attachmentDescriptor, &attachment);
+        Log("sendGroupMessage - attachment: '%s' - length: %d", attachment.c_str(), attachment.size());
+    }
+    string attributes;
+    if (messageAttributes != NULL) {
+        arrayToString(env, messageAttributes, &attributes);
+        Log("sendGroupMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
+    }
+    int32_t result  = axoAppInterface->sendGroupMessage(message, attachment, attributes);
+    return result;
+}
+
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    leaveGroup
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(leaveGroup)(JNIEnv *env, jclass clazz, jstring groupUuid)
+{
+    (void)clazz;
+
+    if (axoAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+    return axoAppInterface->leaveGroup(group);
+}
+
+
 
 /*
  * **************************************************************

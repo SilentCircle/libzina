@@ -16,21 +16,27 @@ limitations under the License.
 #include "SipTransport.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
 #include "../../logging/AxoLogging.h"
+#include "../../Constants.h"
 #include <stdlib.h>
 #include <map>
 #include <thread>
+#include <condition_variable>
 #include <chrono>
+#include <cryptcommon/ZrtpRandom.h>
 
 #ifndef MAX_TIME_WAIT_FOR_SLOTS
 #define MAX_TIME_WAIT_FOR_SLOTS 1500
 #endif
 
+// In silentphone, tiviandroid/t_a_main, at/around line 1280: ph = new CTiViPhone(this,&strings,30);
+#define MAX_AVAILABLE_SLOTS     30
+#define KEEP_SLOTS              10
 
 using namespace axolotl;
 
-#if defined (EMBEDDED)
 static int32_t getNumOfSlots()
 {
+#if defined (EMBEDDED)
     void *getAccountByID(int id);
     int getInfo(void *pEng, const char *key, char *p, int iMax);
 
@@ -43,61 +49,110 @@ static int32_t getNumOfSlots()
     }
 
     return atoi(tmp);
-}
+#else
+    return 1000;
 #endif
+}
 
-vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs)
+typedef struct SendMsgInfo_ {
+    string recipient;
+    string deviceId;
+    string envelope;
+    uint64_t transportMsgId;
+} SendMsgInfo;
+
+static mutex sendListLock;
+static list<shared_ptr<SendMsgInfo> > sendMessageList;
+
+static mutex threadLock;
+static mutex runLock;
+static condition_variable sendCv;
+static thread sendThread;
+static bool runSend;
+static bool sendingActive;
+
+// Send queued messages, one at a time, if SIP slots are available
+// Don't use every available slot, leave some for other processing, if too few slots
+// available wait some time and check again until the queue is empty
+static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
+{
+    int64_t sleepTime = 500;
+    LOGGER(DEBUGGING, __func__, " -->");
+
+    unique_lock<mutex> run(runLock);
+    while (sendingActive) {
+        while (!runSend) sendCv.wait(run);
+
+        unique_lock<mutex> listLock(sendListLock);
+        while (!sendMessageList.empty()) {
+            for (int32_t slots = getNumOfSlots(); slots < KEEP_SLOTS;) {
+                listLock.unlock();
+                std::this_thread::sleep_for (std::chrono::milliseconds(sleepTime));
+                listLock.lock();
+                slots = getNumOfSlots();
+            }
+            shared_ptr<SendMsgInfo> sendInfo = sendMessageList.front();
+            sendMessageList.pop_front();
+            bool result = sendAxoData((uint8_t*)sendInfo->recipient.c_str(), (uint8_t*)sendInfo->deviceId.c_str(),
+                                       (uint8_t*)sendInfo->envelope.data(), sendInfo->envelope.size(), sendInfo->transportMsgId);
+            if (!result) {
+                LOGGER(ERROR, "Transport sendAxoData returned false, message not sent.");
+                transport->stateReportAxo(sendInfo->transportMsgId, 503, (uint8_t*)sendInfo->recipient.c_str(), sendInfo->recipient.size());
+            }
+        }
+        runSend = false;
+        listLock.unlock();
+    }
+}
+
+// The library calls this for a single recipient with multiple devices, the function supports
+// up to 16 devices per recipient. If the caller exceeds this number the functions returns nullptr
+vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs, uint32_t messageType)
 {
     LOGGER(INFO, __func__, " -->");
-    int32_t numPairs = static_cast<int32_t>(msgPairs->size());
 
-    vector<int64_t>* msgIdsReturn = new std::vector<int64_t>;
-
-#if defined (EMBEDDED)
-    int32_t availableSlots = getNumOfSlots();
-    int32_t sumWaitTime = 0;
-
-    LOGGER(INFO, __func__, " Number of session slots: ", availableSlots, ", required: ", numPairs );
-    while (availableSlots < numPairs) {
-        LOGGER(INFO, __func__, " Wait for session slots, available: ", availableSlots, ", required: ", numPairs );
-        if (sumWaitTime > MAX_TIME_WAIT_FOR_SLOTS) {
-            msgPairs->clear();
-            LOGGER(ERROR, __func__, " Cannot get session slots to send messages: ", availableSlots, ", required: ", numPairs);
-            return msgIdsReturn;        // return an empty vector, telling nothing sent
+    if (!sendThread.joinable()) {
+        unique_lock<mutex> lck(threadLock);
+        if (!sendThread.joinable()) {
+            sendingActive = true;
+            sendThread = thread(runSendQueue, sendAxoData_, this);
         }
-        std::this_thread::sleep_for (std::chrono::milliseconds(150));
-        sumWaitTime += 150;
-        availableSlots = getNumOfSlots();
+        lck.unlock();
     }
-#endif
 
-    uint8_t** names = new uint8_t*[numPairs+1];
-    uint8_t** devIds = new uint8_t*[numPairs+1];
-    uint8_t** envelopes = new uint8_t*[numPairs+1];
-    size_t*   sizes = new size_t[numPairs+1];
-    uint64_t* msgIds = new uint64_t[numPairs+1];
+    size_t numPairs = msgPairs->size();
+    if (numPairs <= 0 || numPairs > 16)
+        return nullptr;
 
-    size_t index = 0;
-    for(; index < numPairs; index++) {
-        pair<string, string>& msgPair = msgPairs->at(index);
-        names[index] = (uint8_t*)recipient.c_str();
-        devIds[index] = (uint8_t*)msgPair.first.c_str();
-        envelopes[index] = (uint8_t*)msgPair.second.data();
-        sizes[index] = msgPair.second.size();
+    vector<int64_t>* msgIdsReturn = new vector<int64_t>;
+    int64_t transportMsgId;
+    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
+
+    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
+    transportMsgId &= ~0xff;
+
+    unique_lock<mutex> listLock(sendListLock);
+
+    // The loop stores all relevant data to send a message in a structure, queues the message
+    // info structure and stores the transport message id in a vector to return them to the caller.
+    uint64_t typeMask = messageType >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
+    for (size_t i = 0; i < numPairs; i++) {
+        shared_ptr<SendMsgInfo> msgInfo = make_shared<SendMsgInfo>();
+        msgInfo->recipient = recipient;
+        pair<string, string>& msgPair = msgPairs->at(i);
+        msgInfo->deviceId = msgPair.first;
+        msgInfo->envelope = msgPair.second;
+        msgInfo->transportMsgId = transportMsgId | (i << 4) | typeMask;
+        msgIdsReturn->push_back(msgInfo->transportMsgId);
+
+        sendMessageList.push_back(msgInfo);
     }
-    names[index] = NULL; devIds[index] = NULL; envelopes[index] = NULL; 
-
-    sendAxoData_(names, devIds, envelopes, sizes, msgIds);
-
     // This should clear everything because no pointers involved
     msgPairs->clear();
-    delete[] names; delete[] devIds; delete[] envelopes; delete[] sizes;
+    runSend = true;
+    sendCv.notify_one();
+    listLock.unlock();
 
-    for (int32_t i = 0; i < numPairs; i++) {
-        if (msgIds[i] != 0)
-            msgIdsReturn->push_back(msgIds[i]);
-    }
-    delete[] msgIds;
     LOGGER(INFO, __func__, " <--");
     return msgIdsReturn;
 }
@@ -149,7 +204,10 @@ void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, 
     if (data != NULL) {
         info.assign((const char*)data, length);
     }
-    appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
+    if ((messageIdentifier & GROUP_TRANSPORT) == GROUP_TRANSPORT)
+        appInterface_->groupStateReportCallback_(stateCode, info);
+    else
+        appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
     LOGGER(INFO, __func__, " <--");
 }
 

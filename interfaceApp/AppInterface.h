@@ -31,9 +31,13 @@ limitations under the License.
 
 using namespace std;
 
-typedef int32_t (*RECV_FUNC)(const string&, const string&, const string&);
-typedef void (*STATE_FUNC)(int64_t, int32_t, const string&);
-typedef void (*NOTIFY_FUNC)(int32_t, const string&, const string&);
+typedef int32_t (*RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
+typedef void (*STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
+typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const string& userId, const string& actionInformation);
+
+typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string& commandMessage);
+typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
+typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const string& stateInformation);
 
 namespace axolotl {
 class AppInterface
@@ -41,10 +45,14 @@ class AppInterface
 public:
     static const int DEVICE_SCAN = 1;
 
-    AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL), notifyCallback_(NULL) {}
+    AppInterface() : receiveCallback_(NULL), stateReportCallback_(NULL), notifyCallback_(NULL), groupMsgCallback_(NULL),
+    groupCmdCallback_(NULL), groupStateReportCallback_(NULL) {}
 
-    AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback) : 
-                 receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback), notifyCallback_(notifyCallback) {}
+    AppInterface(RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                 GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback) :
+            receiveCallback_(receiveCallback), stateReportCallback_(stateReportCallback), notifyCallback_(notifyCallback),
+            groupMsgCallback_(groupMsgCallback), groupCmdCallback_(groupCmdCallback), groupStateReportCallback_(groupStateCallback)
+    {}
 
     virtual ~AppInterface() {}
 
@@ -63,7 +71,7 @@ public:
     virtual Transport* getTransport() = 0;
 
     /**
-     * @brief Send a message with an optional attachment.
+     * @brief Send a message with an optional attachment and attributes
      *
      * Takes JSON formatted message descriptor and send the message. The function accepts
      * an optional JSON formatted attachment descriptor and sends the attachment data to the
@@ -153,25 +161,6 @@ public:
     virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
 
     /**
-     * @brief Send a message state report to the application.
-     *
-     * The library reports state changes of message that it cannot process, for example decryption failed
-     * for a received message.
-     *
-     * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this 
-     *                           report belongs to a received message and the library failed to 
-     *                           process it.
-     *
-     * @param statusCode         The status code. Usually like HTTP or SIP codes. If less 0 then the 
-     *                           messageIdentfier may be 0 and this would indicate a problem with a 
-     *                           received message.
-     * 
-     * @param stateInformation   JSON formatted stat information block that contains the details about
-     *                           the new state or some error information.
-     */
-    virtual void messageStateReport(int64_t messageIdentfier, int32_t stateCode, const string& stateInformation) = 0;
-
-    /**
      * @brief Request names of known trusted Axolotl user identities
      *
      * The Axolotl library stores an identity (name) for each remote user.
@@ -254,6 +243,10 @@ public:
      */
     virtual int32_t getNumPreKeys() const = 0;
 
+    // *************************************************************
+    // Device handling functions
+    // *************************************************************
+
     /**
      * @brief Rescan user device.
      *
@@ -275,6 +268,134 @@ public:
      *
      */
     virtual void reSyncConversation(const string& userName, const string& deviceId) = 0;
+
+    // *************************************************************
+    // Group chat functions
+    // *************************************************************
+
+    /**
+     * @brief Create a new group and assign ownership to the creator
+     *
+     * The function creates a new group and assigns the group's ownership to the creator. This is
+     * different to the @c createGroup(string& groupName, string& groupDescription, string& owner)
+     * function which creates a group for an invited member.
+     *
+     * The function sets the group's size to @c Constants::DEFAULT_GROUP_SIZE.
+     *
+     * @param groupName The name of the new group
+     * @param groupDescription Group description, purpose of the group, etc
+     * @param maxMembers Maximum number of group members. If this number is bigger than a system
+     *                   defined maximum number then the function does not create the group.
+     * @return the group's UUID, if the string is empty then group creation failed, use
+     *         @c AppInterfaceImpl::getErrorInfo() to get error string.
+     */
+    virtual string createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) = 0;
+
+    /**
+     * @brief Create a new group and assign ownership to the creator
+     *
+     * The function creates a group and assigns the group's ownership to the specified owner. This
+     * function creates the group data for invited members. The UI part usually never calls this
+     * function, it's handled internally when the client receives an invite message
+     *
+     * @param groupUuid The group id, part of the invite message
+     * @param groupName The name of the new group
+     * @param groupDescription Group description, purpose of the group, etc
+     * @param maxMembers Maximum number of group members. If this number is bigger than a system
+     *                   defined maximum number then the function does not create the group.
+     * @param owner The owner/creator of the group
+     * @return @c SUCCESS or SQL error code, use @c AppInterfaceImpl::getErrorInfo() to get error string.
+     */
+    virtual int32_t createInvitedGroup(string& groupUud, string& groupName, string& groupDescription, string& owner, int32_t maxMembers) = 0;
+
+    /**
+     * @brief Modify number maximum group member.
+     *
+     * Only the group owner can modify the number of maximum members.
+     *
+     * If the new size would be less than current active group member the function fails
+     * and returns @c false.
+     *
+     * @param newSize New maximum group members
+     * @param groupUuid The group id
+     * @return @c true if new size could be set, @c false otherwise, use
+     *         @c AppInterfaceImpl::getErrorInfo() to get error string.
+     */
+    virtual bool modifyGroupSize(string& groupUuid, int32_t newSize) = 0;
+
+
+    /**
+     * @brief Invite a user to a group.
+     *
+     * @param groupUuid Invite for this group
+     * @param userId The invited user's unique id
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t inviteUser(string& groupUuid, string& userId) = 0;
+
+    /**
+     * @brief Answer a group Invitation.
+     *
+     * The invited user may accept or decline a group invitation. In case the user accepts
+     * the invitation the functions prepares the group data structures in this client, sends
+     * out a synchronization command to its siblings and then sends an invite accepted
+     * to the inviting user.
+     *
+     * Only the invited user calls this function.
+     *
+     * If the user declines the invitation the functions just sends a invitation declined with
+     * an optional reason string to the inviting user.
+     *
+     * @param command the command string as received in the @c groupCmdCallback_. The callback
+     *                function should not modify this command string.
+     * @param accept If true the user accepted the invitation, if false the user declined the invitation.
+     * @param reason In case the user declined a reason why the user declined the invitation. The
+     *               string maybe empty.
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t answerInvitation(const string& command, bool accept, const string& reason) = 0;
+
+    /**
+     * @brief Send a message to a group with an optional attachment and attributes.
+     *
+     * Takes JSON formatted message descriptor and send the message. The function accepts
+     * an optional JSON formatted attachment descriptor and sends the attachment data to the
+     * recipient together with the message.
+     *
+     * This is a blocking call and the function returns after the transport layer accepted the
+     * message and returns.
+     *
+     * The @c sendMessage function does not interpret or re-format the attachment descriptor. It takes
+     * the string, encrypts it with the same key as the message data and puts it into the message
+     * bundle. The same is true for the message attributes.
+     *
+     * The function either amends existing message attributes with the JSON labels 'hash' and 'grpId'
+     * or creates a new set of message attributes that contains these two labels and their values.
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return @c OK if function could send the message, error code (<0) otherwise
+     */
+    virtual int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+
+    /**
+     * @brief Leave a group.
+     *
+     * The application (UI part) calls this function to remove this member from the
+     * group. The functions sends a 'leave group' command to all members of the group,
+     * including it's own sibling devices.
+     *
+     * @param groupId The group to leave
+     * @return @c OK if 'leave group' processing was OK, error code (<0) otherwise
+     */
+    virtual int32_t leaveGroup(const string& groupId) = 0;
+
+    // *************************************************************
+    // Callback functions to UI part
+    // *************************************************************
 
     /**
      * @brief Callback to UI to receive a Message from transport 
@@ -323,12 +444,13 @@ public:
      * @brief Callback to UI for a Message state change report
      *
      * The Axolotl library uses this callback function to report message state changes to the UI.
-     * The library reports state changes of message it got for sending and it also reports if it
+     * The library reports message state changes for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
      * @param messageIdentifier  the unique message identifier. If this identifier is 0 then this 
      *                           report belongs to a received message and the library failed to 
      *                           process it.
+     * @param errorCode          The error code
      * @param stateInformation   JSON formatted stat information block that contains the details about
      *                           the new state or some error information.
      */
@@ -341,11 +463,48 @@ public:
      *
      * @param notifyActionCode   This code defines which action to perform, for example re-scan a
      *                           user's Axolotl devices
-     * 
+     * @param userId             The user id for which the SIP server sent the NOTIFY
      * @param actionInformation  string that contains details required for the action, currently
      *                           the device identifiers separated with a colon.
      */
     NOTIFY_FUNC notifyCallback_;
+
+    /**
+     * @brief Callback to UI to receive a normal group message.
+     *
+     * JSON format TBD
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor   A string that contains an attachment descriptor. An empty string
+     *                               shows that no attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @return Either success of an error code (to be defined)
+     */
+    GROUP_MSG_RECV_FUNC groupMsgCallback_;
+
+    /**
+     * @brief Callback to UI to receive a group command message.
+     *
+     * JSON format TBD
+     *
+     * @param commandMessage  A JSON formatted string that contains the command message.
+     * @return Either success of an error code (to be defined)
+     */
+    GROUP_CMD_RECV_FUNC groupCmdCallback_;
+
+    /**
+     * @brief Callback to UI for a Group Message state change report
+     *
+     * The Axolotl library uses this callback function to report message state changes to the UI.
+     * The library reports message state changes for sending and it also reports if it
+     * received a message but could not process it, for example decryption failed.
+     *
+     * @param errorCode          The error code
+     * @param stateInformation   JSON formatted stat information block that contains the details about
+     *                           the new state or some error information.
+     */
+    GROUP_STATE_FUNC groupStateReportCallback_;
 };
 } // namespace
 

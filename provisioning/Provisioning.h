@@ -100,7 +100,7 @@ public:
      * @param authorization authorization data, may be needed for some servers
      * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
      */
-    static list<pair<string, string> >* getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
+    static shared_ptr<list<pair<string, string> > > getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
 
     /**
      * @brief Set new pre-keys.

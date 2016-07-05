@@ -32,7 +32,10 @@ limitations under the License.
 #include "android/jni/sqlcipher/sqlite3.h"
 #else
 #include <sqlcipher/sqlite3.h>
+#include <iostream>
 #endif
+#include "../../util/cJSON.h"
+#include "../../logging/AxoLogging.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
@@ -40,6 +43,10 @@ limitations under the License.
 #define SQL_FAIL(code) ((code) > SQLITE_OK && (code) < SQLITE_ROW)
 
 using namespace std;
+
+auto cJSON_deleter = [](cJSON* json) {
+    cJSON_Delete(json); json = nullptr;
+};
 
 namespace axolotl {
 
@@ -150,7 +157,7 @@ public:
 
     void deleteStagedMk(time_t timestamp, int32_t* sqlCode = NULL);
 
-    // Pre key storage. The functions encrypt, decrypt and store/retrive Pre-key JSON strings
+    // Pre key storage. The functions encrypt, decrypt and store/retrieve Pre-key JSON strings
     string* loadPreKey(int32_t preKeyId, int32_t* sqlCode = NULL) const;
 
     void storePreKey(int32_t preKeyId, const string& preKeyData, int32_t* sqlCode = NULL);
@@ -195,7 +202,7 @@ public:
      * @param attribute The message attribute string which contains status information
      * @param attachment If set the message contained an attachment descriptor
      * @param received If set then this was a received message.
-     * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
+     * @return SQLite code
      */
     int32_t insertMsgTrace(const string& name, const string& messageId, const string& deviceId, const string& convState,
                            const string& attributes, bool attachment, bool received);
@@ -232,8 +239,244 @@ public:
      */
     int32_t deleteMsgTrace(time_t timestamp);
 
+    // Functions to handle groups and group member data
+
+    /**
+     * @brief Create a new chat group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID), must be unique
+     * @param name group's human readable name
+     * @param ownerUuid the group owner's UUID (SC UID)
+     * @parm maxMembers Initial number of member allowed in this group
+     * @param description Group description
+     * @return SQLite code
+     */
+    int32_t insertGroup(const string& groupUuid, const string& name, const string& ownerUuid, string& description, int32_t maxMembers);
+
+    /**
+     * @brief Delete a group record.
+     *
+     * Deletes a record only if no member records exist for this group. Enforced by
+     * database referential integrity.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @return SQLite code
+     */
+    int32_t deleteGroup(const string& groupUuid);
+
+    /**
+     * @brief Check if a group exists.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @return @c true if the group exists, @c false otherwise
+     */
+    bool hasGroup(const string& groupUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief List data of all known groups.
+     *
+     * Creates and returns a list of shared pointers to cJSON data structures that contain
+     * the groups' data. The shared pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
+     */
+    shared_ptr<list<shared_ptr<cJSON> > >listAllGroups(int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Get data of a group.
+     *
+     * Returns a shared pointer to a cJSON data structure that contains the group's
+     * data. The shared pointer has a special deleter that calls @c cJSON_delete to free
+     * the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return cJSON shared pointer to group data structure, maybe @c NULL (false)
+     */
+    shared_ptr<cJSON> listGroup(const string& groupUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Set a new maximum number of group members
+     *
+     * The function just sets the new value in the database group record, it does
+     * not the if the number of current group members is already above the new maximum.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param maxMembers The new value of maximum group members
+     * @return SQLite code
+     */
+    int32_t modifyGroupMaxMembers(const string& groupUuid, int32_t maxMembers);
+
+    /**
+     * @brief Get the group's attribute bits.
+     *
+     * The function reads and returns the group's attribute bits.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A pair containing the attribute bit and the time the group record was last modified
+     */
+    pair<int32_t, time_t> getGroupAttribute(const string& groupUuid, int32_t* sqlCode = NULL) const;
+
+    /**
+     * @brief Set/add the bits in the attribute mask to the group's attribute bits.
+     *
+     * The function adds the bits in the attribute mask to the existing group's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param attributeMask Attribute bits to set
+     * @return SQLite code
+     */
+    int32_t setGroupAttribute(const string& groupUuid, int32_t attributeMask);
+
+    /**
+     * @brief Clears/removes the bits in the attribute mask from the group's attribute bits.
+     *
+     * The function remove the bits in the attribute mask from the existing group's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param attributeMask Attribute bits to remove
+     * @return SQLite code
+     */
+    int32_t clearGroupAttribute(const string& groupUuid, int32_t attributeMask);
+
+    /**
+     * @brief Create a group member
+     *
+     * Create a new member record. The @c memberUuid must unique.
+     *
+     * The functions sets the new member's attribute to @c ACTIVE.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @return SQLite code
+     */
+    int32_t insertMember(const string &groupUuid, const string &memberUuid);
+
+    /**
+     * @brief Deletes group record of this member in the specified group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @return SQLite code
+     */
+    int32_t deleteMember(const string& groupUuid, const string& memberUuid);
+
+    /**
+     * @brief Deletes all member records of the group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @return SQLite code
+     */
+    int32_t deleteAllMembers(const string &groupUuid);
+
+    /**
+     * @brief Get all members of a specified group.
+     *
+     * Creates and returns a list of shared pointers to cJSON data structures that contain the group's
+     * members data. The shared pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
+     */
+    shared_ptr<list<shared_ptr<cJSON> > >getAllGroupMembers(const string &groupUuid, int32_t *sqlCode = NULL);
+
+    /**
+     * @brief Get a member of a specified group.
+     *
+     * Creates and returns a shared pointer to a cJSON data structure that contains the member's
+     * data. The member may have more than one record, one for each device. The shared pointer
+     * has a special deleter that calls @c cJSON_delete to free the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the new member's UID
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
+     */
+    shared_ptr<cJSON> getGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode = NULL);
+
+
+    /**
+    * @brief Check if this member is in this group.
+    *
+    * @param groupUuid The group's UUID (RFC4122 time based UUID)
+    * @param memberUuid the new member's UID
+    * @param sqlCode If not @c NULL returns the SQLite return/error code
+    * @return @c true if the group contains this member, @c false otherwise
+    */
+    bool isMemberOfGroup(const string &groupUuid, const string &memberUuid, int32_t *sqlCode = NULL);
+
+    /**
+    * @brief Check if this member of some group.
+    *
+    * @param groupUuid The group's UUID (RFC4122 time based UUID)
+    * @param memberUuid the new member's UID
+    * @param sqlCode If not @c NULL returns the SQLite return/error code
+    * @return @c true if the member is in some group, @c false otherwise
+    */
+    bool isGroupMember(const string &memberUuid, int32_t *sqlCode = NULL);
+
+    /**
+     * @brief Get the member's attribute bits.
+     *
+     * The function reads and returns the member's attribute bits.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A pair containing the attribute bit and the time the member record was last modified
+     */
+    pair<int32_t, time_t> getMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t* sqlCode = NULL);
+
+    /**
+     * @brief Set/add the bits in the attribute mask to the member's attribute bits.
+     *
+     * The function adds the bits in the attribute mask to the existing member's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @param attributeMask Attribute bits to set
+     * @return SQLite code
+     */
+    int32_t setMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t attributeMask);
+
+    /**
+     * @brief Clears/removes the bits in the attribute mask from the member's attribute bits.
+     *
+     * The function remove the bits in the attribute mask from the existing member's
+     * attribute bits
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param memberUuid the member's UID
+     * @param attributeMask Attribute bits to remove
+     * @return SQLite code
+     */
+    int32_t clearMemberAttribute(const string& groupUuid, const string& memberUuid, int32_t attributeMask);
+
+    /**
+     * @brief Compute a SHA-256 hash of all member ids in a group.
+     *
+     * The function remove the bits in the attribute mask from the existing member's
+     * attribute bits. To select to member ids the function uses a SQL select statement
+     * similar to:
+     *
+     * SELECT DISTINCT memberId FROM Members WHERE groupId=groupUuid AND attributes&ACTIVE ORDER BY memberId ASC;
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param hash Pointer to a buffer of at least 32 bytes which receives the computed hash
+     * @return SQLite code
+     */
+    int32_t memberListHash(const string& groupUuid, uint8_t* hash);
+
     /*
-     * @brief For use for debugging and development only
+     * @brief Use for debugging and development only.
      */
     int32_t resetStore() { return createTables(); }
 

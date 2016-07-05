@@ -205,7 +205,7 @@ size_t hex2bin(const char* src, uint8_t* target)
         int32_t dl = char2int(src[1]);
         if (dh == -1 || dl == -1)
             return (size_t)-1;
-        *(target++) = (uint8_t)(dh << 4 | (dl & 0xf));
+        *target++ = (uint8_t)(dh << 4 | (dl & 0xf));
         src += 2;
     }
     return 0;

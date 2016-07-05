@@ -16,7 +16,7 @@ limitations under the License.
 #include "AxoZrtpConnector.h"
 #include "crypto/EcCurve.h"
 #include "crypto/HKDF.h"
-#include "Constants.h"
+#include "../Constants.h"
 #include "../interfaceApp/AppInterface.h"
 #include "../logging/AxoLogging.h"
 

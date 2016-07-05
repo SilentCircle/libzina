@@ -17,7 +17,7 @@ limitations under the License.
 #include "gtest/gtest.h"
 
 #include "../appRepository/AppRepository.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../logging/AxoLogging.h"
 
 #include <list>

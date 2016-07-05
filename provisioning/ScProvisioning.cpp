@@ -17,7 +17,7 @@ limitations under the License.
 
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../axolotl/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
 #include "../logging/AxoLogging.h"
@@ -233,7 +233,7 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
  */
 static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&api_key=%s";
 
-list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode)
+shared_ptr<list<pair<string, string> > > Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -248,23 +248,22 @@ list<pair<string, string> >* Provisioning::getAxoDeviceIds(const std::string& na
     if (code >= 400) {
         if (errorCode != NULL)
             *errorCode = code;
-        return NULL;
+        return shared_ptr<list<pair<string, string> > >();
     }
 
-    list<pair<string, string> >* deviceIds = new list<pair<string, string> >;
+    shared_ptr<list<pair<string, string> > > deviceIds = make_shared<list<pair<string, string> > >();
 
     cJSON* root = cJSON_Parse(response.c_str());
     if (root == NULL) {
         LOGGER(ERROR, "Wrong device respose JSON data, ignoring.");
-        return NULL;
+        return deviceIds;
     }
 
     cJSON* devIds = cJSON_GetObjectItem(root, "devices");
     if (devIds == NULL || devIds->type != cJSON_Array) {
         cJSON_Delete(root);
-        delete deviceIds;
         LOGGER(ERROR, "No devices array in response, ignoring.");
-        return NULL;
+        return deviceIds;
     }
     int32_t numIds = cJSON_GetArraySize(devIds);
     for (int32_t i = 0; i < numIds; i++) {

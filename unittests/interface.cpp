@@ -25,7 +25,7 @@ limitations under the License.
 #include "../interfaceApp/AppInterfaceImpl.h"
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../keymanagment/PreKeys.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../axolotl/crypto/DhKeyPair.h"

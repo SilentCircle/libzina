@@ -15,7 +15,7 @@ limitations under the License.
 */
 #include "AxoPreKeyConnector.h"
 
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 #include "../axolotl/crypto/EcCurve.h"
 
 #include "../keymanagment/PreKeys.h"

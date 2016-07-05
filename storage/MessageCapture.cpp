@@ -6,7 +6,7 @@
 #include "sqlite/SQLiteStoreConv.h"
 #include "../util/cJSON.h"
 #include "../logging/AxoLogging.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 
 const static char* FIELD_LATITUDE = "la";
 const static char* FIELD_LONGITUDE = "lo";

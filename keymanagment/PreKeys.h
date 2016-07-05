@@ -29,7 +29,7 @@ limitations under the License.
 
 #include "../axolotl/crypto/DhKeyPair.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
-#include "../axolotl/Constants.h"
+#include "../Constants.h"
 
 using namespace std;
 namespace axolotl {

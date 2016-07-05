@@ -19,7 +19,7 @@ limitations under the License.
 #include "../crypto/EcCurve.h"
 #include "../crypto/AesCbc.h"
 #include "../crypto/HKDF.h"
-#include "../Constants.h"
+#include "../../Constants.h"
 #include "../../logging/AxoLogging.h"
 
 #include <zrtp/crypto/hmac256.h>

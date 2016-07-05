@@ -292,7 +292,7 @@ return 0;
         /**
          * @brief Return the current log level.
          */
-        int getLogLevel() { return logLevel; }
+        LoggingLogLevel getLogLevel() { return logLevel; }
 
         /**
          * @brief Set the current log level.
