@@ -193,6 +193,12 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
 
+    // ****** TODO -- remove once group chat becomes availabe
+    // **** this is for backward compatibility only --- remove once group chat becomes availabe
+    if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL)
+        return OK;
+    // **** Until here
+
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
     const string& sender = uid.empty() ? envelope.name() : uid;
