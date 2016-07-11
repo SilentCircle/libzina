@@ -334,7 +334,7 @@ int32_t AppRepository::updateDb(int32_t oldVersion, int32_t newVersion)
         }
         oldVersion = 2;
     }
-    if (oldVersion < 3) {
+    if (oldVersion == 2) {
         // Add data retention tables
         sqlCode_ = SQLITE_PREPARE(db, createDrPending, -1, &stmt, NULL);
         sqlCode_ = sqlite3_step(stmt);
