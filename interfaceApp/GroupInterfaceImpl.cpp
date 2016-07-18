@@ -131,6 +131,28 @@ static string syncNewGroupCommand(const string& groupId, string& groupName, stri
     return command;
 }
 
+// Request a list of known members from another client. The request contains the list of members known
+// by the rquester
+static string requestMemberList(const string& groupId, string& requester, shared_ptr<list<shared_ptr<cJSON> > > members)
+{
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, GROUP_COMMAND, REQ_MEMBER_LIST);
+    cJSON_AddStringToObject(root, MEMBER_ID, requester.c_str());
+    string token = getRandomToken();
+    storeRandomToken(token);
+    cJSON_AddStringToObject(root, TOKEN, token.c_str());
+
+    fillMemberArray(root, members);
+
+    char *out = cJSON_PrintUnformatted(root);
+    string result(out);
+    free(out);
+
+    return result;
+}
+
 // ****** Public instance functions
 // *******************************************************
 string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
@@ -355,24 +377,6 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     return OK;
 }
 
-static string requestMemberList(const string& groupId, string& requester)
-{
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
-    cJSON* root = sharedRoot.get();
-
-    cJSON_AddStringToObject(root, GROUP_COMMAND, REQ_MEMBER_LIST);
-    cJSON_AddStringToObject(root, MEMBER_ID, requester.c_str());
-    string token = getRandomToken();
-    storeRandomToken(token);
-    cJSON_AddStringToObject(root, TOKEN, token.c_str());
-
-    char *out = cJSON_PrintUnformatted(root);
-    string result(out);
-    free(out);
-
-    return result;
-}
-
 
 // ****** Non public instance functions and helpers
 // ******************************************************
@@ -498,6 +502,10 @@ int32_t AppInterfaceImpl::createMemberListAnswer(const cJSON *root) {
         LOGGER(INFO, __func__, "<-- no active group: ", groupId);
         return OK;
     }
+    // The member list request also contains the requester's member list, parse it
+    // and update our own database
+    parseMemberList(root, false, groupId);
+
     int32_t result;
     shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
 
@@ -508,7 +516,6 @@ int32_t AppInterfaceImpl::createMemberListAnswer(const cJSON *root) {
     LOGGER(INFO, __func__, " <--");
     return OK;
 }
-
 
 int32_t AppInterfaceImpl::processMemberListAnswer(const cJSON* root) {
     LOGGER(INFO, __func__, " --> ");
@@ -533,41 +540,9 @@ int32_t AppInterfaceImpl::processMemberListAnswer(const cJSON* root) {
             return OK;
     }
 
-    cJSON* memberArray = cJSON_GetObjectItem(const_cast<cJSON*>(root), MEMBERS);
-    if (memberArray->type != cJSON_Array)
-        return CORRUPT_DATA;
-
-
-    shared_ptr<cJSON> sharedHello(cJSON_CreateObject(), cJSON_deleter);
-    cJSON* hello = sharedHello.get();
-    cJSON_AddStringToObject(hello, GROUP_COMMAND, HELLO);
-    cJSON_AddStringToObject(hello, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(hello, MEMBER_ID, ownUser_.c_str());
-
-    char *out = cJSON_PrintUnformatted(hello);
-    string helloCommand(out);
-    free(out);
-
-    int32_t result;
-    int size = cJSON_GetArraySize(memberArray);
-    for (int i = 0; i < size; i++) {
-        cJSON* member = cJSON_GetArrayItem(memberArray, i);
-        const string memberId(member->valuestring);
-
-        if (!store_->isMemberOfGroup(groupId, memberId)) {
-            result = store_->insertMember(groupId, memberId);
-            if (SQL_FAIL(result)) {
-                LOGGER(ERROR, __func__, "Cannot store member: ", memberId, ", ", result);
-                return GROUP_MEMBER_NOT_STORED;
-            }
-            // Sending a command to a member creates the ratchet data for all devices of
-            // a user if necessary.
-            sendGroupCommand(memberId, generateMsgIdTime(), initialList ? helloCommand : ping);
-        }
-    }
-    LOGGER(INFO, __func__, " <--");
-    return OK;
+    return parseMemberList(root, initialList, groupId);
 }
+
 
 bool AppInterfaceImpl::checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes)
 {
@@ -591,7 +566,10 @@ bool AppInterfaceImpl::checkActiveAndHash(const string &msgDescriptor, const str
     string ownHash = listHashB64(groupId, store_);
 
     if (remoteHash != ownHash) {
-        sendGroupCommand(sender, generateMsgIdTime(), requestMemberList(groupId, ownUser_));
+        int32_t result;
+        // Get all known members of the group
+        shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
+        sendGroupCommand(sender, generateMsgIdTime(), requestMemberList(groupId, ownUser_, members));
     }
     LOGGER(INFO, __func__, " <-- ");
     return true;
@@ -736,4 +714,40 @@ int32_t AppInterfaceImpl::processHelloCommand(const cJSON *root) {
     }
 }
 
+int32_t AppInterfaceImpl::parseMemberList(const cJSON* root, bool initialList, const string& groupId) {
+    cJSON* memberArray = cJSON_GetObjectItem(const_cast<cJSON*>(root), MEMBERS);
+    if (memberArray == nullptr || memberArray->type != cJSON_Array)
+        return CORRUPT_DATA;
+
+
+    shared_ptr<cJSON> sharedHello(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* hello = sharedHello.get();
+    cJSON_AddStringToObject(hello, GROUP_COMMAND, HELLO);
+    cJSON_AddStringToObject(hello, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(hello, MEMBER_ID, ownUser_.c_str());
+
+    char *out = cJSON_PrintUnformatted(hello);
+    string helloCommand(out);
+    free(out);
+
+    int32_t result;
+    int size = cJSON_GetArraySize(memberArray);
+    for (int i = 0; i < size; i++) {
+        cJSON* member = cJSON_GetArrayItem(memberArray, i);
+        const string memberId(member->valuestring);
+
+        if (!store_->isMemberOfGroup(groupId, memberId)) {
+            result = store_->insertMember(groupId, memberId);
+            if (SQL_FAIL(result)) {
+                LOGGER(ERROR, __func__, "Cannot store member: ", memberId, ", ", result);
+                return GROUP_MEMBER_NOT_STORED;
+            }
+            // Sending a command to a member creates the ratchet data for all devices of
+            // a user if necessary.
+            sendGroupCommand(memberId, generateMsgIdTime(), initialList ? helloCommand : ping);
+        }
+    }
+    LOGGER(INFO, __func__, " <--");
+    return OK;
+}
 

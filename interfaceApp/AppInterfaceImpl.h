@@ -320,6 +320,14 @@ private:
      */
     int32_t processHelloCommand(const cJSON* root);
 
+     /**
+      * @brief Parse a member list array in JSON and update in database.
+      *
+      * @param root The parsed cJSON data structure of the leave group command.
+      * @param initialList if @c true the list was sent during invitation processing
+      * @return OK if the message list was processed without error.
+      */
+    int32_t parseMemberList(const cJSON* root, bool initialList, const string& groupId);
 #ifndef UNITTESTS
     static string generateMsgIdTime() {
         uuid_t uuid = {0};
