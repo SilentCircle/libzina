@@ -712,6 +712,7 @@ int32_t AppInterfaceImpl::processHelloCommand(const cJSON *root) {
             return GROUP_MEMBER_NOT_STORED;
         }
     }
+    return OK;
 }
 
 int32_t AppInterfaceImpl::parseMemberList(const cJSON* root, bool initialList, const string& groupId) {
