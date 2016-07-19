@@ -155,8 +155,13 @@ SCLError SCloudCalculateKey(SCloudContextRef ctx, size_t blocksize)
 
     int32_t numBytes = symKeyLen + blockLen + SCLOUD_LOCATOR_LEN;          // blockLen is the IV we need
 
+    if(ctx->contextStr == NULL || ctx->contextStrLen == 0) {
+        RETERR(kSCLError_ImproperInitialization);
+    }
+
     // Use HDKF with 2 input parameters: ikm, info
     axolotl::HKDF::deriveSecrets(hash, SKEIN256_DIGEST_LENGTH,             // hash as input key material to HASH KDF
+                                 ctx->contextStr, ctx->contextStrLen, // secret salt to avoid attacks on convergent encryption
                                  (uint8_t*)scCloudKeyLabel, strlen(scCloudKeyLabel), // fixed string "ScloudDerivedKeyIvLocator" as info
                                  derivedData, numBytes);
 
@@ -166,18 +171,8 @@ SCLError SCloudCalculateKey(SCloudContextRef ctx, size_t blocksize)
     // make a copy of the IV which gets modified during encryption
     COPY((ctx->key.symKey+symKeyLen), ctx->iv, blockLen);
 
-    // Copy the locator 
-    if (ctx->contextStr != NULL) {
-        uint8_t hashedLocator[SKEIN256_DIGEST_LENGTH];
-        data[0] = derivedData+symKeyLen+blockLen; dataLen[0] = SCLOUD_LOCATOR_LEN;
-        data[1] = ctx->contextStr; dataLen[1] = ctx->contextStrLen;
-        data[2] = NULL; dataLen[2] = 0;
-        skein256(data, dataLen, hashedLocator);
-        COPY(hashedLocator, ctx->locator, SCLOUD_LOCATOR_LEN);
-    }
-    else {
-        COPY((derivedData+symKeyLen+blockLen), ctx->locator, SCLOUD_LOCATOR_LEN);
-    }
+    // Copy the locator
+    COPY((derivedData+symKeyLen+blockLen), ctx->locator, SCLOUD_LOCATOR_LEN);
 
     if (ctx->key.keySuite == kSCloudKeySuite_AES128) {
         aes_encrypt_key128(ctx->key.symKey, &ctx->aes_enc);
