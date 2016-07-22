@@ -609,6 +609,14 @@ JNIEXPORT void JNICALL Java_axolotl_AxolotlNative_processPendingDrRequests
 JNIEXPORT jboolean JNICALL Java_axolotl_AxolotlNative_isDrEnabled
   (JNIEnv *, jclass);
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    isDrEnabledForUser
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_axolotl_AxolotlNative_isDrEnabledForUser
+  (JNIEnv *, jclass, jstring);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1417,9 +1417,16 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native void processPendingDrRequests();
 
     /**
-     * Check if data retention is enabled for the user.
+     * Check if data retention is enabled for the current user.
      *
      * @return {@code true} if data retention is enabled, {@code false} if not.
      */
     public static native boolean isDrEnabled();
+
+    /**
+     * Check if data retention is enabled for a specific user.
+     *
+     * @return {@code true} if data retention is enabled, {@code false} if not.
+     */
+    public static native boolean isDrEnabledForUser(String user);
 }

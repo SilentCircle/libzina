@@ -682,3 +682,51 @@ int ScDataRetention::isEnabled(bool* enabled)
 
     return rc;
 }
+
+int ScDataRetention::isEnabled(const string& user, bool* enabled)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    static const char* baseUrl = "/drbroker/check-user";
+
+    std::string requestUrl(baseUrl);
+    requestUrl += authorization_;
+
+    cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
+
+    cJSON_AddStringToObject(root.get(), "api_key", authorization_.c_str());
+    cJSON_AddStringToObject(root.get(), "alias", user.c_str());
+
+    unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
+    std::string request(out.get());
+
+    string result;
+    int rc = httpHelper_(requestUrl, POST, request, &result);
+    if (rc == 422) {
+        // An Unprocessable Entity error means we sent invalid data. This isn't
+        // correctable by us so we shouldn't retry the request.
+        LOGGER(ERROR, "Unprocessable Entity error using data retention broker: ", result.c_str());
+        return -2;
+    }
+
+    if (rc != 200) {
+        LOGGER(ERROR, "Could not access data retention broker.");
+        return -1;
+    }
+
+    // Trim trailing whitespace
+    result.erase(result.find_last_not_of("\f\n\r\t\v") + 1);
+
+    if (result == "true") {
+        *enabled = true;
+    }
+    else if (result == "false") {
+        *enabled = false;
+    }
+    else {
+        LOGGER(ERROR, "Invalid data returned from data retention broker.");
+        rc = 500;
+    }
+
+    return rc;
+}

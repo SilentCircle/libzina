@@ -380,6 +380,18 @@ public:
      */
     static int isEnabled(bool* enabled);
 
+    /**
+     * @brief Get status of whether a specific user has data retention enabled on their account.
+     *
+     * This will make an HTTP request using httpHelper to the Data Retention broker.
+     *
+     * @param user The alias of the user to be checked.
+     * @param enabled Will contain true or false depending if data retention is enabled
+     *        on the account. If the request fails then it is unchanged.
+     * @return HTTP status code of AW request to determine if data retention is enabled.
+     */
+    static int isEnabled(const std::string& user, bool* enabled);
+
     ScDataRetention(const ScDataRetention& other)  = delete;
     ScDataRetention& operator=(const ScDataRetention& other)  = delete;
     bool operator==(const ScDataRetention& other) const = delete;

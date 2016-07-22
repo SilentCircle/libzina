@@ -3001,3 +3001,20 @@ JNI_FUNCTION(isDrEnabled)(JNIEnv * env, jclass clazz)
     return static_cast<jboolean>(enabled);
 }
 
+/*
+ * Class:     axolotl_AxolotlNative
+ * Method:    isDrEnabledForUser
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL
+JNI_FUNCTION(isDrEnabledForUser)(JNIEnv * env, jclass clazz, jstring user)
+{
+    bool enabled = false;
+
+    const char* userTemp = env->GetStringUTFChars(user, 0);
+    string userString(userTemp);
+    env->ReleaseStringUTFChars(user, userTemp);
+
+    ScDataRetention::isEnabled(userString, &enabled);
+    return static_cast<jboolean>(enabled);
+}
