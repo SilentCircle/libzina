@@ -150,7 +150,7 @@ set (util_src
     util/UUID.cpp
     logging/Logger.cpp
     logging/AxoLogging.cpp
-    util/Utilities.cpp util/Utilities.h)
+    util/Utilities.cpp)
 
 set (app_repo_src
     appRepository/AppRepository.cpp
