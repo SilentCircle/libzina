@@ -45,6 +45,7 @@ namespace axolotl {
         string alias0;           //!< Primary alias, aka preferred alias, aka alias0
         string contactLookupUri; //!< Set by contacts discovery to the contact's lookup key
         string avatarUrl;        //!< Avatar URL from provisioning server
+        bool   drEnabled;        //!< Data Retention enabled flag
     };
 
     class NameLookup {

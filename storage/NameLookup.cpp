@@ -58,7 +58,7 @@ const string NameLookup::getUid(const string &alias, const string& authorization
 /*
  * Structure of the user info JSON that the provisioning server returns:
 
-{"display_alias": <string>, "avatar_url": <string>, "display_name": <string>, "uuid": <string>}
+{"display_alias": <string>, "avatar_url": <string>, "display_name": <string>, "dr_enabled": <bool>, "uuid": <string>}
  *
  */
 int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
@@ -100,6 +100,10 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     tmpData = cJSON_GetObjectItem(root, "avatar_url");
     if (tmpData != NULL && tmpData->valuestring != NULL) {
         userInfo->avatarUrl.assign(tmpData->valuestring);
+    }
+    tmpData = cJSON_GetObjectItem(root, "dr_enabled");
+    if (tmpData != NULL && tmpData->type == cJSON_True) {
+        userInfo->drEnabled = true;
     }
     cJSON_Delete(root);
     LOGGER(INFO, __func__ , " <--");
@@ -237,6 +241,7 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
     it->second->displayName.assign(userInfo->displayName);
     it->second->alias0.assign(userInfo->alias0);
     it->second->avatarUrl.assign(userInfo->avatarUrl);
+    it->second->drEnabled = userInfo->drEnabled;
 
     return it->second;
 }

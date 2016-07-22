@@ -2612,6 +2612,7 @@ static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray aut
     cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
     cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
     cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
+    cJSON_AddBoolToObject(root, "dr_enabled", userInfo->drEnabled);
 
     char *out = cJSON_PrintUnformatted(root);
     string json(out);
@@ -2688,6 +2689,7 @@ JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, 
     cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
     cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
     cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
+    cJSON_AddBoolToObject(root, "dr_enabled", userInfo->drEnabled);
 
     char *out = cJSON_PrintUnformatted(root);
     string json(out);

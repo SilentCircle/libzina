@@ -1217,6 +1217,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *   "alias0":       "<string>"
      *   "lookup_uri":   "<string>"
      *   "avatar_url":   "<string>"
+     *   "dr_enabled":   "<bool>"
      * }
      * </pre>
      *
@@ -1315,6 +1316,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *   "display_alias": "<string>"
      *   "lookup_uri":    "<string>"
      *   "avatar_url":    "<string>"
+     *   "dr_enabled":   "<bool>"
      * }
      * </pre>
      *
