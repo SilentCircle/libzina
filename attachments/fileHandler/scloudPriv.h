@@ -20,6 +20,7 @@ limitations under the License.
 
 #include "scloud.h"
 #include <cryptcommon/aes.h>
+#include <zrtp/crypto/skein256.h>
 
 #ifdef __clang__
 #pragma mark
@@ -30,7 +31,9 @@ limitations under the License.
 #define DEBUG_PACKETS 0
  
 
-#define kSCloudProtocolVersion  0x02 
+#define kSCloudMinProtocolVersion       2
+#define kSCloudCurrentProtocolVersion   3
+#define kSCloudMaxProtocolVersion       3
 
 
 #define validateSCloudContext( s )      \
@@ -69,9 +72,11 @@ typedef struct SCloudKey    SCloudKey;
 struct SCloudKey
 {
     SCloudKeySuite keySuite;
+    int32_t        keyVersion;
     size_t         symKeyLen;
     int32_t        blockLength;
     uint8_t        symKey[128];
+    uint8_t        hash[SKEIN256_DIGEST_LENGTH];
 };
 
 
@@ -91,7 +96,7 @@ struct SCloudContext
     bool                    bJustDecryptMetaData;
     
     SCloudKey               key;
-    uint8_t                locator[SCLOUD_LOCATOR_LEN];
+    uint8_t                 locator[SCLOUD_LOCATOR_LEN];
 
     uint8_t                 *contextStr;
     size_t                  contextStrLen;
