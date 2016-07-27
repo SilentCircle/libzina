@@ -33,7 +33,6 @@ limitations under the License.
 
 #define kSCloudMinProtocolVersion       2
 #define kSCloudCurrentProtocolVersion   3
-#define kSCloudMaxProtocolVersion       3
 
 
 #define validateSCloudContext( s )      \

@@ -39,8 +39,6 @@ using namespace axolotl;
 
 SCLError scloudDeserializeKey(uint8_t *inData, size_t inLen, SCloudKey *keyOut)
 {
-    SCLError  err = kSCLError_NoErr;
-
     char* in = (char*)XMALLOC(inLen + 1);
     memcpy(in, inData, inLen);
     in[inLen] = '\0';
@@ -59,7 +57,7 @@ SCLError scloudDeserializeKey(uint8_t *inData, size_t inLen, SCloudKey *keyOut)
     if (version == -1) {
         version = Utilities::getJsonInt(root, kVersionStr, -1);
     }
-    if (version < kSCloudMinProtocolVersion || version > kSCloudMaxProtocolVersion) {
+    if (version < kSCloudMinProtocolVersion) {
         return kSCLError_BadParams;
     }
     keyOut->keyVersion = version;
