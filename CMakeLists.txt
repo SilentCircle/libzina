@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 
 set(AUTO_BUILD $ENV{AUTOMATED_BUILD})
 
@@ -38,7 +38,7 @@ set (SOVERSION 1)
 if (AUTO_BUILD EQUAL 1)
     set (ZRTP_BASE_DIR $ENV{WORKSPACE}/silentphone2/support/zrtpcpp)
 else()
-    set (ZRTP_BASE_DIR /home/werner/silentC/zrtpcpp)
+    set (ZRTP_BASE_DIR /Users/werner/AndroidStudioProjects/spa2/silentphone2/support/zrtpcpp)
 endif()
 
 option(STANDALONE "Build standlone shared library, otherwise a static lib without ZRTP crypto modules." OFF)
@@ -88,6 +88,7 @@ if (NOT ANDROID)
         message(FATAL_ERROR "ProtocolBuffer library not found")
     endif()
 
+    set(CMAKE_PREFIX_PATH "/usr/local/")
     pkg_check_modules(SQLCIPHER sqlcipher>=3.7)
     if (SQLCIPHER_FOUND)
         set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${SQLCIPHER_INCLUDE_DIRS})
@@ -95,9 +96,22 @@ if (NOT ANDROID)
         set(LIBS ${LIBS} -lsqlcipher)
         MESSAGE(STATUS "Using SQlCipher based ZRTP cache")
         add_definitions(-DSQL_CIPHER -DSQLITE_HAS_CODEC)
+        get_filename_component(_sqlInclude ${SQLCIPHER_INCLUDE_DIRS} DIRECTORY)
+        include_directories(${_sqlInclude})
+        message(STATUS "SQLCipher include: ${_sqlInclude}")
     else()
         message(FATAL_ERROR "SQLCipher library not found")
     endif()
+
+    find_package(JNI)
+
+    if(JNI_FOUND)
+        include_directories(${JAVA_INCLUDE_PATH2})
+    else()
+        message(FATAL_ERROR "Java JNI package not found")
+    endif()
+
+
 endif()
 
 # pkg_check_modules(SQLITE3 sqlite3>=3.7)
