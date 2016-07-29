@@ -20,9 +20,7 @@ limitations under the License.
 #include "scloudPriv.h"
 #include "../utilities.h"
 #include "../../axolotl/crypto/HKDF.h"
-
-#include <zrtp/crypto/hmac256.h>
-#include <zrtp/crypto/skein256.h>
+#include "../../logging/AxoLogging.h"
 
 #ifndef roundup
 #define roundup(x, y)   ((((x) % (y)) == 0) ? \
@@ -254,6 +252,12 @@ done:
     return err;
 }
 
+static void computeHash(SCloudContextRef ctx, uint8_t *buffer, size_t bufferSize)
+{
+    LOGGER(INFO, __func__, " -->");
+    skein256(buffer, static_cast<unsigned int>(bufferSize), ctx->key.hash);
+    LOGGER(INFO, __func__, " <--");
+}
 
 static SCLError sCloudEncryptNextInternal (SCloudContextRef ctx, uint8_t *buffer, size_t *bufferSize) 
 {
@@ -355,13 +359,12 @@ static SCLError sCloudEncryptNextInternal (SCloudContextRef ctx, uint8_t *buffer
     } while (bufferLeft && ctx->state != kSCloudState_Done);
 
     if(IsntSCLError(err) && bytesUsed) {
-        aes_cbc_encrypt(buffer, buffer, bytesUsed, ctx->iv, &ctx->aes_enc);
+        aes_cbc_encrypt(buffer, buffer, static_cast<int>(bytesUsed), ctx->iv, &ctx->aes_enc);
     }
+    computeHash(ctx, buffer, bytesUsed);
     *bufferSize = bytesUsed;
 
-done:
     return err;
-
 }
 
 SCLError SCloudEncryptNext(SCloudContextRef ctx, uint8_t *buffer, size_t *bufferSize)
@@ -386,6 +389,26 @@ SCLError SCloudEncryptNext(SCloudContextRef ctx, uint8_t *buffer, size_t *buffer
 
 done:
     return err;
+}
+
+static SCLError checkHash(SCloudContextRef scloudRef, uint8_t* in, size_t inSize) {
+    SCLError err = kSCLError_NoErr;
+
+    LOGGER(INFO, __func__, " --> ", scloudRef->key.keyVersion);
+
+    // Key versions <=2 don't have hash check data, thus assume success
+    if (scloudRef->key.keyVersion <= 2)
+        return err;
+
+    uint8_t hash[SKEIN256_DIGEST_LENGTH];
+
+    skein256(in, static_cast<unsigned int>(inSize), hash);
+    if (memcmp(hash, scloudRef->key.hash, SKEIN256_DIGEST_LENGTH) == 0) {
+        LOGGER(INFO, __func__, " <--");
+        return err;
+    }
+    LOGGER(ERROR, __func__, " <-- failed");
+    return kSCLError_BadIntegrity;
 }
 
 
@@ -481,6 +504,9 @@ SCLError SCloudDecryptNext(SCloudContextRef scloudRef, uint8_t* in, size_t inSiz
     if( inSize == 0 && scloudRef->state == kSCloudState_Done) {
         RETERR(kSCLError_EndOfIteration);
     }
+
+    if (checkHash(scloudRef, in, inSize) != kSCLError_NoErr)
+        return kSCLError_BadIntegrity;
 
     while (true) {
         uint8_t *p1 = ptBuf + ptBufLen;
