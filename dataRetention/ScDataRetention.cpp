@@ -108,7 +108,7 @@ int DrRequest::getPresignedUrl(const std::string& url_suffix, const std::string&
 {
     LOGGER(INFO, __func__, " -->");
 
-    static const char* requestUrl = "/drbroker/event";
+    static const char* requestUrl = "/drbroker/event/";
 
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
 
@@ -652,7 +652,7 @@ int ScDataRetention::isEnabled(bool* enabled)
 {
     LOGGER(INFO, __func__, " -->");
 
-    static const char* baseUrl = "/drbroker/check?api_key=";
+    static const char* baseUrl = "/drbroker/check/?api_key=";
 
     std::string requestUrl(baseUrl);
     requestUrl += authorization_;
@@ -687,7 +687,7 @@ int ScDataRetention::isEnabled(const string& user, bool* enabled)
 {
     LOGGER(INFO, __func__, " -->");
 
-    static const char* baseUrl = "/drbroker/check-user";
+    static const char* baseUrl = "/drbroker/check-user/";
 
     std::string requestUrl(baseUrl);
     requestUrl += authorization_;
