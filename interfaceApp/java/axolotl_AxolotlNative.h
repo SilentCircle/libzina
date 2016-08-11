@@ -12,10 +12,10 @@ extern "C" {
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    doInit
- * Signature: (ILjava/lang/String;[B[B[B[B)I
+ * Signature: (ILjava/lang/String;[B[B[B[BZ)I
  */
 JNIEXPORT jint JNICALL Java_axolotl_AxolotlNative_doInit
-  (JNIEnv *, jobject, jint, jstring, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+  (JNIEnv *, jobject, jint, jstring, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jboolean);
 
 /*
  * Class:     axolotl_AxolotlNative

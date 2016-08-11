@@ -66,6 +66,7 @@ static JavaVM* javaVM = NULL;
 // Set in doInit(...)
 static jobject axolotlCallbackObject = NULL;
 static jmethodID receiveMessageCallback = NULL;
+static jmethodID storeMessageCallback = NULL;
 static jmethodID stateReportCallback = NULL;
 static jmethodID httpHelperCallback = NULL;
 static jmethodID javaNotifyCallback = NULL;
@@ -216,7 +217,7 @@ void loadAxolotl()
  * 
  * "([B[B[B)I"
  */
-static int32_t receiveMessage(const string& messageDescriptor, const string& attachementDescriptor = string(), const string& messageAttributes = string())
+static int32_t receiveMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
 {
     if (axolotlCallbackObject == NULL)
         return -1;
@@ -230,8 +231,8 @@ static int32_t receiveMessage(const string& messageDescriptor, const string& att
     Log("receiveMessage - message: '%s' - length: %d", messageDescriptor.c_str(), messageDescriptor.size());
 
     jbyteArray attachment = NULL;
-    if (!attachementDescriptor.empty()) {
-        attachment = stringToArray(env, attachementDescriptor);
+    if (!attachmentDescriptor.empty()) {
+        attachment = stringToArray(env, attachmentDescriptor);
         if (attachment == NULL) {
             return -4;
         }
@@ -244,6 +245,49 @@ static int32_t receiveMessage(const string& messageDescriptor, const string& att
         }
     }
     int32_t result = env->CallIntMethod(axolotlCallbackObject, receiveMessageCallback, message, attachment, attributes);
+
+    env->DeleteLocalRef(message);
+    if (attachment != NULL)
+        env->DeleteLocalRef(attachment);
+    if (attributes != NULL)
+        env->DeleteLocalRef(attributes);
+
+    return result;
+}
+
+/*
+ * Store message data callback for AppInterfaceImpl.
+ *
+ * "([B[B[B)I"
+ */
+static int32_t storeMessageData(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
+{
+    if (axolotlCallbackObject == NULL)
+        return -1;
+
+    CTJNIEnv jni;
+    JNIEnv *env = jni.getEnv();
+    if (!env)
+        return -2;
+
+    jbyteArray message = stringToArray(env, messageDescriptor);
+    Log("storeMessageData - message: '%s' - length: %d", messageDescriptor.c_str(), messageDescriptor.size());
+
+    jbyteArray attachment = NULL;
+    if (!attachmentDescriptor.empty()) {
+        attachment = stringToArray(env, attachmentDescriptor);
+        if (attachment == NULL) {
+            return -4;
+        }
+    }
+    jbyteArray attributes = NULL;
+    if (!messageAttributes.empty()) {
+        attributes = stringToArray(env, messageAttributes);
+        if (attributes == NULL) {
+            return -4;
+        }
+    }
+    int32_t result = env->CallIntMethod(axolotlCallbackObject, storeMessageCallback, message, attachment, attributes);
 
     env->DeleteLocalRef(message);
     if (attachment != NULL)
@@ -496,11 +540,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 /*
  * Class:     axolotl_AxolotlNative
  * Method:    doInit
- * Signature: (ILjava/lang/String;[B[B[B[B)I
+ * Signature: (ILjava/lang/String;[B[B[B[BZ)I
  */
 JNIEXPORT jint JNICALL 
 JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyteArray dbPassphrase, jbyteArray userName,
-                    jbyteArray authorization, jbyteArray scClientDeviceId)
+                    jbyteArray authorization, jbyteArray scClientDeviceId, jboolean delayRatchetCommit)
 {
     debugLevel = flags & 0xf;
 //    int32_t flagsInternal = flags >> 4;
@@ -542,6 +586,10 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         groupStateCallback = env->GetMethodID(callbackClass, "groupStateCallback", "(I[B)V");
         if (groupStateCallback == NULL) {
             return -22;
+        }
+        storeMessageCallback = env->GetMethodID(callbackClass, "storeMessageData", "([B[B[B)I");
+        if (storeMessageCallback == NULL) {
+            return -23;
         }
     }
     string name;
@@ -596,8 +644,9 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     }
     delete ownAxoConv;    // Not needed anymore here
 
-    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport, notifyCallback, receiveGroupMessage,
-                                           receiveGroupCommand, groupStateReport);
+    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, storeMessageData, messageStateReport,
+                                           notifyCallback, receiveGroupMessage, receiveGroupCommand, groupStateReport);
+    axoAppInterface->setDelayRatchetCommit(delayRatchetCommit!= 0);
     Transport* sipTransport = new SipTransport(axoAppInterface);
 
     /* ***********************************************************************************

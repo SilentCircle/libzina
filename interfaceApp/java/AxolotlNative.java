@@ -80,10 +80,11 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @param userName the local username, for SC it's the name of the user's account
      * @param authorization some authorization code, for SC it's the API key of this device
      * @param scClientDevId the sender's device id, same as used to register the device (v1/me/device/{device_id}/)
+     * @param delayRatchetCommit If true then delay commit of ratchet data after saving the decrypted message to DB,
      * @return 1 if call was OK and a 'own' conversation existed, 2 if an 'own' conversation was created and
      *         initialized, a negative value in case of errors
      */
-    public native int doInit(int flags, String dbName, byte[] dbPassPhrase, byte[] userName, byte[] authorization, byte[] scClientDevId);
+    public native int doInit(int flags, String dbName, byte[] dbPassPhrase, byte[] userName, byte[] authorization, byte[] scClientDevId, boolean delayRatchetCommit);
 
     /**
      * Send a message with an optional attachment.
@@ -321,6 +322,13 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * and forwards the resulting string to the UI code. The UI code can then use this data as input to
      * the attachment handling.
      *
+     * In the parameter {@code delayRatchetCommit} in {@code doInit()} was {@code true} then the
+     * implementation of this function should update the UI, process attachment data, the attribute
+     * data and may check if the data is available in the message store (see {@code storeMessageData(...)}).
+     *
+     * If this parameter was {@code false} then the implementation should store the data and then
+     * process it as appropriate.
+     *
      * @param messageDescriptor      The JSON formatted message descriptor, string, required.
      *
      * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty
@@ -328,10 +336,41 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string ot {@code null} shows that not attributes are available.
-     * @return Either success of an error code (to be defined)
+     * @return Either success or an error code (to be defined)
      */
     //**ANN** @WorkerThread
     public abstract int receiveMessage(byte[] messageDescriptor, byte[] attachmentDescriptor, byte[] messageAttributes);
+
+    /**
+     * Store Message data callback function.
+     *
+     * ZINA calls this function only if the parameter {@code delayRatchetCommit} in {@code doInit()}
+     * is {@code true}
+     *
+     * Takes JSON formatted message descriptor of the received message and forwards it to the UI
+     * code via a callback functions. The function accepts an optional JSON formatted attachment
+     * descriptor and forwards it to the UI code if a descriptor is available.
+     *
+     * The implementation of this function should parse/store the data as appropriate and store it
+     * in its message storage. If it could store the data successfully then the function returns
+     * OK (1). Any other return code indicates an error.
+     *
+     * NOTE: this function must not call any ZINA functions to send messages or delivery receipts,
+     *       burn notices, read receipts.
+     *
+     * This function should not perform long-running actions and should return as fast as possible.
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, string, required.
+     *
+     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty
+     *                               string ot {@code null} shows that not attachment descriptor is available.
+     *
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string ot {@code null} shows that not attributes are available.
+     * @return Either success or an error code
+     */
+    //**ANN** @WorkerThread
+    public abstract int storeMessageData(byte[] messageDescriptor, byte[] attachmentDescriptor, byte[] messageAttributes);
 
     /**
      * Message state change callback function.
