@@ -58,7 +58,7 @@ class AxoConversation
 public:
     AxoConversation(const string& localUser, const string& user, const string& deviceId) : partner_(user, emptyString),
                     deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0), 
-                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), errorCode_(0)
+                    Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), errorCode_(0), sqlErrorCode_(0), valid_(false)
                     { stagedMk = make_shared<list<string> >(); }
 
 
@@ -104,9 +104,13 @@ public:
 
     void storeStagedMks();
 
+    static void clearStagedMks(shared_ptr<list<string> > keys);
+
     shared_ptr<list<string> > loadStagedMks();
 
     void deleteStagedMk(string& mkiv);
+
+    shared_ptr<list<string> > getEmptyStagedMks();
 
     const AxoContact& getPartner()  { return partner_; }
 
@@ -119,6 +123,9 @@ public:
 
     void setErrorCode(int32_t code)         { errorCode_ = code; } 
     int32_t getErrorCode()                  { return errorCode_; }
+
+    void setSqlErrorCode(int32_t code)      { sqlErrorCode_ = code; }
+    int32_t getSqlErrorCode()               { return sqlErrorCode_; }
 
     void setRK(const std::string& key)      { RK = key; }
     const std::string& getRK() const        { return RK; }
@@ -161,6 +168,8 @@ public:
 
     void setZrtpVerifyState(int32_t state)  { zrtpVerifyState = state; }
     int32_t getZrtpVerifyState() const      { return zrtpVerifyState; }
+
+    bool isValid()                          { return valid_; }
 
     shared_ptr<list<string> > stagedMk;
 
@@ -226,9 +235,11 @@ private:
                 received despite the reception of more recent messages.
                 Entries may be stored with a timestamp, and deleted after
                 a certain age.
-    Impemented via database and temporary list, see stagedMk above.
+    Implemented via database and temporary list, see stagedMk above.
     */ 
     int32_t errorCode_;
+    int32_t sqlErrorCode_;      //!< Valid if errorCode_ is DATABASE_ERROR
+    bool valid_;
 };
 }
 /**

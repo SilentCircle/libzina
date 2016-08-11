@@ -60,11 +60,12 @@ const string* messageEnvelope;
 // Callback to send data via the transport. This function stores the first message envelope
 // before it returns
 // names, devIds, envelopes, sizes, msgIds
-static void sendDataTestFunction(uint8_t* names[] , uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[])
+static bool sendDataTestFunction(uint8_t* names , uint8_t* devIds, uint8_t* envelopes, size_t sizes, uint64_t msgIds)
 {
     LOGGER(INFO, __func__, " -->");
-    messageEnvelope = new string((const char*)envelopes[0], sizes[0]);
+    messageEnvelope = new string((const char*)envelopes, sizes);
     LOGGER(INFO, __func__, " <--");
+    return true;
 }
 
 // This simulates an answer from the provisioning server responding 400
@@ -304,7 +305,7 @@ static string createMessageDescriptor(const string& groupId, AppInterfaceImpl* a
  * Returns the device ids for member 2.
  * {
    "version" :        <int32_t>,        # Version of JSON new pre-keys, 1 for the first implementation
-   {"devices": [{"version": 1, "id": <string>, "device_name": <string>}]}  # array of known Axolotl ScClientDevIds for this user/account
+   {"devices": [{"id": <string>, "device_name": <string>}]}  # array of known Axolotl ScClientDevIds for this user/account
    }
  */
 static int32_t respondDevIds_M2(const std::string& requestUrl, const std::string& method, const std::string& data, std::string* response)

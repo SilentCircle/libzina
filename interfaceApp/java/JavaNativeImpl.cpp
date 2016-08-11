@@ -588,8 +588,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 
     int32_t retVal = 1;
     AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
-    if (ownAxoConv == NULL) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
-        ownAxoConv = new AxoConversation(name, name, string());
+    if (!ownAxoConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         ownAxoConv->setDHIs(idKeyPair);
         ownAxoConv->storeConversation();

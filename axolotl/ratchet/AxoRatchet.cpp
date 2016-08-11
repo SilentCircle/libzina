@@ -330,7 +330,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
         }
     }
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return SUCCESS;
 }
 
 static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac,
@@ -338,9 +338,13 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
 {
     LOGGER(INFO, __func__, " -->");
 
-    int32_t retVal = 0;
+    int32_t retVal = MAC_CHECK_FAILED;              // Initialize to an expected error return, see decryptAndCheck(...)
     shared_ptr<list<string> > mks = conv->loadStagedMks();
     if (!mks || mks->empty()) {
+        if (conv->getErrorCode() != SUCCESS) {
+            LOGGER(INFO, __func__, " <-- Error reading MK: ", conv->getErrorCode(), ", DB code: ", conv->getSqlErrorCode());
+        }
+        conv->clearStagedMks(mks);
         LOGGER(INFO, __func__, " <-- No staged keys.");
         return NO_STAGED_KEYS;
     }
@@ -353,17 +357,19 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
-        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == OK) {
-            memset_volatile((void*)MK.data(), 0, MK.size());
+        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == SUCCESS) {
+            conv->deleteStagedMk(MKiv);
+            memset_volatile((void*)MKiv.data(), 0, MKiv.size());
             mks->erase(it);
             break;
         }
     }
-    LOGGER(INFO, __func__, " <-- ", (retVal != OK) ? "no matching MK found." : "matching MK found");
+    conv->clearStagedMks(mks);
+    LOGGER(INFO, __func__, " <-- ", (retVal != SUCCESS) ? "no matching MK found." : "matching MK found");
     return retVal;
 }
 
-static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
+static int32_t stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
                                     pair<string, string>* MKp, string* macKey)
 {
     LOGGER(INFO, __func__, " -->");
@@ -376,7 +382,10 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
     uint32_t macLen;
     *CKp = CKr;
 
-    shared_ptr<list<string> > mks = conv->loadStagedMks();
+    shared_ptr<list<string> > mks = conv->getEmptyStagedMks();
+    if (conv->getErrorCode() != SUCCESS)
+        return conv->getErrorCode();
+
     for (int32_t i = Nr; i < Np; i++) {
         deriveMk(*CKp, &MK, &iv, &mKey);
         string mkivmac(MK);
@@ -396,6 +405,7 @@ static void stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t N
     hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, mac, &macLen);
     CKp->assign((const char*)mac, macLen);
     LOGGER(INFO, __func__, " <--");
+    return SUCCESS;
 }
 
 static void computeIdHash(const string& id, string* idHash)
@@ -423,7 +433,7 @@ static int32_t compareHashes(pair<string, string>* idHashes, string& recvIdHash,
         return SENDER_ID_WRONG;
     }
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return SUCCESS;
 }
 /*
 if (plaintext = try_skipped_header_and_message_keys()):
@@ -479,7 +489,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
         result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
-        if (result < 0)
+        if (result != SUCCESS)
             return shared_ptr<string>();
     }
 
@@ -492,7 +502,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     if (idHashes != NULL) {
         string recvIdHash;
         AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
-        if (localConv != NULL) {
+        if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &recvIdHash);
             delete localConv;
@@ -501,7 +511,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         const string idPub = conv->getDHIr()->getPublicKey();
         computeIdHash(idPub, &senderIdHash);
         result = compareHashes(idHashes, recvIdHash, senderIdHash);
-        if (result < 0) {
+        if (result != SUCCESS) {
             conv->setErrorCode(result);
             return shared_ptr<string>();
         }
@@ -511,8 +521,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     shared_ptr<string> decrypted = make_shared<string>();
 
     string mac((const char*)msgStruct.mac, 8);
-    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain) == OK) {
-        conv->storeStagedMks();
+    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain) == SUCCESS) {
         return decrypted;
     }
 
@@ -527,9 +536,13 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
 
     if (!newRatchet) {
         delete(DHRp);
-        stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
-        int32_t status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
-        if (status < 0) {
+        int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
+        if (status != SUCCESS) {
+            LOGGER(ERROR, __func__, " <-- Old ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
+            return shared_ptr<string>();
+        }
+        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
+        if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Old ratchet, decrypt failed, staged MK not stored.");
             conv->setErrorCode(status);
             return shared_ptr<string>();
@@ -538,7 +551,11 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     else {
         // Stage the skipped message for the current (old) ratchet, CKp, MK and macKey are not
         // used at this point, PNp has the max number of message sent on the old ratchet
-        stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.PNp, conv->getCKr(), &CKp, &MK, &macKey);
+        int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.PNp, conv->getCKr(), &CKp, &MK, &macKey);
+        if (status != SUCCESS) {
+            LOGGER(ERROR, __func__, " <-- New ratchet, staging MK for old ratchet failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
+            return shared_ptr<string>();
+        }
 
         // Save old DHRr, may need to restore in case of failure
         const DhPublicKey* saveDHRr = conv->getDHRr();
@@ -548,7 +565,7 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
 
         // RKp, CKp = KDF( HMAC-HASH(RK, DH(DHRp, DHRs)) )
         // With the new ratchet key derive the purported RK and CKr
-        int32_t status = deriveRkCk(*conv, &RKp, &CKp);
+        status = deriveRkCk(*conv, &RKp, &CKp);
         if (status < 0) {
             conv->setDHRr(saveDHRr);
             delete DHRp;
@@ -560,10 +577,16 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         // With a new ratchet the message nr starts at zero, however we may have missed
         // the first message with the new ratchet key, thus stage up to purported number and
         // compute the chain key starting with the purported chain key computed above
-        stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &MK, &macKey);
+        status = stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &MK, &macKey);
+        if (status != SUCCESS) {
+            conv->setDHRr(saveDHRr);
+            delete DHRp;
+            LOGGER(ERROR, __func__, " <-- New ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
+            return shared_ptr<string>();
+        }
 
         status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted, supplementsPlain);
-        if (status < 0) {
+        if (status != SUCCESS) {
             conv->setDHRr(saveDHRr);
             delete DHRp;
             conv->setErrorCode(status);
@@ -623,7 +646,7 @@ shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string
         string senderIdHash;
 
         AxoConversation* localConv = AxoConversation::loadLocalConversation(conv.getLocalUser());
-        if (localConv != NULL) {
+        if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &senderIdHash);
             delete localConv;

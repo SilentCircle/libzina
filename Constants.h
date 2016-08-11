@@ -89,6 +89,7 @@ namespace axolotl {
     static const int32_t WRONG_RECV_DEV_ID = -30;     //!< Expected device id does not match actual device id
     static const int32_t NETWORK_ERROR = -31;         //!< The HTTP request returned an code >400 or SIP failed
     static const int32_t DATA_MISSING = -32;          //!< Some data for a function is missing
+    static const int32_t DATABASE_ERROR = -33;        //!< SQLCipher/SQLite returned and error code
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported

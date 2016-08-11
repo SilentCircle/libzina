@@ -255,7 +255,7 @@ shared_ptr<list<pair<string, string> > > Provisioning::getAxoDeviceIds(const std
 
     cJSON* root = cJSON_Parse(response.c_str());
     if (root == NULL) {
-        LOGGER(ERROR, "Wrong device respose JSON data, ignoring.");
+        LOGGER(ERROR, "Wrong device response JSON data, ignoring.");
         return deviceIds;
     }
 

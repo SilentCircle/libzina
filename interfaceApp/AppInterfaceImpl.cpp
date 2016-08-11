@@ -248,11 +248,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     }
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
-    // This is a not yet seen user. Set up a basic Conversation structure. Decrypt uses it and fills
-    // in the other data based on the received message.
-    if (axoConv == NULL) {
-        axoConv = new AxoConversation(ownUser_, sender, senderScClientDevId);
-    }
     shared_ptr<string> supplementsPlain = make_shared<string>();
     shared_ptr<const string> messagePlain;
 
@@ -416,7 +411,7 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
 //    cJSON_AddStringToObject(root, "scClientDevId", scClientDevId_.c_str());
 
     AxoConversation* ownConv = AxoConversation::loadLocalConversation(ownUser_);
-    if (ownConv == NULL) {
+    if (!ownConv->isValid()) {
         cJSON_Delete(root);
         LOGGER(ERROR, __func__, " No own conversation in database.");
         return NO_OWN_ID;
@@ -552,14 +547,14 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         // using the Web interface of the provisioning server
         if (store->hasConversation(userName, deviceId, ownUser_)) {
             AxoConversation* conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
-            if (conv != NULL) {
+            if (conv->isValid()) {
                 const string& convDevName = conv->getDeviceName();
                 if (!deviceName.empty()) {
                     conv->setDeviceName(deviceName);
                     conv->storeConversation();
                 }
-                delete conv;
             }
+            delete conv;
             continue;
         }
 
@@ -632,7 +627,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageInternal(const string& recipient, 
         }
 
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
-        if (axoConv == NULL) {
+        if (!axoConv->isValid()) {
             LOGGER(DEBUGGING, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", recipient, ", recipientDeviceId: ",
                    recipientDeviceId);
             continue;
@@ -891,12 +886,18 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     int32_t buildResult = AxoPreKeyConnector::setupConversationAlice(ownUser_, recipient, recipientDeviceId, preKeyId, preIdKeys);
 
     // This is always a security issue: return immediately, don't process and send a message
-    if (buildResult < 0) {
+    if (buildResult != SUCCESS) {
         errorCode_ = buildResult;
         errorInfo_ = recipientDeviceId;
-        return buildResult;
+        return errorCode_;
     }
     AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, recipient, recipientDeviceId);
+    if (!axoConv->isValid()) {
+        errorCode_ = axoConv->getErrorCode();
+        errorInfo_ = recipientDeviceId;
+        delete axoConv;
+        return errorCode_;
+    }
     axoConv->setDeviceName(recipientDeviceName);
 
     shared_ptr<string> supplementsEncrypted = make_shared<string>();
@@ -906,18 +907,26 @@ int32_t AppInterfaceImpl::createPreKeyMsg(const string& recipient,  const string
     // Encrypt the user's message and the supplementary data if necessary
     pair<string, string> idHashes;
     shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConv, message, supplements, supplementsEncrypted, &idHashes);
-    axoConv->storeConversation();
-    convJson = axoConv->prepareForCapture(convJson, false);
-    delete axoConv;
 
-    if (!wireMessage) {
-        LOGGER(WARNING, "Encryption failed, no wire message created.");
-        LOGGER(INFO, __func__, " <-- Encryption failed.");
-        return 0;
-    }
+    convJson = axoConv->prepareForCapture(convJson, false);
     char* out = cJSON_PrintUnformatted(convJson);
     convState->assign(out);
     cJSON_Delete(convJson); free(out);
+
+    if (!wireMessage) {
+        LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", recipientDeviceId);
+        LOGGER(INFO, __func__, " <-- Encryption failed.");
+        delete axoConv;
+        return 0;
+    }
+    axoConv->storeConversation();
+    errorCode_ = axoConv->getErrorCode();
+    delete axoConv;
+
+    if (errorCode_ != SUCCESS) {
+        errorInfo_ = SQLiteStoreConv::getStore()->getLastError();
+        return errorCode_;
+    }
 
     bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
     /*
@@ -976,7 +985,7 @@ string AppInterfaceImpl::getOwnIdentityKey() const
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     AxoConversation* axoConv = AxoConversation::loadLocalConversation(ownUser_);
-    if (axoConv == NULL) {
+    if (!axoConv->isValid()) {
         LOGGER(ERROR, "No own conversation, ignore.")
         LOGGER(INFO, __func__, " <-- No own conversation.");
         return Empty;
@@ -1009,6 +1018,10 @@ list<string>* AppInterfaceImpl::getIdentityKeys(string& user) const
         string recipientDeviceId = devices->front();
         devices->pop_front();
         AxoConversation* axoConv = AxoConversation::loadConversation(ownUser_, user, recipientDeviceId);
+        if (!axoConv->isValid()) {
+            delete axoConv;
+            continue;
+        }
         const DhPublicKey* idKey = axoConv->getDHIr();
         if (idKey == NULL) {
             delete axoConv;
@@ -1045,8 +1058,16 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
     // clear data and store the nearly empty conversation
     AxoConversation* conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
+    if (!conv->isValid()) {
+        delete conv;
+        return;
+    }
     conv->reset();
     conv->storeConversation();
+    if (conv->getErrorCode() != SUCCESS) {
+        delete conv;
+        return;
+    }
     delete(conv);
 
     // Check if server still knows this device, if no device at all -> remove conversation.

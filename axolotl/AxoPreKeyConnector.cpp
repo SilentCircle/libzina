@@ -64,15 +64,26 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
                                                    int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys)
 {
     LOGGER(INFO, __func__, " -->");
+    int32_t retVal;
+
     AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
-    if (conv != NULL && !conv->getRK().empty()) {       // Already a conversation available
+    if (conv->isValid() && !conv->getRK().empty()) {       // Already a conversation available
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
+        delete conv;
         return AXO_CONV_EXISTS;
     }
+    if (conv->getErrorCode() != SUCCESS) {
+        retVal = conv->getErrorCode();
+        delete conv;
+        return retVal;
+    }
+
     AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
-    if (localConv == NULL) {
+    if (!localConv->isValid()) {
         LOGGER(ERROR, __func__, " <-- No own identity exists.");
-        return NO_OWN_ID;
+        retVal = (localConv->getErrorCode() == SUCCESS) ? NO_OWN_ID : localConv->getErrorCode();
+        delete localConv;
+        return retVal;
     }
 
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
@@ -96,9 +107,6 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     memset_volatile(masterSecret, 0, EcCurveTypes::Curve25519KeyLength*3);
     memset_volatile((void*)master.data(), 0, master.size());
 
-    if (conv == NULL)
-        conv = new AxoConversation(localUser, user, deviceId);
-
     // Conversation takes over the ownership of the keys.
     conv->setDHIr(B);
     conv->setDHIs(A);
@@ -109,10 +117,11 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     conv->setPreKeyId(bobPreKeyId);
     conv->setRatchetFlag(true);
     conv->storeConversation();
+    retVal = conv->getErrorCode();
     delete conv;
 
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return retVal;
 }
 
 /*
@@ -142,7 +151,7 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
         }
         else {
             LOGGER(INFO, __func__, " <-- OK - multiple type 2 message");
-            return OK;
+            return SUCCESS;
         }
     }
     store->removePreKey(bobPreKeyId);
@@ -155,6 +164,10 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     delete preKeyData;
 
     AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+    if (!localConv->isValid()) {
+        LOGGER(ERROR, __func__, " <-- Local conversation not valid, code: ", localConv->getErrorCode());
+        return -1;
+    }
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
     delete localConv;
 
@@ -185,5 +198,5 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     conv->setRatchetFlag(false);
 
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return SUCCESS;
 }

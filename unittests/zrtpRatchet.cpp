@@ -126,11 +126,11 @@ TEST_F(RatchetTestFixture, RatchetTest)
 
     // Load P2's conversation
     AxoConversation* p1p2Conv = AxoConversation::loadConversation(p1Name, p2Name, p2dev);
-    ASSERT_TRUE(p1p2Conv != NULL);
+    ASSERT_TRUE(p1p2Conv->isValid());
     ASSERT_TRUE(p2Conv->getDHIs()->getPublicKey() == *p1p2Conv->getDHIr());
 
     AxoConversation* p2p1Conv = AxoConversation::loadConversation(p2Name, p1Name, p1dev);
-    ASSERT_TRUE(p1p2Conv != NULL);
+    ASSERT_TRUE(p1p2Conv->isValid());
     ASSERT_TRUE(p1Conv->getDHIs()->getPublicKey() == *p2p1Conv->getDHIr());
 
     if (p1p2Conv->getDHRs() == NULL) {    // This conversation is Alice

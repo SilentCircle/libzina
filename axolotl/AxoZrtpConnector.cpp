@@ -58,14 +58,18 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     unique_lock<mutex> lck(sessionLock);
 
     AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
-    if (conv != NULL) {              // Already a conversation available, no setup necessary
+    if (conv->isValid()) {              // Already a conversation available, no setup necessary
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
+        delete conv;
         return emptyString;
     }
     AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
+    if (!localConv->isValid()) {
+        delete localConv;
+        return emptyString;
+    }
     const DhKeyPair* idKey = localConv->getDHIs();
 
-    conv = new AxoConversation(localUser, user, deviceId);
     AxoZrtpConnector* staging = new AxoZrtpConnector(conv, localConv);
 
     pair<string, AxoZrtpConnector*> stage(localUser, staging);
@@ -250,8 +254,10 @@ const string getOwnAxoIdKey()
     const string& localUser = appIf->getOwnUser();
 
     AxoConversation* local = AxoConversation::loadLocalConversation(localUser);
-    if (local == NULL)
+    if (!local->isValid()) {
+        delete local;
         return string();
+    }
 
     const DhKeyPair* keyPair = local->getDHIs();
     const DhPublicKey& pubKey = keyPair->getPublicKey();
@@ -286,8 +292,9 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     }
     AxoConversation* remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
 
-    if (remote == NULL) {
+    if (!remote->isValid()) {
         LOGGER(ERROR, "<-- No conversation, user: '", user, "', device: ", deviceId);
+        delete remote;
         return;
     }
     const DhPublicKey* remoteId = remote->getDHIr();

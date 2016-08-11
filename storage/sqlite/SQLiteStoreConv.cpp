@@ -285,14 +285,11 @@ int SQLiteStoreConv::beginTransaction()
     SQLITE_CHK(SQLITE_PREPARE(db, beginTransactionSql, -1, &stmt, NULL));
 
     sqlResult = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
-        return sqlResult;
     }
-    return SQLITE_OK;
 
- cleanup:
+cleanup:
     sqlite3_finalize(stmt);
     return sqlResult;
 }
@@ -305,14 +302,11 @@ int SQLiteStoreConv::commitTransaction()
     SQLITE_CHK(SQLITE_PREPARE(db, commitTransactionSql, -1, &stmt, NULL));
 
     sqlResult = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
-        return sqlResult;
     }
-    return SQLITE_OK;
 
- cleanup:
+cleanup:
     sqlite3_finalize(stmt);
     return sqlResult;
 }
@@ -325,14 +319,11 @@ int SQLiteStoreConv::rollbackTransaction()
     SQLITE_CHK(SQLITE_PREPARE(db, rollbackTransactionSql, -1, &stmt, NULL));
 
     sqlResult = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
-        return sqlResult;
     }
-    return SQLITE_OK;
 
-    cleanup:
+cleanup:
     sqlite3_finalize(stmt);
     return sqlResult;
 }
@@ -341,10 +332,9 @@ static int32_t enableForeignKeys(sqlite3* db)
 {
     sqlite3_stmt *stmt;
 
-    sqlite3_prepare(db, "PRAGMA foreign_keys=ON;", -1, &stmt, NULL);
+    sqlite3_prepare_v2(db, "PRAGMA foreign_keys=ON;", -1, &stmt, NULL);
     int32_t rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-
     return rc;
 }
 
@@ -902,7 +892,7 @@ shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, con
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, ownName.data(), static_cast<int32_t>(ownName.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
-        ERRMSG;
+    ERRMSG;
 
     while (sqlResult == SQLITE_ROW) {
         // Get the MK and its iv

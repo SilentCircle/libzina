@@ -33,6 +33,18 @@ public class JavaTester extends AxolotlNative {
     public void notifyCallback(int notifyActionCode, byte[] actionInformation, byte[] deviceId) {
     }
 
+    public int groupMsgReceive(byte[]messageDescriptor, byte[]attachmentDescriptor, byte[] messageAttributes) {
+        return 0;
+    }
+
+    public int groupCmdReceive(byte[] commandMessage) {
+        return 0;
+    }
+
+    public void groupStateCallback(int errorCode, byte[] stateInformation) {
+    }
+
+
     public byte[] httpHelper(byte[] requestUri, String method, byte[] requestData, int[] code) {
         String uri = new String(requestUri);
         String data = new String(requestData);

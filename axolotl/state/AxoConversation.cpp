@@ -29,22 +29,38 @@ void Log(const char* format, ...);
 AxoConversation* AxoConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
 {
     LOGGER(INFO, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    if (!store->hasConversation(user, deviceId, localUser)) {
-        LOGGER(INFO, __func__, " <-- No such conversation: ", user);
-        return NULL;
-    }
+    int32_t result;
 
-    string* data = store->loadConversation(user, deviceId, localUser);
-    if (data == NULL || data->empty()) {   // Illegal state, should not happen
-        LOGGER(ERROR, __func__, " <-- Cannot load conversation: ", user);
-        return NULL;
-    }
     // Create new conversation object
     AxoConversation*  conv = new AxoConversation(localUser, user, deviceId);
+    conv->setErrorCode(SUCCESS);
+
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    bool found = store->hasConversation(user, deviceId, localUser, &result);
+    if (SQL_FAIL(result)) {
+        conv->errorCode_ = DATABASE_ERROR;
+        conv->sqlErrorCode_ = result;
+        return conv;
+    }
+    if (!found) {
+        LOGGER(INFO, __func__, " <-- No such conversation: ", user);
+        return conv;
+    }
+
+    string* data = store->loadConversation(user, deviceId, localUser, &result);
+    if (SQL_FAIL(result)) {
+        conv->errorCode_ = DATABASE_ERROR;
+        conv->sqlErrorCode_ = result;
+        return conv;
+    }
+    if (data == NULL || data->empty()) {   // Illegal state, should not happen
+        LOGGER(ERROR, __func__, " <-- Cannot load conversation: ", user);
+        return conv;
+    }
 
     conv->deserialize(*data);
     delete data;
+    conv->valid_ = true;
     LOGGER(INFO, __func__, " <--");
     return conv;
 }
@@ -56,10 +72,16 @@ void AxoConversation::storeConversation()
 
     const string* data = serialize();
 
-    store->storeConversation(partner_.getName(), deviceId_, localUser_, *data);
+    int32_t result;
+    store->storeConversation(partner_.getName(), deviceId_, localUser_, *data, &result);
     memset_volatile((void*)data->data(), 0, data->size());
 
     delete data;
+    errorCode_ = SUCCESS;
+    if (SQL_FAIL(result)) {
+        errorCode_ = DATABASE_ERROR;
+        sqlErrorCode_ = result;
+    }
     LOGGER(INFO, __func__, " <--");
 }
 
@@ -99,21 +121,41 @@ int32_t AxoConversation::renameConversation(const string& localUserOld, const st
 
 void AxoConversation::storeStagedMks() {
     LOGGER(INFO, __func__, " -->");
+
+    errorCode_ = SUCCESS;
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     while (stagedMk && !stagedMk->empty()) {
         string mkIvMac = stagedMk->front();
         stagedMk->pop_front();
         if (!mkIvMac.empty()) {
-            store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac);
-        }
-        else {
-            store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac);
+            int32_t result;
+            store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac, &result);
+            if (SQL_FAIL(result)) {
+                errorCode_ = DATABASE_ERROR;
+                sqlErrorCode_ = result;
+            }
         }
         memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size());
     }
-    stagedMk.reset();
+    clearStagedMks(stagedMk);
+    LOGGER(INFO, __func__, " <--");
+}
 
-    // Cleanup old MKs
+void AxoConversation::clearStagedMks(shared_ptr<list<string> > keys)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    if (keys) {
+        while (!keys->empty()) {
+            string mkIvMac = keys->front();
+            keys->pop_front();
+            memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size());
+        }
+        keys.reset();
+    }
+
+    // Cleanup old MKs, no harm if this DB function fails due to DB problems
+    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     time_t timestamp = time(0) - MK_STORE_TIME;
     store->deleteStagedMk(timestamp);
     LOGGER(INFO, __func__, " <--");
@@ -122,10 +164,35 @@ void AxoConversation::storeStagedMks() {
 shared_ptr<list<string> > AxoConversation::loadStagedMks()
 {
     LOGGER(INFO, __func__, " -->");
-    if (!stagedMk || stagedMk->empty()) {
-        SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-        stagedMk = store->loadStagedMks(partner_.getName(), deviceId_, localUser_);
+    int32_t result = SQLITE_OK;
+
+    errorCode_ = SUCCESS;
+
+    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
+    shared_ptr<list<string> > keys = store->loadStagedMks(partner_.getName(), deviceId_, localUser_, &result);
+    LOGGER(WARNING, "Got MK: ", keys->size());
+
+    if (SQL_FAIL(result)) {
+        errorCode_ = DATABASE_ERROR;
+        sqlErrorCode_ = result;
+        keys.reset();
     }
+    LOGGER(INFO, __func__, " <--");
+    return keys;
+}
+
+shared_ptr<list<string> > AxoConversation::getEmptyStagedMks()
+{
+    LOGGER(INFO, __func__, " -->");
+
+    errorCode_ = SUCCESS;
+    if (stagedMk && !stagedMk->empty()) {
+        storeStagedMks();               // in case the list was not saved yet, also resets stagedMk shared pointer
+        if (errorCode_ != SUCCESS) {
+            return shared_ptr<list<string> >();
+        }
+    }
+    stagedMk = make_shared<list<string> >();
     LOGGER(INFO, __func__, " <--");
     return stagedMk;
 }
