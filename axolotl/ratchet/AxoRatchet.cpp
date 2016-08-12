@@ -467,7 +467,8 @@ Nr = Np + 1
 CKr = CKp
 return read()*/
 shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements,
-                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes)
+                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes,
+                                             bool delayCommit)
 {
     LOGGER(INFO, __func__, " -->");
     ParsedMessage msgStruct;
@@ -597,7 +598,6 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
         delete saveDHRr;
         conv->setRatchetFlag(true);
     }
-    conv->storeStagedMks();
     conv->setCKr(CKp);
     conv->setNr(msgStruct.Np + 1);     // Receiver: expected next message number 
 
@@ -605,7 +605,12 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     // A0 is not needed anymore.
     delete(conv->getA0());
     conv->setA0(NULL);
-    conv->storeConversation();
+
+    if (!delayCommit) {
+        conv->storeStagedMks();
+        conv->storeConversation();
+    }
+
     LOGGER(INFO, __func__, " <--");
     return decrypted;
 }

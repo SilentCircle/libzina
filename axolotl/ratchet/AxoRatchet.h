@@ -59,7 +59,8 @@ public:
      * @return Plaintext or @c NULL if decryption failed
      */
     static shared_ptr<const string> decrypt(axolotl::AxoConversation* conv, const string& wire, const string& supplements,
-                                            shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL);
+                                            shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL,
+                                            bool delayCommit = false);
 
 private:
     AxoRatchet() {};

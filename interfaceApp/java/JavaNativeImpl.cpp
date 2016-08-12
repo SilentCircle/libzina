@@ -646,7 +646,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 
     axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, storeMessageData, messageStateReport,
                                            notifyCallback, receiveGroupMessage, receiveGroupCommand, groupStateReport);
-    axoAppInterface->setDelayRatchetCommit(delayRatchetCommit!= 0);
+    axoAppInterface->setDelayRatchetCommit(delayRatchetCommit != 0);
     Transport* sipTransport = new SipTransport(axoAppInterface);
 
     /* ***********************************************************************************

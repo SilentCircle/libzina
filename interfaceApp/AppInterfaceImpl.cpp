@@ -176,7 +176,6 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         LOGGER(DEBUGGING, __func__, " Duplicate messages detected so far: ", ++duplicates);
         return OK;
     }
-    store_->insertMsgHash(msgHash);
 
     // Cleanup old message hashes
     time_t timestamp = time(0) - MK_STORE_TIME;
@@ -253,12 +252,9 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
 
-    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
+    messagePlain = AxoRatchet::decrypt(axoConv, message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL, delayRatchetCommit_);
     errorCode_ = axoConv->getErrorCode();
     convJson = axoConv->prepareForCapture(convJson, false);
-
-    delete axoConv;
-    lck.unlock();
 
 //    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
@@ -332,6 +328,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
 
     MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, attributesDescr, !attachmentDescr.empty());
 
+    // TODO: add delayRatchetCommit handling to group handling - currently group messages are disabled, see above, watch out for lock
     if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL) {
         int32_t result = processGroupMessage(envelope, msgDescriptor, attachmentDescr, attributesDescr);
         if (result != OK) {
@@ -339,8 +336,26 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         }
     }
     else {
-        receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+        if (!delayRatchetCommit_) {
+            lck.unlock();
+            receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+        }
+        else {
+            int32_t result = storeCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+            if (result != OK) {
+                delete axoConv;
+                LOGGER(ERROR, __func__, " <-- store callback returned error: ", result);
+                return result;
+
+            }
+            axoConv->storeStagedMks();
+            axoConv->storeConversation();
+            lck.unlock();
+            receiveCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+        }
     }
+    store_->insertMsgHash(msgHash);
+    delete axoConv;
     LOGGER(INFO, __func__, " <--");
     return OK;
 }

@@ -24,7 +24,7 @@ public class JavaTester extends AxolotlNative {
     }
 
     public int receiveMessage(byte[] messageDescriptor, byte[] attachementDescriptor, byte[] messageAttributes) {
-        return 0;
+        return 1;
     }
 
     public void messageStateReport(long messageIdentfier, int statusCode, byte[] stateInformation) { 
@@ -42,6 +42,10 @@ public class JavaTester extends AxolotlNative {
     }
 
     public void groupStateCallback(int errorCode, byte[] stateInformation) {
+    }
+
+    public int storeMessageData(byte[] messageDescriptor, byte[] attachmentDescriptor, byte[] messageAttributes) {
+        return 1;
     }
 
 
@@ -69,7 +73,7 @@ public class JavaTester extends AxolotlNative {
         JavaTester tester = new JavaTester();
         try {
             int initResult = tester.doInit(1, ":memory:", passphrase, new String("wernerd").getBytes("UTF-8"), 
-                                           new String("someapikey").getBytes("UTF-8"), new String("somedevid").getBytes("UTF-8"));
+                                           new String("someapikey").getBytes("UTF-8"), new String("somedevid").getBytes("UTF-8"), false);
             System.out.println("initResult: " + initResult + ", pwlength: " + passphrase.length);
 
             final byte[] msg = new String("Hello, Axolotl! öäüß").getBytes("UTF-8");
