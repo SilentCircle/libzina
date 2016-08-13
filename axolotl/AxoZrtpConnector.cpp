@@ -303,6 +303,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
 //     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
 //     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
     if (pubKey.compare(remoteIdKey) != 0) {
+        delete remote;
         LOGGER(ERROR, "<-- Messaging keys do not match, user: '", user, "', device: ", deviceId);
         return;
     }
