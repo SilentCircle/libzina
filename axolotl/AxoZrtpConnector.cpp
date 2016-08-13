@@ -307,7 +307,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
         LOGGER(ERROR, "<-- Messaging keys do not match, user: '", user, "', device: ", deviceId);
         return;
     }
-    // if verifyState is 1 then both users verfied their SAS and thus set the Axolotl conversation
+    // if verifyState is 1 then both users verified their SAS and thus set the Axolotl conversation
     // to fully verified, otherwise at least the identity keys are equal and we proved that via
     // a ZRTP session.
     int32_t verify = (verifyState == 1) ? 2 : 1;
