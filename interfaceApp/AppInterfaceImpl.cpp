@@ -89,7 +89,7 @@ static void createSupplementString(const string& attachmentDesc, const string& m
     "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
  }
  */
-vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, const string& attachementDescriptor, const string& messageAttributes)
+vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes)
 {
 
     string recipient;
@@ -105,7 +105,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessage(const string& messageDescriptor, 
         return NULL;
     }
     shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
-    return sendMessageInternal(recipient, msgId, message, attachementDescriptor, messageAttributes, devices);
+    return sendMessageInternal(recipient, msgId, message, attachmentDescriptor, messageAttributes, devices);
 }
 
 vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor,
@@ -127,7 +127,7 @@ vector<int64_t>* AppInterfaceImpl::sendMessageToSiblings(const string& messageDe
 }
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId, 
-                               const char* msgHex, int32_t errorCode, const string& sentToId)
+                               const char* msgHex, int32_t errorCode, const string& sentToId, int32_t sqlCode)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -141,6 +141,8 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
     cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
+    if (errorCode == DATABASE_ERROR)
+        cJSON_AddNumberToObject(details, "sqlErrorCode", sqlCode);
 
     char *out = cJSON_PrintUnformatted(root);
     string retVal(out);
@@ -273,8 +275,11 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
         size_t msgLen = min(message.size(), (size_t)500);
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
-        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId));
+        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId, axoConv->getSqlErrorCode()));
         LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
+        if (errorCode_ == DATABASE_ERROR) {
+            LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
+        }
         return errorCode_;
     }
 
@@ -332,7 +337,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& messageEnvelope, const st
     if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL) {
         int32_t result = processGroupMessage(envelope, msgDescriptor, attachmentDescr, attributesDescr);
         if (result != OK) {
-            groupStateReportCallback_(result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId));
+            groupStateReportCallback_(result, receiveErrorJson(sender, senderScClientDevId, msgId, "---", result, sentToId, axoConv->getSqlErrorCode()));
         }
     }
     else {
