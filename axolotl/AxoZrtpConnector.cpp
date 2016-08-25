@@ -57,15 +57,13 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     LOGGER(INFO, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
-    AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
+    auto conv = AxoConversation::loadConversation(localUser, user, deviceId);
     if (conv->isValid()) {              // Already a conversation available, no setup necessary
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
-        delete conv;
         return emptyString;
     }
-    AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
+    auto localConv = AxoConversation::loadLocalConversation(localUser);
     if (!localConv->isValid()) {
-        delete localConv;
         return emptyString;
     }
     const DhKeyPair* idKey = localConv->getDHIs();
@@ -108,7 +106,7 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
         LOGGER(ERROR, __func__, " <-- Illegal state, staging not found.");
         return;
     }
-    AxoConversation* localConv = staging->getLocalConversation();
+    auto localConv = staging->getLocalConversation();
     const DhKeyPair* localIdKey = localConv->getDHIs();
     const char* data = pubKeyData.data();
 
@@ -182,7 +180,7 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
     string root;
     string chain;
     createDerivedKeys(exportedKey, &root, &chain, SYMMETRIC_KEY_LENGTH);
-    AxoConversation *conv = staging->getRemoteConversation();
+    auto conv = staging->getRemoteConversation();
 
 //    hexdump(conv->getPartner().getName().c_str(), staging->getRemoteIdKey()->serialize());
 
@@ -207,8 +205,6 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
     }
     conv->storeConversation();
 
-    delete staging->getLocalConversation();
-    delete staging->getRemoteConversation();
     delete staging;
     lck.unlock();
     LOGGER(INFO, __func__, " <--");
@@ -253,9 +249,8 @@ const string getOwnAxoIdKey()
 
     const string& localUser = appIf->getOwnUser();
 
-    AxoConversation* local = AxoConversation::loadLocalConversation(localUser);
+    auto local = AxoConversation::loadLocalConversation(localUser);
     if (!local->isValid()) {
-        delete local;
         return string();
     }
 
@@ -265,7 +260,6 @@ const string getOwnAxoIdKey()
     string key((const char*)pubKey.getPublicKeyPointer(), pubKey.getSize());
 
 //    hexdump("+++ own key", key); Log("%s", hexBuffer);
-    delete local;
     LOGGER(INFO, __func__, " <--");
     return key;
 }
@@ -290,11 +284,10 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     if (remoteName.empty()) {
         remoteName = localUser;
     }
-    AxoConversation* remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
+    auto remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
 
     if (!remote->isValid()) {
         LOGGER(ERROR, "<-- No conversation, user: '", user, "', device: ", deviceId);
-        delete remote;
         return;
     }
     const DhPublicKey* remoteId = remote->getDHIr();
@@ -303,7 +296,6 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
 //     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
 //     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
     if (pubKey.compare(remoteIdKey) != 0) {
-        delete remote;
         LOGGER(ERROR, "<-- Messaging keys do not match, user: '", user, "', device: ", deviceId);
         return;
     }
@@ -313,7 +305,6 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     int32_t verify = (verifyState == 1) ? 2 : 1;
     remote->setZrtpVerifyState(verify);
     remote->storeConversation();
-    delete remote;
     LOGGER(INFO, __func__, " <--");
 }
 

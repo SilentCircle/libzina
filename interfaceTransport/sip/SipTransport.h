@@ -29,6 +29,7 @@ limitations under the License.
 
 #include "../Transport.h"
 #include "../../interfaceApp/AppInterface.h"
+#include "../../interfaceApp/AppInterfaceImpl.h"
 
 static const char* scSipDomain = "@sip.silentcircle.net";
 
@@ -47,7 +48,7 @@ public:
 
     SEND_DATA_FUNC getTransport() { return sendAxoData_; }
 
-    vector<int64_t>* sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs, uint32_t messageType);
+    void sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& envelope);
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 

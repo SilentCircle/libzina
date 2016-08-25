@@ -502,11 +502,10 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
 
     if (idHashes != NULL) {
         string recvIdHash;
-        AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+        auto localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
         if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &recvIdHash);
-            delete localConv;
         }
         string senderIdHash;
         const string idPub = conv->getDHIr()->getPublicKey();
@@ -650,11 +649,10 @@ shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string
     if (idHashes != NULL) {
         string senderIdHash;
 
-        AxoConversation* localConv = AxoConversation::loadLocalConversation(conv.getLocalUser());
+        auto localConv = AxoConversation::loadLocalConversation(conv.getLocalUser());
         if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &senderIdHash);
-            delete localConv;
         }
 
         string recvIdHash;

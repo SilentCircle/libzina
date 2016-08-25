@@ -153,6 +153,35 @@ static string requestMemberList(const string& groupId, string& requester, shared
     return result;
 }
 
+static string createEmptyMessageDescriptor(const string& recipient, const string& msgId)
+{
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, MSG_RECIPIENT, recipient.c_str());
+    cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
+    cJSON_AddStringToObject(root, MSG_MESSAGE, "");
+
+    char *out = cJSON_PrintUnformatted(root);
+    string result(out);
+    free(out);
+
+    return result;
+
+}
+
+static shared_ptr<vector<uint64_t> >
+extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessageData> > > data)
+{
+    auto ids = make_shared<vector<uint64_t> >();
+
+    for (auto it = data->cbegin(); it != data->cend(); ++it) {
+        uint64_t id = (*it)->transportId;
+        ids->push_back(id);
+    }
+    return ids;
+}
+
 // ****** Public instance functions
 // *******************************************************
 string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
@@ -344,15 +373,9 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     }
 
     string b64Hash = listHashB64(groupId, store_);
-    cJSON* root;
-    if (!messageAttributes.empty()) {
-        root = cJSON_Parse(messageAttributes.c_str());
-    }
-    else {
-        root = cJSON_CreateObject();
-    }
+    cJSON* root = !messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject();
     shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
-    root = sharedRoot.get();
+
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, LIST_HASH, b64Hash.c_str());
 
@@ -364,14 +387,13 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
     for (auto it = members->begin(); it != members->end(); ++it) {
         string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
-        shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
-        vector<int64_t> *sipMsgIds = sendMessageInternal(recipient, msgId, message, attachmentDescriptor, newAttributes, devices, GROUP_MSG_NORMAL);
-        // If errorCode is 1: send to sibling devices and don't have a sibling
-        if (sipMsgIds == nullptr && errorCode_ < 0) {
-            LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
-            return errorCode_;
+        bool toSibling = recipient == ownUser_;
+        auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes, toSibling, GROUP_MSG_NORMAL, &result, recipient);
+        if (result != SUCCESS) {
+            LOGGER(ERROR, __func__, " <-- Error: ", result);
+            return result;
         }
-        delete sipMsgIds;
+        doSendMessages(extractTransportIds(preparedMsgData));
     }
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -448,14 +470,15 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
 
 int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string &msgId, const string &command) {
     LOGGER(INFO, __func__, " --> ", recipient, ", ", ownUser_);
-    shared_ptr<list<string> > devices = store_->getLongDeviceIds(recipient, ownUser_);
-    vector<int64_t> *sipMsgIds = sendMessageInternal(recipient, msgId, Empty, Empty, command, devices, GROUP_MSG_CMD);
-    if (sipMsgIds == nullptr) {
-        // If errorCode is 1: send to sibling devices and don't have a sibling
-        LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
-        return errorCode_;
+
+    bool toSibling = recipient == ownUser_;
+    int32_t result;
+    auto preparedMsgData = prepareMessageInternal(createEmptyMessageDescriptor(recipient, msgId), Empty, command, toSibling, GROUP_MSG_CMD, &result, recipient);
+    if (result != SUCCESS) {
+        LOGGER(ERROR, __func__, " <-- Error: ", result);
+        return result;
     }
-    delete sipMsgIds;
+    doSendMessages(extractTransportIds(preparedMsgData));
 
     LOGGER(INFO, __func__, " <--");
     return OK;

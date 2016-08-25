@@ -66,29 +66,25 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     LOGGER(INFO, __func__, " -->");
     int32_t retVal;
 
-    AxoConversation* conv = AxoConversation::loadConversation(localUser, user, deviceId);
+    auto conv = AxoConversation::loadConversation(localUser, user, deviceId);
     if (conv->isValid() && !conv->getRK().empty()) {       // Already a conversation available
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
-        delete conv;
         return AXO_CONV_EXISTS;
     }
     if (conv->getErrorCode() != SUCCESS) {
         retVal = conv->getErrorCode();
-        delete conv;
         return retVal;
     }
 
-    AxoConversation* localConv = AxoConversation::loadLocalConversation(localUser);
+    auto localConv = AxoConversation::loadLocalConversation(localUser);
     if (!localConv->isValid()) {
         LOGGER(ERROR, __func__, " <-- No own identity exists.");
         retVal = (localConv->getErrorCode() == SUCCESS) ? NO_OWN_ID : localConv->getErrorCode();
-        delete localConv;
         return retVal;
     }
 
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
     const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    delete localConv;
 
     const DhPublicKey* B = bobKeys.first;       // Bob' identity key, public part
     const DhPublicKey* B0 = bobKeys.second;
@@ -118,7 +114,6 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     conv->setRatchetFlag(true);
     conv->storeConversation();
     retVal = conv->getErrorCode();
-    delete conv;
 
     LOGGER(INFO, __func__, " <--");
     return retVal;
@@ -163,13 +158,12 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
     delete preKeyData;
 
-    AxoConversation* localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+    auto localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
     if (!localConv->isValid()) {
         LOGGER(ERROR, __func__, " <-- Local conversation not valid, code: ", localConv->getErrorCode());
         return -1;
     }
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
-    delete localConv;
 
     const DhPublicKey* B = aliceId;
     const DhPublicKey* B0 = alicePreKey;

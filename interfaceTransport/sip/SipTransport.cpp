@@ -105,6 +105,7 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
     }
 }
 
+#if 0
 // The library calls this for a single recipient with multiple devices, the function supports
 // up to 16 devices per recipient. If the caller exceeds this number the functions returns nullptr
 vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs, uint32_t messageType)
@@ -155,6 +156,38 @@ vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pa
 
     LOGGER(INFO, __func__, " <--");
     return msgIdsReturn;
+}
+#endif
+
+void SipTransport::sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& envelope)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    if (!sendThread.joinable()) {
+        unique_lock<mutex> lck(threadLock);
+        if (!sendThread.joinable()) {
+            sendingActive = true;
+            sendThread = thread(runSendQueue, sendAxoData_, this);
+        }
+        lck.unlock();
+    }
+    unique_lock<mutex> listLock(sendListLock);
+
+    // Store all relevant data to send a message in a structure, queue the message
+    // info structure.
+    shared_ptr<SendMsgInfo> msgInfo = make_shared<SendMsgInfo>();
+    msgInfo->recipient = info->recipient;
+    msgInfo->deviceId = info->deviceId;
+    msgInfo->envelope = envelope;
+    uint64_t typeMask = (info->transportMsgId & MSG_TYPE_MASK) >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
+    msgInfo->transportMsgId = info->transportMsgId | typeMask;
+    sendMessageList.push_back(msgInfo);
+
+    runSend = true;
+    sendCv.notify_one();
+    listLock.unlock();
+
+    LOGGER(INFO, __func__, " <--");
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)

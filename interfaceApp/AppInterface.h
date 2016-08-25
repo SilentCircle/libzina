@@ -26,6 +26,7 @@ limitations under the License.
 #include <string>
 #include <vector>
 #include <list>
+#include <memory>
 
 #include "../interfaceTransport/Transport.h"
 
@@ -108,7 +109,7 @@ public:
      * @return unique message identifiers if the messages were processed for sending, @c NULL if processing
      *         failed.
      */
-    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+//    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
 
     /**
      * @brief Send message to sibling devices.
@@ -125,7 +126,7 @@ public:
      * @return unique message identifiers if the messages were processed for sending, 0 if processing
      *         failed.
      */
-    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+//    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
 
     /**
      * @brief Receive a message from transport
@@ -211,7 +212,7 @@ public:
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.
      */
-    virtual list<string>* getIdentityKeys(string& user) const = 0;
+    virtual shared_ptr<list<string> > getIdentityKeys(string& user) const = 0;
 
     /**
      * @brief Register device

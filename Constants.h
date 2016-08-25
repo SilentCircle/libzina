@@ -46,13 +46,15 @@ namespace axolotl {
     static const uint32_t MSG_NORMAL       = 0;
     static const uint32_t MSG_CMD          = 1;
 
-    static const int MAXIMUM_GROUP_SIZE   = 30;
+    static const int MAXIMUM_GROUP_SIZE    = 30;
 
     // Group message types, value for normal message must be the lowest
-    static const uint32_t GROUP_MSG_NORMAL = 10;
-    static const uint32_t GROUP_MSG_CMD    = 11;      //!< To simplify check if this is a pure group command message
+    static const uint32_t GROUP_MSG_NORMAL = 10;    //!< 0xa - normal group message
+    static const uint32_t GROUP_MSG_CMD    = 11;    //!< 0xb - group command message
 
-    static const uint64_t GROUP_TRANSPORT    = 0x8;   //!< Bit in transport message id to identify this as a group message
+    static const uint64_t GROUP_TRANSPORT  = 0x8;   //!< Bit in transport message id to identify this as a group message
+
+    static const uint64_t MSG_TYPE_MASK    = 0xf;   //!< Lower 4 bits hold the message type
 
     // Group/member attributes, bit field data
     static const int32_t ACTIVE       = 1;            //!< The group/member is active in this client

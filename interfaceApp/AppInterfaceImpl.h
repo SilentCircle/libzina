@@ -24,11 +24,13 @@ limitations under the License.
  */
 
 #include <stdint.h>
+#include <map>
 
 #include "AppInterface.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../util/UUID.h"
 #include "../Constants.h"
+#include "../axolotl/state/AxoConversation.h"
 
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
@@ -36,6 +38,30 @@ typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData
 using namespace std;
 
 namespace axolotl {
+
+/**
+ * @brief Structure that contains return data of @c prepareMessage functions.
+ */
+typedef struct PreparedMessageData_ {
+    uint64_t transportId;           //!<  The transport id of the prepared message
+    string receiverInfo;            //!<  Some details about the receiver's device of this message
+} PreparedMessageData;
+
+
+typedef struct MsgQueueInfo_ {
+    string recipient;
+    string deviceId;
+    string msgId;
+    string deviceName;
+    string message;
+    string attachmentDescriptor;
+    string messageAttributes;
+    string envelope;
+    uint64_t transportMsgId;
+    bool toSibling;
+    bool newUserDevice;
+} MsgQueueInfo;
+
 class SipTransport;
 class MessageEnvelope;
 
@@ -62,9 +88,9 @@ public:
 
     Transport* getTransport()               { return transport_; }
 
-    vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
-
-    vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
+//    vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
+//
+//    vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
     int32_t receiveMessage(const string& messageEnvelope);
 
@@ -74,7 +100,7 @@ public:
 
     string getOwnIdentityKey() const;
 
-    list<string>* getIdentityKeys(string& user) const;
+    shared_ptr<list<string> > getIdentityKeys(string& user) const;
 
     int32_t registerAxolotlDevice(string* result);
 
@@ -164,6 +190,53 @@ public:
      * This is a functions we need only during development and testing.
      */
     void clearGroupData();
+
+    /**
+     * @brief Prepare a user-to-user message for sending.
+     *
+     * The functions prepares a message and queues it for sending to the receiver' devices.
+     * The function only prpares the message(s) but does not send them. To actually send the
+     * the messages to the device(s) the application needs to call the @c sendPreparedMessage()
+     * function.
+     *
+     * This function may trigger network actions, thus it must not run on the UI thread.
+     *
+     * The function creates a list of PreparedMessage data structures that contain information
+     * for each prepared message:
+     * <ul>
+     * <li> a 64 bit integer which is the transport id of the prepared message. Libzina uses this
+     *      transport id to identify a message in transit (during send) to the server and to report
+     *      a message status to the application. The application must not modify this data and may
+     *      use it to setup a queue to monitor the message status reports.</li>
+     * <li> A string that contains recipient information. The data and format is the same as returned
+     *      by @c AppInterfaceImpl::getIdentityKeys
+     * </ul>
+     *
+     * @param messageDescriptor      the JSON formatted message descriptor, required
+     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @return A list of prepared message information, or empty on failure
+     */
+    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
+                                                                       const string& attachmentDescriptor,
+                                                                       const string& messageAttributes, int32_t* result);
+
+    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSibling(const string& messageDescriptor,
+                                                                                const string& attachmentDescriptor,
+                                                                                const string& messageAttributes, int32_t* result);
+
+    /**
+     * @brief Encrypt the prepared messages and send them to the receiver.
+     *
+     * Queue the prepared message for encryption and sending to the receiver's devices.
+     *
+     * @param transportIds An array of transport id that identify the message to rncrypt and send.
+     * @return SUCCESS in case moving data was OK
+     */
+    int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
 
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
@@ -332,6 +405,33 @@ private:
       * @return OK if the message list was processed without error.
       */
     int32_t parseMemberList(const cJSON* root, bool initialList, const string& groupId);
+
+    shared_ptr<list<shared_ptr<PreparedMessageData> > >
+    prepareMessageInternal(const string& messageDescriptor,
+                           const string& attachmentDescriptor,
+                           const string& messageAttributes,
+                           bool toSibling, uint32_t messageType, int32_t* result, string grpRecipient = Empty);
+
+    int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> axoConversation = nullptr);
+    int32_t sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo);
+
+    void queuePreparedMessage(shared_ptr<MsgQueueInfo> &msgInfo);
+
+    /**
+     * @brief Move a single prepared message info to the processing queue.
+     *
+     * A small wrapper to hanle a single 64-bit transport id and queue the message info
+     * for processing.
+     *
+     * @param transportId The transport id of the message info to move to processing queue.
+     * @return SUCCESS in case moving data was OK
+     */
+    int32_t doSendSingleMessage(uint64_t transportId);
+
+    static void runSendQueue(AppInterfaceImpl* obj);
+
+    static void createSupplementString(const string& attachmentDesc, const string& messageAttrib, string* supplement);
+
 #ifndef UNITTESTS
     static string generateMsgIdTime() {
         uuid_t uuid = {0};

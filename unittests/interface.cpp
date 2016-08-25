@@ -101,7 +101,7 @@ TEST(RegisterRequest, Basic)
     string name("wernerd");
     string devId("myDev-id");
     AppInterfaceImpl uiIf(store, name, string("myAPI-key"), devId);
-    AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
+    auto ownAxoConv = AxoConversation::loadLocalConversation(name);
 
     if (!ownAxoConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);

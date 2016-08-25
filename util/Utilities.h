@@ -14,7 +14,12 @@
 
 
 #include <sys/types.h>
+#include <string>
+#include <vector>
+#include <memory>
 #include "cJSON.h"
+
+using namespace std;
 
 namespace axolotl {
     class Utilities {
@@ -50,6 +55,19 @@ namespace axolotl {
          * @error Error value, the function returns this value if the JSON structure contains no @c name
          */
         static bool getJsonBool(const cJSON* const root, const char* const name, bool error);
+
+        /**
+         * @brief Splits a string around matches of the given delimiter character.
+         *
+         * Trailing empty strings are not included in the resulting array.
+         * This function works similar to the Java string split function, however it does
+         * not support regular expressions, only a simple delimiter character.
+         *
+         * @param data The std::string to split
+         * @param delimiter The delimiter character
+         * @return A vector of strings
+         */
+        static shared_ptr<vector<string> > splitString(const string& data, const string delimiter);
     };
 }
 

@@ -68,10 +68,9 @@ TEST_F(StoreTestFixture, BasicEmpty)
     conv.storeConversation();
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();    
 
-    AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRK().empty());
-    delete conv1;
 }
 
 TEST_F(StoreTestFixture, TestDHR)
@@ -87,7 +86,7 @@ TEST_F(StoreTestFixture, TestDHR)
     conv.setDHRs(keyPair);
 
     conv.storeConversation();
-    AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -98,7 +97,6 @@ TEST_F(StoreTestFixture, TestDHR)
     const DhPublicKey* pubKey1 = conv1->getDHRr();
     ASSERT_TRUE(pubKey1 != NULL);
     ASSERT_TRUE(*pubKey == *pubKey1);
-    delete conv1;
 }
 
 TEST_F(StoreTestFixture, TestDHI)
@@ -114,7 +112,7 @@ TEST_F(StoreTestFixture, TestDHI)
     conv.setDHIs(keyPair);
 
     conv.storeConversation();
-    AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -125,7 +123,6 @@ TEST_F(StoreTestFixture, TestDHI)
     const DhPublicKey* pubKey1 = conv1->getDHIr();
     ASSERT_TRUE(pubKey1 != NULL);
     ASSERT_TRUE(*pubKey == *pubKey1);
-    delete conv1;
 }
 
 TEST_F(StoreTestFixture, TestA0)
@@ -138,14 +135,13 @@ TEST_F(StoreTestFixture, TestA0)
     conv.setA0(keyPair);
 
     conv.storeConversation();
-    AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
     const DhKeyPair* keyPair1 = conv1->getA0();
     ASSERT_TRUE(keyPair1 != NULL);
     ASSERT_TRUE(keyPair->getPublicKey() == keyPair1->getPublicKey());
-    delete conv1;
 }
 
 TEST_F(StoreTestFixture, SimpleFields)
@@ -168,7 +164,7 @@ TEST_F(StoreTestFixture, SimpleFields)
     conv.setDeviceName(tst);
 
     conv.storeConversation();
-    AxoConversation* conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
 
     ASSERT_EQ(RK, conv1->getRK());
     ASSERT_EQ(CKr, conv1->getCKr());
@@ -179,5 +175,4 @@ TEST_F(StoreTestFixture, SimpleFields)
     ASSERT_EQ(11, conv1->getPNs());
     ASSERT_EQ(13, conv1->getPreKeyId());
     ASSERT_TRUE(tst == conv1->getDeviceName());
-    delete conv1;
 }

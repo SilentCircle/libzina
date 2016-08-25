@@ -635,14 +635,13 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     memset_volatile((void*)dbPw.data(), 0, dbPw.size());
 
     int32_t retVal = 1;
-    AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
+    auto ownAxoConv = AxoConversation::loadLocalConversation(name);
     if (!ownAxoConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         ownAxoConv->setDHIs(idKeyPair);
         ownAxoConv->storeConversation();
         retVal = 2;
     }
-    delete ownAxoConv;    // Not needed anymore here
 
     axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, storeMessageData, messageStateReport,
                                            notifyCallback, receiveGroupMessage, receiveGroupCommand, groupStateReport);
@@ -705,7 +704,7 @@ JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescripto
         arrayToString(env, messageAttributes, &attributes);
         Log("sendMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    vector<int64_t>* msgIds = axoAppInterface->sendMessage(message, attachment, attributes);
+    vector<int64_t>* msgIds = NULL; // axoAppInterface->sendMessage(message, attachment, attributes);
     if (msgIds == NULL || msgIds->empty()) {
         delete msgIds;
         return NULL;
@@ -753,7 +752,7 @@ JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messa
         arrayToString(env, messageAttributes, &attributes);
         Log("sendMessage sib - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    vector<int64_t>* msgIds = axoAppInterface->sendMessageToSiblings(message, attachment, attributes);
+    vector<int64_t>* msgIds = NULL; // axoAppInterface->sendMessageToSiblings(message, attachment, attributes);
     if (msgIds == NULL || msgIds->empty()) {
         delete msgIds;
         return NULL;
@@ -832,7 +831,7 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
     if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
         return NULL;
 
-    list<string>* idKeys = axoAppInterface->getIdentityKeys(name);
+    shared_ptr<list<string> > idKeys = axoAppInterface->getIdentityKeys(name);
 
     jclass byteArrayClass = env->FindClass("[B");
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(idKeys->size()), byteArrayClass, NULL);
@@ -845,7 +844,6 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);
     }
-    delete idKeys;
     return retArray;
 }
 

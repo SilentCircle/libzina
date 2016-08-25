@@ -26,13 +26,13 @@ using namespace std;
 
 void Log(const char* format, ...);
 
-AxoConversation* AxoConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
+shared_ptr<AxoConversation> AxoConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
 {
     LOGGER(INFO, __func__, " -->");
     int32_t result;
 
     // Create new conversation object
-    AxoConversation*  conv = new AxoConversation(localUser, user, deviceId);
+    auto conv = make_shared<AxoConversation>(localUser, user, deviceId);
     conv->setErrorCode(SUCCESS);
 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
