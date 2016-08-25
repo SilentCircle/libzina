@@ -27,7 +27,7 @@ limitations under the License.
 #include <stdint.h>
 #include <list>
 
-#include "../axolotl/crypto/DhKeyPair.h"
+#include "../ratchet/crypto/DhKeyPair.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../Constants.h"
 

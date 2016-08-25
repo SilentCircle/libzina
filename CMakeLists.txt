@@ -21,9 +21,9 @@ set(AUTO_BUILD $ENV{AUTOMATED_BUILD})
 # cross-compiler environment when calling ndk-build. Ignore some Cmake messages
 # in this case.
 if (AUTO_BUILD EQUAL 1)
-    PROJECT(libaxolotl++ NONE)
+    PROJECT(libzina NONE)
 else()
-    PROJECT(libaxolotl++)
+    PROJECT(libzina)
 endif()
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 1)
@@ -56,7 +56,7 @@ if (NOT STANDALONE)
     set(LIBRARY_BUILD_TYPE STATIC)
 endif()
 
-set(axoLibName axolotl++)
+set(axoLibName zina)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
 
 ### No more configuration below this line (usually ;-) )
@@ -129,13 +129,13 @@ else()
     add_definitions(-DEMBEDDED)
 endif()
 
-add_subdirectory(axolotl/crypto)
+add_subdirectory(ratchet/crypto)
 
 set (protocol_src
-    axolotl/AxoZrtpConnector.cpp
-    axolotl/AxoPreKeyConnector.cpp
-    axolotl/ratchet/AxoRatchet.cpp
-    axolotl/state/AxoConversation.cpp
+    ratchet/ZinaZrtpConnector.cpp
+    ratchet/ZinaPreKeyConnector.cpp
+    ratchet/ratchet/ZinaRatchet.cpp
+    ratchet/state/AxoConversation.cpp
 )
 set (interface_src 
     interfaceApp/AppInterfaceImpl.cpp

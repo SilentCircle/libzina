@@ -15,8 +15,8 @@ limitations under the License.
 */
 #include "AppInterfaceImpl.h"
 
-#include "../axolotl/AxoPreKeyConnector.h"
-#include "../axolotl/ratchet/AxoRatchet.h"
+#include "../ratchet/ZinaPreKeyConnector.h"
+#include "../ratchet/ratchet/ZinaRatchet.h"
 
 #include "../keymanagment/PreKeys.h"
 #include "../util/b64helper.h"

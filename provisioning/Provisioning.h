@@ -27,7 +27,7 @@ limitations under the License.
 #include <list>
 #include <utility>
 
-#include "../axolotl/crypto/DhPublicKey.h"
+#include "../ratchet/crypto/DhPublicKey.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
 using namespace std;

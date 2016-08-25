@@ -42,7 +42,7 @@ LOCAL_SRC_FILES += @attachment_src_spc@
 # LOCAL_SRC_FILES += $(LOCAL_PATH)/interfaceUi/java/JavaNativeImpl.cpp
 
 LOCAL_LDLIBS := -llog
-LOCAL_MODULE := axolotl++
+LOCAL_MODULE := zina
 
 LOCAL_CPP_EXTENSION := .cpp .cc
 LOCAL_STATIC_LIBRARIES := protobuf

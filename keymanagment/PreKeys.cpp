@@ -15,7 +15,7 @@ limitations under the License.
 */
 #include "PreKeys.h"
 
-#include "../axolotl/crypto/EcCurve.h"
+#include "../ratchet/crypto/EcCurve.h"
 #include "../util/cJSON.h"
 #include "../util/b64helper.h"
 #include "../logging/AxoLogging.h"

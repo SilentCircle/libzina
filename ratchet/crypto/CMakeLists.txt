@@ -28,12 +28,12 @@ set (external_crypto_src
 )
 
 set (hkdf_src
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/HKDF.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/Ec255PublicKey.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/Ec255PrivateKey.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/DhKeyPair.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/EcCurve.cpp
-    ${CMAKE_SOURCE_DIR}/axolotl/crypto/AesCbc.cpp
+    ${CMAKE_SOURCE_DIR}/ratchet/crypto/HKDF.cpp
+    ${CMAKE_SOURCE_DIR}/ratchet/crypto/Ec255PublicKey.cpp
+    ${CMAKE_SOURCE_DIR}/ratchet/crypto/Ec255PrivateKey.cpp
+    ${CMAKE_SOURCE_DIR}/ratchet/crypto/DhKeyPair.cpp
+    ${CMAKE_SOURCE_DIR}/ratchet/crypto/EcCurve.cpp
+    ${CMAKE_SOURCE_DIR}/ratchet/crypto/AesCbc.cpp
 )
 
 set(crypto_src

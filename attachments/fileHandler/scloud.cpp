@@ -19,7 +19,7 @@ limitations under the License.
 #include "scloud.h"
 #include "scloudPriv.h"
 #include "../utilities.h"
-#include "../../axolotl/crypto/HKDF.h"
+#include "../../ratchet/crypto/HKDF.h"
 #include "../../logging/AxoLogging.h"
 
 #ifndef roundup

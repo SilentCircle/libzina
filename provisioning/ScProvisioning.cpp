@@ -15,12 +15,10 @@ limitations under the License.
 */
 #include "ScProvisioning.h"
 
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
 #include "../Constants.h"
-#include "../axolotl/crypto/EcCurve.h"
+#include "../ratchet/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
-#include "../logging/AxoLogging.h"
 
 using namespace axolotl;
 using namespace std;

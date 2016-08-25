@@ -30,7 +30,7 @@ limitations under the License.
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../util/UUID.h"
 #include "../Constants.h"
-#include "../axolotl/state/AxoConversation.h"
+#include "../ratchet/state/AxoConversation.h"
 
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);

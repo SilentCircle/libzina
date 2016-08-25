@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include "AxoPreKeyConnector.h"
+#include "ZinaPreKeyConnector.h"
 
 #include "../Constants.h"
-#include "../axolotl/crypto/EcCurve.h"
+#include "../ratchet/crypto/EcCurve.h"
 
 #include "../keymanagment/PreKeys.h"
 #include "../logging/AxoLogging.h"

@@ -21,12 +21,11 @@ limitations under the License.
 
 #include "../util/Utilities.h"
 #include "../provisioning/Provisioning.h"
-#include "../axolotl/state/AxoConversation.h"
 #include "../util/b64helper.h"
 #include "MessageEnvelope.pb.h"
 #include "../storage/MessageCapture.h"
-#include "../axolotl/ratchet/AxoRatchet.h"
-#include "../axolotl/AxoPreKeyConnector.h"
+#include "../ratchet/ratchet/ZinaRatchet.h"
+#include "../ratchet/ZinaPreKeyConnector.h"
 
 using namespace axolotl;
 

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package axolotl;
+package zina;
 
 
 // This file uses annotations. Because we use this file only to create the JNI
@@ -25,21 +25,21 @@ package axolotl;
 // - replace '!*/' with an empty string globally
 //
 // To create the JNI interface file:
-// - cd to the AxolotlNative.java directory
-// - run 'javac -d . AxolotlNative.java'
-// - run 'javah axolotl.AxolotlNative'
+// - cd to the ZinaNative.java directory
+// - run 'javac -d . ZinaNative.java'
+// - run 'javah zina.ZinaNative'
 //
-// After this you can remove the created 'axolotl' directory.
+// After this you can remove the created 'zina' directory.
 
 
 //**ANN** import android.support.annotation.WorkerThread;
 //**ANN** import android.support.annotation.Nullable;
 
 /**
- * Native functions and callbacks for Axolotl library.
+ * Native functions and callbacks for ZINA library.
  *
  * The functions in this class often use JSON formatted strings to exchange data with the
- * native Axolotl library functions.
+ * native ZINA library functions.
  *
  * The native functions expect UTF-8 encoded strings and return UTF-8 encoded strings.
  *
@@ -56,7 +56,7 @@ package axolotl;
  * and not {@code String}.
  */
 //**ANN** @SuppressWarnings({"unused", "JniMissingFunction"})
-public abstract class AxolotlNative { //  extends Service {  -- depends on the implementation of the real Java class
+public abstract class ZinaNative { //  extends Service {  -- depends on the implementation of the real Java class
 
     /**
      * Some constants, mirrored from C++ files
@@ -64,12 +64,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static final int DEVICE_SCAN = 1;        //!< Notify callback requests a device re-scan (AppInterface.h)
 
     /**
-     * Initialize the Axolotl library.
+     * Initialize the ZINA library.
      *
      * The following native functions MUST NOT be static because their native implementation
      * use the "this" object.
      *
-     * An application must call this functions before it can use any other Axolotl library
+     * An application must call this functions before it can use any other ZINA library
      * functions.
      *
      * This function does no trigger any network actions, save to run from UI thread.
@@ -95,8 +95,8 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      *
      * This is a blocking call and the function returns after the transport layer accepted the
      * message and returns. This function may take some time if the recipient is not yet known
-     * and has no Axolotl session. In this case the function interrogates the provisioning server
-     * to get the necessary Axolotl data of the recipient, creates a session and then sends the
+     * and has no ratchet session. In this case the function interrogates the provisioning server
+     * to get the necessary ratchet data of the recipient, creates a session and then sends the
      * message.
      *
      * After encrypting the message the function forwards the message data to the message handler.
@@ -145,9 +145,9 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
                                                       /*!@Nullable!*/ byte[] messageAttributes);
 
     /**
-     * Request names of known trusted Axolotl user identities.
+     * Request names of known trusted ZIAN user identities.
      *
-     * The Axolotl library stores an identity (name) for each remote user.
+     * The ZINA library stores an identity (name) for each remote user.
      *
      * This function does no trigger any network actions, save to run from UI thread,
      * uses database functions.
@@ -195,18 +195,18 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     public static native byte[][] getIdentityKeys(/*!@Nullable!*/ byte[] user);
 
     /**
-     * Request a user's Axolotl device names.
+     * Request a user's ZINA device names.
      *
-     * Ask the server for known Axolotl devices of a user.
+     * Ask the server for known ZINA devices of a user.
      *
-     * @return JSON formatted information about user's Axolotl devices. It returns {@code null}
+     * @return JSON formatted information about user's ZINA devices. It returns {@code null}
      *         if no devices known for this user.
      */
     //**ANN** @WorkerThread
     public static native byte[] getAxoDevicesUser(byte[] userName);
 
     /**
-     * Register Axolotl device.
+     * Register ZINA device.
      *
      * Register this device with the server. The registration requires a device id that's unique
      * for the user's account on the server. The user should have a valid account on the server.
@@ -219,12 +219,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
     //**ANN** @WorkerThread
-    public static native byte[] registerAxolotlDevice(int[] resultCode);
+    public static native byte[] registerZinaDevice(int[] resultCode);
 
     /**
-     * Remove Axolotl device.
+     * Remove ZINA device.
      *
-     * Remove an Axolotl device from a user's account.
+     * Remove an ZINA device from a user's account.
      *
      * @param resultCode an int array with at least a length of one. The functions returns the
      *        request result code at index 0
@@ -232,7 +232,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
     //**ANN** @WorkerThread
-    public static native byte[] removeAxolotlDevice(byte[] deviceId, int[] resultCode);
+    public static native byte[] removeZinaDevice(byte[] deviceId, int[] resultCode);
 
     /**
      * Generate and register a set of new pre-keys.
@@ -375,7 +375,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Message state change callback function.
      *
-     * The Axolotl library uses this callback function to report message state changes to the UI.
+     * The ZINA library uses this callback function to report message state changes to the UI.
      * The library reports state changes of message it got for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
@@ -396,12 +396,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Helper function to perform HTTP(S) requests callback function.
      *
-     * The Axolotl library uses this callback to perform HTTP(S) requests. The application should
+     * The ZINA library uses this callback to perform HTTP(S) requests. The application should
      * implement this function to contact a provisioning server or other server that can return
-     * required Axolotl data. If the application really implements this as HTTP(S) or not is an
+     * required ZINA data. If the application really implements this as HTTP(S) or not is an
      * implementation detail of the application.
      *
-     * The Axolotl library creates a request URI, provides request data if required, specifies the
+     * The ZINA library creates a request URI, provides request data if required, specifies the
      * method (GET, PUT) to use. On return the function sets the request return code in the code
      * array at index 0 and returns response data as byte array.
      *
@@ -419,12 +419,12 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Notify callback.
      *
-     * The Axolotl library uses this callback function to report data of a SIP NOTIFY to the app.
+     * The ZINA library uses this callback function to report data of a SIP NOTIFY to the app.
      *
      * @param messageIdentifier  the unique 64-bit transport message identifier.
      *
      * @param notifyActionCode   This code defines which action to perform, for example re-scan a
-     *                           user's Axolotl devices
+     *                           user's ZINA devices
      *
      * @param actionInformation  JSON formatted state information block (string) that contains the
      *                           details required for the action.
@@ -630,7 +630,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /**
      * Callback to UI for a Group Message state change report
      *
-     * The Axolotl library uses this callback function to report message state changes to the UI.
+     * The ZINA library uses this callback function to report message state changes to the UI.
      * The library reports message state changes for sending and it also reports if it
      * received a message but could not process it, for example decryption failed.
      *
@@ -984,7 +984,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /*
      ***************************************************************
      * Below the native interface for the SClound crypto primitives
-     * -- these do not really belong to Axolotl, however it's simpler
+     * -- these do not really belong to ZINA, however it's simpler
      *    to leave it in one library --
      * *************************************************************
      */
@@ -1181,7 +1181,7 @@ public abstract class AxolotlNative { //  extends Service {  -- depends on the i
     /*
      ***************************************************************
      * Below the native interface for the alias name lookup functions
-     * -- these do not really belong to Axolotl, however it's simpler
+     * -- these do not really belong to ZINA, however it's simpler
      *    to leave it in one library --
      * *************************************************************
      */

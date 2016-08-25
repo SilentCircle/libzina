@@ -20,15 +20,12 @@ limitations under the License.
 #include <stdio.h>
 #endif
 
-#include "axolotl_AxolotlNative.h"
+#include "zina_ZinaNative.h"
 #include "../AppInterfaceImpl.h"
 #include "../../provisioning/Provisioning.h"
 #include "../../appRepository/AppRepository.h"
 #include "../../interfaceTransport/sip/SipTransport.h"
-#include "../../axolotl/state/AxoConversation.h"
-#include "../../axolotl/crypto/EcCurve.h"
-#include "../../Constants.h"
-#include "../../util/cJSON.h"
+#include "../../ratchet/crypto/EcCurve.h"
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"
 
@@ -40,7 +37,7 @@ using namespace std;
  * name during compilation
  */
 #ifndef PACKAGE_NAME
-#define PACKAGE_NAME Java_axolotl_AxolotlNative_
+#define PACKAGE_NAME Java_zina_ZinaNative_
 #endif
 
 #define CONCATx(a,b) a##b
@@ -745,7 +742,7 @@ JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messa
     string attachment;
     if (attachementDescriptor != NULL) {
         arrayToString(env, attachementDescriptor, &attachment);
-        Log("sendMessage sib - attachement: '%s' - length: %d", attachment.c_str(), attachment.size());
+        Log("sendMessage sib - attachment: '%s' - length: %d", attachment.c_str(), attachment.size());
     }
     string attributes;
     if (messageAttributes != NULL) {

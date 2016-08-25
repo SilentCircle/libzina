@@ -64,7 +64,7 @@ enable_testing()
 set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.6" "-target" "1.6")
 set(CMAKE_JAVA_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/interfaceApp/java)
 
-add_jar(JavaTester JavaTester.java CloudTester.java ${CMAKE_SOURCE_DIR}/interfaceApp/java/AxolotlNative.java)
+add_jar(JavaTester JavaTester.java CloudTester.java ${CMAKE_SOURCE_DIR}/interfaceApp/java/ZinaNative.java)
 
 get_target_property(_jarFile JavaTester JAR_FILE)
 get_target_property(_classDir JavaTester CLASSDIR)
