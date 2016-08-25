@@ -42,6 +42,15 @@ typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const st
 typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const string& stateInformation);
 
 namespace axolotl {
+
+/**
+ * @brief Structure that contains return data of @c prepareMessage functions.
+ */
+typedef struct PreparedMessageData_ {
+    uint64_t transportId;           //!<  The transport id of the prepared message
+    string receiverInfo;            //!<  Some details about the receiver's device of this message
+} PreparedMessageData;
+
 class AppInterface
 {
 public:
@@ -73,60 +82,51 @@ public:
     virtual Transport* getTransport() = 0;
 
     /**
-     * @brief Send a message with an optional attachment and attributes
+     * @brief Prepare a user-to-user message for sending.
      *
-     * Takes JSON formatted message descriptor and send the message. The function accepts
-     * an optional JSON formatted attachment descriptor and sends the attachment data to the
-     * recipient together with the message.
+     * The functions prepares a message and queues it for sending to the receiver' devices.
+     * The function only prpares the message(s) but does not send them. To actually send the
+     * the messages to the device(s) the application needs to call the @c sendPreparedMessage()
+     * function.
      *
-     * This is a blocking call and the function returns after the transport layer accepted the
-     * message and returns. This function may take some time if the recipient is not yet known
-     * and has no Axolotl session. In this case the function interrogates the provisioning server
-     * to get the necessary Axolotl data of the recipient, creates a session and sends the 
-     * message.
+     * This function may trigger network actions, thus it must not run on the UI thread.
      *
-     * After encrypting the message the functions forwards the message data to the message handler.
-     * The message handler takes the message, processes it and returns a unique message id (see 
-     * description of message handler API). The UI should use the unique id to monitor message
-     * state, for example if the message was actually sent, etc. Refer to message state report
-     * callback below. The message id is an opaque datum.
+     * The function creates a list of PreparedMessage data structures that contain information
+     * for each prepared message:
+     * <ul>
+     * <li> a 64 bit integer which is the transport id of the prepared message. Libzina uses this
+     *      transport id to identify a message in transit (during send) to the server and to report
+     *      a message status to the application. The application must not modify this data and may
+     *      use it to setup a queue to monitor the message status reports.</li>
+     * <li> A string that contains recipient information. The data and format is the same as returned
+     *      by @c AppInterfaceImpl::getIdentityKeys
+     * </ul>
      *
-     * The @c sendMessage function does not interpret or re-format the attachment descriptor. It takes
-     * the string, encrypts it with the same key as the message data and puts it into the message
-     * bundle. The same is true for the message attributes.
-     * 
-     * @c sendMessage() may send the message to more than one target if the user has more than one
-     * device registered for Axolotl usage. In this case the method returns a unique 64-bit transport
-     * message id for each message sent. This message id is only used to identity message during
-     * transport handling, not to be confused with a message UUID that the application may create
-     * for a message.
-     *
-     * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     * @param messageDescriptor      the JSON formatted message descriptor, required
+     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
      *                               shows that not attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
-     * @return unique message identifiers if the messages were processed for sending, @c NULL if processing
-     *         failed.
+     * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @return A list of prepared message information, or empty on failure
      */
-//    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
+                                                                       const string& attachmentDescriptor,
+                                                                       const string& messageAttributes, int32_t* result) = 0;
+
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSibling(const string& messageDescriptor,
+                                                                                const string& attachmentDescriptor,
+                                                                                const string& messageAttributes, int32_t* result) = 0;
 
     /**
-     * @brief Send message to sibling devices.
-     * 
-     * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
-     * belong to the same user account. The client uses function to send synchronization messages to siblings to
-     * keep them in sync.
-     * 
-     * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
-     *                               shows that not attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @return unique message identifiers if the messages were processed for sending, 0 if processing
-     *         failed.
+     * @brief Encrypt the prepared messages and send them to the receiver.
+     *
+     * Queue the prepared message for encryption and sending to the receiver's devices.
+     *
+     * @param transportIds An array of transport id that identify the message to rncrypt and send.
+     * @return SUCCESS in case moving data was OK
      */
-//    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+    virtual int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
 
     /**
      * @brief Receive a message from transport

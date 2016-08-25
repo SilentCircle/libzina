@@ -39,15 +39,6 @@ using namespace std;
 
 namespace axolotl {
 
-/**
- * @brief Structure that contains return data of @c prepareMessage functions.
- */
-typedef struct PreparedMessageData_ {
-    uint64_t transportId;           //!<  The transport id of the prepared message
-    string receiverInfo;            //!<  Some details about the receiver's device of this message
-} PreparedMessageData;
-
-
 typedef struct MsgQueueInfo_ {
     string recipient;
     string deviceId;
@@ -191,35 +182,6 @@ public:
      */
     void clearGroupData();
 
-    /**
-     * @brief Prepare a user-to-user message for sending.
-     *
-     * The functions prepares a message and queues it for sending to the receiver' devices.
-     * The function only prpares the message(s) but does not send them. To actually send the
-     * the messages to the device(s) the application needs to call the @c sendPreparedMessage()
-     * function.
-     *
-     * This function may trigger network actions, thus it must not run on the UI thread.
-     *
-     * The function creates a list of PreparedMessage data structures that contain information
-     * for each prepared message:
-     * <ul>
-     * <li> a 64 bit integer which is the transport id of the prepared message. Libzina uses this
-     *      transport id to identify a message in transit (during send) to the server and to report
-     *      a message status to the application. The application must not modify this data and may
-     *      use it to setup a queue to monitor the message status reports.</li>
-     * <li> A string that contains recipient information. The data and format is the same as returned
-     *      by @c AppInterfaceImpl::getIdentityKeys
-     * </ul>
-     *
-     * @param messageDescriptor      the JSON formatted message descriptor, required
-     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
-     *                               shows that not attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
-     * @return A list of prepared message information, or empty on failure
-     */
     shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
                                                                        const string& attachmentDescriptor,
                                                                        const string& messageAttributes, int32_t* result);
@@ -261,65 +223,7 @@ private:
     AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
     bool operator== ( const AppInterfaceImpl& other ) const  = delete;
 
-    /**
-     * @brief Internal function to send a message.
-     *
-     * Sends a message to a receiver and the devices in the devices list.
-     *
-     * @param recipient The message receiver
-     * @msgId The message id (UUID)
-     * @param message The JSON formatted message descriptor, required
-     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
-     *                               shows that not attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @param devices a list of the recipient's devices
-     * @messageType Identifies which type of message, see @c Constants.h for details
-     * @return unique message identifiers if the messages were processed for sending, 0 if processing
-     *         failed.
-     *
-     */
-    vector<int64_t>*
-    sendMessageInternal(const string& recipient, const string& msgId, const string& message,
-                        const string& attachmentDescriptor, const string& messageAttributes,
-                        shared_ptr<list<string> > devices, uint32_t messageType=MSG_NORMAL);
-
-    /**
-     * @brief Internal function to send a message to a new user.
-     *
-     * Sends a message to new recipient, optionally restricting to give device.
-     *
-     * For a new recipient we don't have a ratchet setup, this functions prepares the ratchet
-     * and send the message. If the device list pointer is valid it may contain one device and
-     * the function restricts the ratchet setup to this device
-     *
-     * @param recipient The message receiver
-     * @msgId The message id (UUID)
-     * @param message The JSON formatted message descriptor, required
-     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
-     *                               shows that not attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @param devices a list of the recipient's devices
-     * @messageType Identifies which type of message, see @c Constants.h for details
-     * @return unique message identifiers if the messages were processed for sending, 0 if processing
-     *         failed.
-     *
-     */
-    vector<int64_t>*
-    sendMessagePreKeys(const string& recipient, const string& msgId, const string& message,
-                       const string& attachmentDescriptor, const string& messageAttributes,
-                       shared_ptr<list<string> > devices, uint32_t messageType=MSG_NORMAL);
-
     int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
-
-    /**
-     * Only the 'Alice' role uses this function to create a pre-key message (msg-type 2)
-     * and sends this to the receiver (the 'Bob' role)
-     */
-    int32_t createPreKeyMsg(const string& recipient, const string& recipientDeviceId, const string& recipientDeviceName, const string& message, 
-                            const string& supplements, const string& msgId, vector< pair< string, string > >* msgPairs, shared_ptr<string> convState,
-                            uint32_t messageType=0);
 
     /**
      * @brief Handle a group message, either a normal or a command message.
