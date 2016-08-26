@@ -135,7 +135,7 @@ set (protocol_src
     ratchet/ZinaZrtpConnector.cpp
     ratchet/ZinaPreKeyConnector.cpp
     ratchet/ratchet/ZinaRatchet.cpp
-    ratchet/state/AxoConversation.cpp
+    ratchet/state/ZinaConversation.cpp
 )
 set (interface_src 
     interfaceApp/AppInterfaceImpl.cpp

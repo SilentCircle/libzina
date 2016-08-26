@@ -68,7 +68,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
 
     auto conv = AxoConversation::loadConversation(localUser, user, deviceId);
     if (conv->isValid() && !conv->getRK().empty()) {       // Already a conversation available
-        LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
+        LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user, ", device: ", deviceId);
         return AXO_CONV_EXISTS;
     }
     if (conv->getErrorCode() != SUCCESS) {

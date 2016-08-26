@@ -71,6 +71,11 @@ static jmethodID groupMsgReceiveCallback = NULL;
 static jmethodID groupCmdReceiveCallback = NULL;
 static jmethodID groupStateCallback = NULL;
 
+static jclass preparedMessageDataClass = NULL;
+static jmethodID preparedMessageDataConsID = NULL;
+jfieldID transportIdID = NULL;
+jfieldID receiverInfoID = NULL;
+
 static int32_t debugLevel = 1;
 
 // Plain public API without a class
@@ -589,6 +594,22 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
             return -23;
         }
     }
+    // Prepare access to the PreparedMessageData Java class inside ZinaNative.
+    jclass tempClassRef = env->FindClass( "zina/ZinaNative$PreparedMessageData" );
+    if (tempClassRef == NULL)
+        return -24;
+    preparedMessageDataClass = reinterpret_cast<jclass>(env->NewGlobalRef(tempClassRef));
+
+    transportIdID = env->GetFieldID(preparedMessageDataClass, "transportId", "J");
+    if (transportIdID == NULL)
+        return -25;
+    receiverInfoID = env->GetFieldID(preparedMessageDataClass, "receiverInfo", "Ljava/lang/String;");
+    if (receiverInfoID == NULL)
+        return -26;
+    preparedMessageDataConsID = env->GetMethodID(preparedMessageDataClass, "<init>", "()V");
+    if (preparedMessageDataConsID == NULL)
+        return -27;
+
     string name;
     if (!arrayToString(env, userName, &name)) {
         return -10;
@@ -672,100 +693,135 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     return retVal;
 }
 
-/*
- * Class:     AxolotlNative
- * Method:    sendMessage
- * Signature: ([B[B[B)[J
- */
-JNIEXPORT jlongArray JNICALL 
-JNI_FUNCTION(sendMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachementDescriptor, jbyteArray messageAttributes)
+static jobjectArray fillPrepMsgDataToJava(JNIEnv* env, shared_ptr<list<shared_ptr<PreparedMessageData> > > prepMessageData)
 {
-    (void)clazz;
+    size_t size = prepMessageData->size();
 
-    if (messageDescriptor == NULL || axoAppInterface == NULL)
-        return 0L;
+    jobjectArray result = env->NewObjectArray(static_cast<jsize>(size), preparedMessageDataClass, NULL);
 
-    string message;
-    if (!arrayToString(env, messageDescriptor, &message)) {
-        return 0L;
-    }
-    Log("sendMessage - message: '%s' - length: %d", message.c_str(), message.size());
+    int32_t i = 0;
+    while (!prepMessageData->empty()) {
+        auto& msgData = prepMessageData->front();
+        jobject msgDataJava = env->NewObject(preparedMessageDataClass, preparedMessageDataConsID);
+        env->SetLongField(msgDataJava, transportIdID, static_cast<jlong>(msgData->transportId));
 
-    string attachment;
-    if (attachementDescriptor != NULL) {
-        arrayToString(env, attachementDescriptor, &attachment);
-        Log("sendMessage - attachement: '%s' - length: %d", attachment.c_str(), attachment.size());
-    }
-    string attributes;
-    if (messageAttributes != NULL) {
-        arrayToString(env, messageAttributes, &attributes);
-        Log("sendMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
-    }
-    vector<int64_t>* msgIds = NULL; // axoAppInterface->sendMessage(message, attachment, attributes);
-    if (msgIds == NULL || msgIds->empty()) {
-        delete msgIds;
-        return NULL;
-    }
-    size_t size = msgIds->size();
+        jstring tmpString = env->NewStringUTF(msgData->receiverInfo.c_str());
+        env->SetObjectField(msgDataJava, receiverInfoID, tmpString);
+        env->DeleteLocalRef(tmpString);
 
-    jlongArray result = NULL;
-    result = env->NewLongArray(static_cast<jsize>(size));
-    jlong* resultArray = env->GetLongArrayElements(result, 0);
-
-    for(size_t i = 0; i < size; i++) {
-        resultArray[i] = static_cast<jlong>(msgIds->at(i));  // long -> jlong -> signed 64 bits, primitive type mapping
+        env->SetObjectArrayElement(result, i++, msgDataJava);
+        env->DeleteLocalRef(msgDataJava);
+        prepMessageData->pop_front();
     }
-    env->ReleaseLongArrayElements(result, resultArray, 0);
-    delete msgIds;
     return result;
 }
 
 /*
- * Class:     axolotl_AxolotlNative
- * Method:    sendMessageToSiblings
- * Signature: ([B[B[B)[J
+ * Class:     zina_ZinaNative
+ * Method:    prepareMessage
+ * Signature: ([B[B[B[I)[Lzina/ZinaNative/PreparedMessageData;
  */
-JNIEXPORT jlongArray JNICALL
-JNI_FUNCTION(sendMessageToSiblings) (JNIEnv* env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachementDescriptor, jbyteArray messageAttributes)
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
+                             jbyteArray attachmentDescriptor, jbyteArray messageAttributes, jintArray code)
 {
     (void)clazz;
 
-    if (messageDescriptor == NULL || axoAppInterface == NULL)
-        return 0L;
+    if (code == NULL || env->GetArrayLength(code) < 1 || messageDescriptor == NULL || axoAppInterface == NULL)
+        return NULL;
 
     string message;
     if (!arrayToString(env, messageDescriptor, &message)) {
-        return 0L;
+        setReturnCode(env, code, DATA_MISSING);
+        return NULL;
     }
-    Log("sendMessage sib - message: '%s' - length: %d", message.c_str(), message.size());
+    Log("prepareMessage - message: '%s' - length: %d", message.c_str(), message.size());
 
     string attachment;
-    if (attachementDescriptor != NULL) {
-        arrayToString(env, attachementDescriptor, &attachment);
-        Log("sendMessage sib - attachment: '%s' - length: %d", attachment.c_str(), attachment.size());
+    if (attachmentDescriptor != NULL) {
+        arrayToString(env, attachmentDescriptor, &attachment);
+        Log("prepareMessage - attachment: '%s' - length: %d", attachment.c_str(), attachment.size());
     }
     string attributes;
     if (messageAttributes != NULL) {
         arrayToString(env, messageAttributes, &attributes);
-        Log("sendMessage sib - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
+        Log("prepareMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    vector<int64_t>* msgIds = NULL; // axoAppInterface->sendMessageToSiblings(message, attachment, attributes);
-    if (msgIds == NULL || msgIds->empty()) {
-        delete msgIds;
+    int32_t error;
+    auto prepMessageData = axoAppInterface->prepareMessage(message, attachment, attributes, &error);
+    if (error != SUCCESS) {
+        setReturnCode(env, code, error);
         return NULL;
     }
-    size_t size = msgIds->size();
+    return fillPrepMsgDataToJava(env, prepMessageData);
+}
 
-    jlongArray result = NULL;
-    result = env->NewLongArray(static_cast<jsize>(size));
-    jlong* resultArray = env->GetLongArrayElements(result, 0);
+/*
+ * Class:     zina_ZinaNative
+ * Method:    prepareMessageToSiblings
+ * Signature: ([B[B[B[I)[Lzina/ZinaNative/PreparedMessageData;
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
+                                       jbyteArray attachmentDescriptor, jbyteArray messageAttributes, jintArray code)
+{
+    (void)clazz;
 
-    for(size_t i = 0; i < size; i++) {
-        resultArray[i] = static_cast<jlong>(msgIds->at(i));
+    if (code == NULL || env->GetArrayLength(code) < 1 || messageDescriptor == NULL || axoAppInterface == NULL)
+        return NULL;
+
+    string message;
+    if (!arrayToString(env, messageDescriptor, &message)) {
+        setReturnCode(env, code, DATA_MISSING);
+        return NULL;
     }
-    env->ReleaseLongArrayElements(result, resultArray, 0);
-    delete msgIds;
-    return result;
+    Log("prepareMessageToSiblings - message: '%s' - length: %d", message.c_str(), message.size());
+
+    string attachment;
+    if (attachmentDescriptor != NULL) {
+        arrayToString(env, attachmentDescriptor, &attachment);
+        Log("prepareMessageToSiblings - attachment: '%s' - length: %d", attachment.c_str(), attachment.size());
+    }
+    string attributes;
+    if (messageAttributes != NULL) {
+        arrayToString(env, messageAttributes, &attributes);
+        Log("prepareMessageToSiblings - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
+    }
+    int32_t error;
+    auto prepMessageData = axoAppInterface->prepareMessageToSiblings(message, attachment, attributes, &error);
+    if (error != SUCCESS) {
+        setReturnCode(env, code, error);
+        return NULL;
+    }
+    return fillPrepMsgDataToJava(env, prepMessageData);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    doSendMessages
+ * Signature: ([J)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(doSendMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
+{
+    if (ids == NULL)
+        return DATA_MISSING;
+
+    size_t dataLen = static_cast<size_t>(env->GetArrayLength(ids));
+    if (dataLen < 1)
+        return DATA_MISSING;
+
+    const uint64_t* tmp = (uint64_t*)env->GetLongArrayElements(ids, 0);
+    if (tmp == NULL)
+        return DATA_MISSING;
+
+    auto idVector = make_shared<vector<uint64_t> >();
+
+    for (size_t i = 0; i < dataLen; i++) {
+        idVector->push_back(tmp[i]);
+    }
+    env->ReleaseLongArrayElements(ids, (jlong *)tmp, 0);
+    return axoAppInterface->doSendMessages(idVector);
 }
 
 
@@ -889,11 +945,11 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
 
 /*
  * Class:     AxolotlNative
- * Method:    registerAxolotlDevice
+ * Method:    registerZinaDevice
  * Signature: ([B[I)[B
  */
 JNIEXPORT jbyteArray JNICALL 
-JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
+JNI_FUNCTION(registerZinaDevice)(JNIEnv* env, jclass clazz, jintArray code)
 {
     (void)clazz;
 
@@ -918,11 +974,11 @@ JNI_FUNCTION(registerAxolotlDevice)(JNIEnv* env, jclass clazz, jintArray code)
 
 /*
  * Class:     axolotl_AxolotlNative
- * Method:    removeAxolotlDevice
+ * Method:    removeZinaDevice
  * Signature: ([B[I)[B
  */
 JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(removeAxolotlDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, jintArray code)
+JNI_FUNCTION(removeZinaDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, jintArray code)
 {
     (void)clazz;
 

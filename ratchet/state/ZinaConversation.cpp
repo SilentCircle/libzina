@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include "AxoConversation.h"
+#include "ZinaConversation.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
 #include "../../util/cJSON.h"
 #include "../../util/b64helper.h"

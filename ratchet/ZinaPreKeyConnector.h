@@ -29,7 +29,7 @@ limitations under the License.
 #include <string>
 #include <stdint.h>
 
-#include "state/AxoConversation.h"
+#include "state/ZinaConversation.h"
 #include "crypto/DhKeyPair.h"
 
 using namespace std;

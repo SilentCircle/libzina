@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package zina;
 
+package zina;
 
 // This file uses annotations. Because we use this file only to create the JNI
 // interface file we use the normal Java compiler (javac) without any additional
@@ -24,6 +24,11 @@ package zina;
 // - replace '/*!' with an empty string globally
 // - replace '!*/' with an empty string globally
 //
+// For Android Studio or other IntelliJ based IDE you can use this inside 'replace':
+// - select 'Regex'
+// - enter '/\*!(@[A-Za-z]*)!\*/' (without quotes) into the find field (top field)
+// - enter ''$1' into the replace field
+//
 // To create the JNI interface file:
 // - cd to the ZinaNative.java directory
 // - run 'javac -d . ZinaNative.java'
@@ -31,7 +36,7 @@ package zina;
 //
 // After this you can remove the created 'zina' directory.
 
-
+//**ANN** import android.support.annotation.NonNull;
 //**ANN** import android.support.annotation.WorkerThread;
 //**ANN** import android.support.annotation.Nullable;
 
@@ -62,6 +67,16 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * Some constants, mirrored from C++ files
      */
     public static final int DEVICE_SCAN = 1;        //!< Notify callback requests a device re-scan (AppInterface.h)
+
+    /**
+     * Class returned by native prepareMessage* functions.
+     *
+     * Created by werner on 25.08.16.
+     */
+    public static class PreparedMessageData {
+        public long   transportId;           //!< The transport id of the prepared message
+        public String receiverInfo;          //!< Some details about the receiver's device of this message. Format as returned by getIdentityKeys(...)
+    }
 
     /**
      * Initialize the ZINA library.
@@ -117,13 +132,16 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string ot {@code null} shows that not attributes are available.
      *
+     * @param resultCode an int array with at least a length of one. The functions returns the
+     *        request result code at index 0
+     *
      * @return A list of unique 64-bit transport message identifiers, one for each message set to the user's
      *         devices. In case of error the functions return {@code null} and the {@code getErrorCode} and
      *         {@code getErrorInfo} have the details.
      */
     //**ANN** @WorkerThread
-    public static native long[] sendMessage(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                            /*!@Nullable!*/ byte[] messageAttributes);
+    public static native PreparedMessageData[] prepareMessage(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
+                                            /*!@Nullable!*/ byte[] messageAttributes, int[] resultCode);
 
     /**
      * Send message to sibling devices.
@@ -137,12 +155,30 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *                               shows that not attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
+     *
+     * @param resultCode an int array with at least a length of one. The functions returns the
+     *        request result code at index 0
+     *
      * @return unique message identifiers if the messages were processed for sending, 0 if processing
      *         failed.
      */
     //**ANN** @WorkerThread
-    public static native long[] sendMessageToSiblings(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                                      /*!@Nullable!*/ byte[] messageAttributes);
+    public static native PreparedMessageData[] prepareMessageToSiblings(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
+                                                         /*!@Nullable!*/ byte[] messageAttributes, int[] resultCode);
+
+    /**
+     * @brief Encrypt the prepared messages and send them to the receiver.
+     *
+     * Queue the prepared message for encryption and sending to the receiver's devices.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions, and synchronized queue handling, thus should run on an own
+     * worker thread, however not absolute necessary.
+     *
+     * @param transportIds An array of transport id that identify the messages to encrypt and send.
+     * @return SUCCESS in case moving data was OK
+     */
+    public static native int doSendMessages(/*!@NonNull!*/ long[] transportIds);
 
     /**
      * Request names of known trusted ZIAN user identities.

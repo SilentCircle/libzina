@@ -30,7 +30,7 @@ limitations under the License.
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../util/UUID.h"
 #include "../Constants.h"
-#include "../ratchet/state/AxoConversation.h"
+#include "../ratchet/state/ZinaConversation.h"
 
 // Same as in ScProvisioning, keep in sync
 typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
@@ -186,9 +186,10 @@ public:
                                                                        const string& attachmentDescriptor,
                                                                        const string& messageAttributes, int32_t* result);
 
-    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSibling(const string& messageDescriptor,
-                                                                                const string& attachmentDescriptor,
-                                                                                const string& messageAttributes, int32_t* result);
+    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
+                                                                                 const string &attachmentDescriptor,
+                                                                                 const string &messageAttributes,
+                                                                                 int32_t *result);
 
     /**
      * @brief Encrypt the prepared messages and send them to the receiver.

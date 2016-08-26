@@ -39,9 +39,9 @@ AppInterfaceImpl::prepareMessage(const string& messageDescriptor,
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
-AppInterfaceImpl::prepareMessageToSibling(const string& messageDescriptor,
-                                          const string& attachmentDescriptor,
-                                          const string& messageAttributes, int32_t* result)
+AppInterfaceImpl::prepareMessageToSiblings(const string &messageDescriptor,
+                                           const string &attachmentDescriptor,
+                                           const string &messageAttributes, int32_t *result)
 {
     return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true, MSG_NORMAL, result);
 }
@@ -120,12 +120,15 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
 
     if (result != nullptr) {
         *result = SUCCESS;
+        errorCode_ = SUCCESS;
     }
     int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
     if (parseResult < 0) {
         if (result != nullptr) {
             *result = parseResult;
         }
+        errorCode_ = parseResult;
+        errorInfo_ = "Wrong JSON data to send message";
         LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
         return messageData;
     }
@@ -147,13 +150,23 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         if (errorCode != SUCCESS) {
             if (result != nullptr) {
                 *result = errorCode;
-                return messageData;
             }
+            errorCode_ = errorCode;
+            errorInfo_ = "Cannot get device info for new user";
+            return messageData;
         }
         idKeys = createIdDevInfo(devicesNewUser);
         newUser = true;
     }
 
+    if (idKeys->empty()) {
+        if (result != nullptr) {
+            *result = NO_DEVS_FOUND;
+        }
+        errorCode_ = NO_DEVS_FOUND;
+        errorInfo_ = "No device for available for this user.";
+        return messageData;
+    }
     int64_t transportMsgId;
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
     uint64_t counter = 0;
@@ -170,11 +183,15 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         // 'identityKey:deviceName:deviceId:verifyState', deviceName may be empty
         auto info = Utilities::splitString(idDevInfo, ":");
 
+        string& deviceId = info->at(2);
+        if (toSibling && deviceId == scClientDevId_) {
+            continue;
+        }
         // Setup and queue the prepared message info data
         auto msgInfo = make_shared<MsgQueueInfo>();
         msgInfo->recipient = recipient;
         msgInfo->deviceName = info->at(1);
-        msgInfo->deviceId = info->at(2);
+        msgInfo->deviceId = deviceId;
         msgInfo->msgId = msgId;
         msgInfo->message = message;
         msgInfo->attachmentDescriptor = attachmentDescriptor;
@@ -190,6 +207,14 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         resultData->transportId = msgInfo->transportMsgId;
         resultData->receiverInfo = idDevInfo;
         messageData->push_back(resultData);
+    }
+    // Can happen if sending to siblings but no sibling device available
+    if (messageData->empty()) {
+        if (result != nullptr) {
+            *result = NO_DEVS_FOUND;
+        }
+        errorCode_ = NO_DEVS_FOUND;
+        errorInfo_ = "No sibling device(s) available.";
     }
     return messageData;
 }
@@ -248,7 +273,7 @@ void AppInterfaceImpl::runSendQueue(AppInterfaceImpl* obj)
                 if (obj->stateReportCallback_ != nullptr) {
                     obj->stateReportCallback_(msgInfo->transportMsgId, result, sendErrorJson(msgInfo, result));
                 }
-                LOGGER(ERROR, __func__, " Test: Failed to send a message, error code: ", result);
+                LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
             }
 #else
             int32_t result = msgInfo->newUserDevice ? testIf_->sendMessageNewUser(msgInfo) : testIf_->sendMessageExisting(msgInfo);
@@ -314,7 +339,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
 
     errorCode_ = SUCCESS;
 
-    // Don't send this to sender device, even when sending to my sibling devices
+    // Don't send this to sender device when sending to my sibling devices
     if (sendInfo->toSibling && sendInfo->deviceId == scClientDevId_) {
         return SUCCESS;
     }
@@ -424,6 +449,14 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
         return SUCCESS;
     }
 
+    // Check if conversation/user really not known. On new users the 'reScan' triggered by
+    // SIP NOTIFY could have already created the conversation. In this case skip further
+    // processing and just handle it as an existing user.
+    auto axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->recipient, sendInfo->deviceId);
+    if (axoConversation->isValid()) {
+        return sendMessageExisting(sendInfo, axoConversation);
+    }
+
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(sendInfo->recipient, sendInfo->deviceId, authorization_, &preIdKeys);
     if (preKeyId == 0) {
@@ -442,7 +475,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
     }
     // Read the conversation again and store the device name of the new user's device. The the user/device
     // is known and we can handle it as an existing user.
-    auto axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->recipient, sendInfo->deviceId);
+    axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->recipient, sendInfo->deviceId);
     if (!axoConversation->isValid()) {
         errorCode_ = axoConversation->getErrorCode();
         errorInfo_ = sendInfo->deviceId;

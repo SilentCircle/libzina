@@ -34,7 +34,7 @@ bool Utilities::getJsonBool(const cJSON *const root, const char *const name, boo
     if (jsonItem == nullptr)
         return error;
     if (jsonItem->type == cJSON_True || jsonItem->type == cJSON_False)
-        return jsonItem->type;
+        return jsonItem->type == cJSON_True;
     return error;
 }
 
@@ -69,13 +69,10 @@ Utilities::splitString(const string& data, const string delimiter)
         result->push_back(copy);
     }
 
-    size_t idx = result->size() - 1;
-    while (idx >= 0) {
+    size_t idx = result->empty() ? 0: result->size() - 1;
+    while (idx != 0) {
         if (result->at(idx).empty()) {
             result->pop_back();
-            if (idx == 0) {
-                break;
-            }
             idx--;
         }
         else

@@ -42,7 +42,7 @@ limitations under the License.
 
 #include "../crypto/DhPublicKey.h"
 #include "../crypto/DhKeyPair.h"
-#include "../state/AxoContact.h"
+#include "ZinaContact.h"
 #include "../crypto/Ec255PublicKey.h"
 #include "../../util/cJSON.h"
 #include "../../Constants.h"

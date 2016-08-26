@@ -114,16 +114,17 @@ public:
                                                                        const string& attachmentDescriptor,
                                                                        const string& messageAttributes, int32_t* result) = 0;
 
-    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSibling(const string& messageDescriptor,
-                                                                                const string& attachmentDescriptor,
-                                                                                const string& messageAttributes, int32_t* result) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(
+            const string &messageDescriptor,
+            const string &attachmentDescriptor,
+            const string &messageAttributes, int32_t *result) = 0;
 
     /**
      * @brief Encrypt the prepared messages and send them to the receiver.
      *
      * Queue the prepared message for encryption and sending to the receiver's devices.
      *
-     * @param transportIds An array of transport id that identify the message to rncrypt and send.
+     * @param transportIds An array of transport id that identify the messages to encrypt and send.
      * @return SUCCESS in case moving data was OK
      */
     virtual int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;

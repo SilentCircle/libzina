@@ -26,7 +26,7 @@ limitations under the License.
 #include <memory>
 #include "../crypto/DhKeyPair.h"
 #include "../crypto/DhPublicKey.h"
-#include "../state/AxoConversation.h"
+#include "../state/ZinaConversation.h"
 
 using namespace std;
 
