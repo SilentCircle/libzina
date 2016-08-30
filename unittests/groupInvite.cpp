@@ -5,9 +5,9 @@
 
 #include "gtest/gtest.h"
 
-#include "../axolotl/state/AxoConversation.h"
+#include "../ratchet/state/ZinaConversation.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
-#include "../axolotl/crypto/EcCurve.h"
+#include "../ratchet/crypto/EcCurve.h"
 #include "../logging/AxoLogging.h"
 #include "../interfaceApp/AppInterfaceImpl.h"
 #include "../interfaceTransport/sip/SipTransport.h"
@@ -350,6 +350,7 @@ static int32_t groupCmdCallback(const string& command)
     callbackCommand = command;
     LOGGER(ERROR, command);
     LOGGER(ERROR, __func__, " <--");
+    return OK;
 }
 
 static string callbackMessage;
@@ -361,6 +362,7 @@ static int groupMsgCallback(const string& messageDescriptor, const string& attac
     LOGGER(ERROR, messageDescriptor);
     LOGGER(ERROR, messageAttributes);
     LOGGER(ERROR, __func__, " <--");
+    return OK;
 }
 
 static bool checkMembersInDb(SQLiteStoreConv& store, bool member2Only = false)
@@ -418,7 +420,7 @@ public:
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         callbackCommand.clear();
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
         waitForCommand("acc"); sleep(1);
         LOGGER(INFO, __func__, " <--");
         return checkMembersInDb(*store_1);
@@ -430,17 +432,17 @@ public:
         string message = createMessageDescriptor(groupId, appInterface);
         appInterface->sendGroupMessage(message, Empty, Empty);
         waitForEnvelope(); sleep(1);
-        LOGGER(INFO, __func__, " -->");
+        LOGGER(INFO, __func__, " <--");
         return true;
     }
 
     bool runLeaveGroup() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
         appInterface->setOwnChecked(false);
         appInterface->leaveGroup(groupId);
         waitForEnvelope(); sleep(1);                 // leaveGroup sends data
-        LOGGER(INFO, __func__, " -->");
+        LOGGER(INFO, __func__, " <--");
         return true;
     }
 };
@@ -468,7 +470,7 @@ public:
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         callbackCommand.clear();
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
         waitForCommand(":");
 
         if (callbackCommand.empty()) {
@@ -487,7 +489,7 @@ public:
         appInterface->setGroupCmdCallback(groupCmdCallback);
         appInterface->setGroupMsgCallback(groupMsgCallback);
         callbackCommand.clear();
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
         string tmp(callbackCommand);
         waitForCommand(":");
 
@@ -508,7 +510,8 @@ public:
     bool runReceive() {
         LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        waitForCommand(":"); sleep(1);
         bool result = checkMembersInDb(*store_2);
         assert(result);
 
@@ -517,9 +520,10 @@ public:
     }
 
     bool runReceiveAfterLeave() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        sleep(1);
         bool result = checkMembersInDb(*store_2, true);
         assert(result);
 

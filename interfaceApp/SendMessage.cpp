@@ -13,10 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 #include <cryptcommon/ZrtpRandom.h>
 #include <map>
-#include <thread>
-#include <condition_variable>
 #include "AppInterfaceImpl.h"
 
 #include "../util/Utilities.h"
@@ -26,6 +25,7 @@ limitations under the License.
 #include "../storage/MessageCapture.h"
 #include "../ratchet/ratchet/ZinaRatchet.h"
 #include "../ratchet/ZinaPreKeyConnector.h"
+#include "JsonStrings.h"
 
 using namespace axolotl;
 
@@ -100,14 +100,14 @@ static map<uint64_t, shared_ptr<MsgQueueInfo> > preparedMessages;
 void AppInterfaceImpl::queuePreparedMessage(shared_ptr<MsgQueueInfo> &msgInfo)
 {
     unique_lock<mutex> listLock(preparedMessagesLock);
-    preparedMessages.insert(pair<uint64_t, shared_ptr<MsgQueueInfo>>(msgInfo->transportMsgId, msgInfo));
+    preparedMessages.insert(pair<uint64_t, shared_ptr<MsgQueueInfo>>(msgInfo->queueInfo_transportMsgId, msgInfo));
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
 AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
                                          const string& attachmentDescriptor,
                                          const string& messageAttributes,
-                                         bool toSibling, uint32_t messageType, int32_t* result, string grpRecipient)
+                                         bool toSibling, uint32_t messageType, int32_t* result, const string& grpRecipient)
 {
 
     string recipient;
@@ -160,10 +160,11 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     }
 
     if (idKeys->empty()) {
+        int32_t code = toSibling ? SUCCESS : NO_DEVS_FOUND; // A user's account may not have sibling devices
         if (result != nullptr) {
-            *result = NO_DEVS_FOUND;
+            *result = code;
         }
-        errorCode_ = NO_DEVS_FOUND;
+        errorCode_ = code;
         errorInfo_ = "No device for available for this user.";
         return messageData;
     }
@@ -189,22 +190,23 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         }
         // Setup and queue the prepared message info data
         auto msgInfo = make_shared<MsgQueueInfo>();
-        msgInfo->recipient = recipient;
-        msgInfo->deviceName = info->at(1);
-        msgInfo->deviceId = deviceId;
-        msgInfo->msgId = msgId;
-        msgInfo->message = message;
-        msgInfo->attachmentDescriptor = attachmentDescriptor;
-        msgInfo->messageAttributes = messageAttributes;
-        msgInfo->transportMsgId = transportMsgId | (counter << 4) | messageType;
-        msgInfo->toSibling = toSibling;
-        msgInfo->newUserDevice = newUser;
+        msgInfo->command = SendMessage;
+        msgInfo->queueInfo_recipient = recipient;
+        msgInfo->queueInfo_deviceName = info->at(1);
+        msgInfo->queueInfo_deviceId = deviceId;
+        msgInfo->queueInfo_msgId = msgId;
+        msgInfo->queueInfo_message = message;
+        msgInfo->queueInfo_attachment = attachmentDescriptor;
+        msgInfo->queueInfo_attributes = messageAttributes;
+        msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | messageType;
+        msgInfo->queueInfo_toSibling = toSibling;
+        msgInfo->queueInfo_newUserDevice = newUser;
         counter++;
         queuePreparedMessage(msgInfo);
 
         // Prepare the return data structure and fill into list
         auto resultData = make_shared<PreparedMessageData>();
-        resultData->transportId = msgInfo->transportMsgId;
+        resultData->transportId = msgInfo->queueInfo_transportMsgId;
         resultData->receiverInfo = idDevInfo;
         messageData->push_back(resultData);
     }
@@ -219,7 +221,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     return messageData;
 }
 
-static string sendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorCode)
+string  AppInterfaceImpl::createSendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorCode)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -227,9 +229,9 @@ static string sendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorC
     cJSON* details;
     cJSON_AddItemToObject(root, "details", details = cJSON_CreateObject());
 
-    cJSON_AddStringToObject(details, "name", info->recipient.c_str());
-    cJSON_AddStringToObject(details, "scClientDevId", info->deviceId.c_str());
-    cJSON_AddStringToObject(details, "msgId", info->msgId.c_str());         // May help to diagnose the issue
+    cJSON_AddStringToObject(details, "name", info->queueInfo_recipient.c_str());
+    cJSON_AddStringToObject(details, "scClientDevId", info->queueInfo_deviceId.c_str());
+    cJSON_AddStringToObject(details, "msgId", info->queueInfo_msgId.c_str());   // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
 
     char *out = cJSON_PrintUnformatted(root);
@@ -237,56 +239,6 @@ static string sendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorC
     cJSON_Delete(root); free(out);
 
     return retVal;
-}
-
-static mutex processListLock;
-static list<shared_ptr<MsgQueueInfo> > processMessages;
-
-static mutex threadLock;
-static condition_variable sendCv;
-static thread sendThread;
-static bool sendingActive;
-
-#ifdef UNITTESTS
-static AppInterfaceImpl* testIf_;
-void setTestIfObj_(AppInterfaceImpl* obj)
-{
-    testIf_ = obj;
-}
-#endif
-// process prepared send messages, one at a time
-void AppInterfaceImpl::runSendQueue(AppInterfaceImpl* obj)
-{
-    LOGGER(DEBUGGING, __func__, " -->");
-
-    unique_lock<mutex> listLock(processListLock);
-    while (sendingActive) {
-        while (processMessages.empty()) sendCv.wait(listLock);
-
-        while (!processMessages.empty()) {
-            auto msgInfo = processMessages.front();
-            processMessages.pop_front();
-            listLock.unlock();
-#ifndef UNITTESTS
-            int32_t result = msgInfo->newUserDevice ? obj->sendMessageNewUser(msgInfo) : obj->sendMessageExisting(msgInfo);
-            if (result != SUCCESS) {
-                if (obj->stateReportCallback_ != nullptr) {
-                    obj->stateReportCallback_(msgInfo->transportMsgId, result, sendErrorJson(msgInfo, result));
-                }
-                LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
-            }
-#else
-            int32_t result = msgInfo->newUserDevice ? testIf_->sendMessageNewUser(msgInfo) : testIf_->sendMessageExisting(msgInfo);
-            if (result != SUCCESS) {
-                if (testIf_->stateReportCallback_ != nullptr) {
-                    testIf_->stateReportCallback_(msgInfo->transportMsgId, result, sendErrorJson(msgInfo, result));
-                }
-                LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
-            }
-#endif
-            listLock.lock();
-        }
-    }
 }
 
 int32_t AppInterfaceImpl::doSendSingleMessage(uint64_t transportId)
@@ -300,14 +252,6 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
 {
     LOGGER(INFO, __func__, " -->");
 
-    if (!sendingActive) {
-        unique_lock<mutex> lck(threadLock);
-        if (!sendingActive) {
-            sendingActive = true;
-            sendThread = thread(runSendQueue, this);
-        }
-        lck.unlock();
-    }
     size_t numOfIds = transportIds->size();
     list<shared_ptr<MsgQueueInfo> > messagesToProcess;
 
@@ -323,11 +267,8 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
     }
     prepareLock.unlock();
 
-    unique_lock<mutex> listLock(processListLock);
-    processMessages.splice(processMessages.end(), messagesToProcess);
-    sendCv.notify_one();
+    addMsgInfosToRunQueue(messagesToProcess);
 
-    listLock.unlock();
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
 }
@@ -340,20 +281,20 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
     errorCode_ = SUCCESS;
 
     // Don't send this to sender device when sending to my sibling devices
-    if (sendInfo->toSibling && sendInfo->deviceId == scClientDevId_) {
+    if (sendInfo->queueInfo_toSibling && sendInfo->queueInfo_deviceId == scClientDevId_) {
         return SUCCESS;
     }
 
     string supplements;
-    createSupplementString(sendInfo->attachmentDescriptor, sendInfo->messageAttributes, &supplements);
+    createSupplementString(sendInfo->queueInfo_attachment, sendInfo->queueInfo_attributes, &supplements);
 
     if (axoConversation == nullptr) {
-        axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->recipient, sendInfo->deviceId);
+        axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
         if (!axoConversation->isValid()) {
-            LOGGER(DEBUGGING, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", sendInfo->recipient,
-                   ", recipientDeviceId: ", sendInfo->deviceId);
+            LOGGER(DEBUGGING, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", sendInfo->queueInfo_recipient,
+                   ", recipientDeviceId: ", sendInfo->queueInfo_deviceId);
             errorCode_ = axoConversation->getErrorCode();
-            errorInfo_ = sendInfo->deviceId;
+            errorInfo_ = sendInfo->queueInfo_deviceId;
             return errorCode_;
         }
     }
@@ -364,7 +305,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
 
     // Encrypt the user's message and the supplementary data if necessary
     pair<string, string> idHashes;
-    shared_ptr<const string> wireMessage = AxoRatchet::encrypt(*axoConversation, sendInfo->message, supplements,
+    shared_ptr<const string> wireMessage = ZinaRatchet::encrypt(*axoConversation, sendInfo->queueInfo_message, supplements,
                                                                supplementsEncrypted, &idHashes);
 
     convJson = axoConversation->prepareForCapture(convJson, false);
@@ -373,12 +314,12 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
     string convState(out);
     cJSON_Delete(convJson); free(out);
 
-    MessageCapture::captureSendMessage(sendInfo->recipient, sendInfo->msgId, sendInfo->deviceId, convState,
-                                       sendInfo->messageAttributes, !sendInfo->attachmentDescriptor.empty());
+    MessageCapture::captureSendMessage(sendInfo->queueInfo_recipient, sendInfo->queueInfo_msgId, sendInfo->queueInfo_deviceId, convState,
+                                       sendInfo->queueInfo_attributes, !sendInfo->queueInfo_attachment.empty());
 
     // If encrypt does not return encrypted data then report an error, code was set by the encrypt function
     if (!wireMessage) {
-        LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->deviceId);
+        LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
         return axoConversation->getErrorCode();
     }
@@ -398,8 +339,8 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
     MessageEnvelope envelope;
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
-    envelope.set_msgid(sendInfo->msgId);
-    envelope.set_msgtype(static_cast<uint32_t>(sendInfo->transportMsgId & MSG_TYPE_MASK));
+    envelope.set_msgid(sendInfo->queueInfo_msgId);
+    envelope.set_msgtype(static_cast<uint32_t>(sendInfo->queueInfo_transportMsgId & MSG_TYPE_MASK));
     if (!supplementsEncrypted->empty())
         envelope.set_supplement(*supplementsEncrypted);
     envelope.set_message(*wireMessage);
@@ -410,7 +351,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
     wireMessage.reset();
 
     uint8_t binDevId[20];
-    size_t res = hex2bin(sendInfo->deviceId.c_str(), binDevId);
+    size_t res = hex2bin(sendInfo->queueInfo_deviceId.c_str(), binDevId);
     if (res == 0)
         envelope.set_recvdevidbin(binDevId, 4);
 
@@ -445,46 +386,63 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
     errorCode_ = SUCCESS;
 
     // Don't send this to sender device, even when sending to my sibling devices
-    if (sendInfo->toSibling && sendInfo->deviceId == scClientDevId_) {
+    if (sendInfo->queueInfo_toSibling && sendInfo->queueInfo_deviceId == scClientDevId_) {
         return SUCCESS;
     }
 
     // Check if conversation/user really not known. On new users the 'reScan' triggered by
     // SIP NOTIFY could have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
-    auto axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->recipient, sendInfo->deviceId);
+    auto axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
     if (axoConversation->isValid()) {
         return sendMessageExisting(sendInfo, axoConversation);
     }
 
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
-    int32_t preKeyId = Provisioning::getPreKeyBundle(sendInfo->recipient, sendInfo->deviceId, authorization_, &preIdKeys);
+    int32_t preKeyId = Provisioning::getPreKeyBundle(sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId, authorization_, &preIdKeys);
     if (preKeyId == 0) {
-        LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo->recipient, ", device id: ", sendInfo->deviceId);
+        LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo->queueInfo_recipient, ", device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- No pre-key bundle");
         return NO_PRE_KEY_FOUND;
     }
 
-    int32_t buildResult = AxoPreKeyConnector::setupConversationAlice(ownUser_, sendInfo->recipient, sendInfo->deviceId, preKeyId, preIdKeys);
+    int32_t buildResult = AxoPreKeyConnector::setupConversationAlice(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId, preKeyId, preIdKeys);
 
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult != SUCCESS) {
         errorCode_ = buildResult;
-        errorInfo_ = sendInfo->deviceId;
+        errorInfo_ = sendInfo->queueInfo_deviceId;
         return errorCode_;
     }
     // Read the conversation again and store the device name of the new user's device. The the user/device
     // is known and we can handle it as an existing user.
-    axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->recipient, sendInfo->deviceId);
+    axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
     if (!axoConversation->isValid()) {
         errorCode_ = axoConversation->getErrorCode();
-        errorInfo_ = sendInfo->deviceId;
+        errorInfo_ = sendInfo->queueInfo_deviceId;
         return errorCode_;
     }
-    axoConversation->setDeviceName(sendInfo->deviceName);
+    axoConversation->setDeviceName(sendInfo->queueInfo_deviceName);
     LOGGER(INFO, __func__, " <--");
 
     return sendMessageExisting(sendInfo, axoConversation);
 }
 
+string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const string& msgId, const string& msg)
+{
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, MSG_VERSION, "1");
+    cJSON_AddStringToObject(root, MSG_RECIPIENT, recipient.c_str());
+    cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
+    cJSON_AddStringToObject(root, MSG_DEVICE_ID, scClientDevId_.c_str());
+    cJSON_AddStringToObject(root, MSG_MESSAGE, msg.empty() ? "" : msg.c_str());
+
+    char *out = cJSON_PrintUnformatted(root);
+    string result(out);
+    free(out);
+
+    return result;
+}
 

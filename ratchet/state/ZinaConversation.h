@@ -103,9 +103,9 @@ public:
     /**
      * @brief Store this conversation in persitent store
      */
-    void storeConversation();
+    int32_t storeConversation();
 
-    void storeStagedMks();
+    int32_t storeStagedMks();
 
     static void clearStagedMks(shared_ptr<list<string> > keys);
 

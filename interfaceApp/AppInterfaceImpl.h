@@ -38,20 +38,49 @@ typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData
 using namespace std;
 
 namespace axolotl {
+typedef enum MsgQueueCommand_ {
+    SendMessage = 1,
+    ReceivedRawData,
+    ReceivedTempMsg,
+    CheckQueues
+} MsgQueueCommand;
 
 typedef struct MsgQueueInfo_ {
-    string recipient;
-    string deviceId;
-    string msgId;
-    string deviceName;
-    string message;
-    string attachmentDescriptor;
-    string messageAttributes;
-    string envelope;
-    uint64_t transportMsgId;
-    bool toSibling;
-    bool newUserDevice;
+    MsgQueueCommand command;
+    string stringData1;
+    string stringData2;
+    string stringData3;
+    string stringData4;
+    string stringData5;
+    string stringData6;
+    string stringData7;
+    uint64_t uint64Data;
+    int64_t int64Data;
+    int32_t int32Data;
+    bool boolData1;
+    bool boolData2;
 } MsgQueueInfo;
+
+// Define useful names/aliases for the MsgQueueInfo structure, send message operation
+#define queueInfo_recipient     stringData1
+#define queueInfo_deviceId      stringData2
+#define queueInfo_msgId         stringData3
+#define queueInfo_deviceName    stringData4
+#define queueInfo_message       stringData5
+#define queueInfo_attachment    stringData6
+#define queueInfo_attributes    stringData7
+#define queueInfo_transportMsgId uint64Data
+#define queueInfo_toSibling     boolData1
+#define queueInfo_newUserDevice boolData2
+
+// Define useful names/aliases for the MsgQueueInfo structure, receive message operation
+#define queueInfo_envelope      stringData1
+#define queueInfo_uid           stringData2
+#define queueInfo_displayName   stringData3
+#define queueInfo_supplement    stringData2
+#define queueInfo_sequence      int64Data
+#define queueInfo_msgType       int32Data
+
 
 class SipTransport;
 class MessageEnvelope;
@@ -78,12 +107,6 @@ public:
     void setTransport(Transport* transport) { transport_ = transport; }
 
     Transport* getTransport()               { return transport_; }
-
-//    vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
-//
-//    vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
-
-    int32_t receiveMessage(const string& messageEnvelope);
 
     int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias);
 
@@ -231,7 +254,7 @@ private:
      *
      * The normal receiver function already decrypted the message, attribute, and attachment data.
      */
-    int32_t processGroupMessage(const MessageEnvelope &envelope, const string &msgDescriptor,
+    int32_t processGroupMessage(int32_t msgType, const string &msgDescriptor,
                                 const string &attachmentDescr, const string &attributesDescr);
 
     /**
@@ -315,7 +338,7 @@ private:
     prepareMessageInternal(const string& messageDescriptor,
                            const string& attachmentDescriptor,
                            const string& messageAttributes,
-                           bool toSibling, uint32_t messageType, int32_t* result, string grpRecipient = Empty);
+                           bool toSibling, uint32_t messageType, int32_t* result, const string& grpRecipient = Empty);
 
     int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> axoConversation = nullptr);
     int32_t sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo);
@@ -333,9 +356,49 @@ private:
      */
     int32_t doSendSingleMessage(uint64_t transportId);
 
-    static void runSendQueue(AppInterfaceImpl* obj);
+    /**
+     * @brief Add one message queue info data structure to run queue.
+     *
+     * The function checks if the run-Q thread is active and starts it if not. It
+     * then appends the data structure to the end of the run-Q.
+     *
+     * @param messageToProcess
+     */
+    void addMsgInfoToRunQueue(shared_ptr<MsgQueueInfo> messageToProcess);
+
+    /**
+     * @brief Add a List of message queue info data to run queue.
+     *
+     * The function checks if the run-Q thread is active and starts it if not. It
+     * then appends the list entries to the end of the run-Q.
+     *
+     * @param messagesToProcess The list of message queue infos
+     */
+    void addMsgInfosToRunQueue(list<shared_ptr<MsgQueueInfo> > messagesToProcess);
+
+    /**
+     * @brief Check is run-Q thread is actif and start it if not.
+     */
+    void checkStartRunThread();
+
+    /**
+     * @brief The run-Q thread function.
+     *
+     * @param obj The AppInterface object used by this thread function
+     */
+    static void runQueue(AppInterfaceImpl *obj);
+
+    void processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo);
+
+    void processMessagePlain(shared_ptr<MsgQueueInfo> msgInfo);
+
+    void sendDeliveryReceipt(const string& sender, const string&msgId);
+
+    string createMessageDescriptor(const string& recipient, const string& msgId, const string& msg = Empty);
 
     static void createSupplementString(const string& attachmentDesc, const string& messageAttrib, string* supplement);
+    static string createSendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorCode);
+    static shared_ptr<vector<uint64_t> > extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessageData> > > data);
 
 #ifndef UNITTESTS
     static string generateMsgIdTime() {

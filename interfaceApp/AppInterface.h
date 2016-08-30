@@ -130,29 +130,14 @@ public:
     virtual int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
 
     /**
-     * @brief Receive a message from transport
-     * 
-     * The function unpacks the message data, sender, sender's device and other data,
-     * performs some consistency checks and calls the Axolotl ratchet to decrypt the
-     * message and the supplementary data. After decryption the function constructs
-     * a JSON data structure containing sender's name, message information and calls 
-     * into the UI to handle the message, attributes, and attachments.
-     *
-     * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
-     *
-     * @return Either success or an error code
-     */
-    virtual int32_t receiveMessage(const string& messageEnvelope) = 0;
-
-    /**
      * @brief Receive a Message from transport
-     * 
+     *
      * The function unpacks the message data, sender, sender's device and other data,
      * performs some consistency checks and calls the Axolotl ratched to decrypt the
      * message and the supplementary data. After decryption the functions constructs
-     * a JSON data structure containing sender's name, message information and calls 
+     * a JSON data structure containing sender's name, message information and calls
      * into the UI to handle the message, attributes, and attachments.
-     * 
+     *
      * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
      * @param uid   The SIP receiver callback sets this to the sender's UID if available, an
      *              empty string if not available

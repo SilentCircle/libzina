@@ -143,7 +143,9 @@ set (interface_src
     interfaceApp/java/JavaNativeImpl.cpp
     interfaceTransport/sip/SipTransport.cpp
     interfaceApp/GroupInterfaceImpl.cpp
-    interfaceApp/SendMessage.cpp)
+    interfaceApp/SendMessage.cpp
+    interfaceApp/ReceiveMessage.cpp
+    interfaceApp/QueueHandling.cpp)
 
 set (storage_src
     storage/sqlite/SQLiteStoreConv.cpp

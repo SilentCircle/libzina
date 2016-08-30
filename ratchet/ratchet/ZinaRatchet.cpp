@@ -466,7 +466,7 @@ commit_skipped_header_and_message_keys()
 Nr = Np + 1
 CKr = CKp
 return read()*/
-shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements,
+shared_ptr<const string> ZinaRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements,
                                              shared_ptr<string> supplementsPlain, pair<string, string>* idHashes,
                                              bool delayCommit)
 {
@@ -605,11 +605,6 @@ shared_ptr<const string> AxoRatchet::decrypt(AxoConversation* conv, const string
     delete(conv->getA0());
     conv->setA0(NULL);
 
-    if (!delayCommit) {
-        conv->storeStagedMks();
-        conv->storeConversation();
-    }
-
     LOGGER(INFO, __func__, " <--");
     return decrypted;
 }
@@ -637,7 +632,7 @@ return msg
  *
  * This implementation does not use header keys.
  */
-shared_ptr<const string> AxoRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements,
+shared_ptr<const string> ZinaRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements,
                                              shared_ptr<string> encryptedSupplements, pair<string, string>* idHashes)
 {
     LOGGER(INFO, __func__, " -->");

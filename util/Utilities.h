@@ -68,6 +68,26 @@ namespace axolotl {
          * @return A vector of strings
          */
         static shared_ptr<vector<string> > splitString(const string& data, const string delimiter);
+
+        /**
+         * @brief Returns a string with date and Time with milliseconds, formatted according to ISO8601.
+         *
+         * The function uses Zulu (GMT) time, not the local time as input to generate the string.
+         * Example of a formatted string: 2016-08-30T13:09:17.122Z
+         *
+         * @return A formatted string with current Zulu time.
+         */
+        static string currentTimeMsISO8601();
+
+        /**
+         * @brief Returns a string with date and Time without milliseconds, formatted according to ISO8601.
+         *
+         * The function uses Zulu (GMT) time, not the local time as input to generate the string.
+         * Example of a formatted string: 2016-08-30T13:09:17Z
+         *
+         * @return A formatted string with current Zulu time.
+         */
+        static string currentTimeISO8601();
     };
 }
 

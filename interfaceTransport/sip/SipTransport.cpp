@@ -176,11 +176,11 @@ void SipTransport::sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& e
     // Store all relevant data to send a message in a structure, queue the message
     // info structure.
     shared_ptr<SendMsgInfo> msgInfo = make_shared<SendMsgInfo>();
-    msgInfo->recipient = info->recipient;
-    msgInfo->deviceId = info->deviceId;
+    msgInfo->recipient = info->queueInfo_recipient;
+    msgInfo->deviceId = info->queueInfo_deviceId;
     msgInfo->envelope = envelope;
-    uint64_t typeMask = (info->transportMsgId & MSG_TYPE_MASK) >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
-    msgInfo->transportMsgId = info->transportMsgId | typeMask;
+    uint64_t typeMask = (info->queueInfo_transportMsgId & MSG_TYPE_MASK) >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
+    msgInfo->transportMsgId = info->queueInfo_transportMsgId | typeMask;
     sendMessageList.push_back(msgInfo);
 
     runSend = true;
@@ -193,8 +193,7 @@ void SipTransport::sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& e
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 {
     LOGGER(INFO, __func__, " -->");
-    string envelope((const char*)data, length);
-    int32_t result = appInterface_->receiveMessage(envelope);
+    int32_t result = receiveAxoMessage(data, length, nullptr, 0, nullptr, 0);
     LOGGER(INFO, __func__, " <--", result);
 
     return result;
@@ -223,11 +222,8 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* u
             displayNameString = displayNameString.substr(0, found);
         }
     }
-
-    int32_t result = appInterface_->receiveMessage(envelope, uidString, displayNameString);
-    LOGGER(INFO, __func__, " <-- ", result);
-
-    return result;
+    LOGGER(INFO, __func__, " <-- ");
+    return appInterface_->receiveMessage(envelope, uidString, displayNameString);
 }
 
 void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length)

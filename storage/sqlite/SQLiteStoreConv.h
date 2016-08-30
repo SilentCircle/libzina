@@ -50,6 +50,24 @@ auto cJSON_deleter = [](cJSON* json) {
 
 namespace axolotl {
 
+typedef struct StoredMsgInfo {
+    string data1;
+    string data2;
+    string data3;
+    int64_t sequence;
+    int32_t int32Data;
+} StoredMsgInfo;
+
+// defines to access the info structure when using it for raw message data
+#define info_rawMsgData  data1
+#define info_uid         data2
+#define info_displayName data3
+
+// defines to access the info structure when using it for temp message data
+#define info_msgDescriptor   data1
+#define info_supplementary   data2
+#define info_msgType         int32Data
+
 class SQLiteStoreConv
 {
 public:
@@ -239,7 +257,78 @@ public:
      */
     int32_t deleteMsgTrace(time_t timestamp);
 
-    // Functions to handle groups and group member data
+    /**
+     * @brief Insert received message raw data and meta data.
+     *
+     * @param rawData Encrypted received message raw data
+     * @param uid Sender's unique id, if available, maybe empty
+     * @param displayName Sender's human readable name, if available, maybe empty
+     * @param sequence Pointer to a unsigned 64 bit integer that gets the sequence number of the stored data record
+     * @return SQLite code
+     */
+    int32_t insertReceivedRawData(const string& rawData, const string& uid, const string& displayName, int64_t* sequence);
+
+    /**
+     * @brief Retrive stored received message raw data.
+     *
+     * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
+     * @return SQLite code
+     */
+    int32_t loadReceivedRawData(shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData);
+
+    /**
+     * @brief Delete a message raw data record.
+     *
+     * @param sequence The sequence number of the record to delete.
+     * @return
+     */
+    int32_t deleteReceivedRawData(int64_t sequence);
+
+    /**
+     * @brief Delete raw message records older than the timestamp.
+     *
+     * @param timestamp the timestamp of oldest record
+     * @return SQLite code
+     */
+    int32_t cleanReceivedRawData(time_t timestamp);
+
+    /**
+     * @brief Insert temporary message data and supplmentary data.
+     *
+     * @param messageData Message descriptor, JSON formatted string
+     * @param supplementData Supplementary data, JSON formatted string
+     * @param sequence Pointer to a unsigned 64 bit integer that gets the sequence number of the stored data record
+     * @return SQLite code
+     */
+    int32_t insertTempMsg(const string& messageData, const string& supplementData, int32_t msgType, int64_t* sequence);
+
+    /**
+     * @brief Retrive stored temporary message data.
+     *
+     * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
+     * @return SQLite code
+     */
+    int32_t loadTempMsg(shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMessageData);
+
+    /**
+     * @brief Delete a message raw data record.
+     *
+     * @param sequence The sequence number of the record to delete.
+     * @return
+     */
+    int32_t deleteTempMsg(int64_t sequence);
+
+    /**
+     * @brief Delete temporary message records older than the timestamp.
+     *
+     * @param timestamp the timestamp of oldest record
+     * @return SQLite code
+     */
+    int32_t cleanTempMsg(time_t timestamp);
+
+    /* ***************************************************
+     * Functions to handle groups and group member data
+     * ************************************************* */
 
     /**
      * @brief Create a new chat group.
@@ -480,6 +569,10 @@ public:
      */
     int32_t resetStore() { return createTables(); }
 
+    int beginTransaction();
+    int commitTransaction();
+    int rollbackTransaction();
+
 private:
     SQLiteStoreConv();
     ~SQLiteStoreConv();
@@ -495,9 +588,6 @@ private:
      * that Axolotl tables are available in the database.
      */
     int createTables();
-    int beginTransaction();
-    int commitTransaction();
-    int rollbackTransaction();
 
     /**
      * @brief Update database version.

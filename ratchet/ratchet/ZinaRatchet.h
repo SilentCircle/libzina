@@ -31,7 +31,7 @@ limitations under the License.
 using namespace std;
 
 namespace axolotl {
-class AxoRatchet
+class ZinaRatchet
 {
 public:
     /**
@@ -63,8 +63,8 @@ public:
                                             bool delayCommit = false);
 
 private:
-    AxoRatchet() {};
-    ~AxoRatchet() {};
+    ZinaRatchet() {};
+    ~ZinaRatchet() {};
 
 };
 }

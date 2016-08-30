@@ -65,7 +65,7 @@ shared_ptr<AxoConversation> AxoConversation::loadConversation(const string& loca
     return conv;
 }
 
-void AxoConversation::storeConversation()
+int32_t AxoConversation::storeConversation()
 {
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -81,8 +81,11 @@ void AxoConversation::storeConversation()
     if (SQL_FAIL(result)) {
         errorCode_ = DATABASE_ERROR;
         sqlErrorCode_ = result;
+        LOGGER(ERROR, __func__, " <--, error: ");
+        return result;
     }
     LOGGER(INFO, __func__, " <--");
+    return SUCCESS;
 }
 
 // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
@@ -119,7 +122,7 @@ int32_t AxoConversation::renameConversation(const string& localUserOld, const st
 }
 #endif
 
-void AxoConversation::storeStagedMks() {
+int32_t AxoConversation::storeStagedMks() {
     LOGGER(INFO, __func__, " -->");
 
     errorCode_ = SUCCESS;
@@ -133,12 +136,15 @@ void AxoConversation::storeStagedMks() {
             if (SQL_FAIL(result)) {
                 errorCode_ = DATABASE_ERROR;
                 sqlErrorCode_ = result;
+                LOGGER(ERROR, __func__, " <--, error: ");
+                return result;
             }
         }
         memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size());
     }
     clearStagedMks(stagedMk);
     LOGGER(INFO, __func__, " <--");
+    return SUCCESS;
 }
 
 void AxoConversation::clearStagedMks(shared_ptr<list<string> > keys)

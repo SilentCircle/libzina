@@ -2,6 +2,7 @@
 // Created by werner on 07.06.16.
 //
 
+#include <sys/time.h>
 #include "Utilities.h"
 
 using namespace axolotl;
@@ -38,17 +39,6 @@ bool Utilities::getJsonBool(const cJSON *const root, const char *const name, boo
     return error;
 }
 
-/**
- * @brief Splits a string around matches of the given delimiter character.
- *
- * Trailing empty strings are not included in the resulting array.
- * This function works similar to the Java string split function, however it does
- * not support regular expressions, only a simple delimiter character.
- *
- * @param data The std::string to split
- * @param delimiter The delimiter character
- * @return A vector of strings
- */
 shared_ptr<vector<string> >
 Utilities::splitString(const string& data, const string delimiter)
 {
@@ -79,4 +69,32 @@ Utilities::splitString(const string& data, const string delimiter)
             break;
     }
     return result;
+}
+
+string Utilities::currentTimeMsISO8601()
+{
+    char buffer[80];
+    char outbuf[80];
+    struct timeval tv;
+    struct tm timeinfo;
+
+    gettimeofday(&tv, NULL);
+    time_t currentTime = tv.tv_sec;
+
+    const char* format = "%FT%T";
+    strftime(buffer, 80, format ,gmtime_r(&currentTime, &timeinfo));
+    snprintf(outbuf, 80, "%s.%03dZ\n", buffer, static_cast<int>(tv.tv_usec / 1000));
+    return string(outbuf);
+}
+
+string Utilities::currentTimeISO8601()
+{
+    char outbuf[80];
+    struct tm timeinfo;
+
+    time_t currentTime = time(NULL);
+
+    const char* format = "%FT%TZ";
+    strftime(outbuf, 80, format, gmtime_r(&currentTime, &timeinfo));
+    return string(outbuf);
 }

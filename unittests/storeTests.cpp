@@ -18,9 +18,9 @@ limitations under the License.
 #include <zrtp/crypto/sha2.h>
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
-#include "../axolotl/crypto/DhKeyPair.h"
-#include "../axolotl/crypto/Ec255PrivateKey.h"
-#include "../axolotl/crypto/Ec255PublicKey.h"
+#include "../ratchet/crypto/DhKeyPair.h"
+#include "../ratchet/crypto/Ec255PrivateKey.h"
+#include "../ratchet/crypto/Ec255PublicKey.h"
 #include "../util/b64helper.h"
 
 #include "gtest/gtest.h"
@@ -157,6 +157,9 @@ static string devId("a_device");
 static string attrib("{\"cmd\":\"ping\"}");
 static string convState("Some ratchet state");
 
+static string rawData("Some raw data bla blub");
+static string displayName("John Doe");
+
 TEST_F(StoreTestFixture, MsgTraceStore)
 {
     // Fresh DB, trace must be empty
@@ -200,6 +203,129 @@ TEST_F(StoreTestFixture, MsgTraceStore)
 
     records = pks->loadMsgTrace(name, empty, empty);
     ASSERT_TRUE(records->empty());
+}
+
+TEST_F(StoreTestFixture, ReceivedRawData)
+{
+    // Fresh DB, no received raw records
+    shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData = make_shared<list<shared_ptr<StoredMsgInfo> > > ();
+    int32_t result = pks->loadReceivedRawData(rawMessageData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(rawMessageData->empty());
+
+    // Insert a raw message record
+    int64_t sequence = 0;
+    result = pks->insertReceivedRawData(rawData, name, displayName, &sequence);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, sequence);
+
+    rawMessageData->clear();
+    result = pks->loadReceivedRawData(rawMessageData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, rawMessageData->size());
+
+    shared_ptr<StoredMsgInfo> msgInfo = rawMessageData->front();
+    ASSERT_EQ(rawData, msgInfo->info_rawMsgData);
+    ASSERT_EQ(name, msgInfo->info_uid);
+    ASSERT_EQ(displayName, msgInfo->info_displayName);
+    ASSERT_EQ(sequence, msgInfo->sequence);
+
+    // Delete the record
+    result = pks->deleteReceivedRawData(msgInfo->sequence);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Now list must be empty
+    rawMessageData->clear();
+    result = pks->loadReceivedRawData(rawMessageData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(rawMessageData->empty());
+
+    // insert a second record (using same data), now sequence number must be 2
+    result = pks->insertReceivedRawData(rawData, name, displayName, &sequence);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(2, sequence);
+
+    // Don't clean it yet
+    time_t nowMinus1 = time(NULL)-1;
+    result = pks->cleanReceivedRawData(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    result = pks->loadReceivedRawData(rawMessageData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_FALSE(rawMessageData->empty());
+    rawMessageData->clear();
+
+    sqlite3_sleep(2000);
+    nowMinus1 = time(NULL) - 1;
+
+    // clear old records
+    result = pks->cleanReceivedRawData(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    result = pks->loadReceivedRawData(rawMessageData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(rawMessageData->empty());
+}
+
+TEST_F(StoreTestFixture, TempMsg)
+{
+    // Fresh DB, no received raw records
+    shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMsg = make_shared<list<shared_ptr<StoredMsgInfo> > > ();
+    int32_t result = pks->loadTempMsg(tempMsg);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(tempMsg->empty());
+
+    // Insert a message record, use some data
+    int64_t sequence = 0;
+    result = pks->insertTempMsg(rawData, name, 0, &sequence);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, sequence);
+
+    tempMsg->clear();
+    result = pks->loadTempMsg(tempMsg);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, tempMsg->size());
+
+    shared_ptr<StoredMsgInfo> msgInfo = tempMsg->front();
+    ASSERT_EQ(rawData, msgInfo->info_msgDescriptor);
+    ASSERT_EQ(name, msgInfo->info_supplementary);
+    ASSERT_EQ(sequence, msgInfo->sequence);
+
+    // Delete the record
+    result = pks->deleteTempMsg(msgInfo->sequence);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    // Now list must be empty
+    tempMsg->clear();
+    result = pks->loadReceivedRawData(tempMsg);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(tempMsg->empty());
+
+    // insert a second record (using same data), now sequence number must be 2
+    result = pks->insertTempMsg(rawData, name, 0, &sequence);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(2, sequence);
+
+    // Don't clean it yet
+    time_t nowMinus1 = time(NULL)-1;
+    result = pks->cleanTempMsg(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    result = pks->loadTempMsg(tempMsg);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_FALSE(tempMsg->empty());
+    tempMsg->clear();
+
+    sqlite3_sleep(2000);
+    nowMinus1 = time(NULL) - 1;
+
+    // clear old records
+    result = pks->cleanTempMsg(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    result = pks->loadTempMsg(tempMsg);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(tempMsg->empty());
 }
 
 static string groupId_1("6ba7b810-9dad-11d1-80b4-00c04fd43001");

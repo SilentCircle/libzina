@@ -7,7 +7,6 @@
 #include "AppInterfaceImpl.h"
 
 #include "JsonStrings.h"
-#include "MessageEnvelope.pb.h"
 #include "../util/Utilities.h"
 #include "../util/b64helper.h"
 
@@ -151,35 +150,6 @@ static string requestMemberList(const string& groupId, string& requester, shared
     free(out);
 
     return result;
-}
-
-static string createEmptyMessageDescriptor(const string& recipient, const string& msgId)
-{
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
-    cJSON* root = sharedRoot.get();
-
-    cJSON_AddStringToObject(root, MSG_RECIPIENT, recipient.c_str());
-    cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
-    cJSON_AddStringToObject(root, MSG_MESSAGE, "");
-
-    char *out = cJSON_PrintUnformatted(root);
-    string result(out);
-    free(out);
-
-    return result;
-
-}
-
-static shared_ptr<vector<uint64_t> >
-extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessageData> > > data)
-{
-    auto ids = make_shared<vector<uint64_t> >();
-
-    for (auto it = data->cbegin(); it != data->cend(); ++it) {
-        uint64_t id = (*it)->transportId;
-        ids->push_back(id);
-    }
-    return ids;
 }
 
 // ****** Public instance functions
@@ -385,8 +355,10 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
 
     int32_t result;
     shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-    for (auto it = members->begin(); it != members->end(); ++it) {
-        string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
+    size_t membersFound = members->size();
+    while (!members->empty()) {
+        string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
+        members->pop_front();
         bool toSibling = recipient == ownUser_;
         auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes, toSibling, GROUP_MSG_NORMAL, &result, recipient);
         if (result != SUCCESS) {
@@ -395,7 +367,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         }
         doSendMessages(extractTransportIds(preparedMsgData));
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(INFO, __func__, " <--, ", membersFound);
     return OK;
 }
 
@@ -403,15 +375,15 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
 // ****** Non public instance functions and helpers
 // ******************************************************
 
-int32_t AppInterfaceImpl::processGroupMessage(const MessageEnvelope &envelope, const string &msgDescriptor,
+int32_t AppInterfaceImpl::processGroupMessage(int32_t msgType, const string &msgDescriptor,
                                               const string &attachmentDescr, const string &attributesDescr)
 {
     LOGGER(INFO, __func__, " -->");
 
-    if (envelope.msgtype() == GROUP_MSG_CMD) {
+    if (msgType == GROUP_MSG_CMD) {
         return processGroupCommand(attributesDescr);
     }
-    if (envelope.msgtype() == GROUP_MSG_NORMAL && msgDescriptor.empty()) {
+    if (msgType == GROUP_MSG_NORMAL && msgDescriptor.empty()) {
         return GROUP_MSG_DATA_INCONSISTENT;
     }
     if (checkActiveAndHash(msgDescriptor, attributesDescr)) {
@@ -473,7 +445,7 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
 
     bool toSibling = recipient == ownUser_;
     int32_t result;
-    auto preparedMsgData = prepareMessageInternal(createEmptyMessageDescriptor(recipient, msgId), Empty, command, toSibling, GROUP_MSG_CMD, &result, recipient);
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(recipient, msgId), Empty, command, toSibling, GROUP_MSG_CMD, &result, recipient);
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return result;
