@@ -57,11 +57,11 @@ using namespace std;
 JavaVM *t_getJavaVM();
 #endif
 
-static AppInterfaceImpl* axoAppInterface = NULL;
+static AppInterfaceImpl* zinaAppInterface = NULL;
 static JavaVM* javaVM = NULL;
 
 // Set in doInit(...)
-static jobject axolotlCallbackObject = NULL;
+static jobject zinaCallbackObject = NULL;
 static jmethodID receiveMessageCallback = NULL;
 static jmethodID storeMessageCallback = NULL;
 static jmethodID stateReportCallback = NULL;
@@ -79,13 +79,13 @@ jfieldID receiverInfoID = NULL;
 static int32_t debugLevel = 1;
 
 // Plain public API without a class
-AppInterface* j_getAxoAppInterface() { return axoAppInterface; }
+AppInterface* j_getAxoAppInterface() { return zinaAppInterface; }
 
 void Log(char const *format, ...) {
     va_list arg;
     va_start(arg, format);
 #ifdef ANDROID
-    LOG(if (debugLevel > 0) __android_log_vprint(ANDROID_LOG_DEBUG, "axolotl", format, arg);)
+    LOG(if (debugLevel > 0) __android_log_vprint(ANDROID_LOG_DEBUG, "libzina", format, arg);)
 #else
     LOG(if (debugLevel > 0){ vfprintf(stderr, format, arg); fprintf(stderr, "\n");})
 #endif
@@ -121,7 +121,7 @@ static void receiveData(const string &msgFileName)
 
     size_t num = fread(msgData, 1, 2000, msgFile);
     Log("Message file read: %d bytes\n", num);
-    axoAppInterface->getTransport()->receiveAxoMessage(msgData, num);
+    zinaAppInterface->getTransport()->receiveAxoMessage(msgData, num);
     fclose(msgFile);
 
 }
@@ -221,7 +221,7 @@ void loadAxolotl()
  */
 static int32_t receiveMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return -1;
 
     CTJNIEnv jni;
@@ -246,7 +246,7 @@ static int32_t receiveMessage(const string& messageDescriptor, const string& att
             return -4;
         }
     }
-    int32_t result = env->CallIntMethod(axolotlCallbackObject, receiveMessageCallback, message, attachment, attributes);
+    int32_t result = env->CallIntMethod(zinaCallbackObject, receiveMessageCallback, message, attachment, attributes);
 
     env->DeleteLocalRef(message);
     if (attachment != NULL)
@@ -264,7 +264,7 @@ static int32_t receiveMessage(const string& messageDescriptor, const string& att
  */
 static int32_t storeMessageData(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return -1;
 
     CTJNIEnv jni;
@@ -289,7 +289,7 @@ static int32_t storeMessageData(const string& messageDescriptor, const string& a
             return -4;
         }
     }
-    int32_t result = env->CallIntMethod(axolotlCallbackObject, storeMessageCallback, message, attachment, attributes);
+    int32_t result = env->CallIntMethod(zinaCallbackObject, storeMessageCallback, message, attachment, attributes);
 
     env->DeleteLocalRef(message);
     if (attachment != NULL)
@@ -307,7 +307,7 @@ static int32_t storeMessageData(const string& messageDescriptor, const string& a
  */
 static int32_t receiveGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return -1;
 
     CTJNIEnv jni;
@@ -332,7 +332,7 @@ static int32_t receiveGroupMessage(const string& messageDescriptor, const string
             return -4;
         }
     }
-    int32_t result = env->CallIntMethod(axolotlCallbackObject, groupMsgReceiveCallback, message, attachment, attributes);
+    int32_t result = env->CallIntMethod(zinaCallbackObject, groupMsgReceiveCallback, message, attachment, attributes);
 
     env->DeleteLocalRef(message);
     if (attachment != NULL)
@@ -350,7 +350,7 @@ static int32_t receiveGroupMessage(const string& messageDescriptor, const string
  */
 static int32_t receiveGroupCommand(const string& commandMessage)
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return -1;
 
     CTJNIEnv jni;
@@ -361,7 +361,7 @@ static int32_t receiveGroupCommand(const string& commandMessage)
     jbyteArray message = stringToArray(env, commandMessage);
     Log("receiveGroupCommand: '%s' - length: %d", commandMessage.c_str(), commandMessage.size());
 
-    int32_t result = env->CallIntMethod(axolotlCallbackObject, groupCmdReceiveCallback, message);
+    int32_t result = env->CallIntMethod(zinaCallbackObject, groupCmdReceiveCallback, message);
 
     env->DeleteLocalRef(message);
 
@@ -375,7 +375,7 @@ static int32_t receiveGroupCommand(const string& commandMessage)
  */
 static void messageStateReport(int64_t messageIdentifier, int32_t statusCode, const string& stateInformation)
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return;
 
     CTJNIEnv jni;
@@ -387,7 +387,7 @@ static void messageStateReport(int64_t messageIdentifier, int32_t statusCode, co
     if (!stateInformation.empty()) {
         information = stringToArray(env, stateInformation);
     }
-    env->CallVoidMethod(axolotlCallbackObject, stateReportCallback, messageIdentifier, statusCode, information);
+    env->CallVoidMethod(zinaCallbackObject, stateReportCallback, messageIdentifier, statusCode, information);
     if (information != NULL)
         env->DeleteLocalRef(information);
 }
@@ -399,7 +399,7 @@ static void messageStateReport(int64_t messageIdentifier, int32_t statusCode, co
  */
 static void groupStateReport(int32_t statusCode, const string& stateInformation)
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return;
 
     CTJNIEnv jni;
@@ -411,7 +411,7 @@ static void groupStateReport(int32_t statusCode, const string& stateInformation)
     if (!stateInformation.empty()) {
         information = stringToArray(env, stateInformation);
     }
-    env->CallVoidMethod(axolotlCallbackObject, groupStateCallback, statusCode, information);
+    env->CallVoidMethod(zinaCallbackObject, groupStateCallback, statusCode, information);
     if (information != NULL)
         env->DeleteLocalRef(information);
 }
@@ -423,7 +423,7 @@ static void groupStateReport(int32_t statusCode, const string& stateInformation)
  */
 static void notifyCallback(int32_t notifyAction, const string& actionInformation, const string& devId)
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return;
 
     CTJNIEnv jni;
@@ -439,7 +439,7 @@ static void notifyCallback(int32_t notifyAction, const string& actionInformation
     if (!devId.empty()) {
         deviceId = stringToArray(env, devId);
     }
-    env->CallVoidMethod(axolotlCallbackObject, javaNotifyCallback, notifyAction, information, deviceId);
+    env->CallVoidMethod(zinaCallbackObject, javaNotifyCallback, notifyAction, information, deviceId);
 
     if (information != NULL)
         env->DeleteLocalRef(information);
@@ -449,7 +449,7 @@ static void notifyCallback(int32_t notifyAction, const string& actionInformation
 }
 
 /*
- * Class:     AxolotlNative
+ * Class:     ZinaNative
  * Method:    httpHelper
  * Signature: ([BLjava/lang/String;[B[I)[B
  */
@@ -460,7 +460,7 @@ static void notifyCallback(int32_t notifyAction, const string& actionInformation
 #if defined JAVA_HELPER || defined UNITTESTS
 static int32_t httpHelper(const string& requestUri, const string& method, const string& requestData, string* response)
 {
-    if (axolotlCallbackObject == NULL)
+    if (zinaCallbackObject == NULL)
         return -1;
 
     CTJNIEnv jni;
@@ -484,7 +484,7 @@ static int32_t httpHelper(const string& requestUri, const string& method, const 
 
     jintArray code = env->NewIntArray(1);
 
-    jbyteArray data = (jbyteArray)env->CallObjectMethod(axolotlCallbackObject, httpHelperCallback, uri, mthod, reqData, code);
+    jbyteArray data = (jbyteArray)env->CallObjectMethod(zinaCallbackObject, httpHelperCallback, uri, mthod, reqData, code);
      if (data != NULL) {
         arrayToString(env, data, response);
     }
@@ -540,7 +540,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 #endif
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    doInit
  * Signature: (ILjava/lang/String;[B[B[B[BZ)I
  */
@@ -551,13 +551,13 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     debugLevel = flags & 0xf;
 //    int32_t flagsInternal = flags >> 4;
 
-    if (axolotlCallbackObject == NULL) {
-        axolotlCallbackObject = env->NewGlobalRef(thiz);
-        if (axolotlCallbackObject == NULL) {
+    if (zinaCallbackObject == NULL) {
+        zinaCallbackObject = env->NewGlobalRef(thiz);
+        if (zinaCallbackObject == NULL) {
             return -1;
         }
         jclass callbackClass = NULL;
-        callbackClass = env->GetObjectClass(axolotlCallbackObject);
+        callbackClass = env->GetObjectClass(zinaCallbackObject);
         if (callbackClass == NULL) {
             return -2;
         }
@@ -653,18 +653,18 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     memset_volatile((void*)dbPw.data(), 0, dbPw.size());
 
     int32_t retVal = 1;
-    auto ownAxoConv = AxoConversation::loadLocalConversation(name);
-    if (!ownAxoConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
+    auto ownZinaConv = AxoConversation::loadLocalConversation(name);
+    if (!ownZinaConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-        ownAxoConv->setDHIs(idKeyPair);
-        ownAxoConv->storeConversation();
+        ownZinaConv->setDHIs(idKeyPair);
+        ownZinaConv->storeConversation();
         retVal = 2;
     }
 
-    axoAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, storeMessageData, messageStateReport,
+    zinaAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, storeMessageData, messageStateReport,
                                            notifyCallback, receiveGroupMessage, receiveGroupCommand, groupStateReport);
-    axoAppInterface->setDelayRatchetCommit(delayRatchetCommit != 0);
-    Transport* sipTransport = new SipTransport(axoAppInterface);
+    zinaAppInterface->setDelayRatchetCommit(delayRatchetCommit != 0);
+    Transport* sipTransport = new SipTransport(zinaAppInterface);
 
     /* ***********************************************************************************
      * Initialize pointers/callback to the send/receive SIP data functions (network layer) 
@@ -674,7 +674,6 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 #elif defined (EMBEDDED)
     // Functions defined in t_a_main module of silentphone library, this sends the data
     // via SIP message
-//    void g_sendDataFuncAxo(uint8_t* names[], uint8_t* devIds[], uint8_t* envelopes[], size_t sizes[], uint64_t msgIds[]);
     bool g_sendDataFuncAxoNew(uint8_t* names, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgIds);
     void t_setAxoTransport(Transport *transport);
 
@@ -687,8 +686,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
      * set sipTransport class to SIP network handler, sipTransport contains callback
      * functions 'receiveAxoData' and 'stateReportAxo'
      *********************************************************************************** */
-    axoAppInterface->setHttpHelper(httpHelper);
-    axoAppInterface->setTransport(sipTransport);
+    zinaAppInterface->setHttpHelper(httpHelper);
+    zinaAppInterface->setTransport(sipTransport);
 
     return retVal;
 }
@@ -727,7 +726,7 @@ JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescri
 {
     (void)clazz;
 
-    if (code == NULL || env->GetArrayLength(code) < 1 || messageDescriptor == NULL || axoAppInterface == NULL)
+    if (code == NULL || env->GetArrayLength(code) < 1 || messageDescriptor == NULL || zinaAppInterface == NULL)
         return NULL;
 
     string message;
@@ -748,7 +747,7 @@ JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescri
         Log("prepareMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     int32_t error;
-    auto prepMessageData = axoAppInterface->prepareMessage(message, attachment, attributes, &error);
+    auto prepMessageData = zinaAppInterface->prepareMessage(message, attachment, attributes, &error);
     if (error != SUCCESS) {
         setReturnCode(env, code, error);
         return NULL;
@@ -767,7 +766,7 @@ JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray mes
 {
     (void)clazz;
 
-    if (code == NULL || env->GetArrayLength(code) < 1 || messageDescriptor == NULL || axoAppInterface == NULL)
+    if (code == NULL || env->GetArrayLength(code) < 1 || messageDescriptor == NULL || zinaAppInterface == NULL)
         return NULL;
 
     string message;
@@ -788,7 +787,7 @@ JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray mes
         Log("prepareMessageToSiblings - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     int32_t error;
-    auto prepMessageData = axoAppInterface->prepareMessageToSiblings(message, attachment, attributes, &error);
+    auto prepMessageData = zinaAppInterface->prepareMessageToSiblings(message, attachment, attributes, &error);
     if (error != SUCCESS) {
         setReturnCode(env, code, error);
         return NULL;
@@ -821,12 +820,12 @@ JNI_FUNCTION(doSendMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
         idVector->push_back(tmp[i]);
     }
     env->ReleaseLongArrayElements(ids, (jlong *)tmp, 0);
-    return axoAppInterface->doSendMessages(idVector);
+    return zinaAppInterface->doSendMessages(idVector);
 }
 
 
 /*
- * Class:     AxolotlNative
+ * Class:     ZinaNative
  * Method:    getKnownUsers
  * Signature: ()[B
  */
@@ -835,10 +834,10 @@ JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
-    string* jsonNames = axoAppInterface->getKnownUsers();
+    string* jsonNames = zinaAppInterface->getKnownUsers();
     if (jsonNames == NULL)
         return NULL;
 
@@ -853,7 +852,7 @@ JNI_FUNCTION(getKnownUsers)(JNIEnv* env, jclass clazz)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getOwnIdentityKey
  * Signature: ()[B
  */
@@ -862,16 +861,16 @@ JNI_FUNCTION(getOwnIdentityKey) (JNIEnv* env, jclass clazz)
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
-    string idKey = axoAppInterface->getOwnIdentityKey();
+    string idKey = zinaAppInterface->getOwnIdentityKey();
     jbyteArray key = stringToArray(env, idKey);
     return key;
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getIdentityKeys
  * Signature: ([B)[[B
  */
@@ -881,10 +880,10 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
+    if (!arrayToString(env, userName, &name) || zinaAppInterface == NULL)
         return NULL;
 
-    shared_ptr<list<string> > idKeys = axoAppInterface->getIdentityKeys(name);
+    shared_ptr<list<string> > idKeys = zinaAppInterface->getIdentityKeys(name);
 
     jclass byteArrayClass = env->FindClass("[B");
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(idKeys->size()), byteArrayClass, NULL);
@@ -901,20 +900,20 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
- * Method:    getAxoDevicesUser
+ * Class:     zina_ZinaNative
+ * Method:    getZinaDevicesUser
  * Signature: ([B)[B
  */
 JNIEXPORT jbyteArray JNICALL
-JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
+JNI_FUNCTION(getZinaDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
 {
     (void)clazz;
 
     string name;
-    if (!arrayToString(env, userName, &name) || axoAppInterface == NULL)
+    if (!arrayToString(env, userName, &name) || zinaAppInterface == NULL)
         return NULL;
 
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(name, axoAppInterface->getOwnAuthrization());
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(name, zinaAppInterface->getOwnAuthrization());
 
     if (!devices || devices->empty()) {
         return NULL;
@@ -944,7 +943,7 @@ JNI_FUNCTION(getAxoDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName)
 
 
 /*
- * Class:     AxolotlNative
+ * Class:     ZinaNative
  * Method:    registerZinaDevice
  * Signature: ([B[I)[B
  */
@@ -954,10 +953,10 @@ JNI_FUNCTION(registerZinaDevice)(JNIEnv* env, jclass clazz, jintArray code)
     (void)clazz;
 
     string info;
-    if (code == NULL || env->GetArrayLength(code) < 1 || axoAppInterface == NULL)
+    if (code == NULL || env->GetArrayLength(code) < 1 || zinaAppInterface == NULL)
         return NULL;
 
-    int32_t result = axoAppInterface->registerAxolotlDevice(&info);
+    int32_t result = zinaAppInterface->registerZinaDevice(&info);
 
     setReturnCode(env, code, result);
 
@@ -973,7 +972,7 @@ JNI_FUNCTION(registerZinaDevice)(JNIEnv* env, jclass clazz, jintArray code)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    removeZinaDevice
  * Signature: ([B[I)[B
  */
@@ -983,7 +982,7 @@ JNI_FUNCTION(removeZinaDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, 
     (void)clazz;
 
     string info;
-    if (code == NULL || env->GetArrayLength(code) < 1 || axoAppInterface == NULL)
+    if (code == NULL || env->GetArrayLength(code) < 1 || zinaAppInterface == NULL)
         return NULL;
 
     string devId;
@@ -991,7 +990,7 @@ JNI_FUNCTION(removeZinaDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, 
         return NULL;
 
 
-    int32_t result = axoAppInterface->removeAxolotlDevice(devId, &info);
+    int32_t result = zinaAppInterface->removeZinaDevice(devId, &info);
 
     setReturnCode(env, code, result);
 
@@ -1008,7 +1007,7 @@ JNI_FUNCTION(removeZinaDevice) (JNIEnv* env, jclass clazz, jbyteArray deviceId, 
 
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    newPreKeys
  * Signature: (I)I
  */
@@ -1017,14 +1016,14 @@ JNI_FUNCTION(newPreKeys)(JNIEnv* env, jclass clazz, jint numbers)
 {
     (void)clazz;
     (void)env;
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return -1;
 
-    return axoAppInterface->newPreKeys(numbers);
+    return zinaAppInterface->newPreKeys(numbers);
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getNumPreKeys
  * Signature: ()I
  */
@@ -1033,14 +1032,14 @@ JNI_FUNCTION(getNumPreKeys) (JNIEnv* env, jclass clazz)
 {
     (void)clazz;
     (void)env;
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return -1;
 
-    return axoAppInterface->getNumPreKeys();
+    return zinaAppInterface->getNumPreKeys();
 }
 
 /*
- * Class:     AxolotlNative
+ * Class:     ZinaNative
  * Method:    getErrorCode
  * Signature: ()I
  */
@@ -1049,14 +1048,14 @@ JNI_FUNCTION(getErrorCode)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
     (void)env;
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return -1;
 
-    return axoAppInterface->getErrorCode();
+    return zinaAppInterface->getErrorCode();
 }
 
 /*
- * Class:     AxolotlNative
+ * Class:     ZinaNative
  * Method:    getErrorInfo
  * Signature: ()Ljava/lang/String;
  */
@@ -1064,16 +1063,16 @@ JNIEXPORT jstring JNICALL
 JNI_FUNCTION(getErrorInfo)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
-    const string info = axoAppInterface->getErrorInfo();
+    const string info = zinaAppInterface->getErrorInfo();
     jstring errInfo = env->NewStringUTF(info.c_str());
     return errInfo;
 }
 
 /*
- * Class:     AxolotlNative
+ * Class:     ZinaNative
  * Method:    testCommand
  * Signature: (Ljava/lang/String;[B)I
  */
@@ -1120,16 +1119,16 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
 }
 
 /*
- * Class:     axolotl_AxolotlNative
- * Method:    axoCommand
+ * Class:     zina_ZinaNative
+ * Method:    zinaCommand
  * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
+JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
 {
     (void)clazz;
 
-    if (command == NULL || axoAppInterface == NULL)
+    if (command == NULL || zinaAppInterface == NULL)
         return NULL;
     const char* cmd = env->GetStringUTFChars(command, 0);
 
@@ -1143,18 +1142,18 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
 
         SQLiteStoreConv* store = SQLiteStoreConv::getStore();
         int32_t sqlResult = 0;
-        store->deleteConversationsName(dataContainer, axoAppInterface->getOwnUser(), &sqlResult);
+        store->deleteConversationsName(dataContainer, zinaAppInterface->getOwnUser(), &sqlResult);
 
-        Log("Removing Axolotl conversation data for '%s' returned %d\n", dataContainer.c_str(), sqlResult);
+        Log("Removing Zina conversation data for '%s' returned %d\n", dataContainer.c_str(), sqlResult);
         if (SQL_FAIL(sqlResult)) {
             result = env->NewStringUTF(store->getLastError());
         }
         else {
-            axoAppInterface->rescanUserDevices(dataContainer);
+            zinaAppInterface->rescanUserDevices(dataContainer);
         }
     }
     else if (strcmp("rescanUserDevices", cmd) == 0 && !dataContainer.empty()) {
-        axoAppInterface->rescanUserDevices(dataContainer);
+        zinaAppInterface->rescanUserDevices(dataContainer);
     }
     else if (strcmp("reSyncConversation", cmd) == 0 && !dataContainer.empty()) {
         cJSON* root = cJSON_Parse(dataContainer.c_str());
@@ -1175,16 +1174,16 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
                 deviceId.assign(jsonItem->valuestring);
             }
             if (!userName.empty() && !deviceId.empty()) {
-                axoAppInterface->reSyncConversation(userName, deviceId);
+                zinaAppInterface->reSyncConversation(userName, deviceId);
             }
         }
         cJSON_Delete(root);
     } else if (strcmp("clearGroupData", cmd) == 0) {
-        axoAppInterface->clearGroupData();
+        zinaAppInterface->clearGroupData();
     } else if (strcmp("runRetry", cmd) == 0) {
         // Check for left-over messages in persitent queues, can happen if app crashes in
         // the middle of receive message processing.
-        axoAppInterface->retryReceivedMessages();
+        zinaAppInterface->retryReceivedMessages();
     }
     env->ReleaseStringUTFChars(command, cmd);
     return result;
@@ -1197,7 +1196,7 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
  */
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    createNewGroup
  * Signature: ([B[B)Ljava/lang/String;
  */
@@ -1206,7 +1205,7 @@ JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jb
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
     string group;
@@ -1217,7 +1216,7 @@ JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jb
     if (!arrayToString(env, groupDescription, &description)) {
         return NULL;
     }
-    string groupUuid = axoAppInterface->createNewGroup(group, description, maxMembers);
+    string groupUuid = zinaAppInterface->createNewGroup(group, description, maxMembers);
     if (groupUuid.empty())
         return NULL;
     jstring uuidJava = env->NewStringUTF(groupUuid.c_str());
@@ -1225,7 +1224,7 @@ JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jb
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    modifyGroupSize
  * Signature: (Ljava/lang/String;I)Z
  */
@@ -1234,7 +1233,7 @@ JNICALL JNI_FUNCTION(modifyGroupSize)(JNIEnv *env, jclass clazz, jstring groupUu
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return JNI_FALSE;
 
     if (groupUuid == NULL)
@@ -1244,12 +1243,12 @@ JNICALL JNI_FUNCTION(modifyGroupSize)(JNIEnv *env, jclass clazz, jstring groupUu
     const char* temp = env->GetStringUTFChars(groupUuid, 0);
     group = temp;
     env->ReleaseStringUTFChars(groupUuid, temp);
-    bool result = axoAppInterface->modifyGroupSize(group, newSize);
+    bool result = zinaAppInterface->modifyGroupSize(group, newSize);
     return result ? JNI_TRUE : JNI_FALSE;
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    listAllGroups
  * Signature: ([I)[[B
  */
@@ -1258,14 +1257,14 @@ JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
     int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > groups = axoAppInterface->getStore()->listAllGroups( &result);
+    shared_ptr<list<shared_ptr<cJSON> > > groups = zinaAppInterface->getStore()->listAllGroups( &result);
     setReturnCode(env, code, result);
 
     size_t size = groups->size();
@@ -1289,7 +1288,7 @@ JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getGroup
  * Signature: (Ljava/lang/String;[I)[B
  */
@@ -1298,7 +1297,7 @@ JNI_FUNCTION(getGroup)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray c
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
@@ -1313,7 +1312,7 @@ JNI_FUNCTION(getGroup)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray c
     env->ReleaseStringUTFChars(groupUuid, temp);
 
     int32_t result;
-    shared_ptr<cJSON> groupJson = axoAppInterface->getStore()->listGroup(group, &result);
+    shared_ptr<cJSON> groupJson = zinaAppInterface->getStore()->listGroup(group, &result);
 
     setReturnCode(env, code, result);
     char *out = cJSON_PrintUnformatted(groupJson.get());
@@ -1326,7 +1325,7 @@ JNI_FUNCTION(getGroup)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray c
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getAllGroupMembers
  * Signature: (Ljava/lang/String;[I)[[B
  */
@@ -1335,7 +1334,7 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
@@ -1350,7 +1349,7 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
     env->ReleaseStringUTFChars(groupUuid, temp);
 
     int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > members = axoAppInterface->getStore()->getAllGroupMembers(group, &result);
+    shared_ptr<list<shared_ptr<cJSON> > > members = zinaAppInterface->getStore()->getAllGroupMembers(group, &result);
     setReturnCode(env, code, result);
 
     size_t size = members->size();
@@ -1373,7 +1372,7 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getGroupMember
  * Signature: (Ljava/lang/String;[B[I)[B
  */
@@ -1382,7 +1381,7 @@ JNI_FUNCTION(getGroupMember) (JNIEnv *env, jclass clazz, jstring groupUuid, jbyt
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return NULL;
 
     if (code == NULL || env->GetArrayLength(code) < 1)
@@ -1402,7 +1401,7 @@ JNI_FUNCTION(getGroupMember) (JNIEnv *env, jclass clazz, jstring groupUuid, jbyt
     }
 
     int32_t result;
-    shared_ptr<cJSON> memberJson = axoAppInterface->getStore()->getGroupMember(group, memberId, &result);
+    shared_ptr<cJSON> memberJson = zinaAppInterface->getStore()->getGroupMember(group, memberId, &result);
     setReturnCode(env, code, result);
 
     char *out = cJSON_PrintUnformatted(memberJson.get());
@@ -1412,7 +1411,7 @@ JNI_FUNCTION(getGroupMember) (JNIEnv *env, jclass clazz, jstring groupUuid, jbyt
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    inviteUser
  * Signature: (Ljava/lang/String;[B)I
  */
@@ -1421,7 +1420,7 @@ JNI_FUNCTION(inviteUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArra
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
 
     if (groupUuid == NULL)
@@ -1436,11 +1435,11 @@ JNI_FUNCTION(inviteUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArra
     if (!arrayToString(env, userId, &usr)) {
         return GROUP_MSG_DATA_INCONSISTENT;
     }
-    return axoAppInterface->inviteUser(group, usr);
+    return zinaAppInterface->inviteUser(group, usr);
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    answerInvitation
  * Signature: ([BZ[B)I
  */
@@ -1449,7 +1448,7 @@ JNI_FUNCTION(answerInvitation)(JNIEnv *env, jclass clazz, jbyteArray command, jb
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
 
     string cmd;
@@ -1460,11 +1459,11 @@ JNI_FUNCTION(answerInvitation)(JNIEnv *env, jclass clazz, jbyteArray command, jb
     if (reason != NULL) {
         arrayToString(env, reason, &rsn);
     }
-    return axoAppInterface->answerInvitation(cmd, accept != 0, rsn);
+    return zinaAppInterface->answerInvitation(cmd, accept != 0, rsn);
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    sendGroupMessage
  * Signature: ([B[B[B)I
  */
@@ -1473,7 +1472,7 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
 
     string message;
@@ -1492,12 +1491,12 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
         arrayToString(env, messageAttributes, &attributes);
         Log("sendGroupMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    int32_t result  = axoAppInterface->sendGroupMessage(message, attachment, attributes);
+    int32_t result  = zinaAppInterface->sendGroupMessage(message, attachment, attributes);
     return result;
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    leaveGroup
  * Signature: (Ljava/lang/String;)I
  */
@@ -1506,7 +1505,7 @@ JNI_FUNCTION(leaveGroup)(JNIEnv *env, jclass clazz, jstring groupUuid)
 {
     (void)clazz;
 
-    if (axoAppInterface == NULL)
+    if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
 
     if (groupUuid == NULL)
@@ -1516,7 +1515,7 @@ JNI_FUNCTION(leaveGroup)(JNIEnv *env, jclass clazz, jstring groupUuid)
     const char* temp = env->GetStringUTFChars(groupUuid, 0);
     group = temp;
     env->ReleaseStringUTFChars(groupUuid, temp);
-    return axoAppInterface->leaveGroup(group);
+    return zinaAppInterface->leaveGroup(group);
 }
 
 
@@ -1531,7 +1530,7 @@ static AppRepository* appRepository = NULL;
 
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    repoOpenDatabase
  * Signature: (Ljava/lang/String;[B)I
  */
@@ -1568,7 +1567,7 @@ JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName, jbyte
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    repoCloseDatabase
  * Signature: ()V
  */
@@ -1584,7 +1583,7 @@ JNI_FUNCTION(repoCloseDatabase) (JNIEnv* env, jclass clazz) {
 
 #define IS_APP_REPO_OPEN    (appRepository != NULL && appRepository->isReady())
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    repoIsOpen
  * Signature: ()Z
  */
@@ -1599,7 +1598,7 @@ JNI_FUNCTION(repoIsOpen) (JNIEnv* env, jclass clazz)
 
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    existConversation
  * Signature: ([B)Z
  */
@@ -1620,7 +1619,7 @@ JNI_FUNCTION(existConversation) (JNIEnv* env, jclass clazz, jbyteArray namePatte
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    storeConversation
  * Signature: ([B[B)I
  */
@@ -1642,7 +1641,7 @@ JNI_FUNCTION(storeConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, j
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadConversation
  * Signature: ([B[I)[B
  */
@@ -1676,7 +1675,7 @@ JNI_FUNCTION(loadConversation) (JNIEnv* env, jclass clazz, jbyteArray inName, ji
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    deleteConversation
  * Signature: ([B)I
  */
@@ -1696,7 +1695,7 @@ JNI_FUNCTION(deleteConversation) (JNIEnv* env, jclass clazz, jbyteArray inName)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    listConversations
  * Signature: ()[[B
  */
@@ -1728,7 +1727,7 @@ JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    insertEvent
  * Signature: ([B[B[B)I
  */
@@ -1754,7 +1753,7 @@ JNI_FUNCTION(insertEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadEvent
  * Signature: ([B[B[I)[B
  */
@@ -1792,7 +1791,7 @@ JNI_FUNCTION(loadEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArra
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadEventWithMsgId
  * Signature: ([B[I)[B
  */
@@ -1825,7 +1824,7 @@ JNI_FUNCTION(loadEventWithMsgId) (JNIEnv* env, jclass clazz, jbyteArray eventId,
 
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    existEvent
  * Signature: ([B[B)Z
  */
@@ -1850,7 +1849,7 @@ JNI_FUNCTION(existEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadEvents
  * Signature: ([BII[I)[[B
  */
@@ -1901,7 +1900,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    deleteEvent
  * Signature: ([B[B)I
  */
@@ -1926,7 +1925,7 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    insertObject
  * Signature: ([B[B[B[B)I
  */
@@ -1956,7 +1955,7 @@ JNI_FUNCTION(insertObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadObject
  * Signature: ([B[B[B[I)[B
  */
@@ -1997,7 +1996,7 @@ JNI_FUNCTION(loadObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteArr
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    existObject
  * Signature: ([B[B[B)Z
  */
@@ -2025,7 +2024,7 @@ JNI_FUNCTION(existObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadObjects
  * Signature: ([B[B[I)[[B
  */
@@ -2079,7 +2078,7 @@ JNI_FUNCTION(loadObjects) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    deleteObject
  * Signature: ([B[B[B)I
  */
@@ -2107,7 +2106,7 @@ JNI_FUNCTION(deleteObject) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteA
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    storeAttachmentStatus
  * Signature: ([B[BI)I
  */
@@ -2131,7 +2130,7 @@ JNI_FUNCTION(storeAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    deleteAttachmentStatus
  * Signature: ([B[B)I
  */
@@ -2155,7 +2154,7 @@ JNI_FUNCTION(deleteAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgI
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    deleteWithAttachmentStatus
  * Signature: (I)I
  */
@@ -2172,7 +2171,7 @@ JNI_FUNCTION(deleteWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint status
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadAttachmentStatus
  * Signature: ([B[B[I)I
  */
@@ -2203,7 +2202,7 @@ JNI_FUNCTION(loadAttachmentStatus) (JNIEnv* env, jclass clazz, jbyteArray msgId,
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadMsgsIdsWithAttachmentStatus
  * Signature: (I[I)[Ljava/lang/String;
  */
@@ -2264,7 +2263,7 @@ static uint8_t* jarrayToCarray(JNIEnv* env, jbyteArray array, size_t* len)
 
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudEncryptNew
  * Signature: ([B[B[B[I)J
  
@@ -2306,7 +2305,7 @@ JNI_FUNCTION(cloudEncryptNew) (JNIEnv* env, jclass clazz, jbyteArray context, jb
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudCalculateKey
  * Signature: (J)I
  */
@@ -2335,7 +2334,7 @@ static jbyteArray cArrayToJArray(JNIEnv* env, const uint8_t* input, size_t len)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudEncryptGetKeyBLOB
  * Signature: (J[I)[B
  */
@@ -2366,7 +2365,7 @@ JNI_FUNCTION(cloudEncryptGetKeyBLOB) (JNIEnv* env, jclass clazz, jlong cloudRef,
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudEncryptGetSegmentBLOB
  * Signature: (JI[I)[B
  */
@@ -2397,7 +2396,7 @@ JNI_FUNCTION(cloudEncryptGetSegmentBLOB) (JNIEnv* env, jclass clazz, jlong cloud
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudEncryptGetLocator
  * Signature: (J[I)[B
  */
@@ -2424,7 +2423,7 @@ JNI_FUNCTION(cloudEncryptGetLocator) (JNIEnv* env, jclass clazz, jlong cloudRef,
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudEncryptGetLocatorREST
  * Signature: (J[I)[B
  */
@@ -2451,7 +2450,7 @@ JNI_FUNCTION(cloudEncryptGetLocatorREST) (JNIEnv* env, jclass clazz, jlong cloud
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudEncryptNext
  * Signature: (J[I)[B
  */
@@ -2480,7 +2479,7 @@ JNI_FUNCTION(cloudEncryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jintA
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudDecryptNew
  * Signature: ([B[I)J
  */
@@ -2502,7 +2501,7 @@ JNI_FUNCTION(cloudDecryptNew) (JNIEnv* env, jclass clazz, jbyteArray key, jintAr
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudDecryptNext
  * Signature: (J[B)I
  */
@@ -2529,7 +2528,7 @@ JNI_FUNCTION(cloudDecryptNext) (JNIEnv* env, jclass clazz, jlong cloudRef, jbyte
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudGetDecryptedData
  * Signature: (J)[B
  */
@@ -2552,7 +2551,7 @@ JNI_FUNCTION(cloudGetDecryptedData) (JNIEnv* env, jclass clazz, jlong cloudRef)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudGetDecryptedMetaData
  * Signature: (J)[B
  */
@@ -2575,7 +2574,7 @@ JNI_FUNCTION(cloudGetDecryptedMetaData) (JNIEnv* env, jclass clazz, jlong cloudR
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    cloudFree
  * Signature: (J)V
  */
@@ -2590,7 +2589,7 @@ JNI_FUNCTION(cloudFree) (JNIEnv* env, jclass clazz, jlong cloudRef)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getUid
  * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
  */
@@ -2601,9 +2600,9 @@ JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray author
 
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
-        if (axoAppInterface == NULL)
+        if (zinaAppInterface == NULL)
             return NULL;
-        auth = axoAppInterface->getOwnAuthrization();
+        auth = zinaAppInterface->getOwnAuthrization();
     }
     if (alias == NULL) {
         return NULL;
@@ -2628,11 +2627,11 @@ static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray aut
 {
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
-        if (axoAppInterface == NULL) {
+        if (zinaAppInterface == NULL) {
             *errorCode = GENERIC_ERROR;
             return NULL;
         }
-        auth = axoAppInterface->getOwnAuthrization();
+        auth = zinaAppInterface->getOwnAuthrization();
     }
     if (alias == NULL) {
         *errorCode = GENERIC_ERROR;
@@ -2668,7 +2667,7 @@ static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray aut
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getUserInfo
  * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
  */
@@ -2687,7 +2686,7 @@ JNI_FUNCTION(getUserInfo)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray a
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getUserInfoFromCache
  * Signature: (Ljava/lang/String;[B)[B
  */
@@ -2700,7 +2699,7 @@ JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    refreshUserData
  * Signature: (Ljava/lang/String;[B)[B
  */
@@ -2709,9 +2708,9 @@ JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, 
 {
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
-        if (axoAppInterface == NULL)
+        if (zinaAppInterface == NULL)
             return NULL;
-        auth = axoAppInterface->getOwnAuthrization();
+        auth = zinaAppInterface->getOwnAuthrization();
     }
     if (alias == NULL) {
         return NULL;
@@ -2744,7 +2743,7 @@ JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, 
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getAliases
  * Signature: (Ljava/lang/String;[B)[[B
  */
@@ -2785,7 +2784,7 @@ JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    addAliasToUuid
  * Signature: (Ljava/lang/String;Ljava/lang/String;[B[B)I
  */
@@ -2822,7 +2821,7 @@ JNI_FUNCTION(addAliasToUuid)(JNIEnv* env, jclass clazz, jstring alias, jstring u
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    getDisplayName
  * Signature: (Ljava/lang/String;[B)[B
  */
@@ -2849,7 +2848,7 @@ JNI_FUNCTION(getDisplayName)(JNIEnv* env, jclass clazz, jstring uuid)
 }
 
 /*
- * Class:     axolotl_AxolotlNative
+ * Class:     zina_ZinaNative
  * Method:    loadCapturedMsgs
  * Signature: ([B[B[B[I)[[B
  */

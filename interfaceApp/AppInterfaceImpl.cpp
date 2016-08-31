@@ -128,7 +128,7 @@ string* AppInterfaceImpl::getKnownUsers()
     }]
 }
  */
-int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
+int32_t AppInterfaceImpl::registerZinaDevice(string* result)
 {
     cJSON *root;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
@@ -186,16 +186,16 @@ int32_t AppInterfaceImpl::registerAxolotlDevice(string* result)
     string registerRequest(out);
     cJSON_Delete(root); free(out);
 
-    int32_t code = Provisioning::registerAxoDevice(registerRequest, authorization_, scClientDevId_, result);
+    int32_t code = Provisioning::registerZinaDevice(registerRequest, authorization_, scClientDevId_, result);
 
     LOGGER(INFO, __func__, " <-- ", code);
     return code;
 }
 
-int32_t AppInterfaceImpl::removeAxolotlDevice(string& devId, string* result)
+int32_t AppInterfaceImpl::removeZinaDevice(string& devId, string* result)
 {
     LOGGER(INFO, __func__, " <-->");
-    return ScProvisioning::removeAxoDevice(devId, authorization_, result);
+    return ScProvisioning::removeZinaDevice(devId, authorization_, result);
 }
 
 int32_t AppInterfaceImpl::newPreKeys(int32_t number)
@@ -219,7 +219,7 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
 void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(INFO, __func__, " -->");
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
     if (!devices|| devices->empty()) {
         return;
     }
@@ -457,7 +457,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     }
 
     // Check if server still knows this device, if no device at all -> remove conversation.
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getAxoDeviceIds(userName, authorization_);
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
     if (!devices || devices->empty()) {
         store_->deleteConversation(userName, deviceId, ownUser_);
         return;

@@ -239,7 +239,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *         if no devices known for this user.
      */
     //**ANN** @WorkerThread
-    public static native byte[] getAxoDevicesUser(byte[] userName);
+    public static native byte[] getZinaDevicesUser(byte[] userName);
 
     /**
      * Register ZINA device.
@@ -338,7 +338,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return a string depending on command.
      */
     //**ANN** @WorkerThread
-    public static native String axoCommand(String command, byte[] data);
+    public static native String zinaCommand(String command, byte[] data);
 
     /**
      * Receive a Message callback function.

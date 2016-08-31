@@ -224,7 +224,7 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server return code, usually a HTTP code, e.g. 200 for OK
      */
-    virtual int32_t registerAxolotlDevice(string* result) = 0;
+    virtual int32_t registerZinaDevice(string* result) = 0;
 
      /**
      * @brief Generate and register a set of new pre-keys.

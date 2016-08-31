@@ -49,7 +49,7 @@ AppInterfaceImpl::prepareMessageToSiblings(const string &messageDescriptor,
 static shared_ptr<list<pair<string, string> > >
 getDevicesNewUser(string& recipient, string& authorization, int32_t* errorCode)
 {
-    auto devices = Provisioning::getAxoDeviceIds(recipient, authorization, errorCode);
+    auto devices = Provisioning::getZinaDeviceIds(recipient, authorization, errorCode);
 
     if (!devices) {
         char tmpBuff[20];

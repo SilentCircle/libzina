@@ -36,10 +36,10 @@ namespace axolotl {
 class Provisioning
 {
 public:
-    ~Provisioning();
+    virtual ~Provisioning();
 
     /**
-     * @brief Register a device for use with Axolotl
+     * @brief Register a device for use with ZINA
      * 
      * This functions is just a forwarder that takes a JSON string, sends it via httpHelper to
      * the server and returns the server's result.
@@ -50,17 +50,17 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server's request return code, e.g. 200 or 404 or alike.
      */
-    static int32_t registerAxoDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result);
+    static int32_t registerZinaDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result);
 
     /**
-     * @brief Remove a Axolotl device from user's account.
+     * @brief Remove a ZINA device from user's account.
      * 
      * @param name the user's name
      * @param scClientDevId the unique device id of one of the user's registered Axolotl devices
      * @param authorization autorization data, may be needed for some servers
      * @param result To store the result data of the server, usually in case of an error only
      */
-    static int32_t removeAxoDevice(const string& scClientDevId, const string& authorization, std::string* result);
+    static int32_t removeZinaDevice(const string& scClientDevId, const string& authorization, std::string* result);
 
 
     /**
@@ -100,7 +100,7 @@ public:
      * @param authorization authorization data, may be needed for some servers
      * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
      */
-    static shared_ptr<list<pair<string, string> > > getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
+    static shared_ptr<list<pair<string, string> > > getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
 
     /**
      * @brief Set new pre-keys.
