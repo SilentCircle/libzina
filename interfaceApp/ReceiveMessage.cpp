@@ -60,19 +60,18 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
 
 static string receiveErrorDescriptor(const string& messageDescriptor, int32_t result)
 {
-
     shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageDescriptor.c_str()), cJSON_deleter);
     cJSON* root = sharedRoot.get();
 
     string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
     string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
     string msgId(Utilities::getJsonString(root, MSG_ID, ""));
+
     return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0);
 }
 
 int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& uidString, const string& displayName)
 {
-
     int64_t sequence;
     store_->insertReceivedRawData(envelope, uidString, displayName, &sequence);
 
@@ -107,9 +106,10 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
 
     int32_t sqlResult = store_->hasMsgHash(msgHash);
 
-    // If we found a duplicate, log and silently ignore it.
+    // If we found a duplicate, log and silently ignore it. Remove from DB queue if it is still available
     if (sqlResult == SQLITE_ROW) {
-        LOGGER(DEBUGGING, __func__, " Duplicate messages detected so far: ", ++duplicates);
+        LOGGER(WARNING, __func__, " Duplicate messages detected so far: ", ++duplicates);
+        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
         return;
     }
 
@@ -187,17 +187,19 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
 
     messagePlain = ZinaRatchet::decrypt(axoConv.get(), message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL, delayRatchetCommit_);
     errorCode_ = axoConv->getErrorCode();
-    convJson = axoConv->prepareForCapture(convJson, false);
 
 //    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
 
-        char *out = cJSON_PrintUnformatted(convJson);
+        char* out = cJSON_PrintUnformatted(convJson);
         string convState(out);
         cJSON_Delete(convJson); free(out);
 
         MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"failed\"}"), false);
         char b2hexBuffer[1004] = {0};
+
+        // Remove un-decryptable message data
+        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
 
         if (oldMessage)
             errorCode_ = OLD_MESSAGE;
@@ -213,6 +215,11 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
         }
         return;
     }
+    convJson = axoConv->prepareForCapture(convJson, false);
+    char* out = cJSON_PrintUnformatted(convJson);
+    string convState(out);
+    cJSON_Delete(convJson); free(out);
+    MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"dummy\"}"), false);
 
     /*
      * Message descriptor for received message:
@@ -234,15 +241,10 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
     cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
     cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
     messagePlain.reset();
-    char *out = cJSON_PrintUnformatted(root);
+    out = cJSON_PrintUnformatted(root);
     string msgDescriptor(out);
     cJSON_Delete(root); free(out);
 
-    out = cJSON_PrintUnformatted(convJson);
-    string convState(out);
-    cJSON_Delete(convJson); free(out);
-
-    MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"dummy\"}"), false);
 
     // At this point, in one DB transaction:
     // - save msgDescriptor and supplements plain in DB,
@@ -279,6 +281,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
 
         success_:
            store_->commitTransaction();
+           store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
     }
 #ifndef UNITTESTS
     sendDeliveryReceipt(sender, msgId);

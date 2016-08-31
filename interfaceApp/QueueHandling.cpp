@@ -80,7 +80,7 @@ void AppInterfaceImpl::addMsgInfosToRunQueue(list<shared_ptr<MsgQueueInfo> > mes
 // process prepared send messages, one at a time
 void AppInterfaceImpl::runQueue(AppInterfaceImpl *obj)
 {
-    LOGGER(DEBUGGING, __func__, " -->");
+    LOGGER(INFO, __func__, " -->");
 
     unique_lock<mutex> listLock(processListLock);
     while (sendingActive) {
@@ -128,6 +128,7 @@ void AppInterfaceImpl::runQueue(AppInterfaceImpl *obj)
                     break;
 
                 case CheckForRetry:
+
                     break;
             }
             listLock.lock();
@@ -152,5 +153,54 @@ void AppInterfaceImpl::insertRetryCommand()
     auto retryCommand = make_shared<MsgQueueInfo>();
     retryCommand->command = CheckForRetry;
     addMsgInfoToRunQueue(retryCommand);
+}
 
+void AppInterfaceImpl::retryReceivedMessages()
+{
+    LOGGER(INFO, __func__, " -->");
+    list<shared_ptr<MsgQueueInfo> > messagesToProcess;
+    int32_t plainCounter = 0;
+    int32_t rawCounter = 0;
+
+    shared_ptr<list<shared_ptr<StoredMsgInfo> > > storedMsgInfos = make_shared<list<shared_ptr<StoredMsgInfo> > > ();
+    int32_t result = store_->loadTempMsg(storedMsgInfos);
+
+    if (!SQL_FAIL(result)) {
+        while (!storedMsgInfos->empty()) {
+            auto storedInfo = storedMsgInfos->front();
+            auto plainMsgInfo = make_shared<MsgQueueInfo>();
+
+            plainMsgInfo->command = ReceivedTempMsg;
+            plainMsgInfo->queueInfo_sequence = storedInfo->sequence;
+            plainMsgInfo->queueInfo_message = storedInfo->info_msgDescriptor;
+            plainMsgInfo->queueInfo_supplement = storedInfo->info_supplementary;
+            plainMsgInfo->queueInfo_msgType = storedInfo->info_msgType;
+
+            messagesToProcess.push_back(plainMsgInfo);
+            storedMsgInfos->pop_front();
+            plainCounter++;
+        }
+    }
+    result = store_->loadReceivedRawData(storedMsgInfos);
+    if (!SQL_FAIL(result)) {
+        while (!storedMsgInfos->empty()) {
+            auto storedInfo = storedMsgInfos->front();
+            auto rawMsgInfo = make_shared<MsgQueueInfo>();
+
+            rawMsgInfo->command = ReceivedRawData;
+            rawMsgInfo->queueInfo_sequence = storedInfo->sequence;
+            rawMsgInfo->queueInfo_envelope = storedInfo->info_rawMsgData;
+            rawMsgInfo->queueInfo_uid = storedInfo->info_uid;
+            rawMsgInfo->queueInfo_displayName = storedInfo->info_displayName;
+
+            messagesToProcess.push_back(rawMsgInfo);
+            storedMsgInfos->pop_front();
+            rawCounter++;
+        }
+    }
+    if (!messagesToProcess.empty()) {
+        addMsgInfosToRunQueue(messagesToProcess);
+        LOGGER(WARNING, __func__, " Queued messages for retry, plain: ", plainCounter, ", raw: ", rawCounter);
+    }
+    LOGGER(INFO, __func__, " <--");
 }

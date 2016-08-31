@@ -16,18 +16,12 @@ limitations under the License.
 
 #include "AppInterfaceImpl.h"
 
-#include "../ratchet/ZinaPreKeyConnector.h"
-#include "../ratchet/ratchet/ZinaRatchet.h"
-
 #include "../keymanagment/PreKeys.h"
 #include "../util/b64helper.h"
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
-#include "../storage/MessageCapture.h"
-#include "MessageEnvelope.pb.h"
 #include "JsonStrings.h"
 
-#include <zrtp/crypto/sha256.h>
 #include <cryptcommon/ZrtpRandom.h>
 
 #pragma clang diagnostic push
@@ -76,6 +70,7 @@ string AppInterfaceImpl::createSupplementString(const string& attachmentDesc, co
         cJSON_Delete(msgSupplement); free(out);
     }
     LOGGER(INFO, __func__, " <--");
+    return supplement;
 }
 
 
@@ -261,10 +256,8 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     // - an Empty message
     // - a message command attribute with a ping command
     // For each Ping message the code generates a new UUID
-    string supplements = createSupplementString(Empty, ping);
 
     // Prepare the messages for all known new devices of this user
-    vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
 
     int64_t transportMsgId;
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
@@ -278,6 +271,11 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         string deviceId = devices->front().first;
         string deviceName = devices->front().second;
         devices->pop_front();
+
+        // Don't re-scan own device
+        bool toSibling = userName == ownUser_;
+        if (toSibling && scClientDevId_ == deviceId)
+            continue;
 
         // If we already have a conversation for this device skip further processing
         // after storing a user defined device name. The user may change a device's name
@@ -305,7 +303,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         msgInfo->queueInfo_attachment = Empty;
         msgInfo->queueInfo_attributes = ping;
         msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | MSG_NORMAL;
-        msgInfo->queueInfo_toSibling = false;
+        msgInfo->queueInfo_toSibling = toSibling;
         msgInfo->queueInfo_newUserDevice = true;
         counter++;
         queuePreparedMessage(msgInfo);
@@ -440,6 +438,11 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
         return;
     }
+    // Don't re-sync this device
+    bool toSibling = userName == ownUser_;
+    if (toSibling && deviceId == scClientDevId_)
+        return;
+
     unique_lock<mutex> lck(convLock);
 
     // clear data and store the nearly empty conversation
@@ -493,7 +496,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     msgInfo->queueInfo_attachment = Empty;
     msgInfo->queueInfo_message = ping;
     msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(MSG_NORMAL);
-    msgInfo->queueInfo_toSibling = false;
+    msgInfo->queueInfo_toSibling = toSibling;
     msgInfo->queueInfo_newUserDevice = true;
     queuePreparedMessage(msgInfo);
     doSendSingleMessage(msgInfo->queueInfo_transportMsgId);

@@ -224,6 +224,15 @@ public:
      */
     int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
 
+    /**
+     * @brief Check for unhandled raw or plain messages in the database and retry.
+     *
+     * To keep the correct order of messages the function first checks and retries
+     * plain messages and then for raw (encrypted) messages in the database queues.
+     */
+        void retryReceivedMessages();
+
+
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
         void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }

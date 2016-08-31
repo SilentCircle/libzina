@@ -476,11 +476,11 @@ shared_ptr<const string> ZinaRatchet::decrypt(AxoConversation* conv, const strin
 
     if (msgStruct.encryptedMsg == NULL) {
         conv->setErrorCode(CORRUPT_DATA);
-        return shared_ptr<string>();;
+        return shared_ptr<string>();
     }
     if (result < 0) {
         conv->setErrorCode(result);
-        return shared_ptr<string>();;
+        return shared_ptr<string>();
     }
 
     // This is a message with embedded pre-key and identity key. Need to setup the
@@ -687,7 +687,7 @@ shared_ptr<const string> ZinaRatchet::encrypt(AxoConversation& conv, const strin
         LOGGER(ERROR, __func__, " <-- Encryption failed.");
         return shared_ptr<string>();
     }
-    if (supplements.size() > 0 && encryptedSupplements) {
+    if (!supplements.empty() > 0 && encryptedSupplements) {
         ret = aesCbcEncrypt(MK, iv, supplements, encryptedSupplements);
         if (ret != SUCCESS) {
             conv.setErrorCode(ret);

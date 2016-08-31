@@ -1181,6 +1181,10 @@ JNI_FUNCTION(axoCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray
         cJSON_Delete(root);
     } else if (strcmp("clearGroupData", cmd) == 0) {
         axoAppInterface->clearGroupData();
+    } else if (strcmp("runRetry", cmd) == 0) {
+        // Check for left-over messages in persitent queues, can happen if app crashes in
+        // the middle of receive message processing.
+        axoAppInterface->retryReceivedMessages();
     }
     env->ReleaseStringUTFChars(command, cmd);
     return result;
