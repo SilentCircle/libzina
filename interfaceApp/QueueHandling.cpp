@@ -124,9 +124,10 @@ void AppInterfaceImpl::runQueue(AppInterfaceImpl *obj)
                     break;
 
                 case ReceivedTempMsg:
+                    obj->processMessagePlain(msgInfo);
                     break;
 
-                case CheckQueues:
+                case CheckForRetry:
                     break;
             }
             listLock.lock();
@@ -146,3 +147,10 @@ AppInterfaceImpl::extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessage
     return ids;
 }
 
+void AppInterfaceImpl::insertRetryCommand()
+{
+    auto retryCommand = make_shared<MsgQueueInfo>();
+    retryCommand->command = CheckForRetry;
+    addMsgInfoToRunQueue(retryCommand);
+
+}

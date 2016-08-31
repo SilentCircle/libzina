@@ -274,7 +274,7 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
 }
 
 int32_t
-AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> axoConversation)
+AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> zinaConversation)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -285,15 +285,14 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
         return SUCCESS;
     }
 
-    string supplements;
-    createSupplementString(sendInfo->queueInfo_attachment, sendInfo->queueInfo_attributes, &supplements);
+    string supplements = createSupplementString(sendInfo->queueInfo_attachment, sendInfo->queueInfo_attributes);
 
-    if (axoConversation == nullptr) {
-        axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
-        if (!axoConversation->isValid()) {
+    if (zinaConversation == nullptr) {
+        zinaConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+        if (!zinaConversation->isValid()) {
             LOGGER(DEBUGGING, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", sendInfo->queueInfo_recipient,
                    ", recipientDeviceId: ", sendInfo->queueInfo_deviceId);
-            errorCode_ = axoConversation->getErrorCode();
+            errorCode_ = zinaConversation->getErrorCode();
             errorInfo_ = sendInfo->queueInfo_deviceId;
             return errorCode_;
         }
@@ -301,14 +300,14 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
 
     shared_ptr<string> supplementsEncrypted = make_shared<string>();
 
-    cJSON* convJson = axoConversation->prepareForCapture(nullptr, true);
+    cJSON* convJson = zinaConversation->prepareForCapture(nullptr, true);
 
     // Encrypt the user's message and the supplementary data if necessary
     pair<string, string> idHashes;
-    shared_ptr<const string> wireMessage = ZinaRatchet::encrypt(*axoConversation, sendInfo->queueInfo_message, supplements,
+    shared_ptr<const string> wireMessage = ZinaRatchet::encrypt(*zinaConversation, sendInfo->queueInfo_message, supplements,
                                                                supplementsEncrypted, &idHashes);
 
-    convJson = axoConversation->prepareForCapture(convJson, false);
+    convJson = zinaConversation->prepareForCapture(convJson, false);
 
     char* out = cJSON_PrintUnformatted(convJson);
     string convState(out);
@@ -321,9 +320,9 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
     if (!wireMessage) {
         LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
-        return axoConversation->getErrorCode();
+        return zinaConversation->getErrorCode();
     }
-    axoConversation->storeConversation();
+    zinaConversation->storeConversation();
 
     bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
     /*
@@ -393,9 +392,9 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
     // Check if conversation/user really not known. On new users the 'reScan' triggered by
     // SIP NOTIFY could have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
-    auto axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
-    if (axoConversation->isValid()) {
-        return sendMessageExisting(sendInfo, axoConversation);
+    auto zinaConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+    if (zinaConversation->isValid()) {
+        return sendMessageExisting(sendInfo, zinaConversation);
     }
 
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
@@ -414,18 +413,18 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
         errorInfo_ = sendInfo->queueInfo_deviceId;
         return errorCode_;
     }
-    // Read the conversation again and store the device name of the new user's device. The the user/device
+    // Read the conversation again and store the device name of the new user's device. Now the user/device
     // is known and we can handle it as an existing user.
-    axoConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
-    if (!axoConversation->isValid()) {
-        errorCode_ = axoConversation->getErrorCode();
+    zinaConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+    if (!zinaConversation->isValid()) {
+        errorCode_ = zinaConversation->getErrorCode();
         errorInfo_ = sendInfo->queueInfo_deviceId;
         return errorCode_;
     }
-    axoConversation->setDeviceName(sendInfo->queueInfo_deviceName);
+    zinaConversation->setDeviceName(sendInfo->queueInfo_deviceName);
     LOGGER(INFO, __func__, " <--");
 
-    return sendMessageExisting(sendInfo, axoConversation);
+    return sendMessageExisting(sendInfo, zinaConversation);
 }
 
 string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const string& msgId, const string& msg)

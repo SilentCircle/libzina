@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#ifndef UIINTERFACE_H
-#define UIINTERFACE_H
+#ifndef APPINTERFACE_H
+#define APPINTERFACE_H
 
 /**
  * @file AppInterface.h
@@ -114,6 +114,21 @@ public:
                                                                        const string& attachmentDescriptor,
                                                                        const string& messageAttributes, int32_t* result) = 0;
 
+    /**
+     * @brief Prepare a user-to-user message for sending to its sibling devices.
+     *
+     * This function performs the same actions as the @c prepareMessage function, it only sends
+     * the message to the user's sibling devices if such devices are available.
+     *
+     * @param messageDescriptor     the JSON formatted message descriptor, required
+
+     * @param attachmentDescriptor  Optional, a string that contains an attachment descriptor. An empty string
+     *                              shows that not attachment descriptor is available.
+     * @param messageAttributes     Optional, a JSON formatted string that contains message attributes. An empty
+     *                              string shows that not attributes are available.
+     * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @return A list of prepared message information, or empty on failure
+     */
     virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(
             const string &messageDescriptor,
             const string &attachmentDescriptor,
@@ -132,26 +147,23 @@ public:
     /**
      * @brief Receive a Message from transport
      *
-     * The function unpacks the message data, sender, sender's device and other data,
-     * performs some consistency checks and calls the Axolotl ratched to decrypt the
-     * message and the supplementary data. After decryption the functions constructs
-     * a JSON data structure containing sender's name, message information and calls
-     * into the UI to handle the message, attributes, and attachments.
+     * The function creates stores the received encrypted message raw data in a databse table,
+     * creates a message information structure for this message and puts it into the tun-Q.
      *
      * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
      * @param uid   The SIP receiver callback sets this to the sender's UID if available, an
      *              empty string if not available
      * @param alias The SIP receiver callback sets this to the sender's primary alias name
-     *              if available, an empty string if not available
+     *              (display name) if available, an empty string if not available
      *
      * @return Either success or an error code
      */
-    virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
+    virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName) = 0;
 
     /**
-     * @brief Request names of known trusted Axolotl user identities
+     * @brief Request names of known trusted ZINA user identities
      *
-     * The Axolotl library stores an identity (name) for each remote user.
+     * The ZINA library stores an identity (name) for each remote user.
      *
      * @return JSON formatted information about the known users. It returns an empty 
      *         JSON array if no users known. It returns NULL in case the request failed.
@@ -500,4 +512,4 @@ public:
  * @}
  */
 
-#endif // UIINTERFACE_H
+#endif // APPINTERFACE_H

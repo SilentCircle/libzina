@@ -3,8 +3,8 @@
 // Created by werner on 22.05.16.
 //
 
-#ifndef LIBAXOLOTL_JSONSTRINGS_H
-#define LIBAXOLOTL_JSONSTRINGS_H
+#ifndef LIBZINA_JSONSTRINGS_H
+#define LIBZINA_JSONSTRINGS_H
 
 namespace axolotl {
     static const char* GROUP_ID = "grpId";
@@ -57,4 +57,4 @@ namespace axolotl {
     static const char* DELIVERY_TIME = "dr_time";
 
 }
-#endif //LIBAXOLOTL_JSONSTRINGS_H
+#endif //LIBZINA_JSONSTRINGS_H

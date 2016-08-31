@@ -42,7 +42,7 @@ typedef enum MsgQueueCommand_ {
     SendMessage = 1,
     ReceivedRawData,
     ReceivedTempMsg,
-    CheckQueues
+    CheckForRetry
 } MsgQueueCommand;
 
 typedef struct MsgQueueInfo_ {
@@ -108,7 +108,7 @@ public:
 
     Transport* getTransport()               { return transport_; }
 
-    int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias);
+    int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName);
 
     string* getKnownUsers();
 
@@ -334,21 +334,54 @@ private:
       */
     int32_t parseMemberList(const cJSON* root, bool initialList, const string& groupId);
 
+    /**
+     * @brief Helper function add a message info structure to the run-Q
+     *
+     * @param msgInfo The message information structure of the message to send
+     */
+    void queuePreparedMessage(shared_ptr<MsgQueueInfo> &msgInfo);
+
+
     shared_ptr<list<shared_ptr<PreparedMessageData> > >
     prepareMessageInternal(const string& messageDescriptor,
                            const string& attachmentDescriptor,
                            const string& messageAttributes,
                            bool toSibling, uint32_t messageType, int32_t* result, const string& grpRecipient = Empty);
 
-    int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> axoConversation = nullptr);
-    int32_t sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo);
+    /**
+     * @brief Send a message to a user who has a valid ratchet conversation.
+     *
+     * If the caller provides a valid ratchet conversation the function use this conversation,
+     * otherwise it looks up a conversation using data from the message information structure.
+     * The function then encrypts the message data and supplementary data and hands over the
+     * encrypted message data to the transport send function.
+     *
+     * This function runs in the run-Q thread only.
+     *
+     * @param sendInfo The message information structure of the message to send
+     * @param zinaConversation an optional valid ratchet conversation
+     * @return An error code in case of a failure, @c SUCCESS otherwise
+     */
+    int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> zinaConversation = nullptr);
 
-    void queuePreparedMessage(shared_ptr<MsgQueueInfo> &msgInfo);
+    /**
+     * @brief Send a message to a use who does not have a valid ratchet conversation.
+     *
+     * The function contacts the server to get a pre-key bundle for the user's device, prepares
+     * a ratchet conversation for it, stores it and then call the function of an existing user
+     * to further process the message.
+     *
+     * This function runs in the run-Q thread only.
+     *
+     * @param sendInfo The message information structure of the message to send
+     * @return An error code in case of a failure, @c SUCCESS otherwise
+     */
+    int32_t sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo);
 
     /**
      * @brief Move a single prepared message info to the processing queue.
      *
-     * A small wrapper to hanle a single 64-bit transport id and queue the message info
+     * A small wrapper to handle a single 64-bit transport id and queue the message info
      * for processing.
      *
      * @param transportId The transport id of the message info to move to processing queue.
@@ -357,24 +390,32 @@ private:
     int32_t doSendSingleMessage(uint64_t transportId);
 
     /**
-     * @brief Add one message queue info data structure to run queue.
+     * @brief Add one message info data structure to the run queue.
      *
      * The function checks if the run-Q thread is active and starts it if not. It
      * then appends the data structure to the end of the run-Q.
      *
-     * @param messageToProcess
+     * @param messageToProcess message info structure
      */
     void addMsgInfoToRunQueue(shared_ptr<MsgQueueInfo> messageToProcess);
 
     /**
-     * @brief Add a List of message queue info data to run queue.
+     * @brief Add a List of message info structure to the run queue.
      *
      * The function checks if the run-Q thread is active and starts it if not. It
      * then appends the list entries to the end of the run-Q.
      *
-     * @param messagesToProcess The list of message queue infos
+     * @param messagesToProcess The list of message info structures
      */
     void addMsgInfosToRunQueue(list<shared_ptr<MsgQueueInfo> > messagesToProcess);
+
+    /**
+     * @brief Setup a retry command message info structure and add it to the run-Q.
+     *
+     * The application should call this after a fresh start to check and retry messages
+     * stored in the persitent database queues.
+     */
+    void insertRetryCommand();
 
     /**
      * @brief Check is run-Q thread is actif and start it if not.
@@ -388,16 +429,89 @@ private:
      */
     static void runQueue(AppInterfaceImpl *obj);
 
+    /**
+     * @brief Decrypt received message.
+     *
+     * Gets received messages and decrypts them. If decryption was successful it
+     * stores the decrypted message in a temporary message in in the database and
+     * saves ratchet state data.
+     *
+     * It creates a message informatio structure and call the @c processMessagePlain
+     * function to handle the plain message data.
+     *
+     * In case of decryption failures or database access errors the function creates
+     * a JSON formatted state report and hands it to the application via the message
+     * state report callback.
+     *
+     * This function runs in the run-Q thread only.
+     *
+     * @param msgInfo The received message information structure
+     */
     void processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo);
 
+    /**
+     * @brief Decrypt received message.
+     *
+     * Gets decrypted messages, performs the callback to the application (caller) and
+     * removes the temporarily stored plain message if the callback returns without error.
+     *
+     * In case the application's callback function returns with an error code the function
+     * creates a JSON formatted state report and hands it to the application via the message
+     * state report callback.
+     *
+     * This function runs in the run-Q thread only.
+     *
+     * @param msgInfo The received message information structure
+     */
     void processMessagePlain(shared_ptr<MsgQueueInfo> msgInfo);
 
+    /**
+     * @brief Send delivery receipt after successful decryption of the message
+     *
+     * This function runs in the run-Q thread only.
+     *
+     * @param sender The sender of the message
+     * @param msgId The message's id
+     */
     void sendDeliveryReceipt(const string& sender, const string&msgId);
 
+    /**
+     * @brief Helper function which creates a JSON formatted message descriptor.
+     *
+     * @param recipient Recipient of the message
+     * @param msgId The message's identifier
+     * @param msg The message, optional.
+     * @return JSON formatted string
+     */
     string createMessageDescriptor(const string& recipient, const string& msgId, const string& msg = Empty);
 
-    static void createSupplementString(const string& attachmentDesc, const string& messageAttrib, string* supplement);
+    /**
+     * @brief Helper function to create the JSON formatted supplementary message data.
+     *
+     * @param attachmentDesc The attachment descriptor of the message, may be empty
+     * @param messageAttrib The message attributes, may be empty
+     * @return JSON formatted string
+     */
+    static string createSupplementString(const string& attachmentDesc, const string& messageAttrib);
+
+    /**
+     * @brief helper function to create a JSON formatted error report if sending fails.
+     *
+     * @param info The message's information structure
+     * @param errorCode The error code, failure reason
+     * @return JSON formatted string
+     */
     static string createSendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorCode);
+
+    /**
+     * @brief Helper function to extract transport ids from prepage message data.
+     *
+     * The function extracts transport ids from a list of prepared message data and stores
+     * them in a unsigned int64 vector, ready for the @c doSendMessages function.
+     *
+     * @param data List of prepared message data
+     * @return Vector with the transport ids
+     */
     static shared_ptr<vector<uint64_t> > extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessageData> > > data);
 
 #ifndef UNITTESTS

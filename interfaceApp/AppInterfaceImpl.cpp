@@ -54,9 +54,10 @@ AppInterfaceImpl::~AppInterfaceImpl()
     LOGGER(INFO, __func__, " <--");
 }
 
-void AppInterfaceImpl::createSupplementString(const string& attachmentDesc, const string& messageAttrib, string* supplement)
+string AppInterfaceImpl::createSupplementString(const string& attachmentDesc, const string& messageAttrib)
 {
     LOGGER(INFO, __func__, " -->");
+    string supplement;
     if (!attachmentDesc.empty() || !messageAttrib.empty()) {
         cJSON* msgSupplement = cJSON_CreateObject();
 
@@ -71,7 +72,7 @@ void AppInterfaceImpl::createSupplementString(const string& attachmentDesc, cons
         }
         char *out = cJSON_PrintUnformatted(msgSupplement);
 
-        supplement->append(out);
+        supplement = out;
         cJSON_Delete(msgSupplement); free(out);
     }
     LOGGER(INFO, __func__, " <--");
@@ -260,8 +261,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     // - an Empty message
     // - a message command attribute with a ping command
     // For each Ping message the code generates a new UUID
-    string supplements;
-    createSupplementString(Empty, ping, &supplements);
+    string supplements = createSupplementString(Empty, ping);
 
     // Prepare the messages for all known new devices of this user
     vector<pair<string, string> >* msgPairs = new vector<pair<string, string> >;
