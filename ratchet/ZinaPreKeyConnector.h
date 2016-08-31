@@ -85,7 +85,7 @@ public:
      * 
      * This function performs the master secret computation.
      */
-    static int32_t setupConversationBob( axolotl::AxoConversation* conv, int32_t bobPreKeyId, const axolotl::DhPublicKey* aliceId, const axolotl::DhPublicKey* alicePreKey );
+    static int32_t setupConversationBob( axolotl::ZinaConversation* conv, int32_t bobPreKeyId, const axolotl::DhPublicKey* aliceId, const axolotl::DhPublicKey* alicePreKey );
 
 private:
     AxoPreKeyConnector() {};

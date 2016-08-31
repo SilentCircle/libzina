@@ -66,7 +66,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     LOGGER(INFO, __func__, " -->");
     int32_t retVal;
 
-    auto conv = AxoConversation::loadConversation(localUser, user, deviceId);
+    auto conv = ZinaConversation::loadConversation(localUser, user, deviceId);
     if (conv->isValid() && !conv->getRK().empty()) {       // Already a conversation available
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user, ", device: ", deviceId);
         return AXO_CONV_EXISTS;
@@ -76,7 +76,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
         return retVal;
     }
 
-    auto localConv = AxoConversation::loadLocalConversation(localUser);
+    auto localConv = ZinaConversation::loadLocalConversation(localUser);
     if (!localConv->isValid()) {
         LOGGER(ERROR, __func__, " <-- No own identity exists.");
         retVal = (localConv->getErrorCode() == SUCCESS) ? NO_OWN_ID : localConv->getErrorCode();
@@ -128,7 +128,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     B0 = P1_PK1 (public data)
 
 */
-int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
+int32_t AxoPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
 {
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -158,7 +158,7 @@ int32_t AxoPreKeyConnector::setupConversationBob(AxoConversation* conv, int32_t 
     DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
     delete preKeyData;
 
-    auto localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+    auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser());
     if (!localConv->isValid()) {
         LOGGER(ERROR, __func__, " <-- Local conversation not valid, code: ", localConv->getErrorCode());
         return -1;

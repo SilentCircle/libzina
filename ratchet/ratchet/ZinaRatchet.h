@@ -44,7 +44,7 @@ public:
      *                 not required
      * @return An encrypted wire message, ready to send to the recipient+device tuple.
      */
-    static shared_ptr<const string> encrypt(AxoConversation& conv, const string& message, const string& supplements,
+    static shared_ptr<const string> encrypt(ZinaConversation& conv, const string& message, const string& supplements,
                                             shared_ptr<string> supplementsEncrypted, pair<string, string>* idHashes = NULL);
 
     /**
@@ -58,7 +58,7 @@ public:
      *                 not available
      * @return Plaintext or @c NULL if decryption failed
      */
-    static shared_ptr<const string> decrypt(axolotl::AxoConversation* conv, const string& wire, const string& supplements,
+    static shared_ptr<const string> decrypt(axolotl::ZinaConversation* conv, const string& wire, const string& supplements,
                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL,
                                             bool delayCommit = false);
 

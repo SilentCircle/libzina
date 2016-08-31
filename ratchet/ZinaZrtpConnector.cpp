@@ -57,12 +57,12 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     LOGGER(INFO, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
-    auto conv = AxoConversation::loadConversation(localUser, user, deviceId);
+    auto conv = ZinaConversation::loadConversation(localUser, user, deviceId);
     if (conv->isValid()) {              // Already a conversation available, no setup necessary
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
         return emptyString;
     }
-    auto localConv = AxoConversation::loadLocalConversation(localUser);
+    auto localConv = ZinaConversation::loadLocalConversation(localUser);
     if (!localConv->isValid()) {
         return emptyString;
     }
@@ -249,7 +249,7 @@ const string getOwnAxoIdKey()
 
     const string& localUser = appIf->getOwnUser();
 
-    auto local = AxoConversation::loadLocalConversation(localUser);
+    auto local = ZinaConversation::loadLocalConversation(localUser);
     if (!local->isValid()) {
         return string();
     }
@@ -284,7 +284,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     if (remoteName.empty()) {
         remoteName = localUser;
     }
-    auto remote = AxoConversation::loadConversation(localUser, remoteName, deviceId);
+    auto remote = ZinaConversation::loadConversation(localUser, remoteName, deviceId);
 
     if (!remote->isValid()) {
         LOGGER(ERROR, "<-- No conversation, user: '", user, "', device: ", deviceId);

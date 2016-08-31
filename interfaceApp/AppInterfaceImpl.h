@@ -371,7 +371,7 @@ private:
      * @param zinaConversation an optional valid ratchet conversation
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> zinaConversation = nullptr);
+    int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation = nullptr);
 
     /**
      * @brief Send a message to a use who does not have a valid ratchet conversation.

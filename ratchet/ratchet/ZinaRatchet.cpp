@@ -75,7 +75,7 @@ typedef struct parsedMessage_ {
     const uint8_t*  encryptedMsg;
 } ParsedMessage;
 
-static int32_t deriveRkCk(AxoConversation& conv, string* newRK, string* newCK)
+static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
 {
     LOGGER(INFO, __func__, " -->");
     uint8_t agreement[MAX_KEY_BYTES];
@@ -139,7 +139,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 #define FIXED_TYPE1_OVERHEAD  (4 + 4 + 4 + 4 + 8)
 #define ADD_TYPE2_OVERHEAD    (4)
 
-static void createWireMessage(AxoConversation& conv, string& message, string& mac, shared_ptr<string> wire)
+static void createWireMessage(ZinaConversation& conv, string& message, string& mac, shared_ptr<string> wire)
 {
     LOGGER(INFO, __func__, " -->");
     // Determine the wire message type:
@@ -333,7 +333,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
     return SUCCESS;
 }
 
-static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encrypted, const string& supplements, const string& mac,
+static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encrypted, const string& supplements, const string& mac,
                                      shared_ptr<string> plaintext, shared_ptr<string> supplementsPlain)
 {
     LOGGER(INFO, __func__, " -->");
@@ -369,7 +369,7 @@ static int32_t trySkippedMessageKeys(AxoConversation* conv, const string& encryp
     return retVal;
 }
 
-static int32_t stageSkippedMessageKeys(AxoConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
+static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
                                     pair<string, string>* MKp, string* macKey)
 {
     LOGGER(INFO, __func__, " -->");
@@ -466,7 +466,7 @@ commit_skipped_header_and_message_keys()
 Nr = Np + 1
 CKr = CKp
 return read()*/
-shared_ptr<const string> ZinaRatchet::decrypt(AxoConversation* conv, const string& wire, const string& supplements,
+shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const string& wire, const string& supplements,
                                              shared_ptr<string> supplementsPlain, pair<string, string>* idHashes,
                                              bool delayCommit)
 {
@@ -502,7 +502,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(AxoConversation* conv, const strin
 
     if (idHashes != NULL) {
         string recvIdHash;
-        auto localConv = AxoConversation::loadLocalConversation(conv->getLocalUser());
+        auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser());
         if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &recvIdHash);
@@ -632,7 +632,7 @@ return msg
  *
  * This implementation does not use header keys.
  */
-shared_ptr<const string> ZinaRatchet::encrypt(AxoConversation& conv, const string& message, const string& supplements,
+shared_ptr<const string> ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, const string& supplements,
                                              shared_ptr<string> encryptedSupplements, pair<string, string>* idHashes)
 {
     LOGGER(INFO, __func__, " -->");
@@ -644,7 +644,7 @@ shared_ptr<const string> ZinaRatchet::encrypt(AxoConversation& conv, const strin
     if (idHashes != NULL) {
         string senderIdHash;
 
-        auto localConv = AxoConversation::loadLocalConversation(conv.getLocalUser());
+        auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser());
         if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &senderIdHash);

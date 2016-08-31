@@ -67,10 +67,10 @@ JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_getIdentityKeys
 
 /*
  * Class:     zina_ZinaNative
- * Method:    getAxoDevicesUser
+ * Method:    getZinaDevicesUser
  * Signature: ([B)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_zina_ZinaNative_getAxoDevicesUser
+JNIEXPORT jbyteArray JNICALL Java_zina_ZinaNative_getZinaDevicesUser
   (JNIEnv *, jclass, jbyteArray);
 
 /*
@@ -131,10 +131,10 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_testCommand
 
 /*
  * Class:     zina_ZinaNative
- * Method:    axoCommand
+ * Method:    zinaCommand
  * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_zina_ZinaNative_axoCommand
+JNIEXPORT jstring JNICALL Java_zina_ZinaNative_zinaCommand
   (JNIEnv *, jclass, jstring, jbyteArray);
 
 /*

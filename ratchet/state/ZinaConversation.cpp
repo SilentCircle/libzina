@@ -26,13 +26,13 @@ using namespace std;
 
 void Log(const char* format, ...);
 
-shared_ptr<AxoConversation> AxoConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
+shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
 {
     LOGGER(INFO, __func__, " -->");
     int32_t result;
 
     // Create new conversation object
-    auto conv = make_shared<AxoConversation>(localUser, user, deviceId);
+    auto conv = make_shared<ZinaConversation>(localUser, user, deviceId);
     conv->setErrorCode(SUCCESS);
 
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -65,7 +65,7 @@ shared_ptr<AxoConversation> AxoConversation::loadConversation(const string& loca
     return conv;
 }
 
-int32_t AxoConversation::storeConversation()
+int32_t ZinaConversation::storeConversation()
 {
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -90,7 +90,7 @@ int32_t AxoConversation::storeConversation()
 
 // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
 #if 0
-int32_t AxoConversation::renameConversation(const string& localUserOld, const string& localUserNew, 
+int32_t ZinaConversation::renameConversation(const string& localUserOld, const string& localUserNew,
                                             const string& userOld, const string& userNew, const string& deviceId)
 {
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -105,8 +105,8 @@ int32_t AxoConversation::renameConversation(const string& localUserOld, const st
 
     // Create conversation object with the new names. Then deserialize() the old data
     // into the new object. This does not overwrite the new names set in the 
-    // AxoConversation object.
-    AxoConversation*  conv = new AxoConversation(localUserNew, userNew, deviceId);
+    // ZinaConversation object.
+    ZinaConversation*  conv = new ZinaConversation(localUserNew, userNew, deviceId);
     conv->deserialize(*data);
     delete data;
 
@@ -122,7 +122,7 @@ int32_t AxoConversation::renameConversation(const string& localUserOld, const st
 }
 #endif
 
-int32_t AxoConversation::storeStagedMks() {
+int32_t ZinaConversation::storeStagedMks() {
     LOGGER(INFO, __func__, " -->");
 
     errorCode_ = SUCCESS;
@@ -147,7 +147,7 @@ int32_t AxoConversation::storeStagedMks() {
     return SUCCESS;
 }
 
-void AxoConversation::clearStagedMks(shared_ptr<list<string> > keys)
+void ZinaConversation::clearStagedMks(shared_ptr<list<string> > keys)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -167,7 +167,7 @@ void AxoConversation::clearStagedMks(shared_ptr<list<string> > keys)
     LOGGER(INFO, __func__, " <--");
 }
 
-shared_ptr<list<string> > AxoConversation::loadStagedMks()
+shared_ptr<list<string> > ZinaConversation::loadStagedMks()
 {
     LOGGER(INFO, __func__, " -->");
     int32_t result = SQLITE_OK;
@@ -187,7 +187,7 @@ shared_ptr<list<string> > AxoConversation::loadStagedMks()
     return keys;
 }
 
-shared_ptr<list<string> > AxoConversation::getEmptyStagedMks()
+shared_ptr<list<string> > ZinaConversation::getEmptyStagedMks()
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -203,7 +203,7 @@ shared_ptr<list<string> > AxoConversation::getEmptyStagedMks()
     return stagedMk;
 }
 
-void AxoConversation::deleteStagedMk(string& mkiv)
+void ZinaConversation::deleteStagedMk(string& mkiv)
 {
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
@@ -217,7 +217,7 @@ void AxoConversation::deleteStagedMk(string& mkiv)
 
 // No need to parse name, localName, partner name and device id. Already set
 // with constructor.
-void AxoConversation::deserialize(const std::string& data)
+void ZinaConversation::deserialize(const std::string& data)
 {
     LOGGER(INFO, __func__, " -->");
     cJSON* root = cJSON_Parse(data.c_str());
@@ -338,7 +338,7 @@ void AxoConversation::deserialize(const std::string& data)
     LOGGER(INFO, __func__, " <--");
 }
 
-const string* AxoConversation::serialize() const
+const string* ZinaConversation::serialize() const
 {
     LOGGER(INFO, __func__, " -->");
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
@@ -440,7 +440,7 @@ const string* AxoConversation::serialize() const
     return data;
 }
 
-void AxoConversation::reset()
+void ZinaConversation::reset()
 {
     LOGGER(INFO, __func__, " -->");
     delete DHRs; DHRs = NULL;
@@ -466,7 +466,7 @@ void AxoConversation::reset()
 }
 
 
-cJSON *AxoConversation::prepareForCapture(cJSON *existingRoot, bool beforeAction) {
+cJSON *ZinaConversation::prepareForCapture(cJSON *existingRoot, bool beforeAction) {
     LOGGER(INFO, __func__, " -->");
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 

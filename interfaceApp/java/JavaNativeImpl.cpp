@@ -653,7 +653,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     memset_volatile((void*)dbPw.data(), 0, dbPw.size());
 
     int32_t retVal = 1;
-    auto ownZinaConv = AxoConversation::loadLocalConversation(name);
+    auto ownZinaConv = ZinaConversation::loadLocalConversation(name);
     if (!ownZinaConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         ownZinaConv->setDHIs(idKeyPair);

@@ -139,7 +139,7 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     cJSON_AddNumberToObject(root, "version", 1);
 //    cJSON_AddStringToObject(root, "scClientDevId", scClientDevId_.c_str());
 
-    shared_ptr<AxoConversation> ownConv = AxoConversation::loadLocalConversation(ownUser_);
+    shared_ptr<ZinaConversation> ownConv = ZinaConversation::loadLocalConversation(ownUser_);
     if (!ownConv->isValid()) {
         cJSON_Delete(root);
         LOGGER(ERROR, __func__, " No own conversation in database.");
@@ -281,7 +281,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         // after storing a user defined device name. The user may change a device's name
         // using the Web interface of the provisioning server
         if (store->hasConversation(userName, deviceId, ownUser_)) {
-            shared_ptr<AxoConversation> conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
+            shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
             if (conv->isValid()) {
                 const string &convDevName = conv->getDeviceName();
                 if (!deviceName.empty()) {
@@ -372,7 +372,7 @@ string AppInterfaceImpl::getOwnIdentityKey() const
     LOGGER(INFO, __func__, " -->");
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
-    shared_ptr<AxoConversation> axoConv = AxoConversation::loadLocalConversation(ownUser_);
+    shared_ptr<ZinaConversation> axoConv = ZinaConversation::loadLocalConversation(ownUser_);
     if (!axoConv->isValid()) {
         LOGGER(ERROR, "No own conversation, ignore.")
         LOGGER(INFO, __func__, " <-- No own conversation.");
@@ -404,7 +404,7 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user) const
     while (!devices->empty()) {
         string recipientDeviceId = devices->front();
         devices->pop_front();
-        auto axoConv = AxoConversation::loadConversation(ownUser_, user, recipientDeviceId);
+        auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId);
         if (!axoConv->isValid()) {
             continue;
         }
@@ -446,7 +446,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     unique_lock<mutex> lck(convLock);
 
     // clear data and store the nearly empty conversation
-    shared_ptr<AxoConversation> conv = AxoConversation::loadConversation(ownUser_, userName, deviceId);
+    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
     if (!conv->isValid()) {
         return;
     }

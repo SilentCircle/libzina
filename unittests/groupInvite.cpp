@@ -118,7 +118,7 @@ public:
         member_1_IdKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
         // Create an 'own' conversation and set it up
-        AxoConversation* ownAxoConv = new AxoConversation(memberId_1, memberId_1, Empty);
+        ZinaConversation* ownAxoConv = new ZinaConversation(memberId_1, memberId_1, Empty);
         ownAxoConv->setDHIs(new DhKeyPair(*member_1_IdKeyPair));
         ownAxoConv->storeConversation();
         delete(ownAxoConv);
@@ -146,7 +146,7 @@ public:
         member_2_PreKey = PreKeys::generatePreKey(store_2);
 
         // Create an 'own' conversation and set it up
-        ownAxoConv = new AxoConversation(memberId_2, memberId_2, Empty);
+        ownAxoConv = new ZinaConversation(memberId_2, memberId_2, Empty);
         ownAxoConv->setDHIs(new DhKeyPair(*member_2_IdKeyPair));
         ownAxoConv->storeConversation();
         delete(ownAxoConv);

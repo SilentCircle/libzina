@@ -54,10 +54,10 @@ static const std::string emptyString;
 using namespace std;
 
 namespace axolotl {
-class AxoConversation
+class ZinaConversation
 {
 public:
-    AxoConversation(const string& localUser, const string& user, const string& deviceId) :
+    ZinaConversation(const string& localUser, const string& user, const string& deviceId) :
             partner_(user, emptyString),
             deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0),
             Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS),
@@ -65,7 +65,7 @@ public:
     { stagedMk = make_shared<list<string> >(); }
 
 
-   ~AxoConversation() { reset(); }
+   ~ZinaConversation() { reset(); }
 
     /**
      * @brief Load local conversation from database.
@@ -73,7 +73,7 @@ public:
      * @param localUser name of local user/account
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static shared_ptr<AxoConversation> loadLocalConversation(const string& localUser) { return loadConversation(localUser, localUser, string());}
+    static shared_ptr<ZinaConversation> loadLocalConversation(const string& localUser) { return loadConversation(localUser, localUser, string());}
 
     /**
      * @brief Load a conversation from database.
@@ -83,7 +83,7 @@ public:
      * @param deviceId The remote user's device id if it is available
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static shared_ptr<AxoConversation> loadConversation(const string& localUser, const string& user, const string& deviceId);
+    static shared_ptr<ZinaConversation> loadConversation(const string& localUser, const string& user, const string& deviceId);
 
     // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
 #if 0

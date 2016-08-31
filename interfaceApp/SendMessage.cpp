@@ -274,7 +274,7 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
 }
 
 int32_t
-AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<AxoConversation> zinaConversation)
+AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -288,7 +288,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
     string supplements = createSupplementString(sendInfo->queueInfo_attachment, sendInfo->queueInfo_attributes);
 
     if (zinaConversation == nullptr) {
-        zinaConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+        zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
         if (!zinaConversation->isValid()) {
             LOGGER(DEBUGGING, "Axolotl Conversation is NULL. Owner: ", ownUser_, ", recipient: ", sendInfo->queueInfo_recipient,
                    ", recipientDeviceId: ", sendInfo->queueInfo_deviceId);
@@ -392,7 +392,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
     // Check if conversation/user really not known. On new users the 'reScan' triggered by
     // SIP NOTIFY could have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
-    auto zinaConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+    auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
     if (zinaConversation->isValid()) {
         return sendMessageExisting(sendInfo, zinaConversation);
     }
@@ -415,7 +415,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
     }
     // Read the conversation again and store the device name of the new user's device. Now the user/device
     // is known and we can handle it as an existing user.
-    zinaConversation = AxoConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+    zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
     if (!zinaConversation->isValid()) {
         errorCode_ = zinaConversation->getErrorCode();
         errorInfo_ = sendInfo->queueInfo_deviceId;

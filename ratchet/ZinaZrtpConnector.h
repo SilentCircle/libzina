@@ -111,7 +111,7 @@ public:
      * @param conv Pointer to a remote AxoConversation.
      * @param localConv Pointer to local Axolotl state
      */
-    AxoZrtpConnector(shared_ptr<AxoConversation> conv, shared_ptr<AxoConversation> localConv): conv_(conv), localConv_(localConv), ratchetKey_(NULL),
+    AxoZrtpConnector(shared_ptr<ZinaConversation> conv, shared_ptr<ZinaConversation> localConv): conv_(conv), localConv_(localConv), ratchetKey_(NULL),
                      remoteRatchetKey_(NULL), remoteIdKey_(NULL), role_(None) {}
     ~AxoZrtpConnector() { delete ratchetKey_; ratchetKey_ = NULL; delete remoteRatchetKey_; remoteRatchetKey_ = NULL; }
 
@@ -143,16 +143,16 @@ public:
     void setRole(int32_t role)                { role_ = role; }
     int32_t getRole()                         { return role_; }
 
-    shared_ptr<AxoConversation> getRemoteConversation()  { return conv_; }
-    shared_ptr<AxoConversation> getLocalConversation()   { return localConv_; }
+    shared_ptr<ZinaConversation> getRemoteConversation()  { return conv_; }
+    shared_ptr<ZinaConversation> getLocalConversation()   { return localConv_; }
 
 private:
     AxoZrtpConnector (const AxoZrtpConnector& other) = delete;
     AxoZrtpConnector& operator= (const AxoZrtpConnector& other) = delete;
     bool operator== (const AxoZrtpConnector& other) const = delete;
 
-    shared_ptr<AxoConversation> conv_;
-    shared_ptr<AxoConversation> localConv_;
+    shared_ptr<ZinaConversation> conv_;
+    shared_ptr<ZinaConversation> localConv_;
     const DhKeyPair* ratchetKey_;
     const DhPublicKey* remoteRatchetKey_;
     const DhPublicKey* remoteIdKey_;

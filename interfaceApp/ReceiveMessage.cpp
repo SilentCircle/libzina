@@ -178,7 +178,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
         idHashes.first = recvIdHash;
         idHashes.second = senderIdHash;
     }
-    auto axoConv = AxoConversation::loadConversation(ownUser_, sender, senderScClientDevId);
+    auto axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
 
     shared_ptr<string> supplementsPlain = make_shared<string>();
     shared_ptr<const string> messagePlain;
