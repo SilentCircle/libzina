@@ -690,7 +690,6 @@ int ScDataRetention::isEnabled(const string& user, bool* enabled)
     static const char* baseUrl = "/drbroker/check-user/";
 
     std::string requestUrl(baseUrl);
-    requestUrl += authorization_;
 
     cjson_ptr root(cJSON_CreateObject(), cJSON_Delete);
 
