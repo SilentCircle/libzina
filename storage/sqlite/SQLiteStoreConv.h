@@ -138,7 +138,8 @@ public:
      * 
      * Assemble a list of names for all known identities. 
      * 
-     * @return a new list with the names, an empty list if now identities available,
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A new list with the, an empty list if now identities available,
      *         NULL in case of error
      */
     shared_ptr<list<string> > getKnownConversations(const string& ownName, int32_t* sqlCode = NULL);
@@ -146,11 +147,13 @@ public:
     /**
      * @brief Get a list of long device ids for a name.
      * 
-     * Returns a list of known devices for a user. A user may have several Axolotl device
-     * registered with the account.
+     * Returns a list of known devices of a user. A user may have several Zina device
+     * registered with the account. The function returns data only for other devices, not
+     * the own client device.
      * 
      * @param name the user's name.
-     * @return a new list with the long device ids, NULL in case of error
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A new list with the long device ids, may be empty.
      */
     shared_ptr<list<string> > getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 

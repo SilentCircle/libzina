@@ -167,7 +167,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
                                                          /*!@Nullable!*/ byte[] messageAttributes, int[] resultCode);
 
     /**
-     * @brief Encrypt the prepared messages and send them to the receiver.
+     * Encrypt the prepared messages and send them to the receiver.
      *
      * Queue the prepared message for encryption and sending to the receiver's devices.
      *
@@ -176,9 +176,24 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * worker thread, however not absolute necessary.
      *
      * @param transportIds An array of transport id that identify the messages to encrypt and send.
-     * @return SUCCESS in case moving data was OK
+     * @return Number of queued messages, a negative value on failure
      */
     public static native int doSendMessages(/*!@NonNull!*/ long[] transportIds);
+
+    /**
+     * Remove prepared messages from its queue.
+     *
+     * This function removes prepared messages from the prepared message queue. The function
+     * does not remove prepared messages that were already sent by @c doSendMessages.
+     *
+     * The function does no trigger any network actions, save to run from UI thread,
+     * uses database functions, and synchronized queue handling, thus should run on an own
+     * worker thread, however not absolute necessary.
+     *
+     * @param transportIds An array of transport id that identify the messages to remove.
+     * @return Number of removed messages, a negative value on failure
+     */
+    public static native int removePreparedMessages(/*!@NonNull!*/ long[] transportIds);
 
     /**
      * Request names of known trusted ZIAN user identities.

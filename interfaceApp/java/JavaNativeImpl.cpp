@@ -823,6 +823,34 @@ JNI_FUNCTION(doSendMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
     return zinaAppInterface->doSendMessages(idVector);
 }
 
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removePreparedMessages
+ * Signature: ([J)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(removePreparedMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
+{
+    if (ids == NULL)
+        return DATA_MISSING;
+
+    size_t dataLen = static_cast<size_t>(env->GetArrayLength(ids));
+    if (dataLen < 1)
+        return DATA_MISSING;
+
+    const uint64_t* tmp = (uint64_t*)env->GetLongArrayElements(ids, 0);
+    if (tmp == NULL)
+        return DATA_MISSING;
+
+    auto idVector = make_shared<vector<uint64_t> >();
+
+    for (size_t i = 0; i < dataLen; i++) {
+        idVector->push_back(tmp[i]);
+    }
+    env->ReleaseLongArrayElements(ids, (jlong *)tmp, 0);
+    return zinaAppInterface->removePreparedMessages(idVector);
+}
+
 
 /*
  * Class:     ZinaNative

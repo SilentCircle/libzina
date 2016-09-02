@@ -142,6 +142,19 @@ public:
 
     int32_t leaveGroup(const string& groupId);
 
+    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
+                                                                       const string& attachmentDescriptor,
+                                                                       const string& messageAttributes, int32_t* result);
+
+    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
+                                                                                 const string &attachmentDescriptor,
+                                                                                 const string &messageAttributes,
+                                                                                 int32_t *result);
+
+    int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
+
+    int32_t removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds);
+
     // **** Below are methods for this implementation, not part of AppInterface.h
     /**
      * @brief Return the stored error code.
@@ -205,24 +218,6 @@ public:
      */
     void clearGroupData();
 
-    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
-                                                                       const string& attachmentDescriptor,
-                                                                       const string& messageAttributes, int32_t* result);
-
-    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
-                                                                                 const string &attachmentDescriptor,
-                                                                                 const string &messageAttributes,
-                                                                                 int32_t *result);
-
-    /**
-     * @brief Encrypt the prepared messages and send them to the receiver.
-     *
-     * Queue the prepared message for encryption and sending to the receiver's devices.
-     *
-     * @param transportIds An array of transport id that identify the message to rncrypt and send.
-     * @return SUCCESS in case moving data was OK
-     */
-    int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
 
     /**
      * @brief Check for unhandled raw or plain messages in the database and retry.
@@ -230,7 +225,7 @@ public:
      * To keep the correct order of messages the function first checks and retries
      * plain messages and then for raw (encrypted) messages in the database queues.
      */
-        void retryReceivedMessages();
+    void retryReceivedMessages();
 
 
 #ifdef UNITTESTS

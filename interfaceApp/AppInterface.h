@@ -129,20 +129,30 @@ public:
      * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
      * @return A list of prepared message information, or empty on failure
      */
-    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(
-            const string &messageDescriptor,
-            const string &attachmentDescriptor,
-            const string &messageAttributes, int32_t *result) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
+                                                                                         const string &attachmentDescriptor,
+                                                                                         const string &messageAttributes, int32_t *result) = 0;
 
     /**
      * @brief Encrypt the prepared messages and send them to the receiver.
      *
-     * Queue the prepared message for encryption and sending to the receiver's devices.
+     * Queues the prepared message for encryption and sending to the receiver's devices.
      *
      * @param transportIds An array of transport id that identify the messages to encrypt and send.
-     * @return SUCCESS in case moving data was OK
+     * @return Number of queued messages, a negative value on failure
      */
     virtual int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
+
+    /**
+     * @brief Remove prepared messages from its queue.
+     *
+     * This function removes prepared messages from the prepared message queue. The function
+     * does not remove prepared messages that were already sent by @c doSendMessages.
+     *
+     * @param transportIds An array of transport id that identify the messages to remove.
+     * @return Number of removed messages, a negative value on failure
+     */
+    virtual int32_t removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
 
     /**
      * @brief Receive a Message from transport
@@ -195,9 +205,10 @@ public:
     /**
      * @brief Get a list of all identity keys of a user.
      * 
-     * The remote partner may have more than one device. This function returns the identity 
-     * keys of remote user's devices that this client knows of. The client sends messages only
-     * to these known device of the remote user.
+     * The remote partner or the own account may have more than one device. This function returns
+     * the identity keys of remote user's or own sibling devices that this client knows of. The
+     * client sends messages only to these known device of the remote user or to the known sibling
+     * devices.
      * 
      * The returned strings in the list contain the B64 encoded data of the public identity keys
      * of the known devices, followed by a colon and the device name, followed by a colon and the

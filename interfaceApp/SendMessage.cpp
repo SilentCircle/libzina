@@ -71,7 +71,7 @@ getDevicesNewUser(string& recipient, string& authorization, int32_t* errorCode)
 }
 
 /**
- * @brief Create a Id key and device info string as returned by @c getIdentityKeys().
+ * @brief Create an id key and device info string as returned by @c getIdentityKeys().
  *
  * Because it's a new user we don't know its long-term identity key yet. Thus fill it
  * with a appropriate description.
@@ -138,6 +138,8 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     if (toSibling) {
         recipient = ownUser_;
     }
+    // When sending to sibling devices getIdentityKeys(...) may return an empty list if the user
+    // has no sibling devices
     auto idKeys = getIdentityKeys(recipient);
 
     // If no identity keys and no device information available for this user then we need to handle this as
@@ -160,7 +162,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     }
 
     if (idKeys->empty()) {
-        int32_t code = toSibling ? SUCCESS : NO_DEVS_FOUND; // A user's account may not have sibling devices
+        int32_t code = toSibling ? SUCCESS : NO_DEVS_FOUND; // A user may not have sibling devices
         if (result != nullptr) {
             *result = code;
         }
@@ -210,14 +212,6 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         resultData->receiverInfo = idDevInfo;
         messageData->push_back(resultData);
     }
-    // Can happen if sending to siblings but no sibling device available
-    if (messageData->empty()) {
-        if (result != nullptr) {
-            *result = NO_DEVS_FOUND;
-        }
-        errorCode_ = NO_DEVS_FOUND;
-        errorInfo_ = "No sibling device(s) available.";
-    }
     return messageData;
 }
 
@@ -254,6 +248,7 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
 
     size_t numOfIds = transportIds->size();
     list<shared_ptr<MsgQueueInfo> > messagesToProcess;
+    int32_t counter = 0;
 
     unique_lock<mutex> prepareLock(preparedMessagesLock);
     for (size_t sz = 0; sz < numOfIds; sz++) {
@@ -263,14 +258,38 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
             // Found a prepared message
             messagesToProcess.push_back(it->second);
             preparedMessages.erase(it);
+            counter++;
         }
     }
     prepareLock.unlock();
 
     addMsgInfosToRunQueue(messagesToProcess);
 
-    LOGGER(INFO, __func__, " <--");
-    return SUCCESS;
+    LOGGER(INFO, __func__, " <--, ", counter);
+    return counter;
+}
+
+int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    size_t numOfIds = transportIds->size();
+    int32_t counter = 0;
+
+    unique_lock<mutex> prepareLock(preparedMessagesLock);
+    for (size_t sz = 0; sz < numOfIds; sz++) {
+        uint64_t id = transportIds->at(sz);
+        auto it = preparedMessages.find(id);
+        if (it != preparedMessages.end()) {
+            // Found a prepared message
+            preparedMessages.erase(it);
+            counter++;
+        }
+    }
+    prepareLock.unlock();
+
+    LOGGER(INFO, __func__, " <--, ", counter);
+    return counter;
 }
 
 int32_t

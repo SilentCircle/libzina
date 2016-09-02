@@ -43,6 +43,14 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_doSendMessages
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    removePreparedMessages
+ * Signature: ([J)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_removePreparedMessages
+  (JNIEnv *, jclass, jlongArray);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    getKnownUsers
  * Signature: ()[B
  */
