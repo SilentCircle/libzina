@@ -31,11 +31,11 @@ static mutex convLock;
 using namespace axolotl;
 
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
-                                   RECV_FUNC receiveCallback, STORE_FUNC storeCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                                   RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
                                    GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
         AppInterface(receiveCallback, stateReportCallback, notifyCallback, groupMsgCallback, groupCmdCallback, groupStateCallback),
         tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
-        errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false), delayRatchetCommit_(false), storeCallback_(storeCallback)
+        errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false)
 {
     store_ = SQLiteStoreConv::getStore();
 }
@@ -293,7 +293,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         }
 
         LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
-        auto msgInfo = make_shared<MsgQueueInfo>();
+        auto msgInfo = make_shared<CmdQueueInfo>();
         msgInfo->command = SendMessage;
         msgInfo->queueInfo_recipient = userName;
         msgInfo->queueInfo_deviceName = deviceName;
@@ -486,7 +486,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
     LOGGER(DEBUGGING, "Send Ping to re-sync device: ", deviceId);
 
-    auto msgInfo = make_shared<MsgQueueInfo>();
+    auto msgInfo = make_shared<CmdQueueInfo>();
     msgInfo->command = SendMessage;
     msgInfo->queueInfo_recipient = userName;
     msgInfo->queueInfo_deviceName = deviceName;

@@ -48,7 +48,7 @@ public:
 
     SEND_DATA_FUNC getTransport() { return sendAxoData_; }
 
-    void sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& envelope);
+    void sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope);
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 

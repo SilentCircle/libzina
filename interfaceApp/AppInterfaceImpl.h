@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#ifndef UIINTERFACEIMPL_H
-#define UIINTERFACEIMPL_H
+#ifndef APPINTERFACEIMPL_H
+#define APPINTERFACEIMPL_H
 
 /**
  * @file AppInterfaceImpl.h
@@ -38,15 +38,15 @@ typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData
 using namespace std;
 
 namespace axolotl {
-typedef enum MsgQueueCommand_ {
+typedef enum CmdQueueCommands_ {
     SendMessage = 1,
     ReceivedRawData,
     ReceivedTempMsg,
     CheckForRetry
-} MsgQueueCommand;
+} CmdQueueCommands;
 
-typedef struct MsgQueueInfo_ {
-    MsgQueueCommand command;
+typedef struct CmdQueueInfo_ {
+    CmdQueueCommands command;
     string stringData1;
     string stringData2;
     string stringData3;
@@ -59,9 +59,9 @@ typedef struct MsgQueueInfo_ {
     int32_t int32Data;
     bool boolData1;
     bool boolData2;
-} MsgQueueInfo;
+} CmdQueueInfo;
 
-// Define useful names/aliases for the MsgQueueInfo structure, send message operation
+// Define useful names/aliases for the CmdQueueInfo structure, send message operation
 #define queueInfo_recipient     stringData1
 #define queueInfo_deviceId      stringData2
 #define queueInfo_msgId         stringData3
@@ -73,7 +73,7 @@ typedef struct MsgQueueInfo_ {
 #define queueInfo_toSibling     boolData1
 #define queueInfo_newUserDevice boolData2
 
-// Define useful names/aliases for the MsgQueueInfo structure, receive message operation
+// Define useful names/aliases for the CmdQueueInfo structure, receive message operation
 #define queueInfo_envelope      stringData1
 #define queueInfo_uid           stringData2
 #define queueInfo_displayName   stringData3
@@ -95,11 +95,12 @@ public:
     explicit AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
     AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
                     AppInterface(), tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
-                    store_(store), transport_(NULL), ownChecked_(false), delayRatchetCommit_(false) {}
+                    store_(store), transport_(NULL), ownChecked_(false) {}
 #endif
     AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
-                     RECV_FUNC receiveCallback, STORE_FUNC storeCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
-                     GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback);
+                     RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
+                     GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,
+                     GROUP_STATE_FUNC groupStateCallback);
 
     ~AppInterfaceImpl();
 
@@ -208,10 +209,6 @@ public:
     bool isRegistered()           { return ((flags_ & 0x1) == 1); }
 
     SQLiteStoreConv* getStore()   { return store_; }
-
-    void setDelayRatchetCommit(bool delay) { delayRatchetCommit_ = delay; }
-
-    bool isDelayRatchetCommit() { return delayRatchetCommit_; }
 
     /**
      * This is a functions we need only during development and testing.
@@ -343,7 +340,7 @@ private:
      *
      * @param msgInfo The message information structure of the message to send
      */
-    void queuePreparedMessage(shared_ptr<MsgQueueInfo> &msgInfo);
+    void queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo);
 
 
     shared_ptr<list<shared_ptr<PreparedMessageData> > >
@@ -366,7 +363,7 @@ private:
      * @param zinaConversation an optional valid ratchet conversation
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation = nullptr);
+    int32_t sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation = nullptr);
 
     /**
      * @brief Send a message to a use who does not have a valid ratchet conversation.
@@ -380,7 +377,7 @@ private:
      * @param sendInfo The message information structure of the message to send
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo);
+    int32_t sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo);
 
     /**
      * @brief Move a single prepared message info to the processing queue.
@@ -401,7 +398,7 @@ private:
      *
      * @param messageToProcess message info structure
      */
-    void addMsgInfoToRunQueue(shared_ptr<MsgQueueInfo> messageToProcess);
+    void addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess);
 
     /**
      * @brief Add a List of message info structure to the run queue.
@@ -411,7 +408,7 @@ private:
      *
      * @param messagesToProcess The list of message info structures
      */
-    void addMsgInfosToRunQueue(list<shared_ptr<MsgQueueInfo> > messagesToProcess);
+    void addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> > messagesToProcess);
 
     /**
      * @brief Setup a retry command message info structure and add it to the run-Q.
@@ -431,7 +428,7 @@ private:
      *
      * @param obj The AppInterface object used by this thread function
      */
-    static void runQueue(AppInterfaceImpl *obj);
+    static void commandQueueHandler(AppInterfaceImpl *obj);
 
     /**
      * @brief Decrypt received message.
@@ -451,7 +448,7 @@ private:
      *
      * @param msgInfo The received message information structure
      */
-    void processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo);
+    void processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo);
 
     /**
      * @brief Decrypt received message.
@@ -467,7 +464,7 @@ private:
      *
      * @param msgInfo The received message information structure
      */
-    void processMessagePlain(shared_ptr<MsgQueueInfo> msgInfo);
+    void processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo);
 
     /**
      * @brief Send delivery receipt after successful decryption of the message
@@ -505,7 +502,7 @@ private:
      * @param errorCode The error code, failure reason
      * @return JSON formatted string
      */
-    static string createSendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorCode);
+    static string createSendErrorJson(const shared_ptr<CmdQueueInfo>& info, int32_t errorCode);
 
     /**
      * @brief Helper function to extract transport ids from prepage message data.
@@ -545,42 +542,11 @@ private:
     // account it sends out a sync message, the client receives this and we have
     // a second device
     bool ownChecked_;
-    bool delayRatchetCommit_;
-
-    /**
-     * @brief Store Message data callback function.
-     *
-     * ZINA calls this function only if the parameter @c delayRatchetCommit_ is @c true
-     *
-     * Takes JSON formatted message descriptor of the received message and forwards it to the UI
-     * code via a callback functions. The function accepts an optional JSON formatted attachment
-     * descriptor and forwards it to the UI code if a descriptor is available.
-     *
-     * The implementation of this function should parse/store the data as appropriate and store it
-     * in its message storage. If it could store the data successfully then the function returns
-     * OK (1). Any other return code indicates an error.
-     *
-     * NOTE: this function must not call any ZINA functions to send messages or delivery receipts,
-     *       burn notices, read receipts.
-     *
-     * This function should not perform long-running actions and should return as fast as possible.
-     *
-     * @param messageDescriptor      The JSON formatted message descriptor, string, required.
-     *
-     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty
-     *                               string ot {@code null} shows that not attachment descriptor is available.
-     *
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string ot {@code null} shows that not attributes are available.
-     * @return Either success or an error code
-     */
-    STORE_FUNC storeCallback_;
-
-    };
+};
 } // namespace
 
 /**
  * @}
  */
 
-#endif // UIINTERFACEIMPL_H
+#endif // APPINTERFACEIMPL_H

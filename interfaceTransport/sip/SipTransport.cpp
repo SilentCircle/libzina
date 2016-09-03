@@ -159,7 +159,7 @@ vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pa
 }
 #endif
 
-void SipTransport::sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& envelope)
+void SipTransport::sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope)
 {
     LOGGER(INFO, __func__, " -->");
 

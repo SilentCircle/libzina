@@ -467,8 +467,7 @@ Nr = Np + 1
 CKr = CKp
 return read()*/
 shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const string& wire, const string& supplements,
-                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes,
-                                             bool delayCommit)
+                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes)
 {
     LOGGER(INFO, __func__, " -->");
     ParsedMessage msgStruct;

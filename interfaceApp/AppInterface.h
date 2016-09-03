@@ -33,7 +33,6 @@ limitations under the License.
 using namespace std;
 
 typedef int32_t (*RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
-typedef int32_t (*STORE_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
 typedef void (*STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
 typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const string& userId, const string& actionInformation);
 
@@ -196,7 +195,7 @@ public:
      * The returned strings is the B64 encoded data of the own public identity key, optinally
      * followed by a colon and the device name. Thus the returned string:
      *
-     *   @c identityKey:deviceName
+     *   @c identityKey:deviceName:deviceId:zrtpStatus
      *
      * @return formatted string, device name part may be empty if no device name was defined.
      */

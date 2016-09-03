@@ -75,7 +75,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& u
     int64_t sequence;
     store_->insertReceivedRawData(envelope, uidString, displayName, &sequence);
 
-    shared_ptr<MsgQueueInfo> msgInfo = make_shared<MsgQueueInfo>();
+    shared_ptr<CmdQueueInfo> msgInfo = make_shared<CmdQueueInfo>();
     msgInfo->command = ReceivedRawData;
     msgInfo->queueInfo_envelope = envelope;
     msgInfo->queueInfo_uid = uidString;
@@ -90,7 +90,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& u
 // forward the data to the UI layer.
 static int32_t duplicates = 0;
 
-void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
+void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -185,7 +185,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
 
     cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
 
-    messagePlain = ZinaRatchet::decrypt(axoConv.get(), message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL, delayRatchetCommit_);
+    messagePlain = ZinaRatchet::decrypt(axoConv.get(), message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
     errorCode_ = axoConv->getErrorCode();
 
 //    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
@@ -286,7 +286,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
 #ifndef UNITTESTS
     sendDeliveryReceipt(sender, msgId);
 #endif
-    shared_ptr<MsgQueueInfo> plainMsgInfo = make_shared<MsgQueueInfo>();
+    shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
     plainMsgInfo->command = ReceivedTempMsg;
     plainMsgInfo->queueInfo_sequence = sequence;
     plainMsgInfo->queueInfo_message = msgDescriptor;
@@ -296,7 +296,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<MsgQueueInfo> msgInfo)
     processMessagePlain(plainMsgInfo);
 }
 
-void AppInterfaceImpl::processMessagePlain(shared_ptr<MsgQueueInfo> msgInfo)
+void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
 {
 
     int64_t sequence;

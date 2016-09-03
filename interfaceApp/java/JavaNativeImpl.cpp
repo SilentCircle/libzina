@@ -542,11 +542,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 /*
  * Class:     zina_ZinaNative
  * Method:    doInit
- * Signature: (ILjava/lang/String;[B[B[B[BZ)I
+ * Signature: (ILjava/lang/String;[B[B[B[B)I
  */
-JNIEXPORT jint JNICALL 
+JNIEXPORT jint JNICALL
 JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyteArray dbPassphrase, jbyteArray userName,
-                    jbyteArray authorization, jbyteArray scClientDeviceId, jboolean delayRatchetCommit)
+                    jbyteArray authorization, jbyteArray scClientDeviceId)
 {
     debugLevel = flags & 0xf;
 //    int32_t flagsInternal = flags >> 4;
@@ -588,10 +588,6 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         groupStateCallback = env->GetMethodID(callbackClass, "groupStateCallback", "(I[B)V");
         if (groupStateCallback == NULL) {
             return -22;
-        }
-        storeMessageCallback = env->GetMethodID(callbackClass, "storeMessageData", "([B[B[B)I");
-        if (storeMessageCallback == NULL) {
-            return -23;
         }
     }
     // Prepare access to the PreparedMessageData Java class inside ZinaNative.
@@ -661,9 +657,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
         retVal = 2;
     }
 
-    zinaAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, storeMessageData, messageStateReport,
+    zinaAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport,
                                            notifyCallback, receiveGroupMessage, receiveGroupCommand, groupStateReport);
-    zinaAppInterface->setDelayRatchetCommit(delayRatchetCommit != 0);
     Transport* sipTransport = new SipTransport(zinaAppInterface);
 
     /* ***********************************************************************************

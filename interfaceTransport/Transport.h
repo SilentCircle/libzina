@@ -29,19 +29,16 @@ limitations under the License.
 #include <string>
 #include <memory>
 
-
-//void sendDataFunc(uint8_t* names[], uint8_t* recipientScClientDevIds[], uint8_t* data[], size_t length[], uint64_t msgIds[]);
-// typedef void (*SEND_DATA_FUNC)(uint8_t* [], uint8_t* [], uint8_t* [], size_t [], uint64_t []);
-
 // bool g_sendDataFuncAxoNew(uint8_t* name, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgId){
 typedef bool (*SEND_DATA_FUNC)(uint8_t*, uint8_t*, uint8_t*, size_t, uint64_t);
 
 
 using namespace std;
 
-namespace axolotl{
+namespace axolotl {
 
-typedef struct MsgQueueInfo_ MsgQueueInfo;
+// Forward declaration to avoid include of AppInterfaceImpl.h
+typedef struct CmdQueueInfo_ CmdQueueInfo;
 
 class Transport
 {
@@ -71,7 +68,7 @@ public:
      * @param info The meta-data of the message ot send
      * @param envelope The message envelope, serialized as string and B64 encoded
      */
-    virtual void sendAxoMessage(shared_ptr<MsgQueueInfo> info, const string& envelope) = 0;
+    virtual void sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope) = 0;
 
     /**
      * @brief Receive data from network transport - callback function for network layer.

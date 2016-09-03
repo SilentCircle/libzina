@@ -95,12 +95,12 @@ createIdDevInfo(shared_ptr<list<pair<string, string> > > newDevList) {
 }
 
 static mutex preparedMessagesLock;
-static map<uint64_t, shared_ptr<MsgQueueInfo> > preparedMessages;
+static map<uint64_t, shared_ptr<CmdQueueInfo> > preparedMessages;
 
-void AppInterfaceImpl::queuePreparedMessage(shared_ptr<MsgQueueInfo> &msgInfo)
+void AppInterfaceImpl::queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo)
 {
     unique_lock<mutex> listLock(preparedMessagesLock);
-    preparedMessages.insert(pair<uint64_t, shared_ptr<MsgQueueInfo>>(msgInfo->queueInfo_transportMsgId, msgInfo));
+    preparedMessages.insert(pair<uint64_t, shared_ptr<CmdQueueInfo>>(msgInfo->queueInfo_transportMsgId, msgInfo));
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
@@ -138,7 +138,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     if (toSibling) {
         recipient = ownUser_;
     }
-    // When sending to sibling devices getIdentityKeys(...) may return an empty list if the user
+    // When sending to sibling devices getIdentityKeys(...) returns an empty list if the user
     // has no sibling devices
     auto idKeys = getIdentityKeys(recipient);
 
@@ -191,7 +191,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
             continue;
         }
         // Setup and queue the prepared message info data
-        auto msgInfo = make_shared<MsgQueueInfo>();
+        auto msgInfo = make_shared<CmdQueueInfo>();
         msgInfo->command = SendMessage;
         msgInfo->queueInfo_recipient = recipient;
         msgInfo->queueInfo_deviceName = info->at(1);
@@ -215,7 +215,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     return messageData;
 }
 
-string  AppInterfaceImpl::createSendErrorJson(const shared_ptr<MsgQueueInfo>& info, int32_t errorCode)
+string  AppInterfaceImpl::createSendErrorJson(const shared_ptr<CmdQueueInfo>& info, int32_t errorCode)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -247,7 +247,7 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
     LOGGER(INFO, __func__, " -->");
 
     size_t numOfIds = transportIds->size();
-    list<shared_ptr<MsgQueueInfo> > messagesToProcess;
+    list<shared_ptr<CmdQueueInfo> > messagesToProcess;
     int32_t counter = 0;
 
     unique_lock<mutex> prepareLock(preparedMessagesLock);
@@ -293,7 +293,7 @@ int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > t
 }
 
 int32_t
-AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation)
+AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -397,7 +397,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<MsgQueueInfo> sendInfo, shared_
 }
 
 int32_t
-AppInterfaceImpl::sendMessageNewUser(shared_ptr<MsgQueueInfo> sendInfo)
+AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
