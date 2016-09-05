@@ -134,13 +134,15 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param resultCode an int array with at least a length of one. The functions returns the
      *        request result code at index 0
      *
+     * @param normalMsg If true then this is a normal message, if false it's a command message.
+     *
      * @return A list of unique 64-bit transport message identifiers, one for each message set to the user's
      *         devices. In case of error the functions return {@code null} and the {@code getErrorCode} and
      *         {@code getErrorInfo} have the details.
      */
     //**ANN** @WorkerThread
     public static native PreparedMessageData[] prepareMessage(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                            /*!@Nullable!*/ byte[] messageAttributes, int[] resultCode);
+                                            /*!@Nullable!*/ byte[] messageAttributes, boolean normalMsg, int[] resultCode);
 
     /**
      * Send message to sibling devices.
@@ -158,12 +160,15 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param resultCode an int array with at least a length of one. The functions returns the
      *        request result code at index 0
      *
+     * @param normalMsg If true then this is a normal message, if false it's a command message. Messages to
+     *                  siblings are usually commands
+     *
      * @return unique message identifiers if the messages were processed for sending, 0 if processing
      *         failed.
      */
     //**ANN** @WorkerThread
     public static native PreparedMessageData[] prepareMessageToSiblings(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                                         /*!@Nullable!*/ byte[] messageAttributes, int[] resultCode);
+                                                         /*!@Nullable!*/ byte[] messageAttributes, boolean normalMsg, int[] resultCode);
 
     /**
      * Encrypt the prepared messages and send them to the receiver.

@@ -88,6 +88,8 @@ namespace axolotl {
          * @return A formatted string with current Zulu time.
          */
         static string currentTimeISO8601();
+
+        static void wipeString(string toWipe);
     };
 }
 

@@ -322,7 +322,7 @@ void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 // ***** Private functions 
 // *******************************
 
-int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message)
+int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message, bool receivedMsg)
 {
     LOGGER(INFO, __func__, " -->");
     cJSON* cjTemp;
@@ -337,10 +337,11 @@ int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, st
         errorInfo_ = "root";
         return GENERIC_ERROR;
     }
-    cjTemp = cJSON_GetObjectItem(root, MSG_RECIPIENT);
+    const char* recipientSender = receivedMsg ? MSG_SENDER : MSG_RECIPIENT;
+    cjTemp = cJSON_GetObjectItem(root, recipientSender);
     jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        errorInfo_ = MSG_RECIPIENT;
+        errorInfo_ = recipientSender;
         return JS_FIELD_MISSING;
     }
     recipient->assign(jsString);

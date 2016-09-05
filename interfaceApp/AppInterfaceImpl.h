@@ -145,12 +145,13 @@ public:
 
     shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
                                                                        const string& attachmentDescriptor,
-                                                                       const string& messageAttributes, int32_t* result);
+                                                                       const string& messageAttributes,
+                                                                       bool normalMsg, int32_t* result);
 
     shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
                                                                                  const string &attachmentDescriptor,
                                                                                  const string &messageAttributes,
-                                                                                 int32_t *result);
+                                                                                 bool normalMsg, int32_t *result);
 
     int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
 
@@ -248,7 +249,7 @@ private:
     AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
     bool operator== ( const AppInterfaceImpl& other ) const  = delete;
 
-    int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message );
+    int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message, bool receivedMsg = false);
 
     /**
      * @brief Handle a group message, either a normal or a command message.
@@ -471,10 +472,9 @@ private:
      *
      * This function runs in the run-Q thread only.
      *
-     * @param sender The sender of the message
-     * @param msgId The message's id
+     * @param plainMsgInfo The message command data
      */
-    void sendDeliveryReceipt(const string& sender, const string&msgId);
+    void sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo);
 
     /**
      * @brief Helper function which creates a JSON formatted message descriptor.

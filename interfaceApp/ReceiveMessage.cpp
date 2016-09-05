@@ -29,7 +29,6 @@ limitations under the License.
 
 #include <zrtp/crypto/sha256.h>
 
-
 using namespace axolotl;
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,
@@ -68,6 +67,41 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
     string msgId(Utilities::getJsonString(root, MSG_ID, ""));
 
     return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0);
+}
+
+static bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    int32_t msgType = plainMsgInfo->queueInfo_msgType;
+    if (msgType == GROUP_MSG_CMD || msgType == MSG_CMD)
+        return true;
+
+    if (plainMsgInfo->queueInfo_supplement.empty())
+        return false;
+
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()), cJSON_deleter);
+    cJSON* jsSupplement = sharedRoot.get();
+    string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
+    if (attributes.empty())
+        return false;
+
+    shared_ptr<cJSON> attributesJson(cJSON_Parse(attributes.c_str()), cJSON_deleter);
+    cJSON* attributesRoot = attributesJson.get();
+
+    string possibleCmd = Utilities::getJsonString(attributesRoot, MSG_COMMAND, "");
+    if (!possibleCmd.empty())
+        return true;
+
+    possibleCmd = Utilities::getJsonString(attributesRoot, MSG_SYNC_COMMAND, "");
+    if (!possibleCmd.empty())
+        return true;
+
+    possibleCmd = Utilities::getJsonString(attributesRoot, GROUP_COMMAND, "");
+    if (!possibleCmd.empty())
+        return true;
+
+    return false;
 }
 
 int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& uidString, const string& displayName)
@@ -240,7 +274,11 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     cJSON_AddStringToObject(root, MSG_DEVICE_ID, senderScClientDevId.c_str());
     cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
     cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
+
+    int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
+    cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
     messagePlain.reset();
+
     out = cJSON_PrintUnformatted(root);
     string msgDescriptor(out);
     cJSON_Delete(root); free(out);
@@ -254,7 +292,6 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     // - delete raw message data
     int64_t sequence;
     int32_t result;
-    int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
     {
         store_->beginTransaction();
 
@@ -283,9 +320,6 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
            store_->commitTransaction();
            store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
     }
-#ifndef UNITTESTS
-    sendDeliveryReceipt(sender, msgId);
-#endif
     shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
     plainMsgInfo->command = ReceivedTempMsg;
     plainMsgInfo->queueInfo_sequence = sequence;
@@ -293,11 +327,18 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     plainMsgInfo->queueInfo_supplement = *supplementsPlain;
     plainMsgInfo->queueInfo_msgType = msgType;
 
+#ifndef UNITTESTS
+    sendDeliveryReceipt(plainMsgInfo);
+#endif
+
     processMessagePlain(plainMsgInfo);
+    LOGGER(INFO, __func__, " <--");
+
 }
 
 void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
 {
+    LOGGER(INFO, __func__, " -->");
 
     int64_t sequence;
     int32_t result;
@@ -341,8 +382,15 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     LOGGER(INFO, __func__, " <--");
 }
 
-void AppInterfaceImpl::sendDeliveryReceipt(const string& sender, const string& msgId)
+
+void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
+    LOGGER(INFO, __func__, " -->");
+    // send delivery receipt for real messages only, not for commands - for backward compatibility we need to scan supplements
+    if (isCommand(plainMsgInfo)) {
+        LOGGER(INFO, __func__, " <-- no delivery receipt");
+        return;
+    }
     shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
     cJSON* attributeJson = sharedRoot.get();
 
@@ -353,12 +401,20 @@ void AppInterfaceImpl::sendDeliveryReceipt(const string& sender, const string& m
     string command(out);
     free(out);
 
+    string sender;
+    string msgId;
+    string message;
+    // Parse a msg descriptor that's always correct because it was constructed above :-)
+    parseMsgDescriptor(plainMsgInfo->queueInfo_message, &sender, &msgId, &message, true);
+    Utilities::wipeString(message);
+
     int32_t result;
-    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(sender, msgId), Empty, command, false, MSG_NORMAL, &result);
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(sender, msgId), Empty, command, false, MSG_CMD, &result);
 
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return;
     }
     doSendMessages(extractTransportIds(preparedMsgData));
+    LOGGER(INFO, __func__, " <--");
 }

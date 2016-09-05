@@ -43,14 +43,15 @@ namespace axolotl {
 
     static const int SHORT_MAC_LENGTH      = 8;
 
+    // Normal message types, MSG_NORMAL must be 0.
     static const uint32_t MSG_NORMAL       = 0;
     static const uint32_t MSG_CMD          = 1;
 
-    static const int MAXIMUM_GROUP_SIZE    = 30;
-
-    // Group message types, value for normal message must be the lowest
+    // Group message types,
     static const uint32_t GROUP_MSG_NORMAL = 10;    //!< 0xa - normal group message
     static const uint32_t GROUP_MSG_CMD    = 11;    //!< 0xb - group command message
+
+    static const int MAXIMUM_GROUP_SIZE    = 30;
 
     static const uint64_t GROUP_TRANSPORT  = 0x8;   //!< Bit in transport message id to identify this as a group message
 

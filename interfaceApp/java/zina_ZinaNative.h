@@ -20,18 +20,18 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_doInit
 /*
  * Class:     zina_ZinaNative
  * Method:    prepareMessage
- * Signature: ([B[B[B[I)[Lzina/ZinaNative/PreparedMessageData;
+ * Signature: ([B[B[BZ[I)[Lzina/ZinaNative/PreparedMessageData;
  */
 JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_prepareMessage
-  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jintArray);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jboolean, jintArray);
 
 /*
  * Class:     zina_ZinaNative
  * Method:    prepareMessageToSiblings
- * Signature: ([B[B[B[I)[Lzina/ZinaNative/PreparedMessageData;
+ * Signature: ([B[B[BZ[I)[Lzina/ZinaNative/PreparedMessageData;
  */
 JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_prepareMessageToSiblings
-  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jintArray);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jboolean, jintArray);
 
 /*
  * Class:     zina_ZinaNative

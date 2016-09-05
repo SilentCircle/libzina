@@ -33,17 +33,17 @@ using namespace axolotl;
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
 AppInterfaceImpl::prepareMessage(const string& messageDescriptor,
                                  const string& attachmentDescriptor,
-                                 const string& messageAttributes, int32_t* result)
+                                 const string& messageAttributes, bool normalMsg, int32_t* result)
 {
-    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, false, MSG_NORMAL, result);
+    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, false, normalMsg ? MSG_NORMAL : MSG_CMD, result);
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
 AppInterfaceImpl::prepareMessageToSiblings(const string &messageDescriptor,
                                            const string &attachmentDescriptor,
-                                           const string &messageAttributes, int32_t *result)
+                                           const string &messageAttributes, bool normalMsg, int32_t *result)
 {
-    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true, MSG_NORMAL, result);
+    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true, normalMsg ? MSG_NORMAL : MSG_CMD, result);
 }
 
 static shared_ptr<list<pair<string, string> > >
@@ -174,7 +174,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
     uint64_t counter = 0;
 
-    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
+    // The transport id is structured: bits 0..3 are type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
     while (!idKeys->empty()) {

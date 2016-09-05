@@ -177,6 +177,7 @@ void AppInterfaceImpl::retryReceivedMessages()
             plainMsgInfo->queueInfo_msgType = storedInfo->info_msgType;
 
             messagesToProcess.push_back(plainMsgInfo);
+            sendDeliveryReceipt(plainMsgInfo);
             storedMsgInfos->pop_front();
             plainCounter++;
         }

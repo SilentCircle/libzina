@@ -106,12 +106,15 @@ public:
      *                               shows that not attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
-     * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param result    Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param normalMsg If true then this is a normal message, if false it's a command message
      * @return A list of prepared message information, or empty on failure
      */
-    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
-                                                                       const string& attachmentDescriptor,
-                                                                       const string& messageAttributes, int32_t* result) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > >
+    prepareMessage(const string& messageDescriptor,
+                   const string& attachmentDescriptor,
+                   const string& messageAttributes,
+                   bool normalMsg, int32_t* result) = 0;
 
     /**
      * @brief Prepare a user-to-user message for sending to its sibling devices.
@@ -125,12 +128,16 @@ public:
      *                              shows that not attachment descriptor is available.
      * @param messageAttributes     Optional, a JSON formatted string that contains message attributes. An empty
      *                              string shows that not attributes are available.
-     * @param result Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param result    Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param normalMsg If true then this is a normal message, if false it's a command message. Messages to
+     *                  siblings are usually commands
      * @return A list of prepared message information, or empty on failure
      */
-    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
-                                                                                         const string &attachmentDescriptor,
-                                                                                         const string &messageAttributes, int32_t *result) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > >
+    prepareMessageToSiblings(const string &messageDescriptor,
+                             const string &attachmentDescriptor,
+                             const string &messageAttributes,
+                             bool normalMsg, int32_t *result) = 0;
 
     /**
      * @brief Encrypt the prepared messages and send them to the receiver.

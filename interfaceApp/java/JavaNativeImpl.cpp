@@ -713,11 +713,12 @@ static jobjectArray fillPrepMsgDataToJava(JNIEnv* env, shared_ptr<list<shared_pt
 /*
  * Class:     zina_ZinaNative
  * Method:    prepareMessage
- * Signature: ([B[B[B[I)[Lzina/ZinaNative/PreparedMessageData;
+ * Signature: ([B[B[BZ[I)[Lzina/ZinaNative/PreparedMessageData;
  */
 JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
-                             jbyteArray attachmentDescriptor, jbyteArray messageAttributes, jintArray code)
+                             jbyteArray attachmentDescriptor, jbyteArray messageAttributes,
+                             jboolean normalMsg, jintArray code)
 {
     (void)clazz;
 
@@ -742,7 +743,7 @@ JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescri
         Log("prepareMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     int32_t error;
-    auto prepMessageData = zinaAppInterface->prepareMessage(message, attachment, attributes, &error);
+    auto prepMessageData = zinaAppInterface->prepareMessage(message, attachment, attributes, static_cast<bool>(normalMsg), &error);
     if (error != SUCCESS) {
         setReturnCode(env, code, error);
         return NULL;
@@ -753,11 +754,12 @@ JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescri
 /*
  * Class:     zina_ZinaNative
  * Method:    prepareMessageToSiblings
- * Signature: ([B[B[B[I)[Lzina/ZinaNative/PreparedMessageData;
+ * Signature: ([B[B[BZ[I)[Lzina/ZinaNative/PreparedMessageData;
  */
 JNIEXPORT jobjectArray JNICALL
 JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
-                                       jbyteArray attachmentDescriptor, jbyteArray messageAttributes, jintArray code)
+                                       jbyteArray attachmentDescriptor, jbyteArray messageAttributes,
+                                       jboolean normalMsg, jintArray code)
 {
     (void)clazz;
 
@@ -782,7 +784,7 @@ JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray mes
         Log("prepareMessageToSiblings - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     int32_t error;
-    auto prepMessageData = zinaAppInterface->prepareMessageToSiblings(message, attachment, attributes, &error);
+    auto prepMessageData = zinaAppInterface->prepareMessageToSiblings(message, attachment, attributes, static_cast<bool>(normalMsg), &error);
     if (error != SUCCESS) {
         setReturnCode(env, code, error);
         return NULL;

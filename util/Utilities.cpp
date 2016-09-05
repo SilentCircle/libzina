@@ -3,6 +3,7 @@
 //
 
 #include <sys/time.h>
+#include <string.h>
 #include "Utilities.h"
 
 using namespace axolotl;
@@ -97,4 +98,11 @@ string Utilities::currentTimeISO8601()
     const char* format = "%FT%TZ";
     strftime(outbuf, 80, format, gmtime_r(&currentTime, &timeinfo));
     return string(outbuf);
+}
+
+static void *(*volatile memset_volatile)(void*, int, size_t) = memset;
+
+void Utilities::wipeString(string toWipe)
+{
+    memset_volatile((void*)toWipe.data(), 0, toWipe.size());
 }

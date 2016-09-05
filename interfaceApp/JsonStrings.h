@@ -29,6 +29,8 @@ namespace axolotl {
     static const char* MSG_DEVICE_ID = "scClientDevId";
     static const char* MSG_DISPLAY_NAME = "display_name";
     static const char* MSG_COMMAND = "cmd";
+    static const char* MSG_SYNC_COMMAND = "syc";
+    static const char* MSG_TYPE = "type";
 
     // The following strings follow the MSG_COMMAND and identify the command
     static const char* DELIVERY_RECEIPT = "dr";
