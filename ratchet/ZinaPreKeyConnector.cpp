@@ -19,12 +19,12 @@ limitations under the License.
 #include "../ratchet/crypto/EcCurve.h"
 
 #include "../keymanagment/PreKeys.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 
 // Generic function, located in AxoZrtpConnector.
 void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, size_t requested);
 
-using namespace axolotl;
+using namespace zina;
 
 void Log(const char* format, ...);
 

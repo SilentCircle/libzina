@@ -26,7 +26,7 @@ limitations under the License.
 #include "gtest/gtest.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 #include "../interfaceApp/JsonStrings.h"
 #include "../Constants.h"
 
@@ -36,7 +36,7 @@ static const uint8_t keyInData_2[] = "ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW";  // 32 b
 static     string empty;
 
 using namespace std;
-using namespace axolotl;
+using namespace zina;
 
 static string* preKeyJson(const DhKeyPair& preKeyPair)
 {

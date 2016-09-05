@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Provisioning.h
  * @brief Interface for the required provisioning server functions
- * @ingroup Axolotl++
+ * @ingroup ZINA
  * @{
  */
 
@@ -32,7 +32,7 @@ limitations under the License.
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 class Provisioning
 {
 public:
@@ -56,7 +56,7 @@ public:
      * @brief Remove a ZINA device from user's account.
      * 
      * @param name the user's name
-     * @param scClientDevId the unique device id of one of the user's registered Axolotl devices
+     * @param scClientDevId the unique device id of one of the user's registered ZINA devices
      * @param authorization autorization data, may be needed for some servers
      * @param result To store the result data of the server, usually in case of an error only
      */
@@ -70,15 +70,14 @@ public:
      * combination 
      * 
      * @param name the user's name
-     * @param longDevId the unique device id of one of the user's registered Axolotl devices
+     * @param longDevId the unique device id of one of the user's registered ZINA devices
      * @param authorization autorization data, may be needed for some servers
      * @param preIdKeys the pair contains the returned pre key as first member, the identity of the remote
      *                  parte as the second member.
      * @return a pre-key id or @c 0 on failure
      */
     static int32_t getPreKeyBundle(const string& name, const string& longDevId, const string& authorization, 
-                                   pair< const axolotl::DhPublicKey*, const axolotl::DhPublicKey* >* preIdKeys );
-//    static int32_t getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization);
+                                   pair< const DhPublicKey*, const DhPublicKey* >* preIdKeys );
 
     /**
      * @brief Get number of available pre-keys on the server.
@@ -90,9 +89,9 @@ public:
     static int32_t getNumPreKeys(const string& longDevId, const string& authorization);
 
     /**
-     * @brief Get the availabe registered Axolotl device of a user
+     * @brief Get the availabe registered ZINA device of a user
      * 
-     * A user may register severval devices for Axolotl usage. A sender (Alice) should send messages to
+     * A user may register severval devices for ZINA usage. A sender (Alice) should send messages to
      * all available devices of the other user (Bob). This keeps Bob's message display on his devices in
      * sync.
      * 
@@ -108,8 +107,8 @@ public:
      * If the number of available pre-keys get to low then a slient should generate and publish
      * new pre-keys.The server appends the pre-keys to the remaining existing pre-keys.
      *
-     * @param store The persitent Axolotl store to store and retrieve state information.
-     * @param longDevId the unique device id of one of the user's registered Axolotl devices
+     * @param store The persitent ZINA store to store and retrieve state information.
+     * @param longDevId the unique device id of one of the user's registered ZINA devices
      * @param authorization autorization data, required to identify the user/device for which to append
      *        the new pre-keys.
      * @param number How man pre-keys to add

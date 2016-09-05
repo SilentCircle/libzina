@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Transport.h
  * @brief Interface for tnetwork transport functions
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -35,7 +35,7 @@ typedef bool (*SEND_DATA_FUNC)(uint8_t*, uint8_t*, uint8_t*, size_t, uint64_t);
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 
 // Forward declaration to avoid include of AppInterfaceImpl.h
 typedef struct CmdQueueInfo_ CmdQueueInfo;

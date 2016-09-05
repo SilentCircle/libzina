@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file AppInterfaceImpl.h
  * @brief Implementation of the UI interface methods
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -37,7 +37,7 @@ typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 typedef enum CmdQueueCommands_ {
     SendMessage = 1,
     ReceivedRawData,

@@ -11,7 +11,7 @@
 #include "../util/b64helper.h"
 
 using namespace std;
-using namespace axolotl;
+using namespace zina;
 
 
 static vector<string> tokens;

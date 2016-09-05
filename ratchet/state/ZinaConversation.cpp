@@ -19,9 +19,9 @@ limitations under the License.
 #include "../../util/b64helper.h"
 #include "../../Constants.h"
 #include "../crypto/EcCurve.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 void Log(const char* format, ...);

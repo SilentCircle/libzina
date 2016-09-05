@@ -20,7 +20,7 @@ limitations under the License.
 #include "../crypto/AesCbc.h"
 #include "../crypto/HKDF.h"
 #include "../../Constants.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>
@@ -51,7 +51,7 @@ static void hexdump(const char* title, const string& in)
 }
 #endif
 
-using namespace axolotl;
+using namespace zina;
 
 typedef struct parsedMessage_ {
     uint32_t msgType;

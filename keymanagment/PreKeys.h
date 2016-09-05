@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file PreKeys.h
  * @brief Generate and store pre-keys
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -32,7 +32,7 @@ limitations under the License.
 #include "../Constants.h"
 
 using namespace std;
-namespace axolotl {
+namespace zina {
 
 class PreKeys
 {
@@ -70,7 +70,7 @@ public:
      */
     static DhKeyPair* parsePreKeyData(const string& data);
 };
-} // namespace axolotl
+} // namespace zina
 
 /**
  * @}

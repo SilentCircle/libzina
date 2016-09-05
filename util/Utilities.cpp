@@ -6,7 +6,7 @@
 #include <string.h>
 #include "Utilities.h"
 
-using namespace axolotl;
+using namespace zina;
 
 
 int32_t Utilities::getJsonInt(const cJSON* const root, const char* const name, int32_t error) {

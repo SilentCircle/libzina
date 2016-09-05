@@ -30,13 +30,13 @@ limitations under the License.
  * @file NameLookup.h
  * @brief Perform lookup and cahing of alias names and return the UID
  *
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 
     class UserInfo {
     public:

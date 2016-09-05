@@ -28,7 +28,7 @@ limitations under the License.
 #pragma ide diagnostic ignored "OCDFAInspection"
 static mutex convLock;
 
-using namespace axolotl;
+using namespace zina;
 
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,

@@ -15,11 +15,11 @@ limitations under the License.
 */
 #include <zrtp/crypto/hmac256.h>
 #include <string.h>
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
 
 #include "HKDF.h"
-using namespace axolotl;
+using namespace zina;
 
 void HKDF::deriveSecrets(uint8_t* inputKeyMaterial, size_t ikmLength, 
                          uint8_t* info, size_t infoLength, 

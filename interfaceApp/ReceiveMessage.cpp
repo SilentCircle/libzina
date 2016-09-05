@@ -29,7 +29,7 @@ limitations under the License.
 
 #include <zrtp/crypto/sha256.h>
 
-using namespace axolotl;
+using namespace zina;
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,
                                const char* msgHex, int32_t errorCode, const string& sentToId, int32_t sqlCode)

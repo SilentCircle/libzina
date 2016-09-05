@@ -15,7 +15,7 @@ limitations under the License.
 */
 #include "SipTransport.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 #include "../../Constants.h"
 #include <stdlib.h>
 #include <map>
@@ -32,7 +32,7 @@ limitations under the License.
 #define MAX_AVAILABLE_SLOTS     30
 #define KEEP_SLOTS              10
 
-using namespace axolotl;
+using namespace zina;
 
 static int32_t getNumOfSlots()
 {

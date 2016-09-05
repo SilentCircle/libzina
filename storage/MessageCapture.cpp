@@ -5,7 +5,7 @@
 #include "MessageCapture.h"
 #include "sqlite/SQLiteStoreConv.h"
 #include "../util/cJSON.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 #include "../Constants.h"
 
 const static char* FIELD_LATITUDE = "la";
@@ -16,7 +16,7 @@ const static char* FIELD_ACCURACY_HORIZONTAL = "v";
 const static char* FIELD_ACCURACY_VERTICAL = "h";
 
 using namespace std;
-using namespace axolotl;
+using namespace zina;
 
 static int32_t filterAttributes(const string& attributes, shared_ptr<string> filteredAttributes)
 {

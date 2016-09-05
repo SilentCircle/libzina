@@ -6,7 +6,7 @@
 #ifndef LIBZINA_JSONSTRINGS_H
 #define LIBZINA_JSONSTRINGS_H
 
-namespace axolotl {
+namespace zina {
     static const char* GROUP_ID = "grpId";
     static const char* GROUP_NAME = "name";
     static const char* GROUP_OWNER = "ownerId";

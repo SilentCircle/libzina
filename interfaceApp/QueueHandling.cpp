@@ -24,7 +24,7 @@ limitations under the License.
 
 #include "AppInterfaceImpl.h"
 
-using namespace axolotl;
+using namespace zina;
 
 static mutex commandQueueLock;
 static list<shared_ptr<CmdQueueInfo> > commandQueue;

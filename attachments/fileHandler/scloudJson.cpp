@@ -35,7 +35,7 @@ static const char* kHashStr         = "hash";
 '\255')
 #define HEXOF(x) (x - _base(x))
 
-using namespace axolotl;
+using namespace zina;
 
 SCLError scloudDeserializeKey(uint8_t *inData, size_t inLen, SCloudKey *keyOut)
 {

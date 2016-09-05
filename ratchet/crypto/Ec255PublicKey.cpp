@@ -21,7 +21,7 @@ using namespace std;
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
-using namespace axolotl;
+using namespace zina;
 
 Ec255PublicKey::Ec255PublicKey(const uint8_t* data)
 {

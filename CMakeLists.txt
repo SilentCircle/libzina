@@ -56,7 +56,7 @@ if (NOT STANDALONE)
     set(LIBRARY_BUILD_TYPE STATIC)
 endif()
 
-set(axoLibName zina)
+set(zinaLibName zina)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
 
 ### No more configuration below this line (usually ;-) )
@@ -166,7 +166,7 @@ set (util_src
     util/b64helper.cpp
     util/UUID.cpp
     logging/Logger.cpp
-    logging/AxoLogging.cpp
+        logging/ZinaLogging.cpp
     util/Utilities.cpp)
 
 set (app_repo_src
@@ -180,7 +180,7 @@ endif()
 
 add_subdirectory(attachments)
 
-set (axo_src
+set (zina_src
     ${protocol_src}
     ${storage_src}
     ${interface_src}
@@ -192,10 +192,10 @@ set (axo_src
 )
 
 if (NOT ANDROID)
-    add_library(${axoLibName} ${LIBRARY_BUILD_TYPE} ${axo_src} $<TARGET_OBJECTS:crypto_lib> $<TARGET_OBJECTS:attachment_lib>)
-    set_target_properties(${axoLibName} PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
-    TARGET_INCLUDE_DIRECTORIES(${axoLibName} PUBLIC ${ZRTP_BASE_DIR} ${ZRTP_BASE_DIR}/zrtp)
-    target_link_libraries(${axoLibName} ${LIBS})
+    add_library(${zinaLibName} ${LIBRARY_BUILD_TYPE} ${zina_src} $<TARGET_OBJECTS:crypto_lib> $<TARGET_OBJECTS:attachment_lib>)
+    set_target_properties(${zinaLibName} PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
+    TARGET_INCLUDE_DIRECTORIES(${zinaLibName} PUBLIC ${ZRTP_BASE_DIR} ${ZRTP_BASE_DIR}/zrtp)
+    target_link_libraries(${zinaLibName} ${LIBS})
 
     if (UNITTESTS)
         add_subdirectory(gtest-1.7.0)
@@ -208,14 +208,11 @@ add_custom_target(protobuf COMMAND ${CMAKE_SOURCE_DIR}/protobuf/android/runndk.s
 add_custom_target(android ${CMAKE_SOURCE_DIR}/android/runndk.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/android)
 add_dependencies(android protobuf)
 
-
-# add_subdirectory(protobuf/android)
-#
 # Prepare Android's Android.mk and Application.mk files
 string(REPLACE ";" " " crypto_src_spc "${crypto_src_global}")
 string(REPLACE ";" " " attachment_src_spc "${attchment_src_global}")
 if (STANDALONE)
-    set (axo_src "${axo_src}" ${CMAKE_SOURCE_DIR}/android/jni/sqlite3/sqlite3.c)
+    set (zina_src "${zina_src}" ${CMAKE_SOURCE_DIR}/android/jni/sqlite3/sqlite3.c)
 else()
     set (EMBEDDED -DEMBEDDED)
 endif()
@@ -223,7 +220,7 @@ if (UNITTESTS)
     set (EMBEDDED -DUNITTESTS)
 endif()
 
-string(REPLACE ";" " " axo_src_spc "${axo_src}")
+string(REPLACE ";" " " zina_src_spc "${zina_src}")
 set(local_cpp_features "exceptions")
 
 configure_file(${CMAKE_SOURCE_DIR}/android/jni/Android.mk
@@ -231,4 +228,3 @@ configure_file(${CMAKE_SOURCE_DIR}/android/jni/Android.mk
 configure_file(${CMAKE_SOURCE_DIR}/android/jni/Application.mk
                ${CMAKE_BINARY_DIR}/android/jni/Application.mk @ONLY)
 
-#add_subdirectory(axolotl/android)

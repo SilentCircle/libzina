@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file SipTransport.h
  * @brief Implementation for network transport functions, SIP transport
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -35,7 +35,7 @@ static const char* scSipDomain = "@sip.silentcircle.net";
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 
 class SipTransport: public Transport
 {

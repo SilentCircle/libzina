@@ -27,7 +27,7 @@ limitations under the License.
 #include "../ratchet/ZinaPreKeyConnector.h"
 #include "JsonStrings.h"
 
-using namespace axolotl;
+using namespace zina;
 
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >

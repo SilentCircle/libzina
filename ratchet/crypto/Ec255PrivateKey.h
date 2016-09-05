@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Ec255PrivateKey.h
  * @brief EC private key for curve 25519
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  * Storage and contants of Curve25519 private key data. Each private key object
@@ -37,7 +37,7 @@ limitations under the License.
 #include "DhPrivateKey.h"
 #include "EcCurveTypes.h"
 
-namespace axolotl {
+namespace zina {
 class Ec255PrivateKey : public DhPrivateKey
 {
 public:

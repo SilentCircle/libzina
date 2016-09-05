@@ -18,8 +18,8 @@ limitations under the License.
 
 /**
  * @file SQLiteStoreConv.h
- * @brief Implementation of Axolotl store using SQLite
- * @ingroup Axolotl++
+ * @brief Implementation of ZINA store using SQLite
+ * @ingroup Zina
  * @{
  */
 
@@ -35,7 +35,7 @@ limitations under the License.
 #include <iostream>
 #endif
 #include "../../util/cJSON.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
@@ -48,7 +48,7 @@ auto cJSON_deleter = [](cJSON* json) {
     cJSON_Delete(json); json = nullptr;
 };
 
-namespace axolotl {
+namespace zina {
 
 typedef struct StoredMsgInfo {
     string data1;
@@ -613,7 +613,7 @@ private:
     mutable int32_t sqlCode_;
     mutable char lastError_[DB_CACHE_ERR_BUFF_SIZE];
 };
-} // namespace axolotl
+} // namespace zina
 
 /**
  * @}

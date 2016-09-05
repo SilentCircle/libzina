@@ -17,8 +17,8 @@ limitations under the License.
 // Created by werner on 30.11.15.
 //
 
-#ifndef LIBAXOLOTL_AXOLOGGING_H
-#define LIBAXOLOTL_AXOLOGGING_H
+#ifndef LIBZINALOTL_ZINALOGGING_H
+#define LIBZINALOTL_ZINALOGGING_H
 
 // Set the project's maximum compiler log level if not otherwise specified during
 // compilation. See main CMakeLists.txt file, setting CMAKE_CXX_FLAGS_DEBUG for
@@ -46,10 +46,10 @@ extern "C"
 {
 #endif
 
-__EXPORT extern void setAxoLogLevel(int32_t level);
+__EXPORT extern void setZinaLogLevel(int32_t level);
 
 #if defined(__cplusplus)
 }
 #endif
 
-#endif //LIBAXOLOTL_AXOLOGGING_CPP_H
+#endif //LIBZINALOTL_ZINALOGGING_CPP_H

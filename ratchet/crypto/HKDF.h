@@ -22,14 +22,14 @@ limitations under the License.
  * 
  * Refer to RFC 5869 for detailed description of this KDF.
  * 
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
 #include <stdint.h>
 #include <stddef.h>
 
-namespace axolotl {
+namespace zina {
 class HKDF
 {
 public:

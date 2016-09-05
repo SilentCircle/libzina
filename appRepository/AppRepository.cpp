@@ -20,7 +20,7 @@ limitations under the License.
 
 #include <cryptcommon/ZrtpRandom.h>
 
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 
 
 /* *****************************************************************************
@@ -149,7 +149,7 @@ static const char* deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatu
 static const char* deleteAttachmentStatusMsgIdSql2 = "DELETE FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
 static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
 
-using namespace axolotl;
+using namespace zina;
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 

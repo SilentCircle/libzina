@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file AxoRatchet.h
  * @brief Axolotl ratchet functions
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -30,7 +30,7 @@ limitations under the License.
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 class ZinaRatchet
 {
 public:
@@ -58,7 +58,7 @@ public:
      *                 not available
      * @return Plaintext or @c NULL if decryption failed
      */
-    static shared_ptr<const string> decrypt(axolotl::ZinaConversation* conv, const string& wire, const string& supplements,
+    static shared_ptr<const string> decrypt(ZinaConversation* conv, const string& wire, const string& supplements,
                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL);
 private:
     ZinaRatchet() {};

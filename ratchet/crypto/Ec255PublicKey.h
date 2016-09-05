@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Ec255PublicKey.h
  * @brief EC public key for curve 25519
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  * Storage and contants of Curve25519 public key data. Each public key object
@@ -37,7 +37,7 @@ limitations under the License.
 #include "DhPublicKey.h"
 #include "EcCurveTypes.h"
 
-namespace axolotl {
+namespace zina {
 class Ec255PublicKey: public DhPublicKey
 {
 public:
@@ -56,7 +56,7 @@ public:
 
     Ec255PublicKey(const Ec255PublicKey& other);
 
-    DhPublicKey& operator=( const axolotl::DhPublicKey& other );
+    DhPublicKey& operator=( const zina::DhPublicKey& other );
 
     /**
      * @brief Comprare with another generic public key, could be of different type.

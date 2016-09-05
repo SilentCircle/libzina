@@ -30,7 +30,7 @@ limitations under the License.
  * 
  * The variable names map to the short names that the document uses.
  * 
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 #include <string>
@@ -53,7 +53,7 @@ static const std::string emptyString;
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 class ZinaConversation
 {
 public:

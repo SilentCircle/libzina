@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file AxoPreKeyConnector.h
  * @brief Functions to initialize the Axolotl protocol from pre-keys
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  * These functions set up the AxoConversation  from loaded pre-keys. The
@@ -34,7 +34,7 @@ limitations under the License.
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 
 class AxoPreKeyConnector
 {
@@ -85,7 +85,7 @@ public:
      * 
      * This function performs the master secret computation.
      */
-    static int32_t setupConversationBob( axolotl::ZinaConversation* conv, int32_t bobPreKeyId, const axolotl::DhPublicKey* aliceId, const axolotl::DhPublicKey* alicePreKey );
+    static int32_t setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey );
 
 private:
     AxoPreKeyConnector() {};

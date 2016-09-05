@@ -19,14 +19,14 @@ limitations under the License.
 /**
  * @file EcCurveTypes.h
  * @brief Global definitions for supported EC curves
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  */
 
 #include <stdint.h>
 
-namespace axolotl {
+namespace zina {
 class EcCurveTypes {
 public:
     static const int32_t Curve25519 = 1;

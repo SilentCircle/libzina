@@ -25,7 +25,7 @@ limitations under the License.
  * @file aesCbc.h
  * @brief Function that provide AES CBC mode support with PKCS5/7 padding on encryption
  * 
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -35,7 +35,7 @@ limitations under the License.
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 /**
  * @brief Encrypt data with AES CBC mode and perform PKCS5/7 padding.
  *

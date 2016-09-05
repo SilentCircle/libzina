@@ -18,7 +18,7 @@ limitations under the License.
 #include "crypto/HKDF.h"
 #include "../Constants.h"
 #include "../interfaceApp/AppInterface.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 
 #include <map>
 
@@ -49,7 +49,7 @@ static mutex sessionLock;
 
 static map<string, AxoZrtpConnector*>* stagingList = new map<string, AxoZrtpConnector*>;
 
-using namespace axolotl;
+using namespace zina;
 void Log(const char* format, ...);
 
 const string getAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId)

@@ -17,7 +17,7 @@ limitations under the License.
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
-using namespace axolotl;
+using namespace zina;
 Ec255PrivateKey::Ec255PrivateKey(const uint8_t* data)
 {
     memcpy(keyData_, data, KEY_LENGTH);

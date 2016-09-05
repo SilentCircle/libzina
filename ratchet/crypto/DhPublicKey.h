@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file DhPublicKey.h
  * @brief Interface for EC private key implementations
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  * Each implementation must have a type and a serialize function. Public keys 
@@ -30,7 +30,7 @@ limitations under the License.
 #include <stdint.h>
 #include <string>
 
-namespace axolotl {
+namespace zina {
 class DhPublicKey
 {
 public:

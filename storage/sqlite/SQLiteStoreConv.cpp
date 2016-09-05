@@ -247,7 +247,7 @@ static void hexdump(const char* title, const std::string& in)
 }
 #endif
 
-using namespace axolotl;
+using namespace zina;
 
 void Log(const char* format, ...);
 

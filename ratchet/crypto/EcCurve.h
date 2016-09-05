@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file EcCurve.h
  * @brief Functions to perform key agreemtn, sign, verify and encode/decode
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  */
@@ -48,7 +48,7 @@ int curve25519_verify(const unsigned char* signature, /* 64 bytes */
 }
 #endif
 
-namespace axolotl {
+namespace zina {
 class EcCurve
 {
 public:

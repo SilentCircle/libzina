@@ -2,13 +2,13 @@
 // Created by werner on 07.06.16.
 //
 
-#ifndef LIBAXOLOTL_UTILITIES_H
-#define LIBAXOLOTL_UTILITIES_H
+#ifndef LIBZINALOTL_UTILITIES_H
+#define LIBZINALOTL_UTILITIES_H
 
 /**
  * @file Utilities.h
  * @brief Some utility and helper functions
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -21,7 +21,7 @@
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
     class Utilities {
     public:
         /**
@@ -96,4 +96,4 @@ namespace axolotl {
 /**
  * @}
  */
-#endif //LIBAXOLOTL_UTILITIES_H
+#endif //LIBZINALOTL_UTILITIES_H

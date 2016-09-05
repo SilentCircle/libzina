@@ -17,11 +17,11 @@ limitations under the License.
 
 #include <cryptcommon/aescpp.h>
 #include "../../Constants.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
-using namespace axolotl;
+using namespace zina;
 
-int32_t axolotl::aesCbcEncrypt(const string& key, const string& IV, const string& plainText, shared_ptr<string> cryptText)
+int32_t zina::aesCbcEncrypt(const string& key, const string& IV, const string& plainText, shared_ptr<string> cryptText)
 {
     LOGGER(INFO, __func__, " -->");
     if (IV.size() != AES_BLOCK_SIZE) {
@@ -60,7 +60,7 @@ int32_t axolotl::aesCbcEncrypt(const string& key, const string& IV, const string
 }
 
 
-int32_t axolotl::aesCbcDecrypt(const string& key, const string& IV, const string& cryptText,  shared_ptr<string> plainText)
+int32_t zina::aesCbcDecrypt(const string& key, const string& IV, const string& cryptText,  shared_ptr<string> plainText)
 {
     LOGGER(INFO, __func__, " -->");
     if (IV.size() != AES_BLOCK_SIZE) {
@@ -93,7 +93,7 @@ int32_t axolotl::aesCbcDecrypt(const string& key, const string& IV, const string
     return SUCCESS;
 }
 
-bool axolotl::checkAndRemovePadding(shared_ptr<string> data)
+bool zina::checkAndRemovePadding(shared_ptr<string> data)
 {
     LOGGER(INFO, __func__, " -->");
     size_t length = data->size();

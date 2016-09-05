@@ -23,10 +23,10 @@ limitations under the License.
 #include "../util/cJSON.h"
 #include "../Constants.h"
 #include "../provisioning/Provisioning.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 
 
-using namespace axolotl;
+using namespace zina;
 
 static mutex nameLock;           // mutex for critical section
 

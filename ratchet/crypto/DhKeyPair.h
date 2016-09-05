@@ -19,14 +19,14 @@ limitations under the License.
 /**
  * @file DhKeyPair.h
  * @brief EC key pair
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
 #include "DhPublicKey.h"
 #include "DhPrivateKey.h"
 
-namespace axolotl {
+namespace zina {
 class DhKeyPair
 {
 public:

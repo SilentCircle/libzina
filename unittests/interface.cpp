@@ -33,7 +33,7 @@ static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,1
 static const uint8_t keyInData_2[] = {"ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW"};  // 32 bytes
 static     std::string empty;
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 SQLiteStoreConv* store;
@@ -164,7 +164,7 @@ TEST(PreKeyBundle, Basic)
     ScProvisioning::setHttpHelper(helper1);
 
 
-    pair< const axolotl::DhPublicKey*, const axolotl::DhPublicKey* > preIdKeys;
+    pair< const DhPublicKey*, const DhPublicKey* > preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(bob, bobDevId, bobAuth, &preIdKeys);
     
     ASSERT_EQ(bobPreKey.first, preKeyId);

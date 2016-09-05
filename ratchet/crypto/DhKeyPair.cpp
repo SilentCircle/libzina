@@ -17,9 +17,9 @@ limitations under the License.
 #include "EcCurveTypes.h"
 #include "Ec255PrivateKey.h"
 #include "Ec255PublicKey.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
-using namespace axolotl;
+using namespace zina;
 
 DhKeyPair::DhKeyPair(const DhPublicKey& publicKey, const DhPrivateKey& privateKey)
 {

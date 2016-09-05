@@ -15,12 +15,12 @@ limitations under the License.
 */
 #include "gtest/gtest.h"
 
-#include "../axolotl/state/AxoConversation.h"
+#include "../ratchet/state/ZinaConversation.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
-#include "../axolotl/crypto/EcCurve.h"
-#include "../logging/AxoLogging.h"
+#include "../ratchet/crypto/EcCurve.h"
+#include "../logging/ZinaLogging.h"
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 static std::string aliceName("alice@wonderland.org");
@@ -64,11 +64,11 @@ TEST_F(StoreTestFixture, BasicEmpty)
 {
 
     // localUser, remote user, remote dev id
-    AxoConversation conv(aliceName, bobName, bobDev);
+    ZinaConversation conv(aliceName, bobName, bobDev);
     conv.storeConversation();
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();    
 
-    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRK().empty());
 }
@@ -76,7 +76,7 @@ TEST_F(StoreTestFixture, BasicEmpty)
 TEST_F(StoreTestFixture, TestDHR)
 {
     // localUser, remote user, remote dev id
-    AxoConversation conv(aliceName,   bobName,   bobDev);
+    ZinaConversation conv(aliceName,   bobName,   bobDev);
     conv.setRatchetFlag(true);
 
     Ec255PublicKey* pubKey = new Ec255PublicKey(keyInData);
@@ -86,7 +86,7 @@ TEST_F(StoreTestFixture, TestDHR)
     conv.setDHRs(keyPair);
 
     conv.storeConversation();
-    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -102,7 +102,7 @@ TEST_F(StoreTestFixture, TestDHR)
 TEST_F(StoreTestFixture, TestDHI)
 {
     // localUser, remote user, remote dev id
-    AxoConversation conv(aliceName, bobName, bobDev);
+    ZinaConversation conv(aliceName, bobName, bobDev);
     conv.setRatchetFlag(true);
 
     Ec255PublicKey* pubKey = new Ec255PublicKey(keyInData);
@@ -112,7 +112,7 @@ TEST_F(StoreTestFixture, TestDHI)
     conv.setDHIs(keyPair);
 
     conv.storeConversation();
-    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -128,14 +128,14 @@ TEST_F(StoreTestFixture, TestDHI)
 TEST_F(StoreTestFixture, TestA0)
 {
     // localUser, remote user, remote dev id
-    AxoConversation conv(aliceName,   bobName,   bobDev);
+    ZinaConversation conv(aliceName,   bobName,   bobDev);
     conv.setRatchetFlag(true);
 
     const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
     conv.setA0(keyPair);
 
     conv.storeConversation();
-    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -151,7 +151,7 @@ TEST_F(StoreTestFixture, SimpleFields)
     string CKr("ChainKeyR 1");
 
     // localUser, remote user, remote dev id
-    AxoConversation conv(aliceName,   bobName,   bobDev);
+    ZinaConversation conv(aliceName,   bobName,   bobDev);
     conv.setRK(RK);
     conv.setCKr(CKr);
     conv.setCKs(CKs);
@@ -164,7 +164,7 @@ TEST_F(StoreTestFixture, SimpleFields)
     conv.setDeviceName(tst);
 
     conv.storeConversation();
-    auto conv1 = AxoConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
 
     ASSERT_EQ(RK, conv1->getRK());
     ASSERT_EQ(CKr, conv1->getCKr());

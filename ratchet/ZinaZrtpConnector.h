@@ -18,7 +18,7 @@ limitations under the License.
 /**
  * @file AxoZrtpConnector.h
  * @brief Functions to link the Axolotl protocol with a ZRTP client
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -101,7 +101,7 @@ static const int32_t None = 1;
 static const int32_t Alice = 1;
 static const int32_t Bob   = 2;
 
-using namespace axolotl;
+using namespace zina;
 class AxoZrtpConnector
 {
 public:

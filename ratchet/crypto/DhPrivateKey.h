@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file DhPrivateKey.h
  * @brief Interface for DH private key implementations
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * Each implementation must have a type and a serialize function.
  */
@@ -27,7 +27,7 @@ limitations under the License.
 #include <stdint.h>
 #include <string>
 
-namespace axolotl {
+namespace zina {
 class DhPrivateKey
 {
 public:

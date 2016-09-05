@@ -18,9 +18,9 @@ limitations under the License.
 #include "EcCurve.h"
 #include "Ec255PublicKey.h"
 #include "../../Constants.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
-using namespace axolotl;
+using namespace zina;
 
 static void ecGenerateRandomNumber25519(uint8_t* outBuffer)
 {

@@ -22,7 +22,7 @@ limitations under the License.
  * 
  * The partner's name, an alias name
  * 
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 #include <string>
@@ -30,7 +30,7 @@ limitations under the License.
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 class AxoContact
 {
 public:

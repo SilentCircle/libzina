@@ -29,7 +29,7 @@ limitations under the License.
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 /**

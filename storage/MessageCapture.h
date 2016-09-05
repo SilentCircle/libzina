@@ -8,7 +8,7 @@
 /**
  * @file MessageCapture.h
  * @brief Capture message flow
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  *
  * This class contains functions to store and retrieve message trace data.

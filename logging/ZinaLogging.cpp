@@ -17,7 +17,7 @@ limitations under the License.
 // Created by werner on 30.11.15.
 //
 
-#include "AxoLogging.h"
+#include "ZinaLogging.h"
 
 #ifdef ANDROID_LOGGER
 std::shared_ptr<logging::Logger<logging::AndroidLogPolicy> >
@@ -31,7 +31,7 @@ std::shared_ptr<logging::Logger<logging::CerrLogPolicy> >
 #error "Define Logger instance according to the system in use."
 #endif
 
-void setAxoLogLevel(int32_t level)
+void setZinaLogLevel(int32_t level)
 {
     _globalLogger->setLogLevel(static_cast<LoggingLogLevel>(level));
 }

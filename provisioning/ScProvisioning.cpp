@@ -20,7 +20,7 @@ limitations under the License.
 #include "../ratchet/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 int32_t (*ScProvisioning::httpHelper_)(const std::string&, const std::string&, const std::string&, std::string*) = NULL;

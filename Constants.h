@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Constants.h
  * @brief 
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  * This file contains constants like error codes, return codes, fixed strings
@@ -30,7 +30,7 @@ limitations under the License.
 
 #include <string>
 using namespace std;
-namespace axolotl {
+namespace zina {
     static string Empty;                              //!< For default return of an empty string
     static const int MAX_KEY_BYTES         = 128;     //!< This would cover a EC with a prime of 1024 bits
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
