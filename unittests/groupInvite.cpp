@@ -5,10 +5,10 @@
 
 #include "gtest/gtest.h"
 
-#include "../axolotl/state/AxoConversation.h"
+#include "../ratchet/state/ZinaConversation.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
-#include "../axolotl/crypto/EcCurve.h"
-#include "../logging/AxoLogging.h"
+#include "../ratchet/crypto/EcCurve.h"
+#include "../logging/ZinaLogging.h"
 #include "../interfaceApp/AppInterfaceImpl.h"
 #include "../interfaceTransport/sip/SipTransport.h"
 
@@ -19,7 +19,7 @@
 #include "../interfaceApp/JsonStrings.h"
 #include "../util/Utilities.h"
 
-using namespace axolotl;
+using namespace zina;
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 
@@ -57,6 +57,8 @@ static string otherLongDevId_2("def11fed2");
 
 const string* messageEnvelope;
 
+extern void setTestIfObj_(AppInterfaceImpl* obj);
+
 // Callback to send data via the transport. This function stores the first message envelope
 // before it returns
 // names, devIds, envelopes, sizes, msgIds
@@ -64,7 +66,7 @@ static bool sendDataTestFunction(uint8_t* names , uint8_t* devIds, uint8_t* enve
 {
     LOGGER(INFO, __func__, " -->");
     messageEnvelope = new string((const char*)envelopes, sizes);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(INFO, __func__, " <-- ");
     return true;
 }
 
@@ -86,7 +88,7 @@ static int32_t respond400(const std::string& requestUrl, const std::string& meth
  * - create a database for the inviting user
  * - create necessary keys and ratchet state for member 1
  * - prepare the interface class and callbacks
- * - add a empty group
+ * - add an empty group
  *
  * - for invited user all variable/names end with _2
  * - create a second data base for the the invited party
@@ -116,7 +118,7 @@ public:
         member_1_IdKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
         // Create an 'own' conversation and set it up
-        AxoConversation* ownAxoConv = new AxoConversation(memberId_1, memberId_1, Empty);
+        ZinaConversation* ownAxoConv = new ZinaConversation(memberId_1, memberId_1, Empty);
         ownAxoConv->setDHIs(new DhKeyPair(*member_1_IdKeyPair));
         ownAxoConv->storeConversation();
         delete(ownAxoConv);
@@ -132,7 +134,7 @@ public:
 
 
         // ********** Create the environment for member 2
-        // create/open store for member 1
+        // create/open store for member 2
         store_2 = SQLiteStoreConv::getStore();
         store_2->setKey(std::string((const char*)keyInData, 32));
         store_2->openStore(memberDb_2);
@@ -144,7 +146,7 @@ public:
         member_2_PreKey = PreKeys::generatePreKey(store_2);
 
         // Create an 'own' conversation and set it up
-        ownAxoConv = new AxoConversation(memberId_2, memberId_2, Empty);
+        ownAxoConv = new ZinaConversation(memberId_2, memberId_2, Empty);
         ownAxoConv->setDHIs(new DhKeyPair(*member_2_IdKeyPair));
         ownAxoConv->storeConversation();
         delete(ownAxoConv);
@@ -187,6 +189,7 @@ public:
         store_1->openStore(memberDb_1);
 
         appInterface = appInterface_1;
+        setTestIfObj_(appInterface);
         appInterface->setStore(store_1);
     }
 
@@ -224,6 +227,7 @@ public:
         store_2->openStore(memberDb_2);
 
         appInterface = appInterface_2;
+        setTestIfObj_(appInterface);
         appInterface->setStore(store_2);
     }
 
@@ -346,6 +350,7 @@ static int32_t groupCmdCallback(const string& command)
     callbackCommand = command;
     LOGGER(ERROR, command);
     LOGGER(ERROR, __func__, " <--");
+    return OK;
 }
 
 static string callbackMessage;
@@ -357,6 +362,7 @@ static int groupMsgCallback(const string& messageDescriptor, const string& attac
     LOGGER(ERROR, messageDescriptor);
     LOGGER(ERROR, messageAttributes);
     LOGGER(ERROR, __func__, " <--");
+    return OK;
 }
 
 static bool checkMembersInDb(SQLiteStoreConv& store, bool member2Only = false)
@@ -373,6 +379,25 @@ static bool checkMembersInDb(SQLiteStoreConv& store, bool member2Only = false)
     return true;
 }
 
+static void waitForEnvelope()
+{
+    LOGGER(INFO, __func__, " -->");
+    while (messageEnvelope == nullptr)
+        sleep(1);
+    LOGGER(INFO, __func__, " <--");
+}
+
+static void waitForCommand(const string pattern)
+{
+    LOGGER(INFO, __func__, " -->");
+    size_t pos;
+    while (callbackCommand.empty() || (pos = callbackCommand.find(pattern)) == std::string::npos) {
+        string tmp(callbackCommand);
+        sleep(1);
+    }
+    LOGGER(INFO, __func__, " <--");
+}
+
 class GroupInviteSend: public GroupInviteSendFixture
 {
 public:
@@ -385,6 +410,7 @@ public:
 
         ScProvisioning::setHttpHelper(respondDevIds_M2);
         int32_t result = appInterface->inviteUser(groupId, memberId_2);
+        waitForEnvelope();                  // inviteUser sends command, sync with send command callback
         LOGGER(INFO, __func__, " <--");
         return true;
     }
@@ -393,7 +419,9 @@ public:
         LOGGER_INSTANCE setLogLevel(ERROR);
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
-        appInterface->receiveMessage(*messageEnvelope);
+        callbackCommand.clear();
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        waitForCommand("acc"); sleep(1);
         LOGGER(INFO, __func__, " <--");
         return checkMembersInDb(*store_1);
     }
@@ -403,16 +431,18 @@ public:
         LOGGER(INFO, __func__, " -->");
         string message = createMessageDescriptor(groupId, appInterface);
         appInterface->sendGroupMessage(message, Empty, Empty);
-        LOGGER(INFO, __func__, " -->");
+        waitForEnvelope(); sleep(1);
+        LOGGER(INFO, __func__, " <--");
         return true;
     }
 
     bool runLeaveGroup() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
         appInterface->setOwnChecked(false);
         appInterface->leaveGroup(groupId);
-        LOGGER(INFO, __func__, " -->");
+        waitForEnvelope(); sleep(1);                 // leaveGroup sends data
+        LOGGER(INFO, __func__, " <--");
         return true;
     }
 };
@@ -440,13 +470,15 @@ public:
         LOGGER(INFO, __func__, " -->");
         appInterface->setGroupCmdCallback(groupCmdCallback);
         callbackCommand.clear();
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        waitForCommand(":");
 
         if (callbackCommand.empty()) {
-            LOGGER(ERROR, __func__, "No INVITE command available.")
+            LOGGER(ERROR, __func__, "No INVITE answer command available.")
             return false;
         }
         appInterface->answerInvitation(callbackCommand, false, string("Some obvious reason."));
+        waitForCommand("acc");                  // answerInvitation sends data
         LOGGER(INFO, __func__, " <--");
         return true;
     }
@@ -457,14 +489,19 @@ public:
         appInterface->setGroupCmdCallback(groupCmdCallback);
         appInterface->setGroupMsgCallback(groupMsgCallback);
         callbackCommand.clear();
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        string tmp(callbackCommand);
+        waitForCommand(":");
 
         if (callbackCommand.empty()) {
-            LOGGER(ERROR, __func__, "No INVITE command available.")
+            LOGGER(ERROR, __func__, "No INVITE answer command available.")
             return false;
         }
-        appInterface->answerInvitation(callbackCommand, true, string("Accepted."));
-        bool result = checkGroupInDb(*store_2, callbackCommand);
+        string cmd(callbackCommand);
+        messageEnvelope = nullptr;
+        appInterface->answerInvitation(cmd, true, string("Accepted."));
+        waitForEnvelope(); sleep(1);        // additional sleep to cover the second send (first sync, then to member)
+        bool result = checkGroupInDb(*store_2, cmd);
         LOGGER(INFO, __func__, " <--");
         return result;
     }
@@ -473,7 +510,8 @@ public:
     bool runReceive() {
         LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        waitForCommand(":"); sleep(1);
         bool result = checkMembersInDb(*store_2);
         assert(result);
 
@@ -482,9 +520,10 @@ public:
     }
 
     bool runReceiveAfterLeave() {
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(VERBOSE);
         LOGGER(INFO, __func__, " -->");
-        appInterface->receiveMessage(*messageEnvelope);
+        appInterface->receiveMessage(*messageEnvelope, Empty, Empty);
+        sleep(1);
         bool result = checkMembersInDb(*store_2, true);
         assert(result);
 
@@ -566,4 +605,5 @@ int main(int argc, char** argv)
 {
 //    inviteAndDecline();
     inviteAndAcceptSendMessage();
+    return 0;
 }

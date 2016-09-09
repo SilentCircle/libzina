@@ -16,7 +16,7 @@ limitations under the License.
 #include <limits.h>
 
 #include "../attachments/fileHandler/scloud.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 
 #include "gtest/gtest.h"
 #include <iostream>

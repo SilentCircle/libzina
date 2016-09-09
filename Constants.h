@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Constants.h
  * @brief 
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  * 
  * This file contains constants like error codes, return codes, fixed strings
@@ -30,7 +30,7 @@ limitations under the License.
 
 #include <string>
 using namespace std;
-namespace axolotl {
+namespace zina {
     static string Empty;                              //!< For default return of an empty string
     static const int MAX_KEY_BYTES         = 128;     //!< This would cover a EC with a prime of 1024 bits
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
@@ -43,16 +43,19 @@ namespace axolotl {
 
     static const int SHORT_MAC_LENGTH      = 8;
 
+    // Normal message types, MSG_NORMAL must be 0.
     static const uint32_t MSG_NORMAL       = 0;
     static const uint32_t MSG_CMD          = 1;
 
-    static const int MAXIMUM_GROUP_SIZE   = 30;
+    // Group message types,
+    static const uint32_t GROUP_MSG_NORMAL = 10;    //!< 0xa - normal group message
+    static const uint32_t GROUP_MSG_CMD    = 11;    //!< 0xb - group command message
 
-    // Group message types, value for normal message must be the lowest
-    static const uint32_t GROUP_MSG_NORMAL = 10;
-    static const uint32_t GROUP_MSG_CMD    = 11;      //!< To simplify check if this is a pure group command message
+    static const int MAXIMUM_GROUP_SIZE    = 30;
 
-    static const uint64_t GROUP_TRANSPORT    = 0x8;   //!< Bit in transport message id to identify this as a group message
+    static const uint64_t GROUP_TRANSPORT  = 0x8;   //!< Bit in transport message id to identify this as a group message
+
+    static const uint64_t MSG_TYPE_MASK    = 0xf;   //!< Lower 4 bits hold the message type
 
     // Group/member attributes, bit field data
     static const int32_t ACTIVE       = 1;            //!< The group/member is active in this client

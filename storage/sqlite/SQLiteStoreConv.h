@@ -18,8 +18,8 @@ limitations under the License.
 
 /**
  * @file SQLiteStoreConv.h
- * @brief Implementation of Axolotl store using SQLite
- * @ingroup Axolotl++
+ * @brief Implementation of ZINA store using SQLite
+ * @ingroup Zina
  * @{
  */
 
@@ -35,7 +35,7 @@ limitations under the License.
 #include <iostream>
 #endif
 #include "../../util/cJSON.h"
-#include "../../logging/AxoLogging.h"
+#include "../../logging/ZinaLogging.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
@@ -48,7 +48,25 @@ auto cJSON_deleter = [](cJSON* json) {
     cJSON_Delete(json); json = nullptr;
 };
 
-namespace axolotl {
+namespace zina {
+
+typedef struct StoredMsgInfo {
+    string data1;
+    string data2;
+    string data3;
+    int64_t sequence;
+    int32_t int32Data;
+} StoredMsgInfo;
+
+// defines to access the info structure when using it for raw message data
+#define info_rawMsgData  data1
+#define info_uid         data2
+#define info_displayName data3
+
+// defines to access the info structure when using it for temp message data
+#define info_msgDescriptor   data1
+#define info_supplementary   data2
+#define info_msgType         int32Data
 
 class SQLiteStoreConv
 {
@@ -120,7 +138,8 @@ public:
      * 
      * Assemble a list of names for all known identities. 
      * 
-     * @return a new list with the names, an empty list if now identities available,
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A new list with the, an empty list if now identities available,
      *         NULL in case of error
      */
     shared_ptr<list<string> > getKnownConversations(const string& ownName, int32_t* sqlCode = NULL);
@@ -128,11 +147,13 @@ public:
     /**
      * @brief Get a list of long device ids for a name.
      * 
-     * Returns a list of known devices for a user. A user may have several Axolotl device
-     * registered with the account.
+     * Returns a list of known devices of a user. A user may have several Zina device
+     * registered with the account. The function returns data only for other devices, not
+     * the own client device.
      * 
      * @param name the user's name.
-     * @return a new list with the long device ids, NULL in case of error
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @return A new list with the long device ids, may be empty.
      */
     shared_ptr<list<string> > getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 
@@ -239,7 +260,78 @@ public:
      */
     int32_t deleteMsgTrace(time_t timestamp);
 
-    // Functions to handle groups and group member data
+    /**
+     * @brief Insert received message raw data and meta data.
+     *
+     * @param rawData Encrypted received message raw data
+     * @param uid Sender's unique id, if available, maybe empty
+     * @param displayName Sender's human readable name, if available, maybe empty
+     * @param sequence Pointer to a unsigned 64 bit integer that gets the sequence number of the stored data record
+     * @return SQLite code
+     */
+    int32_t insertReceivedRawData(const string& rawData, const string& uid, const string& displayName, int64_t* sequence);
+
+    /**
+     * @brief Retrive stored received message raw data.
+     *
+     * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
+     * @return SQLite code
+     */
+    int32_t loadReceivedRawData(shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData);
+
+    /**
+     * @brief Delete a message raw data record.
+     *
+     * @param sequence The sequence number of the record to delete.
+     * @return
+     */
+    int32_t deleteReceivedRawData(int64_t sequence);
+
+    /**
+     * @brief Delete raw message records older than the timestamp.
+     *
+     * @param timestamp the timestamp of oldest record
+     * @return SQLite code
+     */
+    int32_t cleanReceivedRawData(time_t timestamp);
+
+    /**
+     * @brief Insert temporary message data and supplmentary data.
+     *
+     * @param messageData Message descriptor, JSON formatted string
+     * @param supplementData Supplementary data, JSON formatted string
+     * @param sequence Pointer to a unsigned 64 bit integer that gets the sequence number of the stored data record
+     * @return SQLite code
+     */
+    int32_t insertTempMsg(const string& messageData, const string& supplementData, int32_t msgType, int64_t* sequence);
+
+    /**
+     * @brief Retrive stored temporary message data.
+     *
+     * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
+     * @return SQLite code
+     */
+    int32_t loadTempMsg(shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMessageData);
+
+    /**
+     * @brief Delete a message raw data record.
+     *
+     * @param sequence The sequence number of the record to delete.
+     * @return
+     */
+    int32_t deleteTempMsg(int64_t sequence);
+
+    /**
+     * @brief Delete temporary message records older than the timestamp.
+     *
+     * @param timestamp the timestamp of oldest record
+     * @return SQLite code
+     */
+    int32_t cleanTempMsg(time_t timestamp);
+
+    /* ***************************************************
+     * Functions to handle groups and group member data
+     * ************************************************* */
 
     /**
      * @brief Create a new chat group.
@@ -480,6 +572,10 @@ public:
      */
     int32_t resetStore() { return createTables(); }
 
+    int beginTransaction();
+    int commitTransaction();
+    int rollbackTransaction();
+
 private:
     SQLiteStoreConv();
     ~SQLiteStoreConv();
@@ -495,9 +591,6 @@ private:
      * that Axolotl tables are available in the database.
      */
     int createTables();
-    int beginTransaction();
-    int commitTransaction();
-    int rollbackTransaction();
 
     /**
      * @brief Update database version.
@@ -520,7 +613,7 @@ private:
     mutable int32_t sqlCode_;
     mutable char lastError_[DB_CACHE_ERR_BUFF_SIZE];
 };
-} // namespace axolotl
+} // namespace zina
 
 /**
  * @}

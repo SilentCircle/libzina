@@ -48,15 +48,9 @@ limitations under the License.
         }                           \
     }
 
-#define SQLITE_USE_V2
-
-#ifdef SQLITE_USE_V2
 #define SQLITE_PREPARE sqlite3_prepare_v2
-#else
-#define SQLITE_PREPARE sqlite3_prepare
-#endif
 
-#define DB_VERSION 5
+#define DB_VERSION 6
 
 static mutex sqlLock;
 
@@ -154,7 +148,7 @@ static const char* selectMsgTraceDevId =
 static const char* selectMsgTraceMsgDevId =
         "SELECT name, messageId, deviceId, convstate, attributes, STRFTIME('%Y-%m-%dT%H:%M:%f', stored), flags FROM MsgTrace WHERE messageId=?1 AND deviceId=?2 ORDER BY ROWID ASC ;";
 
-// See comment in deleteMsgTrace regarding the not fully qualified SQL statement to remove olde trace records.
+// See comment in deleteMsgTrace regarding the not fully qualified SQL statement to remove old trace records.
 static const char* removeMsgTrace = "DELETE FROM MsgTrace WHERE STRFTIME('%s', stored)";
 
 /* *****************************************************************************
@@ -202,6 +196,35 @@ static const char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE 
 static const char* isMemberOfGroupSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE groupId=?1 AND memberId=?2) WHEN 1 THEN 1 ELSE 0 END;";
 static const char* isGroupMemberSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE memberId=?1) WHEN 1 THEN 1 ELSE 0 END;";
 
+/* *****************************************************************************
+ * SQL statements to process received raw, encrypted message data
+ *
+ * Regarding the use of 'AUTOINCREMENT' refer to sqlite documentation: https://www.sqlite.org/autoinc.html
+ * It actually guarantees a monotonically increasing sequence number which is important because we like
+ * to process messages in order we received them.
+ */
+static const char* dropReceivedRaw = "DROP TABLE receivedRaw;";
+static const char* createReceivedRaw =
+        "CREATE TABLE IF NOT EXISTS receivedRaw (sequence INTEGER PRIMARY KEY AUTOINCREMENT, rawData BLOB NOT NULL, "
+                "uid VARCHAR, displayName VARCHAR, inserted TIMESTAMP DEFAULT(strftime('%s', 'NOW')));";
+static const char* insertReceivedRawSql = "INSERT INTO receivedRaw (rawData, uid, displayName) VALUES (?1, ?2, ?3);";
+static const char* selectReceivedRaw = "SELECT sequence, rawData, uid, displayName FROM receivedRaw ORDER BY sequence ASC;";
+static const char* removeReceivedRaw = "DELETE FROM receivedRaw WHERE sequence=?1;";
+static const char* cleanReceivedRaw = "DELETE FROM receivedRaw WHERE inserted < ?1;";
+
+/* *****************************************************************************
+ * SQL statements to process temporarily stored received message data
+ *
+ */
+static const char* dropTempMsg = "DROP TABLE TempMsg;";
+static const char* createTempMsg =
+        "CREATE TABLE IF NOT EXISTS TempMsg (sequence INTEGER PRIMARY KEY AUTOINCREMENT, messageData VARCHAR NOT NULL, "
+                "supplementData VARCHAR, msgType INTEGER, inserted TIMESTAMP DEFAULT(strftime('%s', 'NOW')));";
+static const char* insertTempMsgSql = "INSERT INTO TempMsg (messageData, supplementData, msgType) VALUES (?1, ?2, ?3);";
+static const char* selectTempMsg = "SELECT sequence, messageData, supplementData, msgType FROM TempMsg ORDER BY sequence ASC;";
+static const char* removeTempMsg = "DELETE FROM TempMsg WHERE sequence=?1;";
+static const char* cleanTempMsgSql = "DELETE FROM TempMsg WHERE inserted < ?1;";
+
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
 static void hexdump(const char* title, const unsigned char *s, size_t l) {
@@ -224,7 +247,7 @@ static void hexdump(const char* title, const std::string& in)
 }
 #endif
 
-using namespace axolotl;
+using namespace zina;
 
 void Log(const char* format, ...);
 
@@ -499,6 +522,30 @@ int SQLiteStoreConv::createTables()
     }
     sqlite3_finalize(stmt);
 
+    SQLITE_PREPARE(db, dropReceivedRaw, -1, &stmt, NULL);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, createReceivedRaw, -1, &stmt, NULL));
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
+    SQLITE_PREPARE(db, dropTempMsg, -1, &stmt, NULL);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    SQLITE_CHK(SQLITE_PREPARE(db, createTempMsg, -1, &stmt, NULL));
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+        goto cleanup;
+    }
+    sqlite3_finalize(stmt);
+
     LOGGER(INFO, __func__ , " <-- ", sqlResult);
     return SQLITE_OK;
 
@@ -586,6 +633,24 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         oldVersion = 5;
     }
 
+    if (oldVersion == 5) {
+        SQLITE_PREPARE(db, createReceivedRaw, -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        if (sqlCode_ != SQLITE_DONE) {
+            LOGGER(ERROR, __func__, ", SQL error adding receive raw table: ", sqlCode_);
+            return sqlCode_;
+        }
+
+        SQLITE_PREPARE(db, createTempMsg, -1, &stmt, NULL);
+        sqlCode_ = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        if (sqlCode_ != SQLITE_DONE) {
+            LOGGER(ERROR, __func__, ", SQL error adding temporary message table: ", sqlCode_);
+            return sqlCode_;
+        }
+        oldVersion = 6;
+    }
     if (oldVersion != newVersion) {
         LOGGER(ERROR, __func__, ", Version numbers mismatch");
         return SQLITE_ERROR;
@@ -724,6 +789,7 @@ void SQLiteStoreConv::storeConversation(const string& name, const string& longDe
     }
     // Lock the DB in this case because it's a two-step procedure where we use
     // some data from the shared DB pointer (sqlite3_changes(db))
+    // Also protect against multi-thread inserts because of auto-increment handling that we use in some tables
     unique_lock<mutex> lck(sqlLock);
 
     // updateConversation = "UPDATE Conversations SET data=?1, WHERE name=?2 AND longDevId=?3 AND ownName=?4;";
@@ -966,7 +1032,9 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
         return;
     }
 
-//     insertStagedMkSql = 
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
+//     insertStagedMkSql =
 //     "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, otherkey, ivkeymk, ivkeyhdr) "
 //     "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertStagedMkSql, -1, &stmt, NULL));
@@ -1087,6 +1155,9 @@ void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, in
 
     // insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
     LOGGER(INFO, __func__, " -->");
+
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
     SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 2, preKeyData.data(), static_cast<int32_t>(preKeyData.size()), SQLITE_STATIC));
@@ -1177,6 +1248,9 @@ int32_t SQLiteStoreConv::insertMsgHash(const string& msgHash)
 
     LOGGER(INFO, __func__, " -->");
 
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
+
     // char* insertMsgHashSql = "INSERT INTO MsgHash (msgHash, since) VALUES (?1, strftime('%s', ?2, 'unixepoch'));";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMsgHashSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_blob(stmt,  1, msgHash.data(), static_cast<int32_t>(msgHash.size()), SQLITE_STATIC));
@@ -1247,6 +1321,8 @@ int32_t SQLiteStoreConv::insertMsgTrace(const string &name, const string &messag
 
     int32_t flag = attachment ? ATTACHMENT : 0;
     flag = received ? flag | RECEIVED : flag;
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
 
     // char* insertMsgTraceSql = "INSERT INTO MsgTrace (name, messageId, deviceId, convstate, attributes, flags) VALUES (?1, ?2, ?3, ?4, ?5);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMsgTraceSql, -1, &stmt, NULL));
@@ -1397,6 +1473,220 @@ cleanup:
     return sqlResult;
 }
 
+int32_t SQLiteStoreConv::insertReceivedRawData(const string& rawData, const string& uid, const string& displayName, int64_t* sequence)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
+
+    // char* insertReceivedRawSql = "INSERT INTO receivedRaw (rawData, uid, displayName) VALUES (?1, ?2, ?3);";
+    SQLITE_CHK(SQLITE_PREPARE(db, insertReceivedRawSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 1, rawData.data(), static_cast<int32_t>(rawData.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 2, uid.data(), static_cast<int32_t>(uid.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 3, displayName.data(), static_cast<int32_t>(displayName.size()), SQLITE_STATIC));
+
+    sqlResult= sqlite3_step(stmt);
+    *sequence = sqlite3_last_insert_rowid(db);  // This call is not thread-save for multi-thread insert with same db connection
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::loadReceivedRawData(shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    int32_t len;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* selectReceivedRaw = "SELECT sequence, rawData, uid, displayName FROM receivedRaw ORDER BY sequence ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectReceivedRaw, -1, &stmt, NULL));
+
+    sqlResult= sqlite3_step(stmt);
+    while (sqlResult == SQLITE_ROW) {
+        auto msgInfo = make_shared<StoredMsgInfo>();
+        msgInfo->sequence = sqlite3_column_int64(stmt, 0);
+
+        // Get raw message data
+        len = sqlite3_column_bytes(stmt, 1);
+        msgInfo->info_rawMsgData = string((const char*)sqlite3_column_blob(stmt, 1), static_cast<size_t>(len));
+        msgInfo->info_uid = (const char*)sqlite3_column_text(stmt, 2);
+        msgInfo->info_displayName = (const char*)sqlite3_column_text(stmt, 3);
+        rawMessageData->push_back(msgInfo);
+
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::deleteReceivedRawData(int64_t sequence)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* removeReceivedRaw = "DELETE FROM receivedRaw WHERE sequence=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, removeReceivedRaw, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 1, sequence));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <--", sqlResult);
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::cleanReceivedRawData(time_t timestamp)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* cleanReceivedRaw = "DELETE FROM receivedRaw WHERE inserted < ?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, cleanReceivedRaw, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
+/*
+static const char* selectTempMsg = "SELECT sequence, messageData, supplementData, msgType FROM TempMsg ORDER BY sequence ASC;";
+
+ */
+int32_t SQLiteStoreConv::insertTempMsg(const string& messageData, const string& supplementData, int32_t msgType, int64_t* sequence)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
+
+    // char* insertTempMsgSql = "INSERT INTO TempMsg (messageData, supplementData, msgType) VALUES (?1, ?2, ?3);";
+    SQLITE_CHK(SQLITE_PREPARE(db, insertTempMsgSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, messageData.data(), static_cast<int32_t>(messageData.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 2, supplementData.data(), static_cast<int32_t>(supplementData.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_int(stmt, 3, msgType));
+
+    sqlResult= sqlite3_step(stmt);
+    *sequence = sqlite3_last_insert_rowid(db);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::loadTempMsg(shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMessageData)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* selectTempMsg = "SELECT sequence, messageData, supplementData, msgType FROM TempMsg ORDER BY sequence ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectTempMsg, -1, &stmt, NULL));
+
+    sqlResult= sqlite3_step(stmt);
+    while (sqlResult == SQLITE_ROW) {
+        auto msgInfo = make_shared<StoredMsgInfo>();
+        msgInfo->sequence = sqlite3_column_int64(stmt, 0);
+        msgInfo->info_msgDescriptor = (const char*)sqlite3_column_text(stmt, 1);
+        msgInfo->info_supplementary = (const char*)sqlite3_column_text(stmt, 2);
+        msgInfo->info_msgType = sqlite3_column_int(stmt, 3);
+        tempMessageData->push_back(msgInfo);
+
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::deleteTempMsg(int64_t sequence)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* removeTempMsg = "DELETE FROM TempMsg WHERE sequence=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, removeTempMsg, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 1, sequence));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <--", sqlResult);
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::cleanTempMsg(time_t timestamp)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* cleanTempMsgSql = "DELETE FROM TempMsg WHERE inserted < ?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, cleanTempMsgSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    return sqlResult;
+}
+
 
 int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name, const string &ownerUuid, string& description, int32_t maxMembers)
 {
@@ -1404,6 +1694,8 @@ int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name
     int32_t sqlResult;
 
     LOGGER(INFO, __func__, " -->");
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
 
     // char* insertGroupsSql = "INSERT INTO groups (groupId, name, ownerId, description, maxMembers, memberCount, attribute) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertGroupsSql, -1, &stmt, NULL));
@@ -1704,6 +1996,8 @@ int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &mem
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult, sqlResultIncrement;
+    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
+    unique_lock<mutex> lck(sqlLock);
 
     // char* insertMemberSql = "INSERT INTO members (groupId, memberId, attributes) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMemberSql, -1, &stmt, NULL));

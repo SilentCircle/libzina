@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file SipTransport.h
  * @brief Implementation for network transport functions, SIP transport
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -29,12 +29,13 @@ limitations under the License.
 
 #include "../Transport.h"
 #include "../../interfaceApp/AppInterface.h"
+#include "../../interfaceApp/AppInterfaceImpl.h"
 
 static const char* scSipDomain = "@sip.silentcircle.net";
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 
 class SipTransport: public Transport
 {
@@ -47,7 +48,7 @@ public:
 
     SEND_DATA_FUNC getTransport() { return sendAxoData_; }
 
-    vector<int64_t>* sendAxoMessage(const string& recipient, vector< pair< string, string > >* msgPairs, uint32_t messageType);
+    void sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope);
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 

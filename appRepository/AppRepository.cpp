@@ -22,7 +22,7 @@ limitations under the License.
 
 #include <cryptcommon/ZrtpRandom.h>
 
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 
 /* *****************************************************************************
  * A few helping macros. 
@@ -159,7 +159,7 @@ static const char* insertDrPendingSql = "INSERT OR REPLACE INTO drPendingEvent (
 static const char* selectDrPendingSql = "SELECT rowid,data from drPendingEvent ORDER BY startTime ASC;";
 static const char* deleteDrPendingSql = "DELETE FROM drPendingEvent where rowid = ?1";
 
-using namespace axolotl;
+using namespace zina;
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 

@@ -15,14 +15,12 @@ limitations under the License.
 */
 #include "ScProvisioning.h"
 
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
 #include "../Constants.h"
-#include "../axolotl/crypto/EcCurve.h"
+#include "../ratchet/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
-#include "../logging/AxoLogging.h"
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 int32_t (*ScProvisioning::httpHelper_)(const std::string&, const std::string&, const std::string&, std::string*) = NULL;
@@ -39,7 +37,7 @@ void ScProvisioning::setHttpHelper(int32_t (*httpHelper)( const std::string&, co
 
 static const char* registerRequest = "/v1/me/device/%s/axolotl/keys/?api_key=%s";
 
-int32_t Provisioning::registerAxoDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result)
+int32_t Provisioning::registerZinaDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result)
 {
     LOGGER(INFO, __func__, " -->");
     char temp[1000];
@@ -55,7 +53,7 @@ int32_t Provisioning::registerAxoDevice(const std::string& request, const std::s
 // /v1/me/device/<device_id>/axolotl/keys/?api_key=<API_key>
 // Method: DELETE
 
-int32_t Provisioning::removeAxoDevice(const string& scClientDevId, const string& authorization, std::string* result)
+int32_t Provisioning::removeZinaDevice(const string& scClientDevId, const string& authorization, std::string* result)
 {
     LOGGER(INFO, __func__, " -->");
     char temp[1000];
@@ -233,7 +231,7 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
  */
 static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&api_key=%s";
 
-shared_ptr<list<pair<string, string> > > Provisioning::getAxoDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode)
+shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode)
 {
     LOGGER(INFO, __func__, " -->");
 

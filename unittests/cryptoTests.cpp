@@ -13,16 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include "../axolotl/crypto/Ec255PrivateKey.h"
-#include "../axolotl/crypto/Ec255PublicKey.h"
-#include "../axolotl/crypto/EcCurve.h"
-#include "../axolotl/crypto/AesCbc.h"
-#include "../logging/AxoLogging.h"
+#include "../ratchet/crypto/Ec255PrivateKey.h"
+#include "../ratchet/crypto/Ec255PublicKey.h"
+#include "../ratchet/crypto/EcCurve.h"
+#include "../ratchet/crypto/AesCbc.h"
+#include "../logging/ZinaLogging.h"
 #include "gtest/gtest.h"
 
 #include <memory>
 
-using namespace axolotl;
+using namespace zina;
 static int32_t type255 = EcCurveTypes::Curve25519;
 
 class CryptoTestFixture: public ::testing::Test {

@@ -13,26 +13,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#ifndef UIINTERFACE_H
-#define UIINTERFACE_H
+#ifndef APPINTERFACE_H
+#define APPINTERFACE_H
 
 /**
  * @file AppInterface.h
  * @brief Interface to the application
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
 #include <string>
 #include <vector>
 #include <list>
+#include <memory>
 
 #include "../interfaceTransport/Transport.h"
 
 using namespace std;
 
 typedef int32_t (*RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
-typedef int32_t (*STORE_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
 typedef void (*STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
 typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const string& userId, const string& actionInformation);
 
@@ -40,7 +40,16 @@ typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string& commandMessage);
 typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const string& stateInformation);
 
-namespace axolotl {
+namespace zina {
+
+/**
+ * @brief Structure that contains return data of @c prepareMessage functions.
+ */
+typedef struct PreparedMessageData_ {
+    uint64_t transportId;           //!<  The transport id of the prepared message
+    string receiverInfo;            //!<  Some details about the receiver's device of this message
+} PreparedMessageData;
+
 class AppInterface
 {
 public:
@@ -72,99 +81,105 @@ public:
     virtual Transport* getTransport() = 0;
 
     /**
-     * @brief Send a message with an optional attachment and attributes
+     * @brief Prepare a user-to-user message for sending.
      *
-     * Takes JSON formatted message descriptor and send the message. The function accepts
-     * an optional JSON formatted attachment descriptor and sends the attachment data to the
-     * recipient together with the message.
+     * The functions prepares a message and queues it for sending to the receiver' devices.
+     * The function only prpares the message(s) but does not send them. To actually send the
+     * the messages to the device(s) the application needs to call the @c sendPreparedMessage()
+     * function.
      *
-     * This is a blocking call and the function returns after the transport layer accepted the
-     * message and returns. This function may take some time if the recipient is not yet known
-     * and has no Axolotl session. In this case the function interrogates the provisioning server
-     * to get the necessary Axolotl data of the recipient, creates a session and sends the 
-     * message.
+     * This function may trigger network actions, thus it must not run on the UI thread.
      *
-     * After encrypting the message the functions forwards the message data to the message handler.
-     * The message handler takes the message, processes it and returns a unique message id (see 
-     * description of message handler API). The UI should use the unique id to monitor message
-     * state, for example if the message was actually sent, etc. Refer to message state report
-     * callback below. The message id is an opaque datum.
+     * The function creates a list of PreparedMessage data structures that contain information
+     * for each prepared message:
+     * <ul>
+     * <li> a 64 bit integer which is the transport id of the prepared message. Libzina uses this
+     *      transport id to identify a message in transit (during send) to the server and to report
+     *      a message status to the application. The application must not modify this data and may
+     *      use it to setup a queue to monitor the message status reports.</li>
+     * <li> A string that contains recipient information. The data and format is the same as returned
+     *      by @c AppInterfaceImpl::getIdentityKeys
+     * </ul>
      *
-     * The @c sendMessage function does not interpret or re-format the attachment descriptor. It takes
-     * the string, encrypts it with the same key as the message data and puts it into the message
-     * bundle. The same is true for the message attributes.
-     * 
-     * @c sendMessage() may send the message to more than one target if the user has more than one
-     * device registered for Axolotl usage. In this case the method returns a unique 64-bit transport
-     * message id for each message sent. This message id is only used to identity message during
-     * transport handling, not to be confused with a message UUID that the application may create
-     * for a message.
-     *
-     * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     * @param messageDescriptor      the JSON formatted message descriptor, required
+     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
      *                               shows that not attachment descriptor is available.
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
-     * @return unique message identifiers if the messages were processed for sending, @c NULL if processing
-     *         failed.
+     * @param result    Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param normalMsg If true then this is a normal message, if false it's a command message
+     * @return A list of prepared message information, or empty on failure
      */
-    virtual vector<int64_t>* sendMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > >
+    prepareMessage(const string& messageDescriptor,
+                   const string& attachmentDescriptor,
+                   const string& messageAttributes,
+                   bool normalMsg, int32_t* result) = 0;
 
     /**
-     * @brief Send message to sibling devices.
-     * 
-     * Similar to @c sendMessage, however send this data to sibling devices, i.e. to other devices that
-     * belong to the same user account. The client uses function to send synchronization messages to siblings to
-     * keep them in sync.
-     * 
-     * @param messageDescriptor      The JSON formatted message descriptor, required
-     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
-     *                               shows that not attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @return unique message identifiers if the messages were processed for sending, 0 if processing
-     *         failed.
+     * @brief Prepare a user-to-user message for sending to its sibling devices.
+     *
+     * This function performs the same actions as the @c prepareMessage function, it only sends
+     * the message to the user's sibling devices if such devices are available.
+     *
+     * @param messageDescriptor     the JSON formatted message descriptor, required
+
+     * @param attachmentDescriptor  Optional, a string that contains an attachment descriptor. An empty string
+     *                              shows that not attachment descriptor is available.
+     * @param messageAttributes     Optional, a JSON formatted string that contains message attributes. An empty
+     *                              string shows that not attributes are available.
+     * @param result    Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param normalMsg If true then this is a normal message, if false it's a command message. Messages to
+     *                  siblings are usually commands
+     * @return A list of prepared message information, or empty on failure
      */
-    virtual vector<int64_t>* sendMessageToSiblings(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > >
+    prepareMessageToSiblings(const string &messageDescriptor,
+                             const string &attachmentDescriptor,
+                             const string &messageAttributes,
+                             bool normalMsg, int32_t *result) = 0;
 
     /**
-     * @brief Receive a message from transport
-     * 
-     * The function unpacks the message data, sender, sender's device and other data,
-     * performs some consistency checks and calls the Axolotl ratchet to decrypt the
-     * message and the supplementary data. After decryption the function constructs
-     * a JSON data structure containing sender's name, message information and calls 
-     * into the UI to handle the message, attributes, and attachments.
+     * @brief Encrypt the prepared messages and send them to the receiver.
      *
-     * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
+     * Queues the prepared message for encryption and sending to the receiver's devices.
      *
-     * @return Either success or an error code
+     * @param transportIds An array of transport id that identify the messages to encrypt and send.
+     * @return Number of queued messages, a negative value on failure
      */
-    virtual int32_t receiveMessage(const string& messageEnvelope) = 0;
+    virtual int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
+
+    /**
+     * @brief Remove prepared messages from its queue.
+     *
+     * This function removes prepared messages from the prepared message queue. The function
+     * does not remove prepared messages that were already sent by @c doSendMessages.
+     *
+     * @param transportIds An array of transport id that identify the messages to remove.
+     * @return Number of removed messages, a negative value on failure
+     */
+    virtual int32_t removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
 
     /**
      * @brief Receive a Message from transport
-     * 
-     * The function unpacks the message data, sender, sender's device and other data,
-     * performs some consistency checks and calls the Axolotl ratched to decrypt the
-     * message and the supplementary data. After decryption the functions constructs
-     * a JSON data structure containing sender's name, message information and calls 
-     * into the UI to handle the message, attributes, and attachments.
-     * 
+     *
+     * The function creates stores the received encrypted message raw data in a databse table,
+     * creates a message information structure for this message and puts it into the tun-Q.
+     *
      * @param messageEnvelope The proto-buffer message envelope, encoded as a base64 string
      * @param uid   The SIP receiver callback sets this to the sender's UID if available, an
      *              empty string if not available
      * @param alias The SIP receiver callback sets this to the sender's primary alias name
-     *              if available, an empty string if not available
+     *              (display name) if available, an empty string if not available
      *
      * @return Either success or an error code
      */
-    virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& alias) = 0;
+    virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName) = 0;
 
     /**
-     * @brief Request names of known trusted Axolotl user identities
+     * @brief Request names of known trusted ZINA user identities
      *
-     * The Axolotl library stores an identity (name) for each remote user.
+     * The ZINA library stores an identity (name) for each remote user.
      *
      * @return JSON formatted information about the known users. It returns an empty 
      *         JSON array if no users known. It returns NULL in case the request failed.
@@ -187,7 +202,7 @@ public:
      * The returned strings is the B64 encoded data of the own public identity key, optinally
      * followed by a colon and the device name. Thus the returned string:
      *
-     *   @c identityKey:deviceName
+     *   @c identityKey:deviceName:deviceId:zrtpStatus
      *
      * @return formatted string, device name part may be empty if no device name was defined.
      */
@@ -196,9 +211,10 @@ public:
     /**
      * @brief Get a list of all identity keys of a user.
      * 
-     * The remote partner may have more than one device. This function returns the identity 
-     * keys of remote user's devices that this client knows of. The client sends messages only
-     * to these known device of the remote user.
+     * The remote partner or the own account may have more than one device. This function returns
+     * the identity keys of remote user's or own sibling devices that this client knows of. The
+     * client sends messages only to these known device of the remote user or to the known sibling
+     * devices.
      * 
      * The returned strings in the list contain the B64 encoded data of the public identity keys
      * of the known devices, followed by a colon and the device name, followed by a colon and the
@@ -211,7 +227,7 @@ public:
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.
      */
-    virtual list<string>* getIdentityKeys(string& user) const = 0;
+    virtual shared_ptr<list<string> > getIdentityKeys(string& user) const = 0;
 
     /**
      * @brief Register device
@@ -225,7 +241,7 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server return code, usually a HTTP code, e.g. 200 for OK
      */
-    virtual int32_t registerAxolotlDevice(string* result) = 0;
+    virtual int32_t registerZinaDevice(string* result) = 0;
 
      /**
      * @brief Generate and register a set of new pre-keys.
@@ -513,4 +529,4 @@ public:
  * @}
  */
 
-#endif // UIINTERFACE_H
+#endif // APPINTERFACE_H

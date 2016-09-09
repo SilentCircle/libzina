@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file AppRepository.h
  * @brief Implementation of a repository for a messaging application.
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -37,7 +37,7 @@ limitations under the License.
 
 using namespace std;
 
-namespace axolotl {
+namespace zina {
 
 class AppRepository 
 {
@@ -489,7 +489,7 @@ private:
     mutable int32_t sqlCode_;
     mutable char lastError_[DB_CACHE_ERR_BUFF_SIZE];
 };
-} // namespace axolotl
+} // namespace zina
 
 /**
  * @}

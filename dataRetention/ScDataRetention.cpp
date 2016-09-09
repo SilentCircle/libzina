@@ -1,14 +1,13 @@
 #include "ScDataRetention.h"
 
 #include "../util/cJSON.h"
-#include "../util/b64helper.h"
-#include "../logging/AxoLogging.h"
+#include "../logging/ZinaLogging.h"
 #include "../appRepository/AppRepository.h"
+#include "../ratchet/state/ZinaConversation.h"
 
-#include <memory>
 #include <zlib.h>
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 namespace {
@@ -58,7 +57,7 @@ std::string time_to_string(time_t time)
 std::string compress(const std::string& input)
 {
     z_stream zs;
-    memset(&zs, 0, sizeof(zs));
+    memset_volatile(&zs, 0, sizeof(zs));
 
     if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED,
                      ZLIB_DEFAULT_WINDOW_BITS + USE_GZIP_FORMAT, ZLIB_DEFAULT_MEMLEVEL,

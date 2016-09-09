@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file PreKeys.h
  * @brief Generate and store pre-keys
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -27,12 +27,12 @@ limitations under the License.
 #include <stdint.h>
 #include <list>
 
-#include "../axolotl/crypto/DhKeyPair.h"
+#include "../ratchet/crypto/DhKeyPair.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../Constants.h"
 
 using namespace std;
-namespace axolotl {
+namespace zina {
 
 class PreKeys
 {
@@ -70,7 +70,7 @@ public:
      */
     static DhKeyPair* parsePreKeyData(const string& data);
 };
-} // namespace axolotl
+} // namespace zina
 
 /**
  * @}

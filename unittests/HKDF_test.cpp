@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include <limits.h>
-#include "../axolotl/crypto/HKDF.h"
-#include "../logging/AxoLogging.h"
+#include "../ratchet/crypto/HKDF.h"
+#include "../logging/ZinaLogging.h"
 #include "gtest/gtest.h"
 
 uint8_t ikm_t1[] = {
@@ -124,7 +124,7 @@ public:
 TEST_F(HkdfTestFixture, HKDFTest1) {
     uint8_t output[42] = {0};
 
-    axolotl::HKDF::deriveSecrets(ikm_t1, sizeof(ikm_t1), salt_t1, sizeof(salt_t1), info_t1, sizeof(info_t1), output, 42);
+    zina::HKDF::deriveSecrets(ikm_t1, sizeof(ikm_t1), salt_t1, sizeof(salt_t1), info_t1, sizeof(info_t1), output, 42);
     for (int i = 0; i < 42; ++i) {
         EXPECT_EQ(okm_t1[i], output[i]) << "key material okm_1 and computed output differ at index " << i;
     }
@@ -133,7 +133,7 @@ TEST_F(HkdfTestFixture, HKDFTest1) {
 TEST_F(HkdfTestFixture, HKDFTest2) {
     uint8_t output[82] = {0};
 
-    axolotl::HKDF::deriveSecrets(ikm_t2, sizeof(ikm_t2), salt_t2, sizeof(salt_t2), info_t2, sizeof(info_t2), output, 82);
+    zina::HKDF::deriveSecrets(ikm_t2, sizeof(ikm_t2), salt_t2, sizeof(salt_t2), info_t2, sizeof(info_t2), output, 82);
     for (int i = 0; i < 82; ++i) {
         EXPECT_EQ(okm_t2[i], output[i]) << "key material okm_t2 and computed output differ at index " << i;
     }

@@ -32,7 +32,7 @@ else
 fi
 
 # now copy the created static libs to silentphone2 JNI directory
-cp android/obj/local/armeabi-v7a/libaxolotl++.a ${WORKSPACE}/silentphone2/jni/armeabi-v7a/
+cp android/obj/local/armeabi-v7a/libzina.a ${WORKSPACE}/silentphone2/jni/armeabi-v7a/
 
 # Back to main Axolotl directory
 cd ..

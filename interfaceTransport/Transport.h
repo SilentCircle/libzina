@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file Transport.h
  * @brief Interface for tnetwork transport functions
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -27,10 +27,7 @@ limitations under the License.
 #include <utility>
 #include <vector>
 #include <string>
-
-
-//void sendDataFunc(uint8_t* names[], uint8_t* recipientScClientDevIds[], uint8_t* data[], size_t length[], uint64_t msgIds[]);
-// typedef void (*SEND_DATA_FUNC)(uint8_t* [], uint8_t* [], uint8_t* [], size_t [], uint64_t []);
+#include <memory>
 
 // bool g_sendDataFuncAxoNew(uint8_t* name, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgId){
 typedef bool (*SEND_DATA_FUNC)(uint8_t*, uint8_t*, uint8_t*, size_t, uint64_t);
@@ -38,7 +35,11 @@ typedef bool (*SEND_DATA_FUNC)(uint8_t*, uint8_t*, uint8_t*, size_t, uint64_t);
 
 using namespace std;
 
-namespace axolotl{
+namespace zina {
+
+// Forward declaration to avoid include of AppInterfaceImpl.h
+typedef struct CmdQueueInfo_ CmdQueueInfo;
+
 class Transport
 {
 public:
@@ -64,14 +65,10 @@ public:
      * The App interface calls this function after it prepared the message envelopes. If the user has
      * more than one Axolotl device then the function sends out all envelopes, one for each device.
      * 
-     * @param recipient The recipient's name.
-     * @param msgPairs a vector of message pairs. The first element in each pair contains the long device id
-     *                 of one of the recipient's device. The name/device id identifies a unique device. The second
-     *                 element of the pair is the message envelope to send.
-     * @param messageTYpe The type of the message, for example group or normal message
-     * @return a vector of int64_t unique message ids, one id for each message sent.
+     * @param info The meta-data of the message ot send
+     * @param envelope The message envelope, serialized as string and B64 encoded
      */
-    virtual std::vector<int64_t>* sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs, uint32_t messageType) = 0;
+    virtual void sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope) = 0;
 
     /**
      * @brief Receive data from network transport - callback function for network layer.

@@ -13,19 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include <limits.h>
 #include "gtest/gtest.h"
 
-#include "../axolotl/state/AxoConversation.h"
+#include "../ratchet/state/ZinaConversation.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
-#include "../axolotl/crypto/EcCurve.h"
-#include "../axolotl/crypto/EcCurveTypes.h"
-#include "../axolotl/crypto/Ec255PublicKey.h"
 #include "../util/UUID.h"
-#include "../logging/AxoLogging.h"
 
-#include <iostream>
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 static std::string aliceName("alice@wonderland.org");

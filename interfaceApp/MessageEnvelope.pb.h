@@ -25,7 +25,7 @@
 #include <google/protobuf/extension_set.h>
 // @@protoc_insertion_point(includes)
 
-namespace axolotl {
+namespace zina {
 
 // Internal implementation detail -- do not call these.
 void  protobuf_AddDesc_MessageEnvelope_2eproto();
@@ -224,7 +224,7 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_uid();
   inline void set_allocated_uid(::std::string* uid);
 
-  // @@protoc_insertion_point(class_scope:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(class_scope:zina.MessageEnvelope)
  private:
   inline void set_has_name();
   inline void clear_has_name();
@@ -299,7 +299,7 @@ inline void MessageEnvelope::clear_name() {
   clear_has_name();
 }
 inline const ::std::string& MessageEnvelope::name() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.name)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.name)
   return *name_;
 }
 inline void MessageEnvelope::set_name(const ::std::string& value) {
@@ -308,7 +308,7 @@ inline void MessageEnvelope::set_name(const ::std::string& value) {
     name_ = new ::std::string;
   }
   name_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.name)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.name)
 }
 inline void MessageEnvelope::set_name(const char* value) {
   set_has_name();
@@ -316,7 +316,7 @@ inline void MessageEnvelope::set_name(const char* value) {
     name_ = new ::std::string;
   }
   name_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.name)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.name)
 }
 inline void MessageEnvelope::set_name(const char* value, size_t size) {
   set_has_name();
@@ -324,14 +324,14 @@ inline void MessageEnvelope::set_name(const char* value, size_t size) {
     name_ = new ::std::string;
   }
   name_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.name)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.name)
 }
 inline ::std::string* MessageEnvelope::mutable_name() {
   set_has_name();
   if (name_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     name_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.name)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.name)
   return name_;
 }
 inline ::std::string* MessageEnvelope::release_name() {
@@ -355,7 +355,7 @@ inline void MessageEnvelope::set_allocated_name(::std::string* name) {
     clear_has_name();
     name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.name)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.name)
 }
 
 // optional string scClientDevId = 2;
@@ -375,7 +375,7 @@ inline void MessageEnvelope::clear_scclientdevid() {
   clear_has_scclientdevid();
 }
 inline const ::std::string& MessageEnvelope::scclientdevid() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.scClientDevId)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.scClientDevId)
   return *scclientdevid_;
 }
 inline void MessageEnvelope::set_scclientdevid(const ::std::string& value) {
@@ -384,7 +384,7 @@ inline void MessageEnvelope::set_scclientdevid(const ::std::string& value) {
     scclientdevid_ = new ::std::string;
   }
   scclientdevid_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.scClientDevId)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.scClientDevId)
 }
 inline void MessageEnvelope::set_scclientdevid(const char* value) {
   set_has_scclientdevid();
@@ -392,7 +392,7 @@ inline void MessageEnvelope::set_scclientdevid(const char* value) {
     scclientdevid_ = new ::std::string;
   }
   scclientdevid_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.scClientDevId)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.scClientDevId)
 }
 inline void MessageEnvelope::set_scclientdevid(const char* value, size_t size) {
   set_has_scclientdevid();
@@ -400,14 +400,14 @@ inline void MessageEnvelope::set_scclientdevid(const char* value, size_t size) {
     scclientdevid_ = new ::std::string;
   }
   scclientdevid_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.scClientDevId)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.scClientDevId)
 }
 inline ::std::string* MessageEnvelope::mutable_scclientdevid() {
   set_has_scclientdevid();
   if (scclientdevid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     scclientdevid_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.scClientDevId)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.scClientDevId)
   return scclientdevid_;
 }
 inline ::std::string* MessageEnvelope::release_scclientdevid() {
@@ -431,7 +431,7 @@ inline void MessageEnvelope::set_allocated_scclientdevid(::std::string* scclient
     clear_has_scclientdevid();
     scclientdevid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.scClientDevId)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.scClientDevId)
 }
 
 // optional uint32 msgType = 3;
@@ -449,13 +449,13 @@ inline void MessageEnvelope::clear_msgtype() {
   clear_has_msgtype();
 }
 inline ::google::protobuf::uint32 MessageEnvelope::msgtype() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.msgType)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.msgType)
   return msgtype_;
 }
 inline void MessageEnvelope::set_msgtype(::google::protobuf::uint32 value) {
   set_has_msgtype();
   msgtype_ = value;
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.msgType)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.msgType)
 }
 
 // optional bytes supplement = 4;
@@ -475,7 +475,7 @@ inline void MessageEnvelope::clear_supplement() {
   clear_has_supplement();
 }
 inline const ::std::string& MessageEnvelope::supplement() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.supplement)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.supplement)
   return *supplement_;
 }
 inline void MessageEnvelope::set_supplement(const ::std::string& value) {
@@ -484,7 +484,7 @@ inline void MessageEnvelope::set_supplement(const ::std::string& value) {
     supplement_ = new ::std::string;
   }
   supplement_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.supplement)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.supplement)
 }
 inline void MessageEnvelope::set_supplement(const char* value) {
   set_has_supplement();
@@ -492,7 +492,7 @@ inline void MessageEnvelope::set_supplement(const char* value) {
     supplement_ = new ::std::string;
   }
   supplement_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.supplement)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.supplement)
 }
 inline void MessageEnvelope::set_supplement(const void* value, size_t size) {
   set_has_supplement();
@@ -500,14 +500,14 @@ inline void MessageEnvelope::set_supplement(const void* value, size_t size) {
     supplement_ = new ::std::string;
   }
   supplement_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.supplement)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.supplement)
 }
 inline ::std::string* MessageEnvelope::mutable_supplement() {
   set_has_supplement();
   if (supplement_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     supplement_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.supplement)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.supplement)
   return supplement_;
 }
 inline ::std::string* MessageEnvelope::release_supplement() {
@@ -531,7 +531,7 @@ inline void MessageEnvelope::set_allocated_supplement(::std::string* supplement)
     clear_has_supplement();
     supplement_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.supplement)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.supplement)
 }
 
 // optional bytes message = 5;
@@ -551,7 +551,7 @@ inline void MessageEnvelope::clear_message() {
   clear_has_message();
 }
 inline const ::std::string& MessageEnvelope::message() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.message)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.message)
   return *message_;
 }
 inline void MessageEnvelope::set_message(const ::std::string& value) {
@@ -560,7 +560,7 @@ inline void MessageEnvelope::set_message(const ::std::string& value) {
     message_ = new ::std::string;
   }
   message_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.message)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.message)
 }
 inline void MessageEnvelope::set_message(const char* value) {
   set_has_message();
@@ -568,7 +568,7 @@ inline void MessageEnvelope::set_message(const char* value) {
     message_ = new ::std::string;
   }
   message_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.message)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.message)
 }
 inline void MessageEnvelope::set_message(const void* value, size_t size) {
   set_has_message();
@@ -576,14 +576,14 @@ inline void MessageEnvelope::set_message(const void* value, size_t size) {
     message_ = new ::std::string;
   }
   message_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.message)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.message)
 }
 inline ::std::string* MessageEnvelope::mutable_message() {
   set_has_message();
   if (message_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     message_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.message)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.message)
   return message_;
 }
 inline ::std::string* MessageEnvelope::release_message() {
@@ -607,7 +607,7 @@ inline void MessageEnvelope::set_allocated_message(::std::string* message) {
     clear_has_message();
     message_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.message)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.message)
 }
 
 // optional string msgId = 6;
@@ -627,7 +627,7 @@ inline void MessageEnvelope::clear_msgid() {
   clear_has_msgid();
 }
 inline const ::std::string& MessageEnvelope::msgid() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.msgId)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.msgId)
   return *msgid_;
 }
 inline void MessageEnvelope::set_msgid(const ::std::string& value) {
@@ -636,7 +636,7 @@ inline void MessageEnvelope::set_msgid(const ::std::string& value) {
     msgid_ = new ::std::string;
   }
   msgid_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.msgId)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.msgId)
 }
 inline void MessageEnvelope::set_msgid(const char* value) {
   set_has_msgid();
@@ -644,7 +644,7 @@ inline void MessageEnvelope::set_msgid(const char* value) {
     msgid_ = new ::std::string;
   }
   msgid_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.msgId)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.msgId)
 }
 inline void MessageEnvelope::set_msgid(const char* value, size_t size) {
   set_has_msgid();
@@ -652,14 +652,14 @@ inline void MessageEnvelope::set_msgid(const char* value, size_t size) {
     msgid_ = new ::std::string;
   }
   msgid_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.msgId)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.msgId)
 }
 inline ::std::string* MessageEnvelope::mutable_msgid() {
   set_has_msgid();
   if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     msgid_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.msgId)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.msgId)
   return msgid_;
 }
 inline ::std::string* MessageEnvelope::release_msgid() {
@@ -683,7 +683,7 @@ inline void MessageEnvelope::set_allocated_msgid(::std::string* msgid) {
     clear_has_msgid();
     msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.msgId)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.msgId)
 }
 
 // optional bytes recvIdHash = 7;
@@ -703,7 +703,7 @@ inline void MessageEnvelope::clear_recvidhash() {
   clear_has_recvidhash();
 }
 inline const ::std::string& MessageEnvelope::recvidhash() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.recvIdHash)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.recvIdHash)
   return *recvidhash_;
 }
 inline void MessageEnvelope::set_recvidhash(const ::std::string& value) {
@@ -712,7 +712,7 @@ inline void MessageEnvelope::set_recvidhash(const ::std::string& value) {
     recvidhash_ = new ::std::string;
   }
   recvidhash_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.recvIdHash)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.recvIdHash)
 }
 inline void MessageEnvelope::set_recvidhash(const char* value) {
   set_has_recvidhash();
@@ -720,7 +720,7 @@ inline void MessageEnvelope::set_recvidhash(const char* value) {
     recvidhash_ = new ::std::string;
   }
   recvidhash_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.recvIdHash)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.recvIdHash)
 }
 inline void MessageEnvelope::set_recvidhash(const void* value, size_t size) {
   set_has_recvidhash();
@@ -728,14 +728,14 @@ inline void MessageEnvelope::set_recvidhash(const void* value, size_t size) {
     recvidhash_ = new ::std::string;
   }
   recvidhash_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.recvIdHash)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.recvIdHash)
 }
 inline ::std::string* MessageEnvelope::mutable_recvidhash() {
   set_has_recvidhash();
   if (recvidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     recvidhash_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.recvIdHash)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.recvIdHash)
   return recvidhash_;
 }
 inline ::std::string* MessageEnvelope::release_recvidhash() {
@@ -759,7 +759,7 @@ inline void MessageEnvelope::set_allocated_recvidhash(::std::string* recvidhash)
     clear_has_recvidhash();
     recvidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.recvIdHash)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.recvIdHash)
 }
 
 // optional bytes senderIdHash = 8;
@@ -779,7 +779,7 @@ inline void MessageEnvelope::clear_senderidhash() {
   clear_has_senderidhash();
 }
 inline const ::std::string& MessageEnvelope::senderidhash() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.senderIdHash)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.senderIdHash)
   return *senderidhash_;
 }
 inline void MessageEnvelope::set_senderidhash(const ::std::string& value) {
@@ -788,7 +788,7 @@ inline void MessageEnvelope::set_senderidhash(const ::std::string& value) {
     senderidhash_ = new ::std::string;
   }
   senderidhash_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.senderIdHash)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.senderIdHash)
 }
 inline void MessageEnvelope::set_senderidhash(const char* value) {
   set_has_senderidhash();
@@ -796,7 +796,7 @@ inline void MessageEnvelope::set_senderidhash(const char* value) {
     senderidhash_ = new ::std::string;
   }
   senderidhash_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.senderIdHash)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.senderIdHash)
 }
 inline void MessageEnvelope::set_senderidhash(const void* value, size_t size) {
   set_has_senderidhash();
@@ -804,14 +804,14 @@ inline void MessageEnvelope::set_senderidhash(const void* value, size_t size) {
     senderidhash_ = new ::std::string;
   }
   senderidhash_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.senderIdHash)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.senderIdHash)
 }
 inline ::std::string* MessageEnvelope::mutable_senderidhash() {
   set_has_senderidhash();
   if (senderidhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     senderidhash_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.senderIdHash)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.senderIdHash)
   return senderidhash_;
 }
 inline ::std::string* MessageEnvelope::release_senderidhash() {
@@ -835,7 +835,7 @@ inline void MessageEnvelope::set_allocated_senderidhash(::std::string* senderidh
     clear_has_senderidhash();
     senderidhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.senderIdHash)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.senderIdHash)
 }
 
 // optional string recvDeviceId = 9;
@@ -855,7 +855,7 @@ inline void MessageEnvelope::clear_recvdeviceid() {
   clear_has_recvdeviceid();
 }
 inline const ::std::string& MessageEnvelope::recvdeviceid() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.recvDeviceId)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.recvDeviceId)
   return *recvdeviceid_;
 }
 inline void MessageEnvelope::set_recvdeviceid(const ::std::string& value) {
@@ -864,7 +864,7 @@ inline void MessageEnvelope::set_recvdeviceid(const ::std::string& value) {
     recvdeviceid_ = new ::std::string;
   }
   recvdeviceid_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.recvDeviceId)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.recvDeviceId)
 }
 inline void MessageEnvelope::set_recvdeviceid(const char* value) {
   set_has_recvdeviceid();
@@ -872,7 +872,7 @@ inline void MessageEnvelope::set_recvdeviceid(const char* value) {
     recvdeviceid_ = new ::std::string;
   }
   recvdeviceid_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.recvDeviceId)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.recvDeviceId)
 }
 inline void MessageEnvelope::set_recvdeviceid(const char* value, size_t size) {
   set_has_recvdeviceid();
@@ -880,14 +880,14 @@ inline void MessageEnvelope::set_recvdeviceid(const char* value, size_t size) {
     recvdeviceid_ = new ::std::string;
   }
   recvdeviceid_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.recvDeviceId)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.recvDeviceId)
 }
 inline ::std::string* MessageEnvelope::mutable_recvdeviceid() {
   set_has_recvdeviceid();
   if (recvdeviceid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     recvdeviceid_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.recvDeviceId)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.recvDeviceId)
   return recvdeviceid_;
 }
 inline ::std::string* MessageEnvelope::release_recvdeviceid() {
@@ -911,7 +911,7 @@ inline void MessageEnvelope::set_allocated_recvdeviceid(::std::string* recvdevic
     clear_has_recvdeviceid();
     recvdeviceid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.recvDeviceId)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.recvDeviceId)
 }
 
 // optional bytes recvDevIdBin = 10;
@@ -931,7 +931,7 @@ inline void MessageEnvelope::clear_recvdevidbin() {
   clear_has_recvdevidbin();
 }
 inline const ::std::string& MessageEnvelope::recvdevidbin() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.recvDevIdBin)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.recvDevIdBin)
   return *recvdevidbin_;
 }
 inline void MessageEnvelope::set_recvdevidbin(const ::std::string& value) {
@@ -940,7 +940,7 @@ inline void MessageEnvelope::set_recvdevidbin(const ::std::string& value) {
     recvdevidbin_ = new ::std::string;
   }
   recvdevidbin_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.recvDevIdBin)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.recvDevIdBin)
 }
 inline void MessageEnvelope::set_recvdevidbin(const char* value) {
   set_has_recvdevidbin();
@@ -948,7 +948,7 @@ inline void MessageEnvelope::set_recvdevidbin(const char* value) {
     recvdevidbin_ = new ::std::string;
   }
   recvdevidbin_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.recvDevIdBin)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.recvDevIdBin)
 }
 inline void MessageEnvelope::set_recvdevidbin(const void* value, size_t size) {
   set_has_recvdevidbin();
@@ -956,14 +956,14 @@ inline void MessageEnvelope::set_recvdevidbin(const void* value, size_t size) {
     recvdevidbin_ = new ::std::string;
   }
   recvdevidbin_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.recvDevIdBin)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.recvDevIdBin)
 }
 inline ::std::string* MessageEnvelope::mutable_recvdevidbin() {
   set_has_recvdevidbin();
   if (recvdevidbin_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     recvdevidbin_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.recvDevIdBin)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.recvDevIdBin)
   return recvdevidbin_;
 }
 inline ::std::string* MessageEnvelope::release_recvdevidbin() {
@@ -987,7 +987,7 @@ inline void MessageEnvelope::set_allocated_recvdevidbin(::std::string* recvdevid
     clear_has_recvdevidbin();
     recvdevidbin_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.recvDevIdBin)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.recvDevIdBin)
 }
 
 // optional string uid = 11;
@@ -1007,7 +1007,7 @@ inline void MessageEnvelope::clear_uid() {
   clear_has_uid();
 }
 inline const ::std::string& MessageEnvelope::uid() const {
-  // @@protoc_insertion_point(field_get:axolotl.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.uid)
   return *uid_;
 }
 inline void MessageEnvelope::set_uid(const ::std::string& value) {
@@ -1016,7 +1016,7 @@ inline void MessageEnvelope::set_uid(const ::std::string& value) {
     uid_ = new ::std::string;
   }
   uid_->assign(value);
-  // @@protoc_insertion_point(field_set:axolotl.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.uid)
 }
 inline void MessageEnvelope::set_uid(const char* value) {
   set_has_uid();
@@ -1024,7 +1024,7 @@ inline void MessageEnvelope::set_uid(const char* value) {
     uid_ = new ::std::string;
   }
   uid_->assign(value);
-  // @@protoc_insertion_point(field_set_char:axolotl.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.uid)
 }
 inline void MessageEnvelope::set_uid(const char* value, size_t size) {
   set_has_uid();
@@ -1032,14 +1032,14 @@ inline void MessageEnvelope::set_uid(const char* value, size_t size) {
     uid_ = new ::std::string;
   }
   uid_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:axolotl.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.uid)
 }
 inline ::std::string* MessageEnvelope::mutable_uid() {
   set_has_uid();
   if (uid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     uid_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:axolotl.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.uid)
   return uid_;
 }
 inline ::std::string* MessageEnvelope::release_uid() {
@@ -1063,13 +1063,13 @@ inline void MessageEnvelope::set_allocated_uid(::std::string* uid) {
     clear_has_uid();
     uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:axolotl.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.uid)
 }
 
 
 // @@protoc_insertion_point(namespace_scope)
 
-}  // namespace axolotl
+}  // namespace zina
 
 // @@protoc_insertion_point(global_scope)
 

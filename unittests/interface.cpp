@@ -13,34 +13,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-#include <limits.h>
 
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
-#include "../axolotl/crypto/Ec255PrivateKey.h"
-#include "../axolotl/crypto/Ec255PublicKey.h"
-#include "../axolotl/crypto/EcCurve.h"
-#include "../axolotl/state/AxoConversation.h"
+#include "../ratchet/crypto/Ec255PrivateKey.h"
+#include "../ratchet/crypto/Ec255PublicKey.h"
+#include "../ratchet/crypto/EcCurve.h"
+#include "../ratchet/state/ZinaConversation.h"
 
 #include "../interfaceApp/AppInterfaceImpl.h"
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
-#include "../Constants.h"
 #include "../keymanagment/PreKeys.h"
 #include "../provisioning/ScProvisioning.h"
-#include "../axolotl/crypto/DhKeyPair.h"
 
 #include "gtest/gtest.h"
-#include <iostream>
-#include <string>
-#include <utility>
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
 static const uint8_t keyInData_2[] = {"ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW"};  // 32 bytes
 static     std::string empty;
 
-using namespace axolotl;
+using namespace zina;
 using namespace std;
 
 SQLiteStoreConv* store;
@@ -101,7 +94,7 @@ TEST(RegisterRequest, Basic)
     string name("wernerd");
     string devId("myDev-id");
     AppInterfaceImpl uiIf(store, name, string("myAPI-key"), devId);
-    AxoConversation* ownAxoConv = AxoConversation::loadLocalConversation(name);
+    auto ownAxoConv = ZinaConversation::loadLocalConversation(name);
 
     if (!ownAxoConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
@@ -110,7 +103,7 @@ TEST(RegisterRequest, Basic)
     }
 
     std::string result;
-    int32_t ret = uiIf.registerAxolotlDevice(&result);
+    int32_t ret = uiIf.registerZinaDevice(&result);
 
     ASSERT_TRUE(ret > 0) << "Actual return value: " << ret;
 }
@@ -171,7 +164,7 @@ TEST(PreKeyBundle, Basic)
     ScProvisioning::setHttpHelper(helper1);
 
 
-    pair< const axolotl::DhPublicKey*, const axolotl::DhPublicKey* > preIdKeys;
+    pair< const DhPublicKey*, const DhPublicKey* > preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(bob, bobDevId, bobAuth, &preIdKeys);
     
     ASSERT_EQ(bobPreKey.first, preKeyId);
@@ -280,7 +273,7 @@ TEST(GetDeviceIds, Basic)
         store->openStore(std::string());
     }
     ScProvisioning::setHttpHelper(helper3);
-    shared_ptr<list<pair<string, string> > > devIds = Provisioning::getAxoDeviceIds(bob, bobAuth);
+    shared_ptr<list<pair<string, string> > > devIds = Provisioning::getZinaDeviceIds(bob, bobAuth);
 
     ASSERT_TRUE((bool)devIds);
 

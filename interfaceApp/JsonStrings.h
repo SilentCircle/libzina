@@ -3,10 +3,10 @@
 // Created by werner on 22.05.16.
 //
 
-#ifndef LIBAXOLOTL_JSONSTRINGS_H
-#define LIBAXOLOTL_JSONSTRINGS_H
+#ifndef LIBZINA_JSONSTRINGS_H
+#define LIBZINA_JSONSTRINGS_H
 
-namespace axolotl {
+namespace zina {
     static const char* GROUP_ID = "grpId";
     static const char* GROUP_NAME = "name";
     static const char* GROUP_OWNER = "ownerId";
@@ -21,14 +21,23 @@ namespace axolotl {
     static const char* MEMBER_ATTRIBUTE = "mbrA";
     static const char* MEMBER_MOD_TIME = "mbrMT";
 
+    static const char* MSG_VERSION = "version";
     static const char* MSG_RECIPIENT = "recipient";
     static const char* MSG_ID = "msgId";
     static const char* MSG_MESSAGE = "message";
     static const char* MSG_SENDER = "sender";
+    static const char* MSG_DEVICE_ID = "scClientDevId";
+    static const char* MSG_DISPLAY_NAME = "display_name";
+    static const char* MSG_COMMAND = "cmd";
+    static const char* MSG_SYNC_COMMAND = "syc";
+    static const char* MSG_TYPE = "type";
+
+    // The following strings follow the MSG_COMMAND and identify the command
+    static const char* DELIVERY_RECEIPT = "dr";
 
     static const char* GROUP_COMMAND = "grp";
 
-    // The following string follow the GROUP_COMMAND and identify the command
+    // The following strings follow the GROUP_COMMAND and identify the command
     static const char* INVITE = "inv";          //!< Group Invitation
     static const char* INVITE_ANSWER = "ian";   //!< Invitation answer
     static const char* MEMBER_LIST = "mls";     //!< Command contain a group's member list
@@ -47,7 +56,7 @@ namespace axolotl {
     static const char* MEMBERS = "mbrs";
     static const char* INITIAL_LIST = "ini";
     static const char* LIST_HASH = "hash";
-
+    static const char* DELIVERY_TIME = "dr_time";
 
 }
-#endif //LIBAXOLOTL_JSONSTRINGS_H
+#endif //LIBZINA_JSONSTRINGS_H

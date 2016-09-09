@@ -19,8 +19,8 @@ limitations under the License.
 #include "scloud.h"
 #include "scloudPriv.h"
 #include "../utilities.h"
-#include "../../axolotl/crypto/HKDF.h"
-#include "../../logging/AxoLogging.h"
+#include "../../ratchet/crypto/HKDF.h"
+#include "../../logging/ZinaLogging.h"
 
 #ifndef roundup
 #define roundup(x, y)   ((((x) % (y)) == 0) ? \
@@ -158,7 +158,7 @@ SCLError SCloudCalculateKey(SCloudContextRef ctx, size_t blocksize)
     }
 
     // Use HDKF with 2 input parameters: ikm, info
-    axolotl::HKDF::deriveSecrets(hash, SKEIN256_DIGEST_LENGTH,             // hash as input key material to HASH KDF
+    zina::HKDF::deriveSecrets(hash, SKEIN256_DIGEST_LENGTH,             // hash as input key material to HASH KDF
                                  ctx->contextStr, ctx->contextStrLen, // secret salt to avoid attacks on convergent encryption
                                  (uint8_t*)scCloudKeyLabel, strlen(scCloudKeyLabel), // fixed string "ScloudDerivedKeyIvLocator" as info
                                  derivedData, numBytes);

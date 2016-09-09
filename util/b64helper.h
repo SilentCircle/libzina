@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file b64helper.h
  * @brief Base64 encoding/decoding helpers
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 

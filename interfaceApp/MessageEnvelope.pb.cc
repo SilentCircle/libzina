@@ -13,7 +13,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 // @@protoc_insertion_point(includes)
 
-namespace axolotl {
+namespace zina {
 
 void protobuf_ShutdownFile_MessageEnvelope_2eproto() {
   delete MessageEnvelope::default_instance_;
@@ -70,7 +70,7 @@ const int MessageEnvelope::kUidFieldNumber;
 MessageEnvelope::MessageEnvelope()
   : ::google::protobuf::MessageLite() {
   SharedCtor();
-  // @@protoc_insertion_point(constructor:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(constructor:zina.MessageEnvelope)
 }
 
 void MessageEnvelope::InitAsDefaultInstance() {
@@ -80,7 +80,7 @@ MessageEnvelope::MessageEnvelope(const MessageEnvelope& from)
   : ::google::protobuf::MessageLite() {
   SharedCtor();
   MergeFrom(from);
-  // @@protoc_insertion_point(copy_constructor:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(copy_constructor:zina.MessageEnvelope)
 }
 
 void MessageEnvelope::SharedCtor() {
@@ -101,7 +101,7 @@ void MessageEnvelope::SharedCtor() {
 }
 
 MessageEnvelope::~MessageEnvelope() {
-  // @@protoc_insertion_point(destructor:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(destructor:zina.MessageEnvelope)
   SharedDtor();
 }
 
@@ -232,7 +232,7 @@ bool MessageEnvelope::MergePartialFromCodedStream(
       mutable_unknown_fields());
   ::google::protobuf::io::CodedOutputStream unknown_fields_stream(
       &unknown_fields_string);
-  // @@protoc_insertion_point(parse_start:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(parse_start:zina.MessageEnvelope)
   for (;;) {
     ::std::pair< ::google::protobuf::uint32, bool> p = input->ReadTagWithCutoff(127);
     tag = p.first;
@@ -396,17 +396,17 @@ bool MessageEnvelope::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(parse_success:zina.MessageEnvelope)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(parse_failure:zina.MessageEnvelope)
   return false;
 #undef DO_
 }
 
 void MessageEnvelope::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(serialize_start:zina.MessageEnvelope)
   // optional string name = 1;
   if (has_name()) {
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
@@ -474,7 +474,7 @@ void MessageEnvelope::SerializeWithCachedSizes(
 
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
-  // @@protoc_insertion_point(serialize_end:axolotl.MessageEnvelope)
+  // @@protoc_insertion_point(serialize_end:zina.MessageEnvelope)
 }
 
 int MessageEnvelope::ByteSize() const {
@@ -647,12 +647,12 @@ void MessageEnvelope::Swap(MessageEnvelope* other) {
 }
 
 ::std::string MessageEnvelope::GetTypeName() const {
-  return "axolotl.MessageEnvelope";
+  return "zina.MessageEnvelope";
 }
 
 
 // @@protoc_insertion_point(namespace_scope)
 
-}  // namespace axolotl
+}  // namespace zina
 
 // @@protoc_insertion_point(global_scope)

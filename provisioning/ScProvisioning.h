@@ -19,7 +19,7 @@ limitations under the License.
 /**
  * @file ScProvisioning.h
  * @brief Implementation of the provisioning interface for Silent Circle provisioning server.
- * @ingroup Axolotl++
+ * @ingroup Zina
  * @{
  */
 
@@ -35,7 +35,7 @@ static const std::string DELETE("DELETE");
 
 typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response);
 
-namespace axolotl {
+namespace zina {
 class ScProvisioning : public Provisioning
 {
 public:

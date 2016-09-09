@@ -18,7 +18,7 @@ typedef int32_t (*S3_FUNC)(const std::string& requestUri, const std::string& req
 
 struct cJSON;
 
-namespace axolotl {
+namespace zina {
 
 class DrRequest {
 private:
