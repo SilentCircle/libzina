@@ -51,12 +51,12 @@ static void cleanupTrace(SQLiteStoreConv* store )
 }
 
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
-                                               const string &convState, const string &attributes, bool attachments)
+                                               const string &convState, const string &attributes, bool attachments, bool force)
 {
     LOGGER(INFO, __func__ , " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+    if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
         shared_ptr<string> filteredAttributes = make_shared<string>();
         int32_t result = filterAttributes(attributes, filteredAttributes);
         if (result < 0) {
@@ -76,11 +76,11 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
 }
 
 int32_t MessageCapture::captureSendMessage(const string &receiver, const string &messageId,const string &deviceId,
-                                           const string &convState, const string &attributes, bool attachments) {
+                                           const string &convState, const string &attributes, bool attachments, bool force) {
     LOGGER(INFO, __func__, " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+    if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
         shared_ptr<string> filteredAttributes = make_shared<string>();
         int32_t result = filterAttributes(attributes, filteredAttributes);
         if (result < 0) {

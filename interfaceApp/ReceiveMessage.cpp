@@ -32,7 +32,7 @@ limitations under the License.
 using namespace zina;
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,
-                               const char* msgHex, int32_t errorCode, const string& sentToId, int32_t sqlCode)
+                               const char* msgHex, int32_t errorCode, const string& sentToId, int32_t sqlCode, int32_t msgType)
 {
     shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
     cJSON* root = sharedRoot.get();
@@ -47,6 +47,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
     cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
+    cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
     if (errorCode == DATABASE_ERROR)
         cJSON_AddNumberToObject(details, "sqlErrorCode", sqlCode);
 
@@ -66,7 +67,7 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
     string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
     string msgId(Utilities::getJsonString(root, MSG_ID, ""));
 
-    return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0);
+    return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0, -1);
 }
 
 static bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
@@ -222,6 +223,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     messagePlain = ZinaRatchet::decrypt(axoConv.get(), message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
     errorCode_ = axoConv->getErrorCode();
 
+    int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
+
 //    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
 
@@ -229,7 +232,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         string convState(out);
         cJSON_Delete(convJson); free(out);
 
-        MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"failed\"}"), false);
+        MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"failed\"}"), false, true);
         char b2hexBuffer[1004] = {0};
 
         // Remove un-decryptable message data
@@ -242,7 +245,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         size_t msgLen = min(message.size(), (size_t)500);
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
-        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId, axoConv->getSqlErrorCode()));
+        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId, axoConv->getSqlErrorCode(), msgType));
         LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         if (errorCode_ == DATABASE_ERROR) {
             LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
@@ -275,7 +278,6 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
     cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
 
-    int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
     cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
     messagePlain.reset();
 
@@ -313,7 +315,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
 
         error_:
             store_->rollbackTransaction();
-            stateReportCallback_(0, DATABASE_ERROR, receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data", DATABASE_ERROR, sentToId, result));
+            stateReportCallback_(0, DATABASE_ERROR, receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data", DATABASE_ERROR, sentToId, result, msgType));
             return;
 
         success_:

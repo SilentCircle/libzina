@@ -38,9 +38,10 @@ public:
      * @param convState the relevant data of the ratchet state
      * @param attribute The message attribute string which contains status information
      * @param attachments If set the message contained an attachment descriptor
+     * @param force store the data even in case the debug level is less than INFO to log error condition
      */
     static int32_t captureReceivedMessage(const string& sender, const string& messageId, const string& deviceId,
-                                          const string &convState, const string& attributes, bool attachments);
+                                          const string &convState, const string& attributes, bool attachments, bool force = false);
 
     /**
      * @brief Capture send message trace data.
@@ -51,9 +52,10 @@ public:
      * @param convState the relevant data of the ratchet state
      * @param attribute The message attribute string which contains status information
      * @param attachments If set the message contained an attachment descriptor
+     * @param force store the data even in case the debug level is less than INFO to log error condition
      */
     static int32_t captureSendMessage(const string& receiver, const string& messageId, const string& deviceId,
-                                      const string &convState, const string& attributes, bool attachments);
+                                      const string &convState, const string& attributes, bool attachments, bool force = false);
 
     /**
      * @brief Return a list of message trace records.
