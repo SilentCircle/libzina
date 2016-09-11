@@ -70,12 +70,13 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
     return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0, -1);
 }
 
-static bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
+static bool shallSendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
+    // No delivery receipts for group messages in general
     int32_t msgType = plainMsgInfo->queueInfo_msgType;
-    if (msgType == GROUP_MSG_CMD || msgType == MSG_CMD)
+    if (msgType >= GROUP_MSG_NORMAL || msgType == MSG_CMD)
         return true;
 
     if (plainMsgInfo->queueInfo_supplement.empty())
@@ -389,7 +390,7 @@ void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo
 {
     LOGGER(INFO, __func__, " -->");
     // send delivery receipt for real messages only, not for commands - for backward compatibility we need to scan supplements
-    if (isCommand(plainMsgInfo)) {
+    if (shallSendDeliveryReceipt(plainMsgInfo)) {
         LOGGER(INFO, __func__, " <-- no delivery receipt");
         return;
     }
