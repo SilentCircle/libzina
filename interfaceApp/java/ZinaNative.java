@@ -76,6 +76,13 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static class PreparedMessageData {
         public long   transportId;           //!< The transport id of the prepared message
         public String receiverInfo;          //!< Some details about the receiver's device of this message. Format as returned by getIdentityKeys(...)
+
+        public PreparedMessageData() {}
+
+        public PreparedMessageData(final String info, long id) {
+            receiverInfo = info;
+            transportId = id;
+        }
     }
 
     /**
