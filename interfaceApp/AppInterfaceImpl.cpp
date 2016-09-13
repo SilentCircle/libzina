@@ -277,10 +277,19 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
         string deviceName = devices->front().second;
         devices->pop_front();
 
-        // Don't re-scan own device
+        // Don't re-scan own device, just check if name changed
         bool toSibling = userName == ownUser_;
-        if (toSibling && scClientDevId_ == deviceId)
+        if (toSibling && scClientDevId_ == deviceId) {
+            shared_ptr<ZinaConversation> conv = ZinaConversation::loadLocalConversation(ownUser_);
+            if (conv->isValid()) {
+                const string &convDevName = conv->getDeviceName();
+                if (deviceName.compare(convDevName) != 0) {
+                    conv->setDeviceName(deviceName);
+                    conv->storeConversation();
+                }
+            }
             continue;
+        }
 
         // If we already have a conversation for this device skip further processing
         // after storing a user defined device name. The user may change a device's name
@@ -289,7 +298,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
             shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
             if (conv->isValid()) {
                 const string &convDevName = conv->getDeviceName();
-                if (!deviceName.empty()) {
+                if (deviceName.compare(convDevName) != 0) {
                     conv->setDeviceName(deviceName);
                     conv->storeConversation();
                 }
@@ -397,9 +406,11 @@ string AppInterfaceImpl::getOwnIdentityKey() const
     b64Encode(pubKey.getPublicKeyPointer(), pubKey.getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
     string idKey((const char*)b64Buffer);
+    idKey.append(":");
     if (!axoConv->getDeviceName().empty()) {
-        idKey.append(":").append(axoConv->getDeviceName());
+        idKey.append(axoConv->getDeviceName());
     }
+    idKey.append(":").append(scClientDevId_).append(":0");
     LOGGER(INFO, __func__, " <--");
     return idKey;
 }
