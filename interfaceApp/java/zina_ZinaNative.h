@@ -140,10 +140,10 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_testCommand
 /*
  * Class:     zina_ZinaNative
  * Method:    zinaCommand
- * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ * Signature: (Ljava/lang/String;[B[I)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_zina_ZinaNative_zinaCommand
-  (JNIEnv *, jclass, jstring, jbyteArray);
+  (JNIEnv *, jclass, jstring, jbyteArray, jintArray);
 
 /*
  * Class:     zina_ZinaNative

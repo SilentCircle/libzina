@@ -357,14 +357,16 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int testCommand(String command, byte[] data);
 
     /**
-     * Command interface to send management command and to request management information.
+     * Command interface to send management commands and to request management information.
      *
      * @param command the management command string.
      * @param optional data required for the command.
      * @return a string depending on command.
+     * @param resultCode an int array with at least a length of one. The functions returns the
+     *        request result code at index 0
      */
     //**ANN** @WorkerThread
-    public static native String zinaCommand(String command, byte[] data);
+    public static native String zinaCommand(String command, byte[] data, int[] resultCode);
 
     /**
      * Receive a Message callback function.

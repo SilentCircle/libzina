@@ -888,10 +888,6 @@ void SQLiteStoreConv::deleteConversation(const string& name, const string& longD
         devId = dummyId;
         devIdLen = static_cast<int32_t>(strlen(dummyId));
     }
-    if (isGroupMember(name)) {
-        sqlResult = SQLITE_CONSTRAINT;
-        goto cleanup;
-    }
 
     //removeConversation = "DELETE FROM Conversations WHERE name=?1 AND longDevId=?2 AND ownName=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeConversation, -1, &stmt, NULL));
@@ -916,6 +912,10 @@ void SQLiteStoreConv::deleteConversationsName(const string& name, const string& 
     int32_t sqlResult;
 
     LOGGER(INFO, __func__, " -->");
+    if (isGroupMember(name)) {
+        sqlResult = SQLITE_CONSTRAINT;
+        goto cleanup;
+    }
     // removeConversations = "DELETE FROM Conversations WHERE name=?1 AND ownName=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeConversations, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC));

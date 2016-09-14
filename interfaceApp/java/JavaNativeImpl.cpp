@@ -1155,18 +1155,19 @@ JNI_FUNCTION(testCommand)(JNIEnv* env, jclass clazz, jstring command, jbyteArray
 /*
  * Class:     zina_ZinaNative
  * Method:    zinaCommand
- * Signature: (Ljava/lang/String;[B)Ljava/lang/String;
+ * Signature: (Ljava/lang/String;[B[I)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray data)
+JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArray data, jintArray code)
 {
     (void)clazz;
 
-    if (command == NULL || zinaAppInterface == NULL)
-        return NULL;
+    if (command == nullptr || zinaAppInterface == nullptr || code == nullptr ||  env->GetArrayLength(code) < 1)
+        return nullptr;
     const char* cmd = env->GetStringUTFChars(command, 0);
 
     jstring result = NULL;
+    setReturnCode(env, code, SUCCESS);
 
     string dataContainer;
     arrayToString(env, data, &dataContainer);
@@ -1181,6 +1182,7 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
         Log("Removing Zina conversation data for '%s' returned %d\n", dataContainer.c_str(), sqlResult);
         if (SQL_FAIL(sqlResult)) {
             result = env->NewStringUTF(store->getLastError());
+            setReturnCode(env, code, sqlResult);
         }
         else {
             zinaAppInterface->rescanUserDevices(dataContainer);
