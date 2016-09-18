@@ -97,7 +97,7 @@ public:
     explicit AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
     AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
                     AppInterface(), tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
-                    store_(store), transport_(NULL), ownChecked_(false) {}
+                    store_(store), transport_(NULL), siblingDevicesScanned_(false) {}
 #endif
     AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
                      RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
@@ -186,6 +186,12 @@ public:
     const string& getOwnAuthrization() const { return authorization_; }
 
     /**
+     * @brief Get own device identifier.
+     * @return Reference to own device identifier string
+     */
+    const string& getOwnDeviceId() const     { return scClientDevId_; }
+
+    /**
      * @brief Return the stored error information.
      * 
      * Functions of this implementation store error information in case they detect
@@ -242,7 +248,7 @@ public:
         void setStore(SQLiteStoreConv* store) { store_ = store; }
         void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }
         void setGroupMsgCallback(GROUP_MSG_RECV_FUNC callback) { groupMsgCallback_ = callback; }
-        void setOwnChecked(bool value) {ownChecked_ = value; }
+        void setOwnChecked(bool value) {siblingDevicesScanned_ = value; }
 
         static string generateMsgIdTime() {
             uuid_t uuid = {0};
@@ -489,6 +495,14 @@ private:
     void sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo);
 
     /**
+     * @brief Get sibling devices from provisioning server and add missing devices to id key list.
+     *
+     * @param idKeys List of already known sibling device id keys,
+     * @return The list of new, yet unkonwn sibling devices, may be empty.
+     */
+    shared_ptr<list<string> > addSiblingDevices(shared_ptr<list<string> > idKeys);
+
+    /**
      * @brief Helper function which creates a JSON formatted message descriptor.
      *
      * @param recipient Recipient of the message
@@ -508,7 +522,7 @@ private:
     static string createSupplementString(const string& attachmentDesc, const string& messageAttrib);
 
     /**
-     * @brief helper function to create a JSON formatted error report if sending fails.
+     * @brief Helper function to create a JSON formatted error report if sending fails.
      *
      * @param info The message's information structure
      * @param errorCode The error code, failure reason
@@ -549,11 +563,11 @@ private:
     SQLiteStoreConv* store_;
     Transport* transport_;
     int32_t flags_;
-    // If this is true then we checked own devices and see only one device for
-    // own account it's the sending device. If another device registers for this
-    // account it sends out a sync message, the client receives this and we have
-    // a second device
-    bool ownChecked_;
+    // If we send to sibling devices and siblingDevicesScanned_ then check for possible new
+    // sibling devices that may have registered while this client was offline.
+    // If another sibling device registers for this account it does the same and sends
+    // a sync message, the client receives it and we know the new device.
+    bool siblingDevicesScanned_;
 };
 } // namespace
 

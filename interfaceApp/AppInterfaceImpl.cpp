@@ -39,7 +39,7 @@ AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authoriz
                                    GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
         AppInterface(receiveCallback, stateReportCallback, notifyCallback, groupMsgCallback, groupCmdCallback, groupStateCallback),
         tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
-        errorCode_(0), transport_(NULL), flags_(0), ownChecked_(false)
+        errorCode_(0), transport_(NULL), flags_(0), siblingDevicesScanned_(false)
 {
     store_ = SQLiteStoreConv::getStore();
     ScDataRetention::setAuthorization(authorization);

@@ -288,33 +288,29 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
         LOGGER(ERROR, "Caching of notified device ids failed: ", name, ", ", devIdsSave);
     }
 
+    const bool isSibling = appInterface_->getOwnUser() == name;
+
     size_t pos = 0;
     string devId;
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
-    bool newDevice = false;
-    int32_t numReportedDevices = 0;
+    size_t numReportedDevices = 0;
     while ((pos = devIds.find(';')) != string::npos) {
         devId = devIds.substr(0, pos);
         devIds.erase(0, pos + 1);
         if (Zeros.compare(0, devId.size(), devId) == 0) {
             continue;
         }
-        numReportedDevices++;
-        if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
-            newDevice = true;
-            LOGGER(DEBUGGING, "New device detected: ", devId);
-            break;
+        if (isSibling && appInterface_->getOwnDeviceId() == devId) {
+            continue;
         }
+        numReportedDevices++;
     }
-//     list<string>* devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
-//     int32_t numKnownDevices = devicesDb->size();
-//     delete devicesDb;
+    shared_ptr<list<string> > devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
+    size_t numKnownDevices = devicesDb->size();
 
-//    Log("++++ number of devices: reported: %d, known: %d", numReportedDevices, numKnownDevices);
-
-    if (newDevice /*|| numKnownDevices != numReportedDevices*/) {
-//        Log("++++ calling notify callback");
+    // If number of reported and known devices differs the user added or removed a device, re-scan devices
+    if (numKnownDevices != numReportedDevices) {
         appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
     }
     LOGGER(INFO, __func__, " <--");

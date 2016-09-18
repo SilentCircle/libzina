@@ -209,6 +209,12 @@ public:
     virtual string getOwnIdentityKey() const = 0;
 
     /**
+     * @brief Get own device identifier.
+     * @return Reference to own device identifier string
+     */
+    virtual const string& getOwnDeviceId() const = 0;
+
+    /**
      * @brief Get a list of all identity keys of a user.
      * 
      * The remote partner or the own account may have more than one device. This function returns
