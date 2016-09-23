@@ -1457,4 +1457,30 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return {@code true} if data retention is enabled, {@code false} if not.
      */
     public static native boolean isDrEnabledForUser(String user);
+
+    /**
+     * Set the data retention flags for the local user.
+     *
+     * The caller sets up a JSON formatted string that holds the data retention flags
+     * for the local user. The JSON string
+     *<pre>
+     * {
+     * "lrmr": "true" | "false",
+     * "lrmp": "true" | "false",
+     * "lrap": "true" | "false",
+     * "bldr": "true" | "false",
+     * "blmr": "true" | "false",
+     * "brdr": "true" | "false",
+     * "brmr": "true" | "false"
+     * }
+     *</pre>
+     * If the application does not call this function after ZINA initialization then ZINA
+     * assumes "false" for each flag, same if the JSON string does not contain a flag or
+     * the flag's value is not "true" or "false". Otherwise ZINA sets the flag to the given value.
+     *
+     * @param flagsJson The JSON data of the flags to set.
+     * @return SUCESS (0) or an error code, The function does not change flags in case of
+     *         error return
+     */
+    public static native int setDataRetentionFlags(String flagsJson);
 }

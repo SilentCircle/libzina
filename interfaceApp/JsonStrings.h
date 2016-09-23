@@ -58,5 +58,22 @@ namespace zina {
     static const char* LIST_HASH = "hash";
     static const char* DELIVERY_TIME = "dr_time";
 
+    // JSON keys for local data retention flags
+    static const char* LRMR = "lrmm";
+    static const char* LRMP = "lrmp";
+    static const char* LRAP = "lrap";
+    static const char* BLDR = "bldr";
+    static const char* BLMR = "blmr";
+    static const char* BRDR = "brdr";
+    static const char* BRMR = "brmr";
+
+    // JSON keys for remote user data retention flags
+    static const char* RETENTION_ORG = "ret_org";
+    static const char* RRMM = "rrmm";
+    static const char* RRMP = "rrmp";
+    static const char* RRCM = "rrcm";
+    static const char* RRCP = "rrcp";
+    static const char* RRAP = "rrap";
+
 }
 #endif //LIBZINA_JSONSTRINGS_H

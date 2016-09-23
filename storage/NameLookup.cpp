@@ -24,6 +24,7 @@ limitations under the License.
 #include "../Constants.h"
 #include "../provisioning/Provisioning.h"
 #include "../logging/ZinaLogging.h"
+#include "../util/Utilities.h"
 
 
 using namespace zina;
@@ -58,7 +59,22 @@ const string NameLookup::getUid(const string &alias, const string& authorization
 /*
  * Structure of the user info JSON that the provisioning server returns:
 
-{"display_alias": <string>, "avatar_url": <string>, "display_name": <string>, "dr_enabled": <bool>, "uuid": <string>}
+{"display_alias": <string>,
+ "avatar_url": <string>,
+ "display_name": <string>,
+ "dr_enabled": <bool>,          // Will be removed?
+ "uuid": <string>
+ "data_retention": {
+    "for_org_name": "Subman",
+    "retained_data": {
+        "attachment_plaintext": false,
+        "call_metadata": true,
+        "call_plaintext": false,
+        "message_metadata": true,
+        "message_plaintext": false
+    }
+  }
+}
  *
  */
 int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
@@ -101,13 +117,45 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     if (tmpData != NULL && tmpData->valuestring != NULL) {
         userInfo->avatarUrl.assign(tmpData->valuestring);
     }
-    tmpData = cJSON_GetObjectItem(root, "dr_enabled");
-    if (tmpData != NULL && tmpData->type == cJSON_True) {
-        userInfo->drEnabled = true;
+    userInfo->drEnabled = Utilities::getJsonBool(tmpData, "dr_enabled", false);
+
+    tmpData = cJSON_GetObjectItem(root, "data_retention");
+
+    if (tmpData != NULL) {
+        userInfo->retainForOrg = Utilities::getJsonString(tmpData, "for_org_name", "");
+        tmpData = cJSON_GetObjectItem(root, "retained_data");
+        if (tmpData != NULL) {
+            userInfo->drRrmm = Utilities::getJsonBool(tmpData, "message_metadata", false);
+            userInfo->drRrmp = Utilities::getJsonBool(tmpData, "message_plaintext", false);
+            userInfo->drRrcm = Utilities::getJsonBool(tmpData, "call_metadata", false);
+            userInfo->drRrcp = Utilities::getJsonBool(tmpData, "call_plaintext", false);
+            userInfo->drRrap = Utilities::getJsonBool(tmpData, "attachment_plaintext", false);
+        }
     }
+
     cJSON_Delete(root);
     LOGGER(INFO, __func__ , " <--");
     return OK;
+}
+
+NameLookup::AliasAdd
+NameLookup::insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> userInfo)
+{
+    auto ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
+    if (!ret.second) {
+        LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
+        return InsertFailed;
+    }
+    // For existing accounts (old accounts) the UUID and the display alias are identical
+    // Don't add an alias entry in this case
+    if (alias.compare(userInfo->uniqueId) != 0) {
+        ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
+        if (!ret.second) {
+            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 1);
+            return InsertFailed;
+        }
+    }
+    return UuidAdded;
 }
 
 const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly, int32_t* errorCode) {
@@ -175,19 +223,8 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     // userInfo with the UID
     it = nameMap_.find(userInfo->uniqueId);
     if (it == nameMap_.end()) {
-        ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
-        if (!ret.second) {
-            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
+        if (insertUserInfoWithUuid(alias, userInfo) < 0) {
             return shared_ptr<UserInfo>();
-        }
-        // For existing account (old accounts) the UUID and the primary alias could be identical
-        // Don't add an alias entry in this case
-        if (alias.compare(userInfo->uniqueId) != 0) {
-            ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
-            if (!ret.second) {
-                LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 1);
-                return shared_ptr<UserInfo>();
-            }
         }
     }
     else {
@@ -242,6 +279,13 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
     it->second->alias0.assign(userInfo->alias0);
     it->second->avatarUrl.assign(userInfo->avatarUrl);
     it->second->drEnabled = userInfo->drEnabled;
+
+    it->second->drRrmm = userInfo->drRrmm;
+    it->second->drRrmp = userInfo->drRrmp;
+    it->second->drRrcm = userInfo->drRrcm;
+    it->second->drRrcp = userInfo->drRrcp;
+    it->second->drRrap = userInfo->drRrap;
+    it->second->retainForOrg = userInfo->retainForOrg;
 
     return it->second;
 }
@@ -315,19 +359,8 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     AliasAdd retValue;
     it = nameMap_.find(uuid);
     if (it == nameMap_.end()) {
-        ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
-        if (!ret.second) {
-            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
-            return InsertFailed;
-        }
-        // For existing accounts (old accounts) the UUID and the display alias are identical
-        // Don't add an alias entry in this case
-        if (alias.compare(userInfo->uniqueId) != 0) {
-            ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
-            if (!ret.second) {
-                LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 1);
-                return InsertFailed;
-            }
+        if ((retValue = insertUserInfoWithUuid(alias, userInfo)) < 0) {
+            return retValue;
         }
         retValue = UuidAdded;
     }

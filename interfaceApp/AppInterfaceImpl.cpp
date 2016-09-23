@@ -25,6 +25,7 @@ limitations under the License.
 #include "../storage/MessageCapture.h"
 #include "MessageEnvelope.pb.h"
 #include "JsonStrings.h"
+#include "../util/Utilities.h"
 
 #include <cryptcommon/ZrtpRandom.h>
 
@@ -39,7 +40,8 @@ AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authoriz
                                    GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
         AppInterface(receiveCallback, stateReportCallback, notifyCallback, groupMsgCallback, groupCmdCallback, groupStateCallback),
         tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
-        errorCode_(0), transport_(NULL), flags_(0), siblingDevicesScanned_(false)
+        errorCode_(0), transport_(NULL), flags_(0), siblingDevicesScanned_(false), drLrmr_(false), drLrmp_(false), drLrap_(false),
+        drBldr_(false), drBlmr_(false), drBrdr_(false), drBrmr_(false)
 {
     store_ = SQLiteStoreConv::getStore();
     ScDataRetention::setAuthorization(authorization);
@@ -529,4 +531,27 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     LOGGER(INFO, __func__, " <--");
     return;
 }
+
+int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
+{
+    if (jsonFlags.empty()) {
+        return DATA_MISSING;
+    }
+
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(jsonFlags.c_str()), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+    if (root == nullptr) {
+        return CORRUPT_DATA;
+    }
+    drLrmr_ = Utilities::getJsonBool(root, LRMR, false);
+    drLrmp_ = Utilities::getJsonBool(root, LRMP, false);
+    drLrap_ = Utilities::getJsonBool(root, LRAP, false);
+    drBldr_ = Utilities::getJsonBool(root, BLDR, false);
+    drBlmr_ = Utilities::getJsonBool(root, BLMR, false);
+    drBrdr_ = Utilities::getJsonBool(root, BRDR, false);
+    drBrmr_ = Utilities::getJsonBool(root, BRMR, false);
+
+    return SUCCESS;
+}
+
 #pragma clang diagnostic pop

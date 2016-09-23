@@ -633,6 +633,14 @@ JNIEXPORT jboolean JNICALL Java_zina_ZinaNative_isDrEnabled
 JNIEXPORT jboolean JNICALL Java_zina_ZinaNative_isDrEnabledForUser
   (JNIEnv *, jclass, jstring);
 
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setDataRetentionFlags
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_setDataRetentionFlags
+  (JNIEnv *, jclass, jstring);
+
 #ifdef __cplusplus
 }
 #endif

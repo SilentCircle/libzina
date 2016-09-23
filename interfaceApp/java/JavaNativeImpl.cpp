@@ -29,6 +29,7 @@ limitations under the License.
 #include "../../attachments/fileHandler/scloud.h"
 #include "../../storage/NameLookup.h"
 #include "../../dataRetention/ScDataRetention.h"
+#include "../JsonStrings.h"
 
 using namespace zina;
 using namespace std;
@@ -2659,6 +2660,29 @@ JNI_FUNCTION(getUid)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray author
     return uidJava;
 }
 
+static string  createUserInfoJson(shared_ptr<UserInfo> userInfo)
+{
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "uid", userInfo->uniqueId.c_str());
+    cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
+    cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
+    cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
+    cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
+    cJSON_AddStringToObject(root, RETENTION_ORG, userInfo->retainForOrg.c_str());
+    cJSON_AddBoolToObject(root, "dr_enabled", userInfo->drEnabled);
+
+    cJSON_AddBoolToObject(root, RRMM, userInfo->drRrmm);
+    cJSON_AddBoolToObject(root, RRMP, userInfo->drRrmp);
+    cJSON_AddBoolToObject(root, RRCM, userInfo->drRrcm);
+    cJSON_AddBoolToObject(root, RRCP, userInfo->drRrcp);
+    cJSON_AddBoolToObject(root, RRAP, userInfo->drRrap);
+
+    char *out = cJSON_PrintUnformatted(root);
+    string json(out);
+    cJSON_Delete(root); free(out);
+    return json;
+}
+
 static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray authorization, bool cacheOnly, int32_t* errorCode)
 {
     string auth;
@@ -2687,19 +2711,7 @@ static jbyteArray getUserInfoInternal(JNIEnv* env, jstring alias, jbyteArray aut
     if (!userInfo)
         return NULL;
 
-    cJSON* root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "uid", userInfo->uniqueId.c_str());
-    cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
-    cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
-    cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
-    cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
-    cJSON_AddBoolToObject(root, "dr_enabled", userInfo->drEnabled);
-
-    char *out = cJSON_PrintUnformatted(root);
-    string json(out);
-    cJSON_Delete(root); free(out);
-
-    jbyteArray retData = stringToArray(env, json);
+    jbyteArray retData = stringToArray(env, createUserInfoJson(userInfo));
     return retData;
 }
 
@@ -2764,19 +2776,7 @@ JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, 
     if (!userInfo)
         return NULL;
 
-    cJSON* root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "uid", userInfo->uniqueId.c_str());
-    cJSON_AddStringToObject(root, "display_name", userInfo->displayName.c_str());
-    cJSON_AddStringToObject(root, "alias0", userInfo->alias0.c_str());
-    cJSON_AddStringToObject(root, "lookup_uri", userInfo->contactLookupUri.c_str());
-    cJSON_AddStringToObject(root, "avatar_url", userInfo->avatarUrl.c_str());
-    cJSON_AddBoolToObject(root, "dr_enabled", userInfo->drEnabled);
-
-    char *out = cJSON_PrintUnformatted(root);
-    string json(out);
-    cJSON_Delete(root); free(out);
-
-    jbyteArray retData = stringToArray(env, json);
+    jbyteArray retData = stringToArray(env, createUserInfoJson(userInfo));
     return retData;
 }
 
@@ -3100,4 +3100,27 @@ JNI_FUNCTION(isDrEnabledForUser)(JNIEnv * env, jclass clazz, jstring user)
 
     ScDataRetention::isEnabled(userString, &enabled);
     return static_cast<jboolean>(enabled);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setDataRetentionFlags
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(setDataRetentionFlags)(JNIEnv* env, jclass clazz, jstring flags)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return -1;
+
+    if (flags == nullptr) {
+        return DATA_MISSING;
+    }
+    const char* flagsTemp = env->GetStringUTFChars(flags, 0);
+    string flagsString(flagsTemp);
+    env->ReleaseStringUTFChars(flags, flagsTemp);
+
+    return zinaAppInterface->setDataRetentionFlags(flagsString);
 }

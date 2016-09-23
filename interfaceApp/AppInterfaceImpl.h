@@ -96,8 +96,9 @@ public:
 #ifdef UNITTESTS
     explicit AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
     AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
-                    AppInterface(), tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
-                    store_(store), transport_(NULL), siblingDevicesScanned_(false) {}
+                    AppInterface(), tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization),
+                    scClientDevId_(scClientDevId), store_(store), transport_(NULL), siblingDevicesScanned_(false),
+                    drLrmr_(false), drLrmp_(false), drLrap_(false), drBldr_(false), drBlmr_(false), drBrdr_(false), drBrmr_(false) {}
 #endif
     AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
                      RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
@@ -243,6 +244,32 @@ public:
      */
     void retryReceivedMessages();
 
+    /**
+     * @brief Set the data retention flags for the local user.
+     *
+     * The caller sets up a JSON formatted string that holds the data retention flags
+     * for the local user. The JSON string
+     *<verbatim>
+     * {
+     * "lrmr": "true" | "false",
+     * "lrmp": "true" | "false",
+     * "lrap": "true" | "false",
+     * "bldr": "true" | "false",
+     * "blmr": "true" | "false",
+     * "brdr": "true" | "false",
+     * "brmr": "true" | "false"
+     * }
+     *<endverbatim>
+     * If the application does not call this function after ZINA initialization then ZINA
+     * assumes "false" for each flag, same if the JSON string does not contain a flag or
+     * the flag's value is not "true" or "false". Otherwise ZINA sets the flag to the
+     * given value.
+     *
+     * @param flagsJson The JSON data of the flags to set.
+     * @return SUCCESS (0) or error code. The function does not change flags in case of
+     *         error return
+     */
+    int32_t setDataRetentionFlags(const string& jsonFlags);
 
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
@@ -568,7 +595,16 @@ private:
     // If another sibling device registers for this account it does the same and sends
     // a sync message, the client receives it and we know the new device.
     bool siblingDevicesScanned_;
-};
+
+    // Data retention flags valid for the local user
+    bool drLrmr_,       //!< local client retains message metadata
+            drLrmp_,    //!< local client retains message plaintext
+            drLrap_,    //!< local client retains attachment plaintext
+            drBldr_,    //!< Block local data retention
+            drBlmr_,    //!< Block local metadata retention
+            drBrdr_,    //!< Block remote data retention
+            drBrmr_;    //<! Block remote metadata retention
+    };
 } // namespace
 
 /**

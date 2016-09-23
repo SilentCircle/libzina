@@ -40,12 +40,19 @@ namespace zina {
 
     class UserInfo {
     public:
+        explicit UserInfo() : drEnabled(false), drRrmm(false), drRrmp(false), drRrcm(false), drRrcp(false), drRrap(false) { }
         string uniqueId;         //!< User's unique name, canonical name, not human readable
         string displayName;      //!< User's full/display name as stored in the provisioning server
         string alias0;           //!< Primary alias, aka preferred alias, aka alias0
         string contactLookupUri; //!< Set by contacts discovery to the contact's lookup key
         string avatarUrl;        //!< Avatar URL from provisioning server
+        string retainForOrg;     //!< This organization defined the retention policy
         bool   drEnabled;        //!< Data Retention enabled flag
+        bool   drRrmm;           //!< RRMM: "remote retains message metadata"
+        bool   drRrmp;           //!< RRMP: "remote retains message plaintext"
+        bool   drRrcm;           //!< RRCM: "remote retains call metadata"
+        bool   drRrcp;           //!< RRCP: "remote retains call plaintext (audio)"
+        bool   drRrap;           //!< RRAP: "remote retains attachment plaintext"
     };
 
     class NameLookup {
@@ -144,19 +151,10 @@ namespace zina {
          * This function does no trigger any network actions, save to run from UI thread.
          *
          * The JSON data should look like this:
-         @verbatim
-         {
-            "uuid":          "<string>",
-            "display_name":  "<string>",
-            "display_alias": "<string>"
-            "lookup_uri":    "<string>"
-            "avatar_url":    "<string>"
-          }
-         @endverbatim
          *
          * @param alias the alias name/number
          * @param uuid the UUID
-         * @param userInfo a JSON formatted string with the user information
+         * @param userInfo a JSON formatted string with the user information of the
          * @authorization the authorization data
          * @return a value > 0 to indicate success, < 0 on failure.
          */
@@ -189,6 +187,7 @@ namespace zina {
 
     private:
         int32_t parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo);
+        NameLookup::AliasAdd insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> userInfo);
 
         map<string, shared_ptr<UserInfo> > nameMap_;
         static NameLookup* instance_;
