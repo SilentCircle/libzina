@@ -26,6 +26,8 @@ limitations under the License.
 #include "../ratchet/ratchet/ZinaRatchet.h"
 #include "../ratchet/ZinaPreKeyConnector.h"
 #include "JsonStrings.h"
+#include "../storage/NameLookup.h"
+#include "../dataRetention/ScDataRetention.h"
 
 using namespace zina;
 
@@ -152,10 +154,53 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
 static mutex preparedMessagesLock;
 static map<uint64_t, shared_ptr<CmdQueueInfo> > preparedMessages;
 
+static mutex retainInfoLock;
+static map<uint64_t, uint32_t > retainInfoMap;
+
 void AppInterfaceImpl::queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo)
 {
     unique_lock<mutex> listLock(preparedMessagesLock);
     preparedMessages.insert(pair<uint64_t, shared_ptr<CmdQueueInfo>>(msgInfo->queueInfo_transportMsgId, msgInfo));
+}
+
+// Check if we have a retain info entry for this id.
+//
+// If not just return 0.
+//
+// If we have an info then check if we should remove the info data from the
+// map. Either because the processed count goes to zero or if the remove
+// flag is set. in this case the function returns the local retain flags
+// RETAIN_LOCAL_DATA and RETAIN_LOCAL_META
+//
+// The function 'sendMessageExisting' calls this function with 'remove' true
+// once it sent a message and checks for data retention.
+//
+// Other functions call this with 'remove' false. This only decrements the
+// processed message counter and only if it reaches 0 the function removes
+// the entry. This way we can handle error conditions when sending messages
+// to a device of if the application deletes a subset on prepared message data.
+//
+//
+static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
+{
+    unique_lock<mutex> listLock(retainInfoLock);
+    auto it = retainInfoMap.find(id);
+
+    // If no info with this id - don't perform data retention
+    if (it == retainInfoMap.end()) {
+        return 0;
+    }
+    const uint32_t retainedInfo = it->second;
+    const uint32_t retainFlags = retainedInfo & 0xff;
+    uint32_t processedMsgs =  retainedInfo >> 8;
+
+    if (remove || --processedMsgs == 0) {
+        retainInfoMap.erase(it);
+    }
+    else {
+        it ->second = processedMsgs << 8 | retainFlags;
+    }
+    return retainFlags;
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
@@ -190,9 +235,20 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     if (!grpRecipient.empty()) {
         recipient = grpRecipient;
     }
+
+    uint8_t localRetentionFlags = 0;
+    string msgAttributes(messageAttributes);
     if (toSibling) {
         recipient = ownUser_;
     }
+    else {
+        auto newAttributes = make_shared<string>();
+        if ((errorCode_ = dataRetentionSend(recipient, msgAttributes, newAttributes, &localRetentionFlags)) != OK) {
+            return messageData;
+        }
+        msgAttributes = *newAttributes;
+    }
+
     // When sending to sibling devices getIdentityKeys(...) returns an empty list if the user
     // has no sibling devices.
     auto idKeys = getIdentityKeys(recipient);
@@ -250,12 +306,13 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
             nextNewUser = true;
         }
     }
-    int64_t transportMsgId;
+    uint64_t transportMsgId;
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
-    uint64_t counter = 0;
 
     // The transport id is structured: bits 0..3 are type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
+
+    uint64_t counter = 0;
 
     while (!idKeys->empty() || handleNewSiblings) {
         const string idDevInfo = idKeys->front();
@@ -299,7 +356,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         msgInfo->queueInfo_msgId = msgId;
         msgInfo->queueInfo_message = message;
         msgInfo->queueInfo_attachment = attachmentDescriptor;
-        msgInfo->queueInfo_attributes = messageAttributes;
+        msgInfo->queueInfo_attributes = msgAttributes;
         msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | messageType;
         msgInfo->queueInfo_toSibling = toSibling;
         msgInfo->queueInfo_newUserDevice = newUser;
@@ -311,6 +368,15 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         resultData->transportId = msgInfo->queueInfo_transportMsgId;
         resultData->receiverInfo = idDevInfo;
         messageData->push_back(resultData);
+    }
+
+    if (localRetentionFlags != 0) {
+        uint8_t numPreparedMsgs = static_cast<uint8_t>(counter);
+        // retainInfo stores: number of prepared msg data and the local retention flags
+        // Store this info in the retainInfo map, indexed by the raw transportId
+        uint32_t retainInfo = numPreparedMsgs << 8 | localRetentionFlags;
+        unique_lock<mutex> listLock(retainInfoLock);
+        retainInfoMap.insert(pair<uint64_t, uint32_t>(transportMsgId, retainInfo));
     }
 
     LOGGER(INFO, __func__, " <-- ", messageData->size());
@@ -389,6 +455,7 @@ int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > t
         if (it != preparedMessages.end()) {
             // Found a prepared message
             preparedMessages.erase(it);
+            getAndMaintainRetainInfo(id & 0xff, false); // retain info map uses the base id only without counter
             counter++;
         }
     }
@@ -419,6 +486,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
                    ", recipientDeviceId: ", sendInfo->queueInfo_deviceId);
             errorCode_ = zinaConversation->getErrorCode();
             errorInfo_ = sendInfo->queueInfo_deviceId;
+            getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
             return errorCode_;
         }
     }
@@ -445,6 +513,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     if (!wireMessage) {
         LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
         return zinaConversation->getErrorCode();
     }
     zinaConversation->storeConversation();
@@ -494,7 +563,10 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     serialized.assign(tempBuffer_, b64Len);
 
     memset_volatile((void*)supplementsEncrypted->data(), 0, supplementsEncrypted->size());
-
+    uint32_t retainInfo = getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, true);
+    if (retainInfo != 0) {
+        doSendDataRetention(retainInfo, sendInfo);
+    }
     transport_->sendAxoMessage(sendInfo, serialized);
     LOGGER(INFO, __func__, " <--");
 
@@ -527,6 +599,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     if (preKeyId == 0) {
         LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo->queueInfo_recipient, ", device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- No pre-key bundle");
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
         return NO_PRE_KEY_FOUND;
     }
 
@@ -536,6 +609,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     if (buildResult != SUCCESS) {
         errorCode_ = buildResult;
         errorInfo_ = sendInfo->queueInfo_deviceId;
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
         return errorCode_;
     }
     // Read the conversation again and store the device name of the new user's device. Now the user/device
@@ -544,6 +618,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     if (!zinaConversation->isValid()) {
         errorCode_ = zinaConversation->getErrorCode();
         errorInfo_ = sendInfo->queueInfo_deviceId;
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
         return errorCode_;
     }
     zinaConversation->setDeviceName(sendInfo->queueInfo_deviceName);
@@ -570,3 +645,71 @@ string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const 
     return result;
 }
 
+int32_t
+AppInterfaceImpl::dataRetentionSend(const string& recipient, const string& msgAttributes, shared_ptr<string> newMsgAttributes, uint8_t* localRetentionFlags)
+{
+    // The user blocks local data retention, thus vetos setting of retention policy of the organization
+    if ((drBldr_ && drLrmp_) || (drBlmr_ && drLrmm_)) {
+        return REJECT_DATA_RETENTION;
+    }
+
+    NameLookup* nameLookup = NameLookup::getInstance();
+    auto remoteUserInfo = nameLookup->getUserInfo(recipient, authorization_, false);
+    if (!remoteUserInfo) {
+        return DATA_MISSING;        // No info for remote user??
+    }
+
+    // User blocks remote data retention and remote party retains data - reject sending
+    if ((drBrdr_ && remoteUserInfo->drRrmp) || (drBrmr_ && remoteUserInfo->drRrmm)) {
+        return REJECT_DATA_RETENTION;
+    }
+
+    // No local or remote data retention policy is active, just return OK and unchanged attributes
+    if (!drLrmp_ && !drLrmm_ && !remoteUserInfo->drRrmp && !remoteUserInfo->drRrmm) {
+        newMsgAttributes->assign(msgAttributes);
+        return OK;
+    }
+
+    // At this point at least the local or the remote party has an active DR policy. Thus we
+    // need to modify the message attribute and prepare to call DR functions when actually
+    // sending the message.
+    cJSON* root = !msgAttributes.empty() ? cJSON_Parse(msgAttributes.c_str()) : cJSON_CreateObject();
+    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+
+    if (drLrmp_) {
+        cJSON_AddBoolToObject(root, ROP, true);
+        *localRetentionFlags |= RETAIN_LOCAL_DATA;
+    }
+    if (drLrmm_) {
+        cJSON_AddBoolToObject(root, ROM, true);
+        *localRetentionFlags |= RETAIN_LOCAL_META;
+    }
+    if (remoteUserInfo->drRrmm) {
+        cJSON_AddBoolToObject(root, RAM, true);
+    }
+    if (remoteUserInfo->drRrmp) {
+        cJSON_AddBoolToObject(root, RAP, true);
+    }
+    char *out = cJSON_PrintUnformatted(root);
+    newMsgAttributes->assign(out);
+    free(out);
+    return OK;
+}
+
+int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo)
+{
+    uuid_t uu = {0};
+    uuid_parse(sendInfo->queueInfo_msgId.c_str(), uu);
+    time_t composeTime = uuid_time(uu, NULL);
+
+    time_t currentTime = time(NULL);
+
+    if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
+        ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
+    }
+    if ((retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA) {
+        ScDataRetention::sendMessageData("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime,
+                                         sendInfo->queueInfo_message);
+    }
+    return SUCCESS;
+}

@@ -1465,7 +1465,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * for the local user. The JSON string
      *<pre>
      * {
-     * "lrmr": "true" | "false",
+     * "lrmm": "true" | "false",
      * "lrmp": "true" | "false",
      * "lrap": "true" | "false",
      * "bldr": "true" | "false",

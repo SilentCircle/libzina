@@ -58,22 +58,28 @@ namespace zina {
     static const char* LIST_HASH = "hash";
     static const char* DELIVERY_TIME = "dr_time";
 
-    // JSON keys for local data retention flags
-    static const char* LRMR = "lrmm";
-    static const char* LRMP = "lrmp";
-    static const char* LRAP = "lrap";
-    static const char* BLDR = "bldr";
-    static const char* BLMR = "blmr";
-    static const char* BRDR = "brdr";
-    static const char* BRMR = "brmr";
+    // JSON keys for local messaging retention flags
+    static const char* LRMM = "lrmm";           //!< local client retains message metadata
+    static const char* LRMP = "lrmp";           //!< local client retains message plaintext
+    static const char* LRAP = "lrap";           //!< local client retains attachment plaintext
+    static const char* BLDR = "bldr";           //!< Block local data retention
+    static const char* BLMR = "blmr";           //!< Block local metadata retention
+    static const char* BRDR = "brdr";           //!< Block remote data retention
+    static const char* BRMR = "brmr";           //!< Block remote metadata retention
 
-    // JSON keys for remote user data retention flags
+    // JSON keys for remote user messaging retention flags
     static const char* RETENTION_ORG = "ret_org";
     static const char* RRMM = "rrmm";
     static const char* RRMP = "rrmp";
     static const char* RRCM = "rrcm";
     static const char* RRCP = "rrcp";
     static const char* RRAP = "rrap";
+
+    // JSON keys in message attributes to show DR states
+    static const char* RAP = "RAP";             //!< set bey sender: "retention accepted plaintext"
+    static const char* RAM = "RAM";             //!< set bey sender: "retention accepted metadata"
+    static const char* ROP = "ROP";             //!< set bey sender: "retention occurred plaintext"
+    static const char* ROM = "ROM";             //!< set bey sender: "retention occurred metadata"
 
 }
 #endif //LIBZINA_JSONSTRINGS_H

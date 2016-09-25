@@ -83,6 +83,9 @@ typedef struct CmdQueueInfo_ {
 #define queueInfo_sequence      int64Data
 #define queueInfo_msgType       int32Data
 
+// Define bits for local retrnion handling
+#define RETAIN_LOCAL_DATA       0x1
+#define RETAIN_LOCAL_META       0x2
 
 class SipTransport;
 class MessageEnvelope;
@@ -98,7 +101,7 @@ public:
     AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
                     AppInterface(), tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization),
                     scClientDevId_(scClientDevId), store_(store), transport_(NULL), siblingDevicesScanned_(false),
-                    drLrmr_(false), drLrmp_(false), drLrap_(false), drBldr_(false), drBlmr_(false), drBrdr_(false), drBrmr_(false) {}
+                    drLrmm_(false), drLrmp_(false), drLrap_(false), drBldr_(false), drBlmr_(false), drBrdr_(false), drBrmr_(false) {}
 #endif
     AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
                      RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
@@ -251,7 +254,7 @@ public:
      * for the local user. The JSON string
      *<verbatim>
      * {
-     * "lrmr": "true" | "false",
+     * "lrmm": "true" | "false",
      * "lrmp": "true" | "false",
      * "lrap": "true" | "false",
      * "bldr": "true" | "false",
@@ -540,6 +543,37 @@ private:
     string createMessageDescriptor(const string& recipient, const string& msgId, const string& msg = Empty);
 
     /**
+     * @brief Check data retentions flags and prepare for data retention.
+     *
+     * Check the data retention flags of the local party (the sender) and the remote
+     * party (the receiver) to decide if it's OK to retain some data. If it's not OK
+     * to retain data the function returns an error code.
+     *
+     * If it's OK to retain some data then prepare/enhance the message attributes to
+     * contain the defined flags to info the remote party.
+     *
+     * @param recipient The UID of the remote party
+     * @param msgAttributes The original message attributes
+     * @param newMsgAttributes Contains the enhanced/modified message attrinutes if it's OK
+     *        to retain data, not changed if the function returns an error code.
+     * @param It data rention is OK then holds local retention flags: 1 - retain data, 2 - retain meta data
+     * @return OK if data retention is OK, an error code otherwise
+     */
+    int32_t dataRetentionSend(const string& recipient, const string& msgAttributes, shared_ptr<string> newMsgAttributes, uint8_t* localRetentionFlags);
+
+    /**
+     * @brief Setup data and call data retention functions.
+     *
+     * Based on retainInfo the function either store the message meta data and/ot the
+     * message plain text data.
+     *
+     * @param retainInfo Flags that control which data to store
+     * @param sendInfo The message information
+     * @return SUCCESS or an error code
+     */
+    int32_t doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo);
+
+    /**
      * @brief Helper function to create the JSON formatted supplementary message data.
      *
      * @param attachmentDesc The attachment descriptor of the message, may be empty
@@ -597,13 +631,13 @@ private:
     bool siblingDevicesScanned_;
 
     // Data retention flags valid for the local user
-    bool drLrmr_,       //!< local client retains message metadata
+    bool drLrmm_,       //!< local client retains message metadata
             drLrmp_,    //!< local client retains message plaintext
             drLrap_,    //!< local client retains attachment plaintext
             drBldr_,    //!< Block local data retention
             drBlmr_,    //!< Block local metadata retention
             drBrdr_,    //!< Block remote data retention
-            drBrmr_;    //<! Block remote metadata retention
+            drBrmr_;    //!< Block remote metadata retention
     };
 } // namespace
 
