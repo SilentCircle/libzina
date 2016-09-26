@@ -26,6 +26,8 @@ limitations under the License.
 #include "../util/b64helper.h"
 #include "../util/Utilities.h"
 #include "JsonStrings.h"
+#include "../storage/NameLookup.h"
+#include "../dataRetention/ScDataRetention.h"
 
 #include <zrtp/crypto/sha256.h>
 
@@ -70,7 +72,7 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
     return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0, -1);
 }
 
-static bool shallSendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
+static bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -326,17 +328,17 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
     plainMsgInfo->command = ReceivedTempMsg;
     plainMsgInfo->queueInfo_sequence = sequence;
-    plainMsgInfo->queueInfo_message = msgDescriptor;
+    plainMsgInfo->queueInfo_message_desc = msgDescriptor;
     plainMsgInfo->queueInfo_supplement = *supplementsPlain;
     plainMsgInfo->queueInfo_msgType = msgType;
 
 #ifndef UNITTESTS
-    sendDeliveryReceipt(plainMsgInfo);
+    if (!dataRetentionReceive(plainMsgInfo))
+        return;
 #endif
 
     processMessagePlain(plainMsgInfo);
     LOGGER(INFO, __func__, " <--");
-
 }
 
 void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
@@ -368,16 +370,16 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     }
 
     if (msgInfo->queueInfo_msgType >= GROUP_MSG_NORMAL) {
-        result = processGroupMessage(msgInfo->queueInfo_msgType, msgInfo->queueInfo_message, attachmentDescr, attributesDescr);
+        result = processGroupMessage(msgInfo->queueInfo_msgType, msgInfo->queueInfo_message_desc, attachmentDescr, attributesDescr);
         if (result != OK) {
-            groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo->queueInfo_message, result));
+            groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result));
             return;
         }
     }
     else {
-        result = receiveCallback_(msgInfo->queueInfo_message, attachmentDescr, attributesDescr);
+        result = receiveCallback_(msgInfo->queueInfo_message_desc, attachmentDescr, attributesDescr);
         if (result != OK) {
-            stateReportCallback_(0, result, receiveErrorDescriptor(msgInfo->queueInfo_message, result));
+            stateReportCallback_(0, result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result));
             return;
         }
     }
@@ -385,12 +387,106 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     LOGGER(INFO, __func__, " <--");
 }
 
+bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo)
+{
+    LOGGER(INFO, __func__, " -->");
+    string sender;
+    string msgId;
+    string message;
+
+    // Parse a msg descriptor that's always correct because it was constructed above :-)
+    parseMsgDescriptor(plainMsgInfo->queueInfo_message_desc, &sender, &msgId, &message, true);
+
+    if (plainMsgInfo->queueInfo_supplement.empty()) {   // No attributes -> no ROP, no RAM -> default false
+        if (drLrmp_) {                                  // local client requires to retain plaintext data -> reject
+            sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);
+            return false;
+        }
+        if (drLrmm_) {                                  // local client requires to retain meta data -> reject
+            sendErrorCommand(DR_META_REQUIRED, sender, msgId);
+            return false;
+        }
+    }
+
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()), cJSON_deleter);
+    cJSON* jsSupplement = sharedRoot.get();
+    string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
+    if (attributes.empty()) {                           // No attributes -> no ROP, no RAM -> default false
+        if (drLrmp_) {                                  // local client requires to retain plaintext data -> reject
+            sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);
+            return false;
+        }
+        if (drLrmm_) {                                  // local client requires to retain meta data -> reject
+            sendErrorCommand(DR_META_REQUIRED, sender, msgId);
+            return false;
+        }
+    }
+    shared_ptr<cJSON> attributesJson(cJSON_Parse(attributes.c_str()), cJSON_deleter);
+    cJSON* attributesRoot = attributesJson.get();
+
+    bool msgRap = Utilities::getJsonBool(attributesRoot, RAP, false);   // Does remote party accept plaintext retention?
+    bool msgRam = Utilities::getJsonBool(attributesRoot, RAM, false);   // Does remote party accept meta data retention?
+
+    if (msgRap && !msgRam) {
+        LOGGER(INFO, __func__, " Data retention accept flags inconsistent, RAP is true, force RAM to true");
+        msgRam = true;
+    }
+    if (drLrmp_ && !msgRap) {                               // Remote party doesn't accept retaining plaintext data
+        sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);  // local client requires to retain plaintext data -> reject
+        return false;
+    }
+    if (drLrmm_ && !msgRam) {                               // Remote party doesn't accept retaining meta data
+        sendErrorCommand(DR_META_REQUIRED, sender, msgId);  // local client requires to retain plaintext data -> reject
+        return false;
+    }
+
+    bool msgRop = Utilities::getJsonBool(attributesRoot, ROP, false);   // Remote party retained plaintext
+    bool msgRom = Utilities::getJsonBool(attributesRoot, ROM, false);   // Remote party retained meta data
+
+    // If ROP and/or ROM are true then this shows the remote party did some DR. If the
+    // local flags BRDR or BRMR are set then reject the message
+    if ((msgRop && drBrdr_) || (msgRom && drBrmr_)) {
+        if (msgRop) {                                           // Remote party retained plaintext
+            sendErrorCommand(DR_DATA_REJECTED, sender, msgId);  // local client blocks retaining plaintext data -> reject
+            return false;
+        }
+        if (msgRam) {                                           // Remote party retained meta data
+            sendErrorCommand(DR_META_REJECTED, sender, msgId);  // local client blocks retaining meta data -> reject
+            return false;
+        }
+    }
+    NameLookup* nameLookup = NameLookup::getInstance();
+    auto remoteUserInfo = nameLookup->getUserInfo(sender, authorization_, false);
+    if (!remoteUserInfo) {
+        return false;        // No info for remote user??
+    }
+
+    // If the cache information about user's data retention status does not match
+    // the info in the message's attribute the refresh the remote user info
+    if ((remoteUserInfo->drRrmm != msgRom) || (remoteUserInfo->drRrmp != msgRop)) {
+        nameLookup->refreshUserData(sender, authorization_);
+    }
+    uuid_t uu = {0};
+    uuid_parse(msgId.c_str(), uu);
+    time_t composeTime = uuid_time(uu, NULL);
+
+    time_t currentTime = time(NULL);
+
+    if (msgRap) {
+        ScDataRetention::sendMessageData("", "received", sender, composeTime, currentTime, message);
+    } else if (msgRam) {
+        ScDataRetention::sendMessageMetadata("", "received", sender, composeTime, currentTime);
+    }
+    sendDeliveryReceipt(plainMsgInfo);
+    LOGGER(INFO, __func__, " <--");
+    return true;
+}
 
 void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
     // send delivery receipt for real messages only, not for commands - for backward compatibility we need to scan supplements
-    if (shallSendDeliveryReceipt(plainMsgInfo)) {
+    if (isCommand(plainMsgInfo)) {
         LOGGER(INFO, __func__, " <-- no delivery receipt");
         return;
     }
@@ -410,6 +506,35 @@ void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo
     // Parse a msg descriptor that's always correct because it was constructed above :-)
     parseMsgDescriptor(plainMsgInfo->queueInfo_message, &sender, &msgId, &message, true);
     Utilities::wipeString(message);
+
+    int32_t result;
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(sender, msgId), Empty, command, false, MSG_CMD, &result);
+
+    if (result != SUCCESS) {
+        LOGGER(ERROR, __func__, " <-- Error: ", result);
+        return;
+    }
+    doSendMessages(extractTransportIds(preparedMsgData));
+    LOGGER(INFO, __func__, " <--");
+}
+
+void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sender, const string& msgId)
+{
+    LOGGER(INFO, __func__, " -->");
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* attributeJson = sharedRoot.get();
+
+    cJSON_AddStringToObject(attributeJson, MSG_COMMAND, error.c_str());
+    cJSON_AddStringToObject(attributeJson, COMMAND_TIME, Utilities::currentTimeISO8601().c_str());
+    cJSON_AddBoolToObject(attributeJson, ROP, false);
+    cJSON_AddBoolToObject(attributeJson, ROM, false);
+    cJSON_AddBoolToObject(attributeJson, RAP, true);
+    cJSON_AddBoolToObject(attributeJson, RAM, true);
+
+    char *out = cJSON_PrintUnformatted(attributeJson);
+
+    string command(out);
+    free(out);
 
     int32_t result;
     auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(sender, msgId), Empty, command, false, MSG_CMD, &result);

@@ -79,7 +79,8 @@ typedef struct CmdQueueInfo_ {
 #define queueInfo_envelope      stringData1
 #define queueInfo_uid           stringData2
 #define queueInfo_displayName   stringData3
-#define queueInfo_supplement    stringData2
+#define queueInfo_supplement    stringData4
+#define queueInfo_message_desc  stringData5
 #define queueInfo_sequence      int64Data
 #define queueInfo_msgType       int32Data
 
@@ -559,7 +560,36 @@ private:
      * @param It data rention is OK then holds local retention flags: 1 - retain data, 2 - retain meta data
      * @return OK if data retention is OK, an error code otherwise
      */
-    int32_t dataRetentionSend(const string& recipient, const string& msgAttributes, shared_ptr<string> newMsgAttributes, uint8_t* localRetentionFlags);
+    int32_t checkDataRetentionSend(const string &recipient, const string &msgAttributes,
+                                   shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags);
+
+    /**
+     * @brief Check and perform data retention, send delivery receipt or reject message.
+     *
+     * The function uses the various data retention flags and the the DR flags in the
+     * message attributes to decide if data retention for this messag is OK or not.
+     *
+     * If it's OK to retain the data then perform data retention, prepare and send a
+     * delivery receipt and return OK to the caller. The function also returns OK if
+     * data retention is not enabled at all.
+     *
+     * If it's not OK to retain the data create and send an error command message and
+     * return an error code to the caller.
+     *
+     * @param plainMsgInfo Data of the received message
+     * @return OK or and error code
+     */
+    bool dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo);
+
+
+    /**
+     * @brief Send an error response to the sender of the message.
+     *
+     * @param error The error code
+     * @param sender The message sender's uid
+     * @param msgId The id of the message in error
+     */
+    void sendErrorCommand(const string& error, const string& sender, const string& msgId);
 
     /**
      * @brief Setup data and call data retention functions.

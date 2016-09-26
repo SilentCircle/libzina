@@ -243,7 +243,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     }
     else {
         auto newAttributes = make_shared<string>();
-        if ((errorCode_ = dataRetentionSend(recipient, msgAttributes, newAttributes, &localRetentionFlags)) != OK) {
+        if ((errorCode_ = checkDataRetentionSend(recipient, msgAttributes, newAttributes, &localRetentionFlags)) != OK) {
             return messageData;
         }
         msgAttributes = *newAttributes;
@@ -646,14 +646,14 @@ string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const 
 }
 
 int32_t
-AppInterfaceImpl::dataRetentionSend(const string& recipient, const string& msgAttributes, shared_ptr<string> newMsgAttributes, uint8_t* localRetentionFlags)
-{
+AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &msgAttributes,
+                                         shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags) {
     // The user blocks local data retention, thus vetos setting of retention policy of the organization
     if ((drBldr_ && drLrmp_) || (drBlmr_ && drLrmm_)) {
         return REJECT_DATA_RETENTION;
     }
 
-    NameLookup* nameLookup = NameLookup::getInstance();
+    NameLookup *nameLookup = NameLookup::getInstance();
     auto remoteUserInfo = nameLookup->getUserInfo(recipient, authorization_, false);
     if (!remoteUserInfo) {
         return DATA_MISSING;        // No info for remote user??
@@ -673,22 +673,27 @@ AppInterfaceImpl::dataRetentionSend(const string& recipient, const string& msgAt
     // At this point at least the local or the remote party has an active DR policy. Thus we
     // need to modify the message attribute and prepare to call DR functions when actually
     // sending the message.
-    cJSON* root = !msgAttributes.empty() ? cJSON_Parse(msgAttributes.c_str()) : cJSON_CreateObject();
+    cJSON *root = !msgAttributes.empty() ? cJSON_Parse(msgAttributes.c_str()) : cJSON_CreateObject();
     shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
 
-    if (drLrmp_) {
-        cJSON_AddBoolToObject(root, ROP, true);
-        *localRetentionFlags |= RETAIN_LOCAL_DATA;
-    }
-    if (drLrmm_) {
-        cJSON_AddBoolToObject(root, ROM, true);
-        *localRetentionFlags |= RETAIN_LOCAL_META;
-    }
-    if (remoteUserInfo->drRrmm) {
-        cJSON_AddBoolToObject(root, RAM, true);
-    }
-    if (remoteUserInfo->drRrmp) {
-        cJSON_AddBoolToObject(root, RAP, true);
+    string command = Utilities::getJsonString(root, MSG_COMMAND, "");
+
+    // Don't change ROP/ROM/RAM/RAP for error commands. Error commands start with "err"
+    if (command.empty() || command.compare(0, 3, "err") != 0) {
+        if (drLrmp_) {
+            cJSON_AddBoolToObject(root, ROP, true);
+            *localRetentionFlags |= RETAIN_LOCAL_DATA;
+        }
+        if (drLrmm_) {
+            cJSON_AddBoolToObject(root, ROM, true);
+            *localRetentionFlags |= RETAIN_LOCAL_META;
+        }
+        if (remoteUserInfo->drRrmm) {
+            cJSON_AddBoolToObject(root, RAM, true);
+        }
+        if (remoteUserInfo->drRrmp) {
+            cJSON_AddBoolToObject(root, RAP, true);
+        }
     }
     char *out = cJSON_PrintUnformatted(root);
     newMsgAttributes->assign(out);
@@ -704,12 +709,12 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
 
     time_t currentTime = time(NULL);
 
-    if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
-        ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
-    }
     if ((retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA) {
         ScDataRetention::sendMessageData("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime,
                                          sendInfo->queueInfo_message);
+    }
+    else if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
+        ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
     }
     return SUCCESS;
 }

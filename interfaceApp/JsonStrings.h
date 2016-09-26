@@ -35,6 +35,11 @@ namespace zina {
     // The following strings follow the MSG_COMMAND and identify the command
     static const char* DELIVERY_RECEIPT = "dr";
 
+    static const char* DR_DATA_REQUIRED = "errdrq";     //!< Not Delivered Due to Policy: DR required [ERRDRQ]
+    static const char* DR_META_REQUIRED = "errmrq";     //!< Not Delivered Due to Policy: MR required [ERRMRQ]
+    static const char* DR_DATA_REJECTED = "errdrj";     //!< Not Delivered Due to Policy: DR rejected [ERRDRJ]
+    static const char* DR_META_REJECTED = "errmrj";     //!< Not Delivered Due to Policy: MR rejected [ERRMRJ]
+
     static const char* GROUP_COMMAND = "grp";
 
     // The following strings follow the GROUP_COMMAND and identify the command
@@ -57,6 +62,7 @@ namespace zina {
     static const char* INITIAL_LIST = "ini";
     static const char* LIST_HASH = "hash";
     static const char* DELIVERY_TIME = "dr_time";
+    static const char* COMMAND_TIME = "cmd_time"; //!< Time at client (ZULU) when it created the command
 
     // JSON keys for local messaging retention flags
     static const char* LRMM = "lrmm";           //!< local client retains message metadata

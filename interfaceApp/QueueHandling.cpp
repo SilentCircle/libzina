@@ -172,7 +172,7 @@ void AppInterfaceImpl::retryReceivedMessages()
 
             plainMsgInfo->command = ReceivedTempMsg;
             plainMsgInfo->queueInfo_sequence = storedInfo->sequence;
-            plainMsgInfo->queueInfo_message = storedInfo->info_msgDescriptor;
+            plainMsgInfo->queueInfo_message_desc = storedInfo->info_msgDescriptor;
             plainMsgInfo->queueInfo_supplement = storedInfo->info_supplementary;
             plainMsgInfo->queueInfo_msgType = storedInfo->info_msgType;
 
