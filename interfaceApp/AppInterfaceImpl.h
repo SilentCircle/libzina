@@ -567,23 +567,26 @@ private:
      * @brief Check and perform data retention, send delivery receipt or reject message.
      *
      * The function uses the various data retention flags and the the DR flags in the
-     * message attributes to decide if data retention for this messag is OK or not.
+     * message attributes to decide if data retention for this message is OK or not.
      *
      * If it's OK to retain the data then perform data retention, prepare and send a
-     * delivery receipt and return OK to the caller. The function also returns OK if
-     * data retention is not enabled at all.
+     * delivery receipt and return @c true to the caller. The function also returns
+     * @c true if data retention is not enabled at all.
      *
-     * If it's not OK to retain the data create and send an error command message and
-     * return an error code to the caller.
+     * If it's not OK to retain the data the functions creates and sends an error command
+     * message to the sender and returns @c false.
      *
      * @param plainMsgInfo Data of the received message
-     * @return OK or and error code
+     * @return @c true or @c false in case the message was rejected due to DR policy
      */
     bool dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo);
 
 
     /**
      * @brief Send an error response to the sender of the message.
+     *
+     * The function sets some attributes to provide flexible handling. The local client
+     * does not retain (stores) this command message and allows the receiver to retain it.
      *
      * @param error The error code
      * @param sender The message sender's uid

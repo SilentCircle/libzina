@@ -183,6 +183,8 @@ void AppInterfaceImpl::queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo)
 //
 static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
 {
+    LOGGER(INFO, __func__, " --> ", id);
+
     unique_lock<mutex> listLock(retainInfoLock);
     auto it = retainInfoMap.find(id);
 
@@ -200,6 +202,7 @@ static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
     else {
         it ->second = processedMsgs << 8 | retainFlags;
     }
+    LOGGER(INFO, __func__, " <-- ", retainFlags);
     return retainFlags;
 }
 
@@ -486,7 +489,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
                    ", recipientDeviceId: ", sendInfo->queueInfo_deviceId);
             errorCode_ = zinaConversation->getErrorCode();
             errorInfo_ = sendInfo->queueInfo_deviceId;
-            getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
+            getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
             return errorCode_;
         }
     }
@@ -513,7 +516,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     if (!wireMessage) {
         LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
         return zinaConversation->getErrorCode();
     }
     zinaConversation->storeConversation();
@@ -563,7 +566,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     serialized.assign(tempBuffer_, b64Len);
 
     memset_volatile((void*)supplementsEncrypted->data(), 0, supplementsEncrypted->size());
-    uint32_t retainInfo = getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, true);
+    uint32_t retainInfo = getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, true);
     if (retainInfo != 0) {
         doSendDataRetention(retainInfo, sendInfo);
     }
@@ -599,7 +602,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     if (preKeyId == 0) {
         LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo->queueInfo_recipient, ", device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- No pre-key bundle");
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
         return NO_PRE_KEY_FOUND;
     }
 
@@ -609,7 +612,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     if (buildResult != SUCCESS) {
         errorCode_ = buildResult;
         errorInfo_ = sendInfo->queueInfo_deviceId;
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
         return errorCode_;
     }
     // Read the conversation again and store the device name of the new user's device. Now the user/device
@@ -618,7 +621,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     if (!zinaConversation->isValid()) {
         errorCode_ = zinaConversation->getErrorCode();
         errorInfo_ = sendInfo->queueInfo_deviceId;
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & 0xff, false);
+        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
         return errorCode_;
     }
     zinaConversation->setDeviceName(sendInfo->queueInfo_deviceName);
@@ -648,6 +651,19 @@ string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const 
 int32_t
 AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &msgAttributes,
                                          shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags) {
+    LOGGER(INFO, __func__, " -->");
+
+    cJSON *root = !msgAttributes.empty() ? cJSON_Parse(msgAttributes.c_str()) : cJSON_CreateObject();
+    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+
+    string command = Utilities::getJsonString(root, MSG_COMMAND, "");
+
+    // Don't block sending of error commands, send them without any modifications
+    if (!command.empty() && command.compare(0, 3, "err") == 0) {
+        newMsgAttributes->assign(msgAttributes);
+        LOGGER(INFO, __func__, " <-- Sending error command: ", command);
+        return OK;
+    }
     // The user blocks local data retention, thus vetos setting of retention policy of the organization
     if ((drBldr_ && drLrmp_) || (drBlmr_ && drLrmm_)) {
         return REJECT_DATA_RETENTION;
@@ -664,45 +680,42 @@ AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &
         return REJECT_DATA_RETENTION;
     }
 
+//    LOGGER(WARNING, " ++++ DR send flags, local ", drLrmp_, ", ", drLrmm_, ", remote: ", remoteUserInfo->drRrmp, ", ", remoteUserInfo->drRrmm);
     // No local or remote data retention policy is active, just return OK and unchanged attributes
     if (!drLrmp_ && !drLrmm_ && !remoteUserInfo->drRrmp && !remoteUserInfo->drRrmm) {
         newMsgAttributes->assign(msgAttributes);
+        LOGGER(INFO, __func__, " <-- No DR policy active.");
         return OK;
     }
 
     // At this point at least the local or the remote party has an active DR policy. Thus we
     // need to modify the message attribute and prepare to call DR functions when actually
     // sending the message.
-    cJSON *root = !msgAttributes.empty() ? cJSON_Parse(msgAttributes.c_str()) : cJSON_CreateObject();
-    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
-
-    string command = Utilities::getJsonString(root, MSG_COMMAND, "");
-
-    // Don't change ROP/ROM/RAM/RAP for error commands. Error commands start with "err"
-    if (command.empty() || command.compare(0, 3, "err") != 0) {
-        if (drLrmp_) {
-            cJSON_AddBoolToObject(root, ROP, true);
-            *localRetentionFlags |= RETAIN_LOCAL_DATA;
-        }
-        if (drLrmm_) {
-            cJSON_AddBoolToObject(root, ROM, true);
-            *localRetentionFlags |= RETAIN_LOCAL_META;
-        }
-        if (remoteUserInfo->drRrmm) {
-            cJSON_AddBoolToObject(root, RAM, true);
-        }
-        if (remoteUserInfo->drRrmp) {
-            cJSON_AddBoolToObject(root, RAP, true);
-        }
+    if (drLrmp_) {
+        cJSON_AddBoolToObject(root, ROP, true);
+        *localRetentionFlags |= RETAIN_LOCAL_DATA;
+    }
+    if (drLrmm_) {
+        cJSON_AddBoolToObject(root, ROM, true);
+        *localRetentionFlags |= RETAIN_LOCAL_META;
+    }
+    if (remoteUserInfo->drRrmm) {
+        cJSON_AddBoolToObject(root, RAM, true);
+    }
+    if (remoteUserInfo->drRrmp) {
+        cJSON_AddBoolToObject(root, RAP, true);
     }
     char *out = cJSON_PrintUnformatted(root);
     newMsgAttributes->assign(out);
     free(out);
+
+    LOGGER(INFO, __func__, " <--");
     return OK;
 }
 
 int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo)
 {
+    LOGGER(INFO, __func__, " -->");
     uuid_t uu = {0};
     uuid_parse(sendInfo->queueInfo_msgId.c_str(), uu);
     time_t composeTime = uuid_time(uu, NULL);
@@ -716,5 +729,6 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
     else if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
         ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
     }
+    LOGGER(INFO, __func__, " <--");
     return SUCCESS;
 }

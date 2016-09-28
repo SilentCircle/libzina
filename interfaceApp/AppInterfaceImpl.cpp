@@ -534,6 +534,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
 int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
 {
+    LOGGER(INFO, __func__, " --> ", jsonFlags);
     if (jsonFlags.empty()) {
         return DATA_MISSING;
     }
@@ -551,6 +552,7 @@ int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
     drBrdr_ = Utilities::getJsonBool(root, BRDR, false);
     drBrmr_ = Utilities::getJsonBool(root, BRMR, false);
 
+    LOGGER(INFO, __func__, " <--");
     return SUCCESS;
 }
 

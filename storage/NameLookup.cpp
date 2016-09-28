@@ -79,7 +79,7 @@ const string NameLookup::getUid(const string &alias, const string& authorization
  */
 int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(INFO, __func__ , " --> ", userInfo);
     cJSON* root = cJSON_Parse(json.c_str());
     if (root == NULL) {
         LOGGER(ERROR, __func__ , " JSON data not parseable: ", json);
@@ -123,7 +123,7 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
 
     if (tmpData != NULL) {
         userInfo->retainForOrg = Utilities::getJsonString(tmpData, "for_org_name", "");
-        tmpData = cJSON_GetObjectItem(root, "retained_data");
+        tmpData = cJSON_GetObjectItem(tmpData, "retained_data");
         if (tmpData != NULL) {
             userInfo->drRrmm = Utilities::getJsonBool(tmpData, "message_metadata", false);
             userInfo->drRrmp = Utilities::getJsonBool(tmpData, "message_plaintext", false);

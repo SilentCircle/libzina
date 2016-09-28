@@ -233,7 +233,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
 
         char* out = cJSON_PrintUnformatted(convJson);
         string convState(out);
-        cJSON_Delete(convJson); free(out);
+        cJSON_Delete(convJson);
+        free(out);
 
         MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"failed\"}"), false, true);
         char b2hexBuffer[1004] = {0};
@@ -286,7 +287,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
 
     out = cJSON_PrintUnformatted(root);
     string msgDescriptor(out);
-    cJSON_Delete(root); free(out);
+    cJSON_Delete(root);
+    free(out);
 
 
     // At this point, in one DB transaction:
@@ -333,8 +335,11 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     plainMsgInfo->queueInfo_msgType = msgType;
 
 #ifndef UNITTESTS
-    if (!dataRetentionReceive(plainMsgInfo))
+    if (!dataRetentionReceive(plainMsgInfo)) {
+//        LOGGER(WARNING, "++++ DR receive check returned false.")
+        store_->deleteTempMsg(msgInfo->queueInfo_sequence);
         return;
+    }
 #endif
 
     processMessagePlain(plainMsgInfo);
@@ -397,6 +402,8 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     // Parse a msg descriptor that's always correct because it was constructed above :-)
     parseMsgDescriptor(plainMsgInfo->queueInfo_message_desc, &sender, &msgId, &message, true);
 
+//    LOGGER(WARNING, " ++++ DR receive flags, local ", drLrmp_, ", ", drLrmm_, ", block flags: ", drBrdr_, ", ", drBrmr_);
+
     if (plainMsgInfo->queueInfo_supplement.empty()) {   // No attributes -> no ROP, no RAM -> default false
         if (drLrmp_) {                                  // local client requires to retain plaintext data -> reject
             sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);
@@ -428,7 +435,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     bool msgRam = Utilities::getJsonBool(attributesRoot, RAM, false);   // Does remote party accept meta data retention?
 
     if (msgRap && !msgRam) {
-        LOGGER(INFO, __func__, " Data retention accept flags inconsistent, RAP is true, force RAM to true");
+        LOGGER(WARNING, __func__, " Data retention accept flags inconsistent, RAP is true, force RAM to true");
         msgRam = true;
     }
     if (drLrmp_ && !msgRap) {                               // Remote party doesn't accept retaining plaintext data
@@ -442,6 +449,8 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 
     bool msgRop = Utilities::getJsonBool(attributesRoot, ROP, false);   // Remote party retained plaintext
     bool msgRom = Utilities::getJsonBool(attributesRoot, ROM, false);   // Remote party retained meta data
+
+//    LOGGER(WARNING, " ++++ DR receive attribute flags: ", msgRop, ", ", msgRom);
 
     // If ROP and/or ROM are true then this shows the remote party did some DR. If the
     // local flags BRDR or BRMR are set then reject the message
@@ -461,8 +470,10 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
         return false;        // No info for remote user??
     }
 
-    // If the cache information about user's data retention status does not match
-    // the info in the message's attribute the refresh the remote user info
+//    LOGGER(WARNING, " ++++ DR receive flags, remote: ", remoteUserInfo->drRrmp, ", ", remoteUserInfo->drRrmm);
+
+    // If the cache information about the sender's data retention status does not match
+    // the info in the message attribute then refresh the remote user info
     if ((remoteUserInfo->drRrmm != msgRom) || (remoteUserInfo->drRrmp != msgRop)) {
         nameLookup->refreshUserData(sender, authorization_);
     }
@@ -544,5 +555,5 @@ void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sende
         return;
     }
     doSendMessages(extractTransportIds(preparedMsgData));
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(INFO, __func__, " <-- ", command);
 }
