@@ -35,10 +35,12 @@ namespace zina {
     // The following strings follow the MSG_COMMAND and identify the command
     static const char* DELIVERY_RECEIPT = "dr";
 
+    // Error commands, sent by message receiver to the sender
     static const char* DR_DATA_REQUIRED = "errdrq";     //!< Not Delivered Due to Policy: DR required [ERRDRQ]
     static const char* DR_META_REQUIRED = "errmrq";     //!< Not Delivered Due to Policy: MR required [ERRMRQ]
     static const char* DR_DATA_REJECTED = "errdrj";     //!< Not Delivered Due to Policy: DR rejected [ERRDRJ]
     static const char* DR_META_REJECTED = "errmrj";     //!< Not Delivered Due to Policy: MR rejected [ERRMRJ]
+    static const char* DECRYPTION_FAILED = "errdecf";   //!< Not Delivered Due to decryption failure [ERRDECF]
 
     static const char* GROUP_COMMAND = "grp";
 

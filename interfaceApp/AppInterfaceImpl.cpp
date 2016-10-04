@@ -509,8 +509,6 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
-    LOGGER(DEBUGGING, "Send Ping to re-sync device: ", deviceId);
-
     auto msgInfo = make_shared<CmdQueueInfo>();
     msgInfo->command = SendMessage;
     msgInfo->queueInfo_recipient = userName;
@@ -525,8 +523,6 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     msgInfo->queueInfo_newUserDevice = true;
     queuePreparedMessage(msgInfo);
     doSendSingleMessage(msgInfo->queueInfo_transportMsgId);
-
-    LOGGER(DEBUGGING, "Queued message to re-sync device.");
 
     LOGGER(INFO, __func__, " <--");
     return;

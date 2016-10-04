@@ -254,6 +254,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         if (errorCode_ == DATABASE_ERROR) {
             LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
         }
+        sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
         return;
     }
     convJson = axoConv->prepareForCapture(convJson, false);
