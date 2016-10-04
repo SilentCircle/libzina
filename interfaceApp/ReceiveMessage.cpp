@@ -72,26 +72,21 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
     return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0, -1);
 }
 
-static bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
+bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
 {
     LOGGER(INFO, __func__, " -->");
 
-    // No delivery receipts for group messages in general
-    int32_t msgType = plainMsgInfo->queueInfo_msgType;
-    if (msgType >= GROUP_MSG_NORMAL || msgType == MSG_CMD)
+    if (msgType == GROUP_MSG_CMD || msgType == MSG_CMD)
         return true;
 
-    if (plainMsgInfo->queueInfo_supplement.empty())
-        return false;
-
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()), cJSON_deleter);
-    cJSON* jsSupplement = sharedRoot.get();
-    string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
     if (attributes.empty())
         return false;
 
     shared_ptr<cJSON> attributesJson(cJSON_Parse(attributes.c_str()), cJSON_deleter);
     cJSON* attributesRoot = attributesJson.get();
+
+    if (attributesRoot == nullptr)
+        return false;
 
     string possibleCmd = Utilities::getJsonString(attributesRoot, MSG_COMMAND, "");
     if (!possibleCmd.empty())
@@ -106,6 +101,21 @@ static bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
         return true;
 
     return false;
+}
+
+bool AppInterfaceImpl::isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    if (plainMsgInfo->queueInfo_supplement.empty())
+        return false;
+
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()), cJSON_deleter);
+    cJSON* jsSupplement = sharedRoot.get();
+
+    string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
+
+    return isCommand(plainMsgInfo->queueInfo_msgType, attributes);
 }
 
 int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& uidString, const string& displayName)
@@ -400,6 +410,12 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     string msgId;
     string message;
 
+    if (isCommand(plainMsgInfo)) {
+        // Forward command messages to the app but don't retain them yet
+        LOGGER(INFO, __func__, " Don't retain command messages yet");
+        return true;
+    }
+
     // Parse a msg descriptor that's always correct because it was constructed above :-)
     parseMsgDescriptor(plainMsgInfo->queueInfo_message_desc, &sender, &msgId, &message, true);
 
@@ -485,6 +501,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     time_t currentTime = time(NULL);
 
     if (msgRap) {
+        ScDataRetention::sendMessageMetadata("", "received", sender, composeTime, currentTime);
         ScDataRetention::sendMessageData("", "received", sender, composeTime, currentTime, message);
     } else if (msgRam) {
         ScDataRetention::sendMessageMetadata("", "received", sender, composeTime, currentTime);
@@ -497,8 +514,8 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
-    // send delivery receipt for real messages only, not for commands - for backward compatibility we need to scan supplements
-    if (isCommand(plainMsgInfo)) {
+    // don't send delivery receipt group messages, group commands, normal commands, only for real messages
+    if (plainMsgInfo->queueInfo_msgType > GROUP_MSG_NORMAL || isCommand(plainMsgInfo)) {
         LOGGER(INFO, __func__, " <-- no delivery receipt");
         return;
     }

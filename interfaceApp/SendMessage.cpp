@@ -244,7 +244,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     if (toSibling) {
         recipient = ownUser_;
     }
-    else {
+    else if (!isCommand(messageType, messageAttributes)) {      // No data retention for commands yet
         auto newAttributes = make_shared<string>();
         if ((errorCode_ = checkDataRetentionSend(recipient, msgAttributes, newAttributes, &localRetentionFlags)) != OK) {
             return messageData;
@@ -723,6 +723,7 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
     time_t currentTime = time(NULL);
 
     if ((retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA) {
+        ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
         ScDataRetention::sendMessageData("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime,
                                          sendInfo->queueInfo_message);
     }

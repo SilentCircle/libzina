@@ -581,6 +581,22 @@ private:
      */
     bool dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo);
 
+    /**
+     * @brief Check if the message is a command message
+     *
+     * @param msgType the message type
+     * @param attributes JSON formatted string that contains the message attributes
+     * @return @c true if it's a command message, @c false otherwise
+     */
+    bool isCommand(int32_t msgType, const string& attributes);
+
+    /**
+     * @brief Check if the message is a command message
+     *
+     * @param plainMsgInfo information about the message
+     * @return @c true if it's a command message, @c false otherwise
+     */
+    bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo);
 
     /**
      * @brief Send an error response to the sender of the message.
