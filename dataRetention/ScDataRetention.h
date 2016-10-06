@@ -20,6 +20,17 @@ struct cJSON;
 
 namespace zina {
 
+/* Location data that can be attached to a message and may be
+   stored as metadata */
+struct DrLocationData {
+    bool enabled_;
+    bool detailed_;
+    double latitude_;
+    double longitude_;
+
+    DrLocationData() : enabled_(false), detailed_(false), latitude_(0.0), longitude_(0.0) { }
+};
+
 class DrRequest {
 private:
     std::string authorization_;
@@ -125,6 +136,7 @@ class MessageMetadataRequest : public DrRequest {
 private:
     std::string callid_;
     std::string direction_;
+    DrLocationData location_;
     std::string recipient_;
     time_t composed_;
     time_t sent_;
@@ -138,6 +150,7 @@ public:
      * @param authorization API Key for making AW requests.
      * @param callid Callid for the message.
      * @param direction The direction of the message. "sent" or "received".
+     * @param location The location attribute details.
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
@@ -147,6 +160,7 @@ public:
                            const std::string& authorization,
                            const std::string& callid,
                            const std::string& direction,
+                           const DrLocationData& location,
                            const std::string& recipient,
                            time_t composed,
                            time_t sent);
@@ -309,12 +323,14 @@ public:
      *
      * @param callid Callid for the message.
      * @param direction The direction of the message. "sent" or "received".
+     * @param location The location attribute details.
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
      */
     static void sendMessageMetadata(const std::string& callid,
                                     const std::string& direction,
+                                    const DrLocationData& location,
                                     const std::string& recipient,
                                     time_t composed,
                                     time_t sent);

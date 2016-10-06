@@ -4,6 +4,7 @@
 #include "../logging/ZinaLogging.h"
 #include "../appRepository/AppRepository.h"
 #include "../ratchet/state/ZinaConversation.h"
+#include "../util/Utilities.h"
 
 #include <zlib.h>
 
@@ -250,12 +251,14 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
                                                const std::string& authorization,
                                                const std::string& callid,
                                                const std::string& direction,
+                                               const DrLocationData& location,
                                                const std::string& recipient,
                                                time_t composed,
                                                time_t sent) :
     DrRequest(httpHelper, s3Helper, authorization),
     callid_(callid),
     direction_(direction),
+    location_(location),
     recipient_(recipient),
     composed_(composed),
     sent_(sent)
@@ -270,6 +273,19 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3H
     recipient_ = get_cjson_string(json, "recipient");
     composed_ = get_cjson_time(json, "composed");
     sent_ = get_cjson_time(json, "sent");
+
+    cJSON* location = cJSON_GetObjectItem(json, "location");
+    if (location) {
+        location_.enabled_ = Utilities::getJsonBool(location, "enabled", false);
+        if (Utilities::hasJsonKey(location, "latitude") && Utilities::hasJsonKey(location, "longitude")) {
+            location_.detailed_ = true;
+            location_.latitude_ = Utilities::getJsonDouble(location, "latitude", 0.0);
+            location_.longitude_ = Utilities::getJsonDouble(location, "longitude", 0.0);
+        }
+    }
+    else {
+        location_ = DrLocationData();
+    }
 }
 
 std::string MessageMetadataRequest::toJSON()
@@ -281,6 +297,15 @@ std::string MessageMetadataRequest::toJSON()
     cJSON_AddStringToObject(root.get(), "recipient", recipient_.c_str());
     cJSON_AddNumberToObject(root.get(), "composed", static_cast<double>(composed_));
     cJSON_AddNumberToObject(root.get(), "sent", static_cast<double>(sent_));
+
+    cJSON* location = cJSON_CreateObject();
+    cJSON_AddBoolToObject(location, "enabled", location_.enabled_);
+    if (location_.detailed_) {
+        cJSON_AddNumberToObject(location, "latitude", location_.latitude_);
+        cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    cJSON_AddItemToObject(root.get(), "location", location);
+
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
     return request;
@@ -312,6 +337,13 @@ bool MessageMetadataRequest::run()
     cJSON_AddStringToObject(root.get(), "dst_alias", sent ? metadata.dst_alias.c_str() : metadata.src_alias.c_str());
     cJSON_AddStringToObject(root.get(), "composed_on", time_to_string(composed_).c_str());
     cJSON_AddStringToObject(root.get(), "sent_on", time_to_string(sent_).c_str());
+    cJSON* location = cJSON_CreateObject();
+    cJSON_AddBoolToObject(location, "enabled", location_.enabled_);
+    if (location_.detailed_) {
+        cJSON_AddNumberToObject(location, "latitude", location_.latitude_);
+        cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    cJSON_AddItemToObject(root.get(), "location", location);
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
@@ -573,11 +605,11 @@ void ScDataRetention::sendMessageData(const std::string& callid, const std::stri
     LOGGER(INFO, __func__, " <--");
 }
 
-void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const std::string& recipient, time_t composed, time_t sent)
+void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const DrLocationData& location, const std::string& recipient, time_t composed, time_t sent)
 {
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
-    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, composed, sent));
+    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, location, recipient, composed, sent));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");

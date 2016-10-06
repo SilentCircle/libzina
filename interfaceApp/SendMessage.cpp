@@ -723,13 +723,25 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
 
     time_t currentTime = time(NULL);
 
+    DrLocationData location;
+    cJSON *attr = !sendInfo->queueInfo_attributes.empty() ? cJSON_Parse(sendInfo->queueInfo_attributes.c_str()) : cJSON_CreateObject();
+    shared_ptr<cJSON> sharedAttr(attr, cJSON_deleter);
+    if (Utilities::hasJsonKey(attr, "la") && Utilities::hasJsonKey(attr, "lo")) {
+        location.enabled_ = true;
+        if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_DATA) {
+            location.detailed_ = true;
+            location.latitude_ = Utilities::getJsonDouble(attr, "la", 0.0);
+            location.longitude_ = Utilities::getJsonDouble(attr, "lo", 0.0);
+        }
+    }
+
     if ((retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA) {
-        ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "sent", location, sendInfo->queueInfo_recipient, composeTime, currentTime);
         ScDataRetention::sendMessageData("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime,
                                          sendInfo->queueInfo_message);
     }
     else if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
-        ScDataRetention::sendMessageMetadata("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "sent", location, sendInfo->queueInfo_recipient, composeTime, currentTime);
     }
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
