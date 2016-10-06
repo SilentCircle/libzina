@@ -25,6 +25,14 @@ namespace zina {
     class Utilities {
     public:
         /**
+         * @brief Return true if the cJSON structure has the given key
+         *
+         * @param root the pointer to the cJSON structure
+         * @name Name of the key
+         */
+        static bool hasJsonKey(const cJSON* const root, const char* const key);
+
+        /**
          * @brief Return an integer value from a JSON structure.
          *
          * @param root the pointer to the cJSON structure
@@ -32,6 +40,15 @@ namespace zina {
          * @error Error value, the function returns this value if the JSON structure contains no @c name
          */
         static int32_t getJsonInt(const cJSON* const root, const char* const name, int32_t error);
+
+        /**
+         * @brief Return a double value from a JSON structure.
+         *
+         * @param root the pointer to the cJSON structure
+         * @name Name of the value
+         * @error Error value, the function returns this value if the JSON structure contains no @c name
+         */
+        static double getJsonDouble(const cJSON* const root, const char* const name, double error);
 
         /**
          * @brief Return a c-string value from a JSON structure.
