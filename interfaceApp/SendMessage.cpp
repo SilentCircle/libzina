@@ -110,7 +110,8 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
     int32_t errorCode;
     auto siblingDevices = Provisioning::getZinaDeviceIds(ownUser_, authorization_, &errorCode);
 
-    if (idDevInfos->empty() && siblingDevices->empty())
+    // The provisioning server reported an error or both lists are empty: no new siblings known yet
+    if (!siblingDevices || (idDevInfos->empty() && siblingDevices->empty()))
         return newSiblingDevices;
 
     if (idDevInfos->empty()) {
