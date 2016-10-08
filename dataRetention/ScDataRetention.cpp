@@ -227,7 +227,7 @@ bool MessageRequest::run()
       return rc == -2;
     }
 
-    std::string request = compress(message_);
+    std::string request = compress(message_ + "\n");
     if (request.empty()) {
         LOGGER(ERROR, "Could not compress data retention data");
         return false;
@@ -315,7 +315,7 @@ bool MessageMetadataRequest::run()
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
-    request = compress(request);
+    request = compress(request + "\n");
     if (request.empty()) {
         LOGGER(ERROR, "Could not compress data retention data");
         return false;
@@ -404,7 +404,7 @@ bool InCircleCallMetadataRequest::run()
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
-    request = compress(request);
+    request = compress(request + "\n");
     if (request.empty()) {
         LOGGER(ERROR, "Could not compress data retention data");
         return false;
@@ -495,7 +495,7 @@ bool SilentWorldCallMetadataRequest::run()
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
-    request = compress(request);
+    request = compress(request + "\n");
     if (request.empty()) {
         LOGGER(ERROR, "Could not compress data retention data");
         return false;
