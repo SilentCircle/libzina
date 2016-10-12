@@ -421,7 +421,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 
 //    LOGGER(WARNING, " ++++ DR receive flags, local ", drLrmp_, ", ", drLrmm_, ", block flags: ", drBrdr_, ", ", drBrmr_);
 
-    if (plainMsgInfo->queueInfo_supplement.empty()) {   // No attributes -> no ROP, no RAM -> default false
+    if (plainMsgInfo->queueInfo_supplement.empty()) {   // No attributes -> no RAP, no RAM -> default false
         if (drLrmp_) {                                  // local client requires to retain plaintext data -> reject
             sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);
             return false;
@@ -435,7 +435,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     shared_ptr<cJSON> sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()), cJSON_deleter);
     cJSON* jsSupplement = sharedRoot.get();
     string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
-    if (attributes.empty()) {                           // No attributes -> no ROP, no RAM -> default false
+    if (attributes.empty()) {                           // No attributes -> no RAP, no RAM -> default false
         if (drLrmp_) {                                  // local client requires to retain plaintext data -> reject
             sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);
             return false;

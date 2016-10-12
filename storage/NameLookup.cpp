@@ -142,18 +142,11 @@ NameLookup::AliasAdd
 NameLookup::insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> userInfo)
 {
     auto ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(userInfo->uniqueId, userInfo));
-    if (!ret.second) {
-        LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 0);
-        return InsertFailed;
-    }
+
     // For existing accounts (old accounts) the UUID and the display alias are identical
     // Don't add an alias entry in this case
     if (alias.compare(userInfo->uniqueId) != 0) {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, userInfo));
-        if (!ret.second) {
-            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 1);
-            return InsertFailed;
-        }
     }
     return UuidAdded;
 }
@@ -189,12 +182,14 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
         return shared_ptr<UserInfo>();
     }
 
+    lck.unlock();
     string result;
     int32_t code = Provisioning::getUserInfo(alias, authorization, &result);
+    lck.lock();
 
     // Return empty pointer in case of HTTP error
-    char temp[1000];
     if (code >= 400) {
+        char temp[1000];
         // If server returns "not found" then add a invalid user data structure. Thus
         // another lookup with the same name will have a cache hit, avoiding a network
         // round trip but still returning an empty pointer signaling a non-existing name.
@@ -223,16 +218,10 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     // userInfo with the UID
     it = nameMap_.find(userInfo->uniqueId);
     if (it == nameMap_.end()) {
-        if (insertUserInfoWithUuid(alias, userInfo) < 0) {
-            return shared_ptr<UserInfo>();
-        }
+        insertUserInfoWithUuid(alias, userInfo);
     }
     else {
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
-        if (!ret.second) {
-            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 2);
-            return shared_ptr<UserInfo>();
-        }
         userInfo = it->second;
     }
     lck.unlock();
@@ -306,7 +295,7 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
     }
     for (map<string, shared_ptr<UserInfo> >::iterator it=nameMap_.begin(); it != nameMap_.end(); ++it) {
         shared_ptr<UserInfo> userInfo = (*it).second;
-        // Add aliases to the result. If the map entry if the UUID entry then add the default alias
+        // Add aliases to the result. If the map entry is the UUID entry then add the default alias
         if (uuid == userInfo->uniqueId) {
             if (uuid != (*it).first) {
                 aliasList->push_back((*it).first);
@@ -359,9 +348,7 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     AliasAdd retValue;
     it = nameMap_.find(uuid);
     if (it == nameMap_.end()) {
-        if ((retValue = insertUserInfoWithUuid(alias, userInfo)) < 0) {
-            return retValue;
-        }
+        insertUserInfoWithUuid(alias, userInfo);
         retValue = UuidAdded;
     }
     else {
@@ -369,10 +356,6 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
         it->second->avatarUrl.assign(userInfo->avatarUrl);
 
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
-        if (!ret.second) {
-            LOGGER(ERROR, __func__ , " Insert in cache list failed. ", 2);
-            return InsertFailed;
-        }
         retValue = AliasAdded;
     }
     LOGGER(INFO, __func__ , " <--");
