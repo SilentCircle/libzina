@@ -302,6 +302,12 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     free(out);
 
 
+    shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
+    plainMsgInfo->command = ReceivedTempMsg;
+    plainMsgInfo->queueInfo_message_desc = msgDescriptor;
+    plainMsgInfo->queueInfo_supplement = *supplementsPlain;
+    plainMsgInfo->queueInfo_msgType = msgType;
+
     // At this point, in one DB transaction:
     // - save msgDescriptor and supplements plain in DB,
     // - store msgHash,
@@ -310,6 +316,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     // - delete raw message data
     int64_t sequence;
     int32_t result;
+    bool processPlaintext = false;
     {
         store_->beginTransaction();
 
@@ -325,7 +332,16 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         if (SQL_FAIL(result))
             goto error_;
 
+        // If this function returns false then don't store the plaintext in the plaintext
+        // message queue, however commit the transaction to delete the raw data and save
+        // the ratchet context
+#ifndef UNITTESTS
+        if (!dataRetentionReceive(plainMsgInfo)) {
+            goto success_;
+        }
+#endif
         result = store_->insertTempMsg(msgDescriptor, *supplementsPlain, msgType, &sequence);
+        processPlaintext = true;
         if (!SQL_FAIL(result))
             goto success_;
 
@@ -335,22 +351,17 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
             return;
 
         success_:
-           store_->commitTransaction();
            store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+           store_->commitTransaction();
     }
-    shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
-    plainMsgInfo->command = ReceivedTempMsg;
-    plainMsgInfo->queueInfo_sequence = sequence;
-    plainMsgInfo->queueInfo_message_desc = msgDescriptor;
-    plainMsgInfo->queueInfo_supplement = *supplementsPlain;
-    plainMsgInfo->queueInfo_msgType = msgType;
-
-#ifndef UNITTESTS
-    if (!dataRetentionReceive(plainMsgInfo)) {
-//        LOGGER(WARNING, "++++ DR receive check returned false.")
-        store_->deleteTempMsg(msgInfo->queueInfo_sequence);
+    if (!processPlaintext) {
+        LOGGER(INFO, __func__, " <-- don't process plaintext, DR policy");
         return;
     }
+    plainMsgInfo->queueInfo_sequence = sequence;
+
+#ifndef UNITTESTS
+    sendDeliveryReceipt(plainMsgInfo);
 #endif
 
     processMessagePlain(plainMsgInfo);
@@ -506,7 +517,6 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     } else if (msgRam) {
         ScDataRetention::sendMessageMetadata("", "received", sender, composeTime, currentTime);
     }
-    sendDeliveryReceipt(plainMsgInfo);
     LOGGER(INFO, __func__, " <--");
     return true;
 }
