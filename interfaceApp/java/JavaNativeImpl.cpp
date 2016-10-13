@@ -551,11 +551,11 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 /*
  * Class:     zina_ZinaNative
  * Method:    doInit
- * Signature: (ILjava/lang/String;[B[B[B[B)I
+ * Signature: (ILjava/lang/String;[B[B[B[BLjava/lang/String;)I
  */
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyteArray dbPassphrase, jbyteArray userName,
-                    jbyteArray authorization, jbyteArray scClientDeviceId)
+                    jbyteArray authorization, jbyteArray scClientDeviceId, jstring retentionFlags)
 {
     debugLevel = flags & 0xf;
 //    int32_t flagsInternal = flags >> 4;
@@ -629,6 +629,13 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     if (!arrayToString(env, scClientDeviceId, &devId))
         return -12;
 
+    if (retentionFlags == nullptr)
+        return -28;
+
+    const char* tmp = env->GetStringUTFChars(retentionFlags, 0);
+    string retentionString(tmp);
+    env->ReleaseStringUTFChars(retentionFlags, tmp);
+
     const uint8_t* pw = (uint8_t*)env->GetByteArrayElements(dbPassphrase, 0);
     size_t pwLen = static_cast<size_t>(env->GetArrayLength(dbPassphrase));
     if (pw == NULL)
@@ -668,6 +675,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 
     zinaAppInterface = new AppInterfaceImpl(name, auth, devId, receiveMessage, messageStateReport,
                                            notifyCallback, receiveGroupMessage, receiveGroupCommand, groupStateReport);
+
+    zinaAppInterface->setDataRetentionFlags(retentionString);
     Transport* sipTransport = new SipTransport(zinaAppInterface);
 
     /* ***********************************************************************************

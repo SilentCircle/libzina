@@ -12,10 +12,10 @@ extern "C" {
 /*
  * Class:     zina_ZinaNative
  * Method:    doInit
- * Signature: (ILjava/lang/String;[B[B[B[B)I
+ * Signature: (ILjava/lang/String;[B[B[B[BLjava/lang/String;)I
  */
 JNIEXPORT jint JNICALL Java_zina_ZinaNative_doInit
-  (JNIEnv *, jobject, jint, jstring, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+  (JNIEnv *, jobject, jint, jstring, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jstring);
 
 /*
  * Class:     zina_ZinaNative

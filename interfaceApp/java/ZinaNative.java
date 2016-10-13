@@ -102,10 +102,12 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param userName the local username, for SC it's the name of the user's account
      * @param authorization some authorization code, for SC it's the API key of this device
      * @param scClientDevId the sender's device id, same as used to register the device (v1/me/device/{device_id}/)
+     * @param retentionFlags The data retentions flags as JSON formatted string, see setDataRetentionFlags()
      * @return 1 if call was OK and a 'own' conversation existed, 2 if an 'own' conversation was created and
      *         initialized, a negative value in case of errors
      */
-    public native int doInit(int flags, String dbName, byte[] dbPassPhrase, byte[] userName, byte[] authorization, byte[] scClientDevId);
+    public native int doInit(int flags, String dbName, byte[] dbPassPhrase, byte[] userName, byte[] authorization,
+                             byte[] scClientDevId, String retentionFlags);
 
     /**
      * Send a message with an optional attachment.
