@@ -511,15 +511,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 
     time_t currentTime = time(NULL);
 
-    DrLocationData location;
-    if (Utilities::hasJsonKey(attributesRoot, "la") && Utilities::hasJsonKey(attributesRoot, "lo")) {
-        location.enabled_ = true;
-        if (msgRap) {
-            location.detailed_ = true;
-            location.latitude_ = Utilities::getJsonDouble(attributesRoot, "la", 0.0);
-            location.longitude_ = Utilities::getJsonDouble(attributesRoot, "lo", 0.0);
-        }
-    }
+    DrLocationData location(attributesRoot, msgRap);
 
     if (msgRap) {
         ScDataRetention::sendMessageMetadata("", "received", location, sender, composeTime, currentTime);

@@ -12,6 +12,17 @@ using namespace zina;
 using namespace std;
 
 namespace {
+/* Definitions of JSON fields for location data. This must match
+   that defined in the clients. Note that horizontal accuracy
+   and vertical accuracy use 'v' and 'h' respectively to be
+   compatible with previous buggy definition. */
+static const char* FIELD_LATITUDE = "la";
+static const char* FIELD_LONGITUDE = "lo";
+static const char* FIELD_TIME = "t";
+static const char* FIELD_ALTITUDE = "a";
+static const char* FIELD_ACCURACY_HORIZONTAL = "v";
+static const char* FIELD_ACCURACY_VERTICAL = "h";
+
 static const string GET("GET");
 static const string PUT("PUT");
 static const string POST("POST");
@@ -95,6 +106,41 @@ std::string compress(const std::string& input)
 
     return output;
 }
+}
+
+DrLocationData::DrLocationData(cJSON* json, bool detailed)
+{
+    enabled_ = false;
+
+    if (Utilities::hasJsonKey(json, FIELD_LATITUDE) ||
+        Utilities::hasJsonKey(json, FIELD_LONGITUDE) ||
+        Utilities::hasJsonKey(json, FIELD_TIME) ||
+        Utilities::hasJsonKey(json, FIELD_ALTITUDE) ||
+        Utilities::hasJsonKey(json, FIELD_ACCURACY_HORIZONTAL) ||
+        Utilities::hasJsonKey(json, FIELD_ACCURACY_VERTICAL)) {
+        enabled_ = true;
+
+        if (detailed) {
+            if (Utilities::hasJsonKey(json, FIELD_LATITUDE)) {
+                latitude_ = Utilities::getJsonDouble(json, FIELD_LATITUDE, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_LONGITUDE)) {
+                longitude_ = Utilities::getJsonDouble(json, FIELD_LONGITUDE, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_TIME)) {
+                time_ = Utilities::getJsonInt(json, FIELD_TIME, 0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_ALTITUDE)) {
+                altitude_ = Utilities::getJsonDouble(json, FIELD_ALTITUDE, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_ACCURACY_HORIZONTAL)) {
+                accuracy_horizontal_ = Utilities::getJsonDouble(json, FIELD_ACCURACY_HORIZONTAL, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_ACCURACY_VERTICAL)) {
+                accuracy_vertical_ = Utilities::getJsonDouble(json, FIELD_ACCURACY_VERTICAL, 0.0);
+            }
+        }
+    }
 }
 
 DrRequest::DrRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization) :
@@ -276,13 +322,27 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3H
 
     cJSON* location = cJSON_GetObjectItem(json, "location");
     if (location) {
+        location_ = DrLocationData(location, true);
         location_.enabled_ = Utilities::getJsonBool(location, "enabled", false);
-        if (Utilities::hasJsonKey(location, "latitude") && Utilities::hasJsonKey(location, "longitude")) {
-            location_.detailed_ = true;
+        if (Utilities::hasJsonKey(location, "latitude")) {
             location_.latitude_ = Utilities::getJsonDouble(location, "latitude", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "longitude")) {
             location_.longitude_ = Utilities::getJsonDouble(location, "longitude", 0.0);
         }
-    }
+        if (Utilities::hasJsonKey(location, "time")) {
+            location_.time_ = Utilities::getJsonInt(location, "time", 0);
+        }
+        if (Utilities::hasJsonKey(location, "altitude")) {
+            location_.altitude_ = Utilities::getJsonDouble(location, "altitude", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "accuracy_horizontal")) {
+            location_.accuracy_horizontal_ = Utilities::getJsonDouble(location, "accuracy_horizontal", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "accuracy_vertical")) {
+            location_.accuracy_vertical_ = Utilities::getJsonDouble(location, "accuracy_vertical", 0.0);
+        }
+   }
     else {
         location_ = DrLocationData();
     }
@@ -300,9 +360,23 @@ std::string MessageMetadataRequest::toJSON()
 
     cJSON* location = cJSON_CreateObject();
     cJSON_AddBoolToObject(location, "enabled", location_.enabled_);
-    if (location_.detailed_) {
+    if (location_.latitude_.is_valid()) {
         cJSON_AddNumberToObject(location, "latitude", location_.latitude_);
-        cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    if (location_.longitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    if (location_.time_.is_valid()) {
+       cJSON_AddNumberToObject(location, "time", location_.time_);
+    }
+    if (location_.altitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "altitude", location_.altitude_);
+    }
+    if (location_.accuracy_horizontal_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_horizontal", location_.accuracy_horizontal_);
+    }
+    if (location_.accuracy_vertical_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_vertical", location_.accuracy_vertical_);
     }
     cJSON_AddItemToObject(root.get(), "location", location);
 
@@ -339,9 +413,23 @@ bool MessageMetadataRequest::run()
     cJSON_AddStringToObject(root.get(), "sent_on", time_to_string(sent_).c_str());
     cJSON* location = cJSON_CreateObject();
     cJSON_AddBoolToObject(location, "enabled", location_.enabled_);
-    if (location_.detailed_) {
+    if (location_.latitude_.is_valid()) {
         cJSON_AddNumberToObject(location, "latitude", location_.latitude_);
-        cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    if (location_.longitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    if (location_.time_.is_valid()) {
+       cJSON_AddNumberToObject(location, "time", location_.time_);
+    }
+    if (location_.altitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "altitude", location_.altitude_);
+    }
+    if (location_.accuracy_horizontal_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_horizontal", location_.accuracy_horizontal_);
+    }
+    if (location_.accuracy_vertical_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_vertical", location_.accuracy_vertical_);
     }
     cJSON_AddItemToObject(root.get(), "location", location);
 

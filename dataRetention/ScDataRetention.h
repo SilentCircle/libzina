@@ -20,15 +20,54 @@ struct cJSON;
 
 namespace zina {
 
+/* Basic implementation of Maybe in C++ */
+template <typename T>
+class maybe {
+private:
+    bool valid_;
+    T value_;
+
+public:
+    maybe() : valid_(false) { }
+    maybe(T const& v) : value_(v), valid_(true) { }
+    maybe<T>& operator=(T const& v) {
+        valid_ = true;
+        value_ = v;
+        return *this;
+    }
+
+    operator T() {
+        // If not valid, this results in the default constructor
+        // of type T being returned.
+        if (!valid_) {
+            return T();
+        }
+        return value_;
+    }
+
+    void set_invalid() {
+        valid_ = false;
+        value_ = T();
+    }
+
+    bool is_valid() const {
+        return valid_;
+    }
+};
+
 /* Location data that can be attached to a message and may be
    stored as metadata */
 struct DrLocationData {
     bool enabled_;
-    bool detailed_;
-    double latitude_;
-    double longitude_;
+    maybe<double> latitude_;
+    maybe<double> longitude_;
+    maybe<int32_t> time_;
+    maybe<double> altitude_;
+    maybe<double> accuracy_horizontal_;
+    maybe<double> accuracy_vertical_;
 
-    DrLocationData() : enabled_(false), detailed_(false), latitude_(0.0), longitude_(0.0) { }
+    DrLocationData() : enabled_(false) { }
+    explicit DrLocationData(cJSON* json, bool detailed);
 };
 
 class DrRequest {
