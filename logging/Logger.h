@@ -119,6 +119,9 @@ enum LoggingLogType {
 
 namespace logging {
 
+    /**
+     * Virtual logging policy
+     */
     class LogPolicy
     {
     public:
@@ -129,7 +132,7 @@ namespace logging {
     };
 
     /**
-     * Implementation which allow to write into a file
+     * Logging policy implementation which allow to write into a file
      */
     class __EXPORT FileLogPolicy : public LogPolicy
     {

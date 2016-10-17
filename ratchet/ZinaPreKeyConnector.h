@@ -17,14 +17,12 @@ limitations under the License.
 #define AXOPREKEYCONNECTOR_H
 
 /**
- * @file AxoPreKeyConnector.h
+ * @file ZinaPreKeyConnector.h
  * @brief Functions to initialize the Axolotl protocol from pre-keys
  * @ingroup Zina
  * @{
- * 
- * These functions set up the AxoConversation  from loaded pre-keys. The
- * functions assume the optimized Pre-key mechanism (see xxxx paper)
  */
+
 
 #include <string>
 #include <stdint.h>
@@ -36,7 +34,11 @@ using namespace std;
 
 namespace zina {
 
-class AxoPreKeyConnector
+/**
+ * The static functions in this class set up the ZinaConversation from loaded pre-keys. The
+ * functions assume the optimized Pre-key mechanism (see xxxx paper)
+ */
+class ZinaPreKeyConnector
 {
 public:
     /**
@@ -88,8 +90,8 @@ public:
     static int32_t setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey );
 
 private:
-    AxoPreKeyConnector() {};
-    ~AxoPreKeyConnector() {};
+    ZinaPreKeyConnector() {};
+    ~ZinaPreKeyConnector() {};
 };
 } // namespace
 

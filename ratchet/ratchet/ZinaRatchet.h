@@ -17,8 +17,8 @@ limitations under the License.
 #define AXORATCHET_H
 
 /**
- * @file AxoRatchet.h
- * @brief Axolotl ratchet functions
+ * @file ZinaRatchet.h
+ * @brief Zina messaging ratchet functions (formerly known as Axolotl ratchet)
  * @ingroup Zina
  * @{
  */

@@ -607,7 +607,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
         return NO_PRE_KEY_FOUND;
     }
 
-    int32_t buildResult = AxoPreKeyConnector::setupConversationAlice(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId, preKeyId, preIdKeys);
+    int32_t buildResult = ZinaPreKeyConnector::setupConversationAlice(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId, preKeyId, preIdKeys);
 
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult != SUCCESS) {

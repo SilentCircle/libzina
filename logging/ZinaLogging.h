@@ -17,13 +17,24 @@ limitations under the License.
 // Created by werner on 30.11.15.
 //
 
-#ifndef LIBZINALOTL_ZINALOGGING_H
-#define LIBZINALOTL_ZINALOGGING_H
+#ifndef LIBZINA_ZINALOGGING_H
+#define LIBZINA_ZINALOGGING_H
 
-// Set the project's maximum compiler log level if not otherwise specified during
-// compilation. See main CMakeLists.txt file, setting CMAKE_CXX_FLAGS_DEBUG for
-// DEBUG builds.
-// The standard compile setting is logging level 'WARNING'
+/**
+ * @file ZinaLogging.h
+ * @author Werner Dittmann <Werner.Dittmann@t-online.de>
+ * @version 1.0
+ *
+ * @brief C++ logging functions for the ZINA library
+ * @ingroup Logging
+ * @{
+ *
+ * Set the project's maximum compiler log level if not otherwise specified during
+ * compilation. See main CMakeLists.txt file, setting CMAKE_CXX_FLAGS_DEBUG for
+ * DEBUG builds.
+ *
+ * The standard compile setting is logging level 'WARNING'
+ */
 
 #ifndef LOG_MAX_LEVEL
 #define LOG_MAX_LEVEL WARNING
@@ -51,5 +62,8 @@ __EXPORT extern void setZinaLogLevel(int32_t level);
 #if defined(__cplusplus)
 }
 #endif
+/**
+ * @}
+ */
 
-#endif //LIBZINALOTL_ZINALOGGING_CPP_H
+#endif //LIBZINA_ZINALOGGING_CPP_H

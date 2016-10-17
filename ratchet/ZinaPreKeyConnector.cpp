@@ -60,7 +60,7 @@ static void hexdump(const char* title, const string& in)
 
     masterSecret = HASH(DH(A, B0) || DH(A0, B) || DH(A0, B0))
 */
-int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, const string& user, const string& deviceId, 
+int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
                                                    int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys)
 {
     LOGGER(INFO, __func__, " -->");
@@ -128,7 +128,7 @@ int32_t AxoPreKeyConnector::setupConversationAlice(const string& localUser, cons
     B0 = P1_PK1 (public data)
 
 */
-int32_t AxoPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
+int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
 {
     LOGGER(INFO, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();

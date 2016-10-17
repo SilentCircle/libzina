@@ -17,10 +17,8 @@ limitations under the License.
 #define AXOCONTACT_H
 
 /**
- * @file AxoContact.h
+ * @file ZinaContact.h
  * @brief Manage data of a partner
- * 
- * The partner's name, an alias name
  * 
  * @ingroup Zina
  * @{
@@ -31,11 +29,16 @@ limitations under the License.
 using namespace std;
 
 namespace zina {
-class AxoContact
+
+/**
+ * The partner's name, an alias name
+ *
+ */
+class ZinaContact
 {
 public:
-    AxoContact(const string& name, const string& alias) : name_(name), alias_(alias) {};
-    ~AxoContact() {};
+    ZinaContact(const string& name, const string& alias) : name_(name), alias_(alias) {};
+    ~ZinaContact() {};
 
     const std::string& getName() const { return name_; }
     const std::string& getAlias() const { return alias_; }

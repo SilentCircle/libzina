@@ -47,7 +47,7 @@ static void hexdump(const char* title, const string& in)
 
 static mutex sessionLock;
 
-static map<string, AxoZrtpConnector*>* stagingList = new map<string, AxoZrtpConnector*>;
+static map<string, ZinaZrtpConnector*>* stagingList = new map<string, ZinaZrtpConnector*>;
 
 using namespace zina;
 void Log(const char* format, ...);
@@ -68,9 +68,9 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     }
     const DhKeyPair* idKey = localConv->getDHIs();
 
-    AxoZrtpConnector* staging = new AxoZrtpConnector(conv, localConv);
+    ZinaZrtpConnector* staging = new ZinaZrtpConnector(conv, localConv);
 
-    pair<string, AxoZrtpConnector*> stage(localUser, staging);
+    pair<string, ZinaZrtpConnector*> stage(localUser, staging);
     stagingList->insert(stage);
 
     const DhKeyPair* ratchetKey = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
@@ -98,9 +98,9 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
     LOGGER(INFO, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
-    std::map<string, AxoZrtpConnector*>::iterator it;
+    std::map<string, ZinaZrtpConnector*>::iterator it;
     it = stagingList->find(localUser);
-    AxoZrtpConnector* staging = it->second;
+    ZinaZrtpConnector* staging = it->second;
 
     if (staging == NULL) {
         LOGGER(ERROR, __func__, " <-- Illegal state, staging not found.");
@@ -168,9 +168,9 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
     LOGGER(INFO, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
-    std::map<string, AxoZrtpConnector*>::iterator it;
+    std::map<string, ZinaZrtpConnector*>::iterator it;
     it = stagingList->find(localUser);
-    AxoZrtpConnector* staging = it->second;
+    ZinaZrtpConnector* staging = it->second;
     if (staging == NULL) {
         LOGGER(ERROR, __func__, " <-- Illegal state, staging not found.");
         return;

@@ -17,18 +17,8 @@ limitations under the License.
 #define AXOCONVERSATION_H
 
 /**
- * @file AxoConversation.h
- * @brief The Axolotl state of a conversation with a partner
- * 
- * This class manages the state of a Axolotl conversation with a partner. It manages,
- * stores and retrieves keys and other state information. Refer to 
- * https://github.com/trevp/double_ratchet/wiki to get a full description of all the state
- * information.
- * 
- * In this implementation we don't manage the header keys because we don't use header
- * encryption. This is a variant of the Axolotl that the above document describes.
- * 
- * The variable names map to the short names that the document uses.
+ * @file ZinaConversation.h
+ * @brief The ZINA state of a conversation with a partner
  * 
  * @ingroup Zina
  * @{
@@ -54,6 +44,19 @@ static const std::string emptyString;
 using namespace std;
 
 namespace zina {
+
+/**
+ * This class manages the state of a ZINA conversation with a partner. It manages,
+ * stores and retrieves keys and other state information. Refer to
+ * https://github.com/trevp/double_ratchet/wiki to get a full description of all the state
+ * information.
+ *
+ * In this implementation we don't manage the header keys because we don't use header
+ * encryption. This is a variant of the ratchet that the above document describes.
+ *
+ * The variable names map to the short names that the document uses.
+ *
+ */
 class ZinaConversation
 {
 public:
@@ -115,7 +118,7 @@ public:
 
     shared_ptr<list<string> > getEmptyStagedMks();
 
-    const AxoContact& getPartner()  { return partner_; }
+    const ZinaContact& getPartner()  { return partner_; }
 
     const string& getLocalUser()    { return localUser_; }
 
@@ -202,7 +205,7 @@ private:
     const std::string* serialize() const;
 
     // The following data goes to persistent store
-    AxoContact partner_;
+    ZinaContact partner_;
     string  deviceId_;
     string  deviceName_;
     string  localUser_;

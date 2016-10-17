@@ -22,7 +22,7 @@ limitations under the License.
 #include <memory>
 
 /**
- * @file aesCbc.h
+ * @file AesCbc.h
  * @brief Function that provide AES CBC mode support with PKCS5/7 padding on encryption
  * 
  * @ingroup Zina

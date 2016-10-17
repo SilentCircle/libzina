@@ -16,7 +16,7 @@ limitations under the License.
 #ifndef ZRTPCONNECTOR_H
 #define ZRTPCONNECTOR_H
 /**
- * @file AxoZrtpConnector.h
+ * @file ZinaZrtpConnector.h
  * @brief Functions to link the Axolotl protocol with a ZRTP client
  * @ingroup Zina
  * @{
@@ -102,18 +102,23 @@ static const int32_t Alice = 1;
 static const int32_t Bob   = 2;
 
 using namespace zina;
-class AxoZrtpConnector
+
+/**
+ * The functions in this class set up the ZinaConversation from data negotiated
+ * with ZRTP.
+ */
+class ZinaZrtpConnector
 {
 public:
     /**
      * @brief Constructor
      * 
-     * @param conv Pointer to a remote AxoConversation.
-     * @param localConv Pointer to local Axolotl state
+     * @param conv Pointer to a remote ZinaConversation.
+     * @param localConv Pointer to local ZinaConversatione
      */
-    AxoZrtpConnector(shared_ptr<ZinaConversation> conv, shared_ptr<ZinaConversation> localConv): conv_(conv), localConv_(localConv), ratchetKey_(NULL),
+    ZinaZrtpConnector(shared_ptr<ZinaConversation> conv, shared_ptr<ZinaConversation> localConv): conv_(conv), localConv_(localConv), ratchetKey_(NULL),
                      remoteRatchetKey_(NULL), remoteIdKey_(NULL), role_(None) {}
-    ~AxoZrtpConnector() { delete ratchetKey_; ratchetKey_ = NULL; delete remoteRatchetKey_; remoteRatchetKey_ = NULL; }
+    ~ZinaZrtpConnector() { delete ratchetKey_; ratchetKey_ = NULL; delete remoteRatchetKey_; remoteRatchetKey_ = NULL; }
 
 
     /**
@@ -147,9 +152,9 @@ public:
     shared_ptr<ZinaConversation> getLocalConversation()   { return localConv_; }
 
 private:
-    AxoZrtpConnector (const AxoZrtpConnector& other) = delete;
-    AxoZrtpConnector& operator= (const AxoZrtpConnector& other) = delete;
-    bool operator== (const AxoZrtpConnector& other) const = delete;
+    ZinaZrtpConnector (const ZinaZrtpConnector& other) = delete;
+    ZinaZrtpConnector& operator= (const ZinaZrtpConnector& other) = delete;
+    bool operator== (const ZinaZrtpConnector& other) const = delete;
 
     shared_ptr<ZinaConversation> conv_;
     shared_ptr<ZinaConversation> localConv_;

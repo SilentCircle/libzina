@@ -488,7 +488,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
     if (msgStruct.msgType == 2) {
         const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
-        result = AxoPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
+        result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
         if (result != SUCCESS)
             return shared_ptr<string>();
     }

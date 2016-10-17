@@ -13,18 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-/**
- * @file Logger.cpp
- * @author Werner Dittmann <Werner.Dittmann@t-online.de>
- * @version 1.0
- *
- * @brief C++ logging functions
- * @ingroup Logging
- * @{
- *
- * Definition of global Logger instance, implementation of Logger policies
- */
-
 #include "Logger.h"
 
 using namespace std;
@@ -89,7 +77,3 @@ void AndroidLogPolicy::write(LoggingLogLevel level, const std::string& tag, cons
         __android_log_print(priority, tag.c_str(), "%s", msg.c_str());
 }
 #endif
-
-/**
- * @}
- */
