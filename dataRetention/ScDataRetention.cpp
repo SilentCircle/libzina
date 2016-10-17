@@ -4,6 +4,7 @@
 #include "../logging/ZinaLogging.h"
 #include "../appRepository/AppRepository.h"
 #include "../ratchet/state/ZinaConversation.h"
+#include "../util/Utilities.h"
 
 #include <zlib.h>
 
@@ -11,6 +12,17 @@ using namespace zina;
 using namespace std;
 
 namespace {
+/* Definitions of JSON fields for location data. This must match
+   that defined in the clients. Note that horizontal accuracy
+   and vertical accuracy use 'v' and 'h' respectively to be
+   compatible with previous buggy definition. */
+static const char* FIELD_LATITUDE = "la";
+static const char* FIELD_LONGITUDE = "lo";
+static const char* FIELD_TIME = "t";
+static const char* FIELD_ALTITUDE = "a";
+static const char* FIELD_ACCURACY_HORIZONTAL = "v";
+static const char* FIELD_ACCURACY_VERTICAL = "h";
+
 static const string GET("GET");
 static const string PUT("PUT");
 static const string POST("POST");
@@ -94,6 +106,41 @@ std::string compress(const std::string& input)
 
     return output;
 }
+}
+
+DrLocationData::DrLocationData(cJSON* json, bool detailed)
+{
+    enabled_ = false;
+
+    if (Utilities::hasJsonKey(json, FIELD_LATITUDE) ||
+        Utilities::hasJsonKey(json, FIELD_LONGITUDE) ||
+        Utilities::hasJsonKey(json, FIELD_TIME) ||
+        Utilities::hasJsonKey(json, FIELD_ALTITUDE) ||
+        Utilities::hasJsonKey(json, FIELD_ACCURACY_HORIZONTAL) ||
+        Utilities::hasJsonKey(json, FIELD_ACCURACY_VERTICAL)) {
+        enabled_ = true;
+
+        if (detailed) {
+            if (Utilities::hasJsonKey(json, FIELD_LATITUDE)) {
+                latitude_ = Utilities::getJsonDouble(json, FIELD_LATITUDE, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_LONGITUDE)) {
+                longitude_ = Utilities::getJsonDouble(json, FIELD_LONGITUDE, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_TIME)) {
+                time_ = Utilities::getJsonInt(json, FIELD_TIME, 0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_ALTITUDE)) {
+                altitude_ = Utilities::getJsonDouble(json, FIELD_ALTITUDE, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_ACCURACY_HORIZONTAL)) {
+                accuracy_horizontal_ = Utilities::getJsonDouble(json, FIELD_ACCURACY_HORIZONTAL, 0.0);
+            }
+            if (Utilities::hasJsonKey(json, FIELD_ACCURACY_VERTICAL)) {
+                accuracy_vertical_ = Utilities::getJsonDouble(json, FIELD_ACCURACY_VERTICAL, 0.0);
+            }
+        }
+    }
 }
 
 DrRequest::DrRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization) :
@@ -250,12 +297,14 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
                                                const std::string& authorization,
                                                const std::string& callid,
                                                const std::string& direction,
+                                               const DrLocationData& location,
                                                const std::string& recipient,
                                                time_t composed,
                                                time_t sent) :
     DrRequest(httpHelper, s3Helper, authorization),
     callid_(callid),
     direction_(direction),
+    location_(location),
     recipient_(recipient),
     composed_(composed),
     sent_(sent)
@@ -270,6 +319,33 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3H
     recipient_ = get_cjson_string(json, "recipient");
     composed_ = get_cjson_time(json, "composed");
     sent_ = get_cjson_time(json, "sent");
+
+    cJSON* location = cJSON_GetObjectItem(json, "location");
+    if (location) {
+        location_ = DrLocationData(location, true);
+        location_.enabled_ = Utilities::getJsonBool(location, "enabled", false);
+        if (Utilities::hasJsonKey(location, "latitude")) {
+            location_.latitude_ = Utilities::getJsonDouble(location, "latitude", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "longitude")) {
+            location_.longitude_ = Utilities::getJsonDouble(location, "longitude", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "time")) {
+            location_.time_ = Utilities::getJsonInt(location, "time", 0);
+        }
+        if (Utilities::hasJsonKey(location, "altitude")) {
+            location_.altitude_ = Utilities::getJsonDouble(location, "altitude", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "accuracy_horizontal")) {
+            location_.accuracy_horizontal_ = Utilities::getJsonDouble(location, "accuracy_horizontal", 0.0);
+        }
+        if (Utilities::hasJsonKey(location, "accuracy_vertical")) {
+            location_.accuracy_vertical_ = Utilities::getJsonDouble(location, "accuracy_vertical", 0.0);
+        }
+   }
+    else {
+        location_ = DrLocationData();
+    }
 }
 
 std::string MessageMetadataRequest::toJSON()
@@ -281,6 +357,29 @@ std::string MessageMetadataRequest::toJSON()
     cJSON_AddStringToObject(root.get(), "recipient", recipient_.c_str());
     cJSON_AddNumberToObject(root.get(), "composed", static_cast<double>(composed_));
     cJSON_AddNumberToObject(root.get(), "sent", static_cast<double>(sent_));
+
+    cJSON* location = cJSON_CreateObject();
+    cJSON_AddBoolToObject(location, "enabled", location_.enabled_);
+    if (location_.latitude_.is_valid()) {
+        cJSON_AddNumberToObject(location, "latitude", location_.latitude_);
+    }
+    if (location_.longitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    if (location_.time_.is_valid()) {
+       cJSON_AddNumberToObject(location, "time", location_.time_);
+    }
+    if (location_.altitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "altitude", location_.altitude_);
+    }
+    if (location_.accuracy_horizontal_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_horizontal", location_.accuracy_horizontal_);
+    }
+    if (location_.accuracy_vertical_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_vertical", location_.accuracy_vertical_);
+    }
+    cJSON_AddItemToObject(root.get(), "location", location);
+
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
     return request;
@@ -312,6 +411,27 @@ bool MessageMetadataRequest::run()
     cJSON_AddStringToObject(root.get(), "dst_alias", sent ? metadata.dst_alias.c_str() : metadata.src_alias.c_str());
     cJSON_AddStringToObject(root.get(), "composed_on", time_to_string(composed_).c_str());
     cJSON_AddStringToObject(root.get(), "sent_on", time_to_string(sent_).c_str());
+    cJSON* location = cJSON_CreateObject();
+    cJSON_AddBoolToObject(location, "enabled", location_.enabled_);
+    if (location_.latitude_.is_valid()) {
+        cJSON_AddNumberToObject(location, "latitude", location_.latitude_);
+    }
+    if (location_.longitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "longitude", location_.longitude_);
+    }
+    if (location_.time_.is_valid()) {
+       cJSON_AddNumberToObject(location, "time", location_.time_);
+    }
+    if (location_.altitude_.is_valid()) {
+       cJSON_AddNumberToObject(location, "altitude", location_.altitude_);
+    }
+    if (location_.accuracy_horizontal_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_horizontal", location_.accuracy_horizontal_);
+    }
+    if (location_.accuracy_vertical_.is_valid()) {
+       cJSON_AddNumberToObject(location, "accuracy_vertical", location_.accuracy_vertical_);
+    }
+    cJSON_AddItemToObject(root.get(), "location", location);
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
@@ -573,11 +693,11 @@ void ScDataRetention::sendMessageData(const std::string& callid, const std::stri
     LOGGER(INFO, __func__, " <--");
 }
 
-void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const std::string& recipient, time_t composed, time_t sent)
+void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const DrLocationData& location, const std::string& recipient, time_t composed, time_t sent)
 {
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
-    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, composed, sent));
+    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, location, recipient, composed, sent));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");

@@ -9,6 +9,17 @@
 using namespace zina;
 
 
+bool Utilities::hasJsonKey(const cJSON* const root, const char* const key) {
+    if (root == nullptr)
+        return false;
+    cJSON* jsonItem = cJSON_GetObjectItem(const_cast<cJSON*>(root), key);
+    if (jsonItem == nullptr)
+        return false;
+
+    return true;
+}
+
+
 int32_t Utilities::getJsonInt(const cJSON* const root, const char* const name, int32_t error) {
     if (root == nullptr)
         return error;
@@ -16,6 +27,16 @@ int32_t Utilities::getJsonInt(const cJSON* const root, const char* const name, i
     if (jsonItem == nullptr)
         return error;
     return jsonItem->valueint;
+}
+
+
+double Utilities::getJsonDouble(const cJSON* const root, const char* const name, double error) {
+    if (root == nullptr)
+        return error;
+    cJSON* jsonItem = cJSON_GetObjectItem(const_cast<cJSON*>(root), name);
+    if (jsonItem == nullptr)
+        return error;
+    return jsonItem->valuedouble;
 }
 
 
