@@ -728,7 +728,7 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
     shared_ptr<cJSON> sharedAttr(attr, cJSON_deleter);
     if (Utilities::hasJsonKey(attr, "la") && Utilities::hasJsonKey(attr, "lo")) {
         location.enabled_ = true;
-        if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_DATA) {
+        if ((retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA) {
             location.detailed_ = true;
             location.latitude_ = Utilities::getJsonDouble(attr, "la", 0.0);
             location.longitude_ = Utilities::getJsonDouble(attr, "lo", 0.0);
