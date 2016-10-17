@@ -511,11 +511,13 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 
     time_t currentTime = time(NULL);
 
+    DrLocationData location(attributesRoot, msgRap);
+
     if (msgRap) {
-        ScDataRetention::sendMessageMetadata("", "received", sender, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "received", location, sender, composeTime, currentTime);
         ScDataRetention::sendMessageData("", "received", sender, composeTime, currentTime, message);
     } else if (msgRam) {
-        ScDataRetention::sendMessageMetadata("", "received", sender, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "received", location, sender, composeTime, currentTime);
     }
     LOGGER(INFO, __func__, " <--");
     return true;

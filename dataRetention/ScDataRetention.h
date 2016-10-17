@@ -20,6 +20,56 @@ struct cJSON;
 
 namespace zina {
 
+/* Basic implementation of Maybe in C++ */
+template <typename T>
+class maybe {
+private:
+    bool valid_;
+    T value_;
+
+public:
+    maybe() : valid_(false) { }
+    maybe(T const& v) : value_(v), valid_(true) { }
+    maybe<T>& operator=(T const& v) {
+        valid_ = true;
+        value_ = v;
+        return *this;
+    }
+
+    operator T() {
+        // If not valid, this results in the default constructor
+        // of type T being returned.
+        if (!valid_) {
+            return T();
+        }
+        return value_;
+    }
+
+    void set_invalid() {
+        valid_ = false;
+        value_ = T();
+    }
+
+    bool is_valid() const {
+        return valid_;
+    }
+};
+
+/* Location data that can be attached to a message and may be
+   stored as metadata */
+struct DrLocationData {
+    bool enabled_;
+    maybe<double> latitude_;
+    maybe<double> longitude_;
+    maybe<int32_t> time_;
+    maybe<double> altitude_;
+    maybe<double> accuracy_horizontal_;
+    maybe<double> accuracy_vertical_;
+
+    DrLocationData() : enabled_(false) { }
+    explicit DrLocationData(cJSON* json, bool detailed);
+};
+
 class DrRequest {
 private:
     std::string authorization_;
@@ -125,6 +175,7 @@ class MessageMetadataRequest : public DrRequest {
 private:
     std::string callid_;
     std::string direction_;
+    DrLocationData location_;
     std::string recipient_;
     time_t composed_;
     time_t sent_;
@@ -138,6 +189,7 @@ public:
      * @param authorization API Key for making AW requests.
      * @param callid Callid for the message.
      * @param direction The direction of the message. "sent" or "received".
+     * @param location The location attribute details.
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
@@ -147,6 +199,7 @@ public:
                            const std::string& authorization,
                            const std::string& callid,
                            const std::string& direction,
+                           const DrLocationData& location,
                            const std::string& recipient,
                            time_t composed,
                            time_t sent);
@@ -309,12 +362,14 @@ public:
      *
      * @param callid Callid for the message.
      * @param direction The direction of the message. "sent" or "received".
+     * @param location The location attribute details.
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
      */
     static void sendMessageMetadata(const std::string& callid,
                                     const std::string& direction,
+                                    const DrLocationData& location,
                                     const std::string& recipient,
                                     time_t composed,
                                     time_t sent);

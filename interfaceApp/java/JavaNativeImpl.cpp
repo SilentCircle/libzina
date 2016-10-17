@@ -3029,7 +3029,7 @@ JNI_FUNCTION(sendDrMessageMetadata)(JNIEnv* env, jclass clazz, jstring callid, j
     if (recipientString.empty())
         return;
 
-    ScDataRetention::sendMessageMetadata(callidString, directionString, recipientString, static_cast<long>(composedTime / 1000), static_cast<long>(sentTime / 1000));
+    ScDataRetention::sendMessageMetadata(callidString, directionString, DrLocationData(), recipientString, static_cast<long>(composedTime / 1000), static_cast<long>(sentTime / 1000));
 }
 
 /*
