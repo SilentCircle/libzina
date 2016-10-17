@@ -152,6 +152,44 @@ static string requestMemberList(const string& groupId, string& requester, shared
     return result;
 }
 
+static string listHashB64(const string& groupId, SQLiteStoreConv* store)
+{
+    // Compute the member list hash and add it to the message attribute
+    uint8_t hash[32];
+    store->memberListHash(groupId, hash);
+
+    char b64Hash[64];
+    b64Encode(hash, 32, b64Hash, 63);
+    return string(b64Hash);
+
+}
+
+static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* store)
+{
+    LOGGER(INFO, __func__, " --> ");
+
+    int32_t returnCode = OK;
+    int32_t result = store->deleteAllMembers(groupId);
+    if (SQL_FAIL(result)) {
+        LOGGER(ERROR, __func__, "Could not delete all members of group: ", groupId, ", SQL code: ", result);
+        // Try to deactivate group at least
+        store->clearGroupAttribute(groupId, ACTIVE);
+        store->setGroupAttribute(groupId, INACTIVE);
+        returnCode = GROUP_ERROR_BASE + result;
+    }
+    if (returnCode == OK) {
+        result = store->deleteGroup(groupId);
+        if (SQL_FAIL(result)) {
+            LOGGER(ERROR, __func__, "Could not delete group: ", groupId, ", SQL code: ", result);
+            // Try to deactivate group at least
+            store->clearGroupAttribute(groupId, ACTIVE);
+            store->setGroupAttribute(groupId, INACTIVE);
+            returnCode = GROUP_ERROR_BASE + result;
+        }
+    }
+    return returnCode;
+}
+
 // ****** Public instance functions
 // *******************************************************
 string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
@@ -313,18 +351,6 @@ int32_t AppInterfaceImpl::answerInvitation(const string &command, bool accept, c
                             inviteAnswerCmd(root, ownUser_, accept, reason));
 }
 
-string listHashB64(const string& groupId, SQLiteStoreConv* store)
-{
-    // Compute the member list hash and add it to the message attribute
-    uint8_t hash[32];
-    store->memberListHash(groupId, hash);
-
-    char b64Hash[64];
-    b64Encode(hash, 32, b64Hash, 63);
-    return string(b64Hash);
-
-}
-
 int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, const string &attachmentDescriptor,
                                            const string &messageAttributes) {
     string groupId;
@@ -371,6 +397,47 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     return OK;
 }
 
+int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
+    LOGGER(INFO, __func__, " -->");
+
+    int32_t result;
+    string msgId = generateMsgIdTime();
+    string leaveCommand = leaveNotMemberCommand(groupId, ownUser_, true);
+
+    // Get the member list and send out the Leave command before deleting the data
+    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
+    for (auto it = members->begin(); it != members->end(); ++it) {
+        string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
+
+        if (sendGroupCommand(recipient, msgId, leaveCommand) != OK) {
+            LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
+            return errorCode_;
+        }
+    }
+    LOGGER(INFO, __func__, " <-- ");
+
+    return deleteGroupAndMembers(groupId, store_);
+}
+
+int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const string& messageId)
+{
+    if (groupId.empty() || messageId.empty()) {
+        return DATA_MISSING;
+    }
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, GROUP_COMMAND, REMOVE_MSG);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(root, MSG_ID, messageId.c_str());
+
+    char *out = cJSON_PrintUnformatted(root);
+    string command(out);
+    free(out);
+
+    sendGroupCommand(ownUser_, generateMsgIdTime(), command);
+    return OK;
+}
 
 // ****** Non public instance functions and helpers
 // ******************************************************
@@ -435,6 +502,8 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
     } else if (groupCommand.compare(HELLO) == 0) {
         groupCmdCallback_(commandIn);
         processHelloCommand(root);
+    } else if (groupCommand.compare(REMOVE_MSG) == 0) {
+        groupCmdCallback_(commandIn);
     }
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -455,7 +524,6 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
     LOGGER(INFO, __func__, " <--");
     return OK;
 }
-
 
 int32_t AppInterfaceImpl::invitationAccepted(const cJSON *root)
 {
@@ -538,7 +606,6 @@ int32_t AppInterfaceImpl::processMemberListAnswer(const cJSON* root) {
     return parseMemberList(root, initialList, groupId);
 }
 
-
 bool AppInterfaceImpl::checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes)
 {
     LOGGER(INFO, __func__, " -->");
@@ -584,55 +651,6 @@ bool AppInterfaceImpl::isGroupActive(const string& groupId, const string& sender
     sendGroupCommand(sender, msgId, command);
     return false;
 }
-
-static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* store)
-{
-    LOGGER(INFO, __func__, " --> ");
-
-    int32_t returnCode = OK;
-    int32_t result = store->deleteAllMembers(groupId);
-    if (SQL_FAIL(result)) {
-        LOGGER(ERROR, __func__, "Could not delete all members of group: ", groupId, ", SQL code: ", result);
-        // Try to deactivate group at least
-        store->clearGroupAttribute(groupId, ACTIVE);
-        store->setGroupAttribute(groupId, INACTIVE);
-        returnCode = GROUP_ERROR_BASE + result;
-    }
-    if (returnCode == OK) {
-        result = store->deleteGroup(groupId);
-        if (SQL_FAIL(result)) {
-            LOGGER(ERROR, __func__, "Could not delete group: ", groupId, ", SQL code: ", result);
-            // Try to deactivate group at least
-            store->clearGroupAttribute(groupId, ACTIVE);
-            store->setGroupAttribute(groupId, INACTIVE);
-            returnCode = GROUP_ERROR_BASE + result;
-        }
-    }
-    return returnCode;
-}
-
-int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
-    LOGGER(INFO, __func__, " -->");
-
-    int32_t result;
-    string msgId = generateMsgIdTime();
-    string leaveCommand = leaveNotMemberCommand(groupId, ownUser_, true);
-
-    // Get the member list and send out the Leave command before deleting the data
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-    for (auto it = members->begin(); it != members->end(); ++it) {
-        string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
-
-        if (sendGroupCommand(recipient, msgId, leaveCommand) != OK) {
-            LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
-            return errorCode_;
-        }
-    }
-    LOGGER(INFO, __func__, " <-- ");
-
-    return deleteGroupAndMembers(groupId, store_);
-}
-
 
 int32_t AppInterfaceImpl::processLeaveGroupCommand(const cJSON* root) {
 

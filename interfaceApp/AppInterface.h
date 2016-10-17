@@ -416,6 +416,23 @@ public:
      */
     virtual int32_t leaveGroup(const string& groupId) = 0;
 
+    /**
+     * @brief Synchronize sibling devices if group UI removed a group message.
+     *
+     * If the group UI offers a function to locally remove messages from the group conversation
+     * then it should call this function to synchronize the siblings. The function prepares and
+     * send a command to the sibling devices thus they also can locally remove the message. This
+     * keeps the group conversation in sync between sibling devices.
+     *
+     * A sibling device calls the group UI implementation if it receives the command and the UI
+     * should then take action to locally remove the message for the group conversation.
+     *
+     * @param groupId The id of the group
+     * @param messageId The message id of the removed message
+     * @return @c SUCESS or an error code
+     */
+    virtual int32_t groupMessageRemoved(const string& groupId, const string& messageId) = 0;
+
     // *************************************************************
     // Callback functions to UI part
     // *************************************************************

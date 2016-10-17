@@ -227,6 +227,14 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_leaveGroup
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    groupMessageRemoved
+ * Signature: (Ljava/lang/String;Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_groupMessageRemoved
+  (JNIEnv *, jclass, jstring, jstring);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    repoOpenDatabase
  * Signature: (Ljava/lang/String;[B)I
  */

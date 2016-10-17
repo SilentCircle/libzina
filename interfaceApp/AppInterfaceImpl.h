@@ -150,6 +150,8 @@ public:
 
     int32_t leaveGroup(const string& groupId);
 
+    int32_t groupMessageRemoved(const string& groupId, const string& messageId);
+
     shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
                                                                        const string& attachmentDescriptor,
                                                                        const string& messageAttributes,

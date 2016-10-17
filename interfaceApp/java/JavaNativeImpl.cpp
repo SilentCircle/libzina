@@ -1551,19 +1551,45 @@ JNI_FUNCTION(leaveGroup)(JNIEnv *env, jclass clazz, jstring groupUuid)
 {
     (void)clazz;
 
-    if (zinaAppInterface == NULL)
+    if (zinaAppInterface == nullptr)
         return GENERIC_ERROR;
 
-    if (groupUuid == NULL)
+    if (groupUuid == nullptr)
         return DATA_MISSING;
 
-    string group;
     const char* temp = env->GetStringUTFChars(groupUuid, 0);
-    group = temp;
+    string group(temp);
     env->ReleaseStringUTFChars(groupUuid, temp);
+
     return zinaAppInterface->leaveGroup(group);
 }
 
+/*
+ * Class:     zina_ZinaNative
+ * Method:    groupMessageRemoved
+ * Signature: (Ljava/lang/String;Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(groupMessageRemoved)(JNIEnv* env, jclass clazz, jstring groupId, jstring messageId)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupId == nullptr || messageId == nullptr)
+        return DATA_MISSING;
+
+    const char* temp = env->GetStringUTFChars(groupId, 0);
+    string group(temp);
+    env->ReleaseStringUTFChars(groupId, temp);
+
+    temp = env->GetStringUTFChars(groupId, 0);
+    string message(temp);
+    env->ReleaseStringUTFChars(messageId, temp);
+
+    return zinaAppInterface->groupMessageRemoved(group, message);
+}
 
 
 /*
