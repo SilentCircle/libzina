@@ -710,7 +710,7 @@ AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &
     newMsgAttributes->assign(out);
     free(out);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(INFO, __func__, " <-- ", *newMsgAttributes);
     return OK;
 }
 

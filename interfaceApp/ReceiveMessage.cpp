@@ -340,7 +340,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
             goto success_;
         }
 #endif
-        result = store_->insertTempMsg(msgDescriptor, *supplementsPlain, msgType, &sequence);
+        result = store_->insertTempMsg(msgDescriptor, plainMsgInfo->queueInfo_supplement, msgType, &sequence);
         processPlaintext = true;
         if (!SQL_FAIL(result))
             goto success_;
@@ -456,15 +456,30 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
             return false;
         }
     }
+    cJSON* cjTemp = cJSON_GetObjectItem(jsSupplement, "a");
+    char* jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
+    string attachmentDescr;
+    if (jsString != NULL) {
+        attachmentDescr = jsString;
+    }
+
     shared_ptr<cJSON> attributesJson(cJSON_Parse(attributes.c_str()), cJSON_deleter);
     cJSON* attributesRoot = attributesJson.get();
 
+    int32_t drFlagsMask = 0;
+
     bool msgRap = Utilities::getJsonBool(attributesRoot, RAP, false);   // Does remote party accept plaintext retention?
+    if (msgRap)
+        drFlagsMask |= RAP_BIT;
+
     bool msgRam = Utilities::getJsonBool(attributesRoot, RAM, false);   // Does remote party accept meta data retention?
+    if (msgRam)
+        drFlagsMask |= RAM_BIT;
 
     if (msgRap && !msgRam) {
         LOGGER(WARNING, __func__, " Data retention accept flags inconsistent, RAP is true, force RAM to true");
         msgRam = true;
+        drFlagsMask |= RAM_BIT;
     }
     if (drLrmp_ && !msgRap) {                               // Remote party doesn't accept retaining plaintext data
         sendErrorCommand(DR_DATA_REQUIRED, sender, msgId);  // local client requires to retain plaintext data -> reject
@@ -476,7 +491,12 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     }
 
     bool msgRop = Utilities::getJsonBool(attributesRoot, ROP, false);   // Remote party retained plaintext
+    if (msgRop)
+        drFlagsMask |= ROP_BIT;
+
     bool msgRom = Utilities::getJsonBool(attributesRoot, ROM, false);   // Remote party retained meta data
+    if (msgRom)
+        drFlagsMask |= ROM_BIT;
 
 //    LOGGER(WARNING, " ++++ DR receive attribute flags: ", msgRop, ", ", msgRom);
 
@@ -519,6 +539,17 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     } else if (msgRam) {
         ScDataRetention::sendMessageMetadata("", "received", location, sender, composeTime, currentTime);
     }
+    cJSON_DeleteItemFromObject(attributesRoot, RAP);
+    cJSON_DeleteItemFromObject(attributesRoot, RAM);
+    cJSON_DeleteItemFromObject(attributesRoot, ROP);
+    cJSON_DeleteItemFromObject(attributesRoot, ROM);
+    cJSON_AddNumberToObject(attributesRoot, DR_STATUS_BITS, drFlagsMask);
+
+    char *out = cJSON_PrintUnformatted(attributesRoot);
+    string messageAttrib(out);
+    free(out);
+
+    plainMsgInfo->queueInfo_supplement = createSupplementString(attachmentDescr, messageAttrib);
     LOGGER(INFO, __func__, " <--");
     return true;
 }

@@ -57,6 +57,12 @@ namespace zina {
 
     static const uint64_t MSG_TYPE_MASK    = 0xf;   //!< Lower 4 bits hold the message type
 
+    // Bits defining which R* flags were true
+    static const int32_t RAP_BIT           = 0x1;   //!< RAP is true in message attributes
+    static const int32_t RAM_BIT           = 0x2;   //!< RAM is true in message attributes
+    static const int32_t ROP_BIT           = 0x4;   //!< ROP is true in message attributes
+    static const int32_t ROM_BIT           = 0x8;   //!< ROM is true in message attributes
+
     // Group/member attributes, bit field data
     static const int32_t ACTIVE       = 1;            //!< The group/member is active in this client
     static const int32_t INACTIVE     = 2;            //!< The group/member is active in this client, no more message processing

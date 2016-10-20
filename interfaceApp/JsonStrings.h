@@ -101,10 +101,12 @@ namespace zina {
     static const char* RRAP = "rrap";
 
     // JSON keys in message attributes to show DR states
-    static const char* RAP = "RAP";             //!< set bey sender: "retention accepted plaintext"
-    static const char* RAM = "RAM";             //!< set bey sender: "retention accepted metadata"
-    static const char* ROP = "ROP";             //!< set bey sender: "retention occurred plaintext"
-    static const char* ROM = "ROM";             //!< set bey sender: "retention occurred metadata"
+    static const char* RAP = "RAP";             //!< set by sender: "retention accepted plaintext"
+    static const char* RAM = "RAM";             //!< set by sender: "retention accepted metadata"
+    static const char* ROP = "ROP";             //!< set by sender: "retention occurred plaintext"
+    static const char* ROM = "ROM";             //!< set by sender: "retention occurred metadata"
+
+    static const char* DR_STATUS_BITS = "dr_status"; //!< Status bits for the set R* flags
 
 }
 #endif //LIBZINA_JSONSTRINGS_H
