@@ -23,10 +23,6 @@ limitations under the License.
  * @{
  */
 
-#include <string>
-#include <stdint.h>
-#include <list>
-
 #include "../ratchet/crypto/DhKeyPair.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../Constants.h"

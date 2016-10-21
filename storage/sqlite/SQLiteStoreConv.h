@@ -23,19 +23,17 @@ limitations under the License.
  * @{
  */
 
-#include <string>
 #include <stdint.h>
 #include <list>
-#include <memory>
+
+#include "../../logging/ZinaLogging.h"
+#include "../../util/cJSON.h"
 
 #ifdef ANDROID
 #include "android/jni/sqlcipher/sqlite3.h"
 #else
 #include <sqlcipher/sqlite3.h>
-#include <iostream>
 #endif
-#include "../../util/cJSON.h"
-#include "../../logging/ZinaLogging.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32

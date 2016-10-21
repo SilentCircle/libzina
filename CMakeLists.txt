@@ -196,6 +196,20 @@ set (zina_src
     ${app_repo_src}
 )
 
+include(FindDoxygen)
+if (DOXYGEN_FOUND)
+    if (DOXYGEN_DOT_FOUND)
+        set (HAVE_DOT YES)
+    else()
+        set (HAVE_DOT NO)
+    endif()
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doc/ZinaDoxy.in ${CMAKE_CURRENT_SOURCE_DIR}/doc/ZinaDoxy @ONLY)
+    add_custom_target(doc
+            ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/ZinaDoxy
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/doc
+            COMMENT "Generating API documentation with Doxygen" VERBATIM)
+endif()
+
 if (NOT ANDROID)
     add_library(${zinaLibName} ${LIBRARY_BUILD_TYPE} ${zina_src} $<TARGET_OBJECTS:crypto_lib> $<TARGET_OBJECTS:attachment_lib>)
     set_target_properties(${zinaLibName} PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
