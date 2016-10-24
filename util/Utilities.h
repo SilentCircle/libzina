@@ -107,6 +107,14 @@ namespace zina {
         static string currentTimeISO8601();
 
         static void wipeString(string toWipe);
+
+        /**
+         * @brief URL-encode the input string and return the encoded string
+         *
+         * @param s Input string
+         * @return URL-encoded string
+         */
+        static string urlEncode(string s);
     };
 }
 

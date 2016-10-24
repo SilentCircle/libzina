@@ -19,6 +19,7 @@ limitations under the License.
 #include "../Constants.h"
 #include "../ratchet/crypto/EcCurve.h"
 #include "../keymanagment/PreKeys.h"
+#include "../util/Utilities.h"
 
 using namespace zina;
 using namespace std;
@@ -86,8 +87,11 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
                                       pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
     LOGGER(INFO, __func__, " -->");
+
+    string encoded = Utilities::urlEncode(name);
+
     char temp[1000];
-    snprintf(temp, 990, getPreKeyRequest, name.c_str(), longDevId.c_str(), authorization.c_str());
+    snprintf(temp, 990, getPreKeyRequest, encoded.c_str(), longDevId.c_str(), authorization.c_str());
     std::string requestUri(temp);
 
     std::string response;
@@ -235,8 +239,10 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
 {
     LOGGER(INFO, __func__, " -->");
 
+    string encoded = Utilities::urlEncode(name);
+
     char temp[1000];
-    snprintf(temp, 990, getUserDevicesRequest, name.c_str(), authorization.c_str());
+    snprintf(temp, 990, getUserDevicesRequest, encoded.c_str(), authorization.c_str());
 
     std::string requestUri(temp);
 
@@ -356,8 +362,9 @@ int32_t Provisioning::getUserInfo(const string& alias,  const string& authorizat
 {
     LOGGER(INFO, __func__, " <--");
 
+    string encoded = Utilities::urlEncode(alias);
     char temp[1000];
-    snprintf(temp, 990, getUserInfoRequest, alias.c_str(), authorization.c_str());
+    snprintf(temp, 990, getUserInfoRequest, encoded.c_str(), authorization.c_str());
     string requestUri(temp);
 
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, result);
@@ -365,3 +372,4 @@ int32_t Provisioning::getUserInfo(const string& alias,  const string& authorizat
     LOGGER(INFO, __func__, " <--");
     return code;
 }
+

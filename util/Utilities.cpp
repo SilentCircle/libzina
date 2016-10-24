@@ -143,3 +143,35 @@ void Utilities::wipeString(string toWipe)
 {
     memset_volatile((void*)toWipe.data(), 0, toWipe.size());
 }
+
+static const char decimal2hex[] = "0123456789ABCDEF";
+
+string Utilities::urlEncode(string s)
+{
+    const char *str = s.c_str();
+    vector<char> v(s.size());
+    v.clear();
+    for (size_t i = 0, l = s.size(); i < l; i++)
+    {
+        char c = str[i];
+        if ((c >= '0' && c <= '9') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= 'A' && c <= 'Z') ||
+            c == '-' || c == '_' || c == '.' || c == '!' || c == '~' ||
+            c == '*' || c == '\'' || c == '(' || c == ')')
+        {
+            v.push_back(c);
+        }
+        else
+        {
+            v.push_back('%');
+            unsigned char d1 = decimal2hex[c >> 4];
+            unsigned char d2 = decimal2hex[c & 0x0F];
+
+            v.push_back(d1);
+            v.push_back(d2);
+        }
+    }
+
+    return string(v.cbegin(), v.cend());
+}
