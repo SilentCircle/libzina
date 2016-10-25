@@ -727,13 +727,17 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
     shared_ptr<cJSON> sharedAttr(attr, cJSON_deleter);
     DrLocationData location(attr, (retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA);
 
+    cJSON *attachmentAttr = !sendInfo->queueInfo_attachment.empty() ? cJSON_Parse(sendInfo->queueInfo_attachment.c_str()) : cJSON_CreateObject();
+    shared_ptr<cJSON> sharedAttachmentAttr(attachmentAttr, cJSON_deleter);
+    DrAttachmentData attachment(attachmentAttr, (retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA);
+
     if ((retainInfo & RETAIN_LOCAL_DATA) == RETAIN_LOCAL_DATA) {
-        ScDataRetention::sendMessageMetadata("", "sent", location, sendInfo->queueInfo_recipient, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "sent", location, attachment, sendInfo->queueInfo_recipient, composeTime, currentTime);
         ScDataRetention::sendMessageData("", "sent", sendInfo->queueInfo_recipient, composeTime, currentTime,
                                          sendInfo->queueInfo_message);
     }
     else if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
-        ScDataRetention::sendMessageMetadata("", "sent", location, sendInfo->queueInfo_recipient, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "sent", location, attachment, sendInfo->queueInfo_recipient, composeTime, currentTime);
     }
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
