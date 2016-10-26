@@ -307,6 +307,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     plainMsgInfo->queueInfo_message_desc = msgDescriptor;
     plainMsgInfo->queueInfo_supplement = *supplementsPlain;
     plainMsgInfo->queueInfo_msgType = msgType;
+    LOGGER(INFO, __func__, " cnd4 ", plainMsgInfo->queueInfo_supplement);
 
     // At this point, in one DB transaction:
     // - save msgDescriptor and supplements plain in DB,
@@ -533,11 +534,16 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 
     DrLocationData location(attributesRoot, msgRap);
 
+    string attachments =  Utilities::getJsonString(jsSupplement, "a", "");
+    shared_ptr<cJSON> attachmentsJson(cJSON_Parse(attachments.c_str()), cJSON_deleter);
+    cJSON* attachmentsRoot = attachmentsJson.get();
+    DrAttachmentData attachment(attachmentsRoot, msgRap);
+
     if (msgRap) {
-        ScDataRetention::sendMessageMetadata("", "received", location, sender, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "received", location, attachment, sender, composeTime, currentTime);
         ScDataRetention::sendMessageData("", "received", sender, composeTime, currentTime, message);
     } else if (msgRam) {
-        ScDataRetention::sendMessageMetadata("", "received", location, sender, composeTime, currentTime);
+        ScDataRetention::sendMessageMetadata("", "received", location, attachment, sender, composeTime, currentTime);
     }
     cJSON_DeleteItemFromObject(attributesRoot, RAP);
     cJSON_DeleteItemFromObject(attributesRoot, RAM);

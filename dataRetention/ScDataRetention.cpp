@@ -39,6 +39,16 @@ static const char* FIELD_ALTITUDE = "a";
 static const char* FIELD_ACCURACY_HORIZONTAL = "v";
 static const char* FIELD_ACCURACY_VERTICAL = "h";
 
+/* Definitions of JSON fields for attachment data. This must match
+   that defined in the clients. See SCloudService.onTocAvailable
+   in the Android client */
+static const char* FIELD_CONTENT_TYPE = "content_type";
+static const char* FIELD_EXPORTED_FILENAME = "exported_filename";
+static const char* FIELD_FILENAME = "filename";
+static const char* FIELD_DISPLAY_NAME = "display_name";
+static const char* FIELD_SHA256 = "sha256";
+static const char* FIELD_FILE_SIZE = "file_size";
+
 static const string GET("GET");
 static const string PUT("PUT");
 static const string POST("POST");
@@ -154,6 +164,43 @@ DrLocationData::DrLocationData(cJSON* json, bool detailed)
             }
             if (Utilities::hasJsonKey(json, FIELD_ACCURACY_VERTICAL)) {
                 accuracy_vertical_ = Utilities::getJsonDouble(json, FIELD_ACCURACY_VERTICAL, 0.0);
+            }
+        }
+    }
+}
+
+DrAttachmentData::DrAttachmentData(cJSON* json, bool detailed)
+{
+    attached_ = false;
+
+    if (Utilities::hasJsonKey(json, FIELD_CONTENT_TYPE) ||
+        Utilities::hasJsonKey(json, FIELD_EXPORTED_FILENAME) ||
+        Utilities::hasJsonKey(json, FIELD_FILENAME) ||
+        Utilities::hasJsonKey(json, FIELD_DISPLAY_NAME) ||
+        Utilities::hasJsonKey(json, FIELD_SHA256) ||
+        Utilities::hasJsonKey(json, FIELD_FILE_SIZE)) {
+        attached_ = true;
+
+        if (Utilities::hasJsonKey(json, FIELD_CONTENT_TYPE)) {
+            content_type_ = Utilities::getJsonString(json, FIELD_CONTENT_TYPE, "");
+        }
+
+        if (Utilities::hasJsonKey(json, FIELD_FILE_SIZE)) {
+            file_size_ = Utilities::getJsonInt(json, FIELD_FILE_SIZE, 0);
+        }
+
+        if (detailed) {
+            if (Utilities::hasJsonKey(json, FIELD_EXPORTED_FILENAME)) {
+                exported_filename_ = Utilities::getJsonString(json, FIELD_EXPORTED_FILENAME, "");
+            }
+            if (Utilities::hasJsonKey(json, FIELD_FILENAME)) {
+                filename_ = Utilities::getJsonString(json, FIELD_FILENAME, "");
+            }
+            if (Utilities::hasJsonKey(json, FIELD_DISPLAY_NAME)) {
+                display_name_ = Utilities::getJsonString(json, FIELD_DISPLAY_NAME, "");
+            }
+            if (Utilities::hasJsonKey(json, FIELD_SHA256)) {
+                sha256_ = Utilities::getJsonString(json, FIELD_SHA256, "");
             }
         }
     }
@@ -314,6 +361,7 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
                                                const std::string& callid,
                                                const std::string& direction,
                                                const DrLocationData& location,
+                                               const DrAttachmentData& attachment,
                                                const std::string& recipient,
                                                time_t composed,
                                                time_t sent) :
@@ -321,6 +369,7 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper,
     callid_(callid),
     direction_(direction),
     location_(location),
+    attachment_(attachment),
     recipient_(recipient),
     composed_(composed),
     sent_(sent)
@@ -359,9 +408,39 @@ MessageMetadataRequest::MessageMetadataRequest(HTTP_FUNC httpHelper, S3_FUNC s3H
             location_.accuracy_vertical_ = Utilities::getJsonDouble(location, "accuracy_vertical", 0.0);
         }
    }
-    else {
-        location_ = DrLocationData();
-    }
+   else {
+       location_ = DrLocationData();
+   }
+
+   cJSON* attachment = cJSON_GetObjectItem(json, "attachment");
+   if (attachment) {
+        attachment_ = DrAttachmentData(attachment, true);
+        attachment_.attached_ = Utilities::getJsonBool(attachment, "attached", false);
+
+        if (Utilities::hasJsonKey(attachment, FIELD_CONTENT_TYPE)) {
+            attachment_.content_type_ = Utilities::getJsonString(attachment, FIELD_CONTENT_TYPE, "");
+        }
+
+        if (Utilities::hasJsonKey(attachment, FIELD_FILE_SIZE)) {
+            attachment_.file_size_ = Utilities::getJsonInt(attachment, FIELD_FILE_SIZE, 0);
+        }
+
+        if (Utilities::hasJsonKey(attachment, FIELD_EXPORTED_FILENAME)) {
+            attachment_.exported_filename_ = Utilities::getJsonString(attachment, FIELD_EXPORTED_FILENAME, "");
+        }
+        if (Utilities::hasJsonKey(attachment, FIELD_FILENAME)) {
+            attachment_.filename_ = Utilities::getJsonString(attachment, FIELD_FILENAME, "");
+        }
+        if (Utilities::hasJsonKey(attachment, FIELD_DISPLAY_NAME)) {
+            attachment_.display_name_ = Utilities::getJsonString(attachment, FIELD_DISPLAY_NAME, "");
+        }
+        if (Utilities::hasJsonKey(attachment, FIELD_SHA256)) {
+            attachment_.sha256_ = Utilities::getJsonString(attachment, FIELD_SHA256, "");
+        }
+   }
+   else {
+       attachment_ = DrAttachmentData();
+   }
 }
 
 std::string MessageMetadataRequest::toJSON()
@@ -395,6 +474,33 @@ std::string MessageMetadataRequest::toJSON()
        cJSON_AddNumberToObject(location, "accuracy_vertical", location_.accuracy_vertical_);
     }
     cJSON_AddItemToObject(root.get(), "location", location);
+
+    cJSON* attachment = cJSON_CreateObject();
+    cJSON_AddBoolToObject(attachment, "attached", attachment_.attached_);
+    if (attachment_.content_type_.is_valid()) {
+        string s = attachment_.content_type_;
+        cJSON_AddStringToObject(attachment, FIELD_CONTENT_TYPE, s.c_str());
+    }
+    if (attachment_.file_size_.is_valid()) {
+        cJSON_AddNumberToObject(attachment, FIELD_FILE_SIZE, attachment_.file_size_);
+    }
+    if (attachment_.exported_filename_.is_valid()) {
+        string s = attachment_.exported_filename_;
+        cJSON_AddStringToObject(attachment, FIELD_EXPORTED_FILENAME, s.c_str());
+    }
+    if (attachment_.filename_.is_valid()) {
+        string s = attachment_.filename_;
+        cJSON_AddStringToObject(attachment, FIELD_FILENAME, s.c_str());
+    }
+    if (attachment_.display_name_.is_valid()) {
+        string s = attachment_.display_name_;
+        cJSON_AddStringToObject(attachment, FIELD_DISPLAY_NAME, s.c_str());
+    }
+    if (attachment_.sha256_.is_valid()) {
+        string s = attachment_.sha256_;
+        cJSON_AddStringToObject(attachment, FIELD_SHA256, s.c_str());
+    }
+    cJSON_AddItemToObject(root.get(), "attachment", attachment);
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
@@ -448,6 +554,36 @@ bool MessageMetadataRequest::run()
        cJSON_AddNumberToObject(location, "accuracy_vertical", location_.accuracy_vertical_);
     }
     cJSON_AddItemToObject(root.get(), "location", location);
+
+    if (attachment_.attached_) {
+        cJSON* attachment = cJSON_CreateObject();
+        if (attachment_.content_type_.is_valid()) {
+            string s = attachment_.content_type_;
+            cJSON_AddStringToObject(attachment, FIELD_CONTENT_TYPE, s.c_str());
+        }
+        if (attachment_.file_size_.is_valid()) {
+            cJSON_AddNumberToObject(attachment, FIELD_FILE_SIZE, attachment_.file_size_);
+        }
+        if (attachment_.exported_filename_.is_valid()) {
+            string s = attachment_.exported_filename_;
+            cJSON_AddStringToObject(attachment, FIELD_EXPORTED_FILENAME, s.c_str());
+        }
+        if (attachment_.filename_.is_valid()) {
+            string s = attachment_.filename_;
+            cJSON_AddStringToObject(attachment, FIELD_FILENAME, s.c_str());
+        }
+        if (attachment_.display_name_.is_valid()) {
+            string s = attachment_.display_name_;
+            cJSON_AddStringToObject(attachment, FIELD_DISPLAY_NAME, s.c_str());
+        }
+        if (attachment_.sha256_.is_valid()) {
+            string s = attachment_.sha256_;
+            cJSON_AddStringToObject(attachment, FIELD_SHA256, s.c_str());
+        }
+        cJSON* attachments = cJSON_CreateArray();
+        cJSON_AddItemToArray(attachments, attachment);
+        cJSON_AddItemToObject(root.get(), "attachments", attachments);
+    }
 
     unique_ptr<char, void (*)(void*)> out(cJSON_PrintUnformatted(root.get()), free);
     std::string request(out.get());
@@ -709,11 +845,11 @@ void ScDataRetention::sendMessageData(const std::string& callid, const std::stri
     LOGGER(INFO, __func__, " <--");
 }
 
-void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const DrLocationData& location, const std::string& recipient, time_t composed, time_t sent)
+void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const DrLocationData& location, const DrAttachmentData& attachment, const std::string& recipient, time_t composed, time_t sent)
 {
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
-    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, location, recipient, composed, sent));
+    unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, location, attachment, recipient, composed, sent));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");

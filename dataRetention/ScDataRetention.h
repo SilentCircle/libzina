@@ -86,6 +86,21 @@ struct DrLocationData {
     explicit DrLocationData(cJSON* json, bool detailed);
 };
 
+/* Attachment data that can be attached to a message and may be
+   stored as metadata */
+struct DrAttachmentData {
+    bool attached_;
+    maybe<std::string> content_type_;
+    maybe<std::string> exported_filename_;
+    maybe<std::string> filename_;
+    maybe<std::string> display_name_;
+    maybe<std::string> sha256_;
+    maybe<long> file_size_;
+
+    DrAttachmentData() : attached_(false) { }
+    explicit DrAttachmentData(cJSON* json, bool detailed);
+};
+
 class DrRequest {
 private:
     std::string authorization_;
@@ -192,6 +207,7 @@ private:
     std::string callid_;
     std::string direction_;
     DrLocationData location_;
+    DrAttachmentData attachment_;
     std::string recipient_;
     time_t composed_;
     time_t sent_;
@@ -206,6 +222,7 @@ public:
      * @param callid Callid for the message.
      * @param direction The direction of the message. "sent" or "received".
      * @param location The location attribute details.
+     * @param attachment The attachment details.
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
@@ -216,6 +233,7 @@ public:
                            const std::string& callid,
                            const std::string& direction,
                            const DrLocationData& location,
+                           const DrAttachmentData& attachment,
                            const std::string& recipient,
                            time_t composed,
                            time_t sent);
@@ -379,6 +397,7 @@ public:
      * @param callid Callid for the message.
      * @param direction The direction of the message. "sent" or "received".
      * @param location The location attribute details.
+     * @param attachment The attachment details.
      * @param recipient Userid of the recipient of the message.
      * @param composed Time that the message was composed.
      * @param sent Time that the message was sent.
@@ -386,6 +405,7 @@ public:
     static void sendMessageMetadata(const std::string& callid,
                                     const std::string& direction,
                                     const DrLocationData& location,
+                                    const DrAttachmentData& attachment,
                                     const std::string& recipient,
                                     time_t composed,
                                     time_t sent);
