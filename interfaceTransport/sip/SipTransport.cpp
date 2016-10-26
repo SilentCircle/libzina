@@ -295,6 +295,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
     size_t numReportedDevices = 0;
+    bool newDevice = false;
     while ((pos = devIds.find(';')) != string::npos) {
         devId = devIds.substr(0, pos);
         devIds.erase(0, pos + 1);
@@ -305,12 +306,17 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
             continue;
         }
         numReportedDevices++;
+        if (!store->hasConversation(name, devId, appInterface_->getOwnUser())) {
+            newDevice = true;
+            break;
+        }
     }
     shared_ptr<list<string> > devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
     size_t numKnownDevices = devicesDb->size();
 
-    // If number of reported and known devices differs the user added or removed a device, re-scan devices
-    if (numKnownDevices != numReportedDevices) {
+    // If we saw a new device or the number of reported and known devices differs the user
+    // added or removed a device, re-scan devices
+    if (newDevice || numKnownDevices != numReportedDevices) {
         appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
     }
     LOGGER(INFO, __func__, " <--");
