@@ -325,7 +325,9 @@ std::string MessageRequest::toJSON()
 bool MessageRequest::run()
 {
     LOGGER(INFO, __func__, " -->");
-    if (!httpHelper_ || !s3Helper_) {
+    auto s3HelperLocal = s3Helper_;
+
+    if (!httpHelper_ || !s3HelperLocal) {
       LOGGER(ERROR, "HTTP Helper or S3 Helper not set.");
       return false;
     }
@@ -344,7 +346,7 @@ bool MessageRequest::run()
     }
 
     string result;
-    rc = s3Helper_(metadata.url.c_str(), request, &result);
+    rc = s3HelperLocal(metadata.url.c_str(), request, &result);
     if (rc != 200) {
         LOGGER(ERROR, "Could not store message metadata.");
         return false;
