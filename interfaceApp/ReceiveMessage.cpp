@@ -457,12 +457,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
             return false;
         }
     }
-    cJSON* cjTemp = cJSON_GetObjectItem(jsSupplement, "a");
-    char* jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
-    string attachmentDescr;
-    if (jsString != NULL) {
-        attachmentDescr = jsString;
-    }
+    string attachmentDescr = Utilities::getJsonString(jsSupplement, "a", "");
 
     shared_ptr<cJSON> attributesJson(cJSON_Parse(attributes.c_str()), cJSON_deleter);
     cJSON* attributesRoot = attributesJson.get();
@@ -534,10 +529,8 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 
     DrLocationData location(attributesRoot, msgRap);
 
-    string attachments =  Utilities::getJsonString(jsSupplement, "a", "");
-    shared_ptr<cJSON> attachmentsJson(cJSON_Parse(attachments.c_str()), cJSON_deleter);
-    cJSON* attachmentsRoot = attachmentsJson.get();
-    DrAttachmentData attachment(attachmentsRoot, msgRap);
+    shared_ptr<cJSON> attachmentsJson(cJSON_Parse(attachmentDescr.c_str()), cJSON_deleter);
+    DrAttachmentData attachment(attachmentsJson.get(), msgRap);
 
     if (msgRap) {
         ScDataRetention::sendMessageMetadata("", "received", location, attachment, sender, composeTime, currentTime);
