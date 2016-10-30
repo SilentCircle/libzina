@@ -62,8 +62,8 @@ enum LoggingLogType {
 /**
  * @brief The LOGGER_INSTANCE default definition
  *
- * Define the standard LOGGER_INSTANCE as @c logInst. The source that include
- * this file may defines its onwl LOGGER_INSTANCE, hoever it must define it before
+ * Define the standard LOGGER_INSTANCE as @c logInst. The source that includes
+ * this file may defines its onw LOGGER_INSTANCE, however it must define it before
  * including this file. See the file description above.
  */
 #ifndef LOGGER_INSTANCE
@@ -105,7 +105,7 @@ enum LoggingLogType {
  * @brief Starts a logging code block.
  *
  * The marco works in the same way as the @c LOGGER marco, thus the code between @c LOGGER_BEGIN
- * and @c LOGGER_END exists only if the level is less or equal the valuve defined in @c LOG_LEVEL.
+ * and @c LOGGER_END exists only if the level is less or equal the value defined in @c LOG_MAX_LEVEL.
  */
 #define LOGGER_BEGIN(level) \
     if (level > LOG_MAX_LEVEL) ;\
@@ -289,7 +289,7 @@ return 0;
          * @param name The LogPolicy implementation may use this.
          * @param tag The LogPolicy implementation may use this.
          */
-        Logger(const std::string& name, const std::string& tag);
+        explicit Logger(const std::string& name, const std::string& tag);
         ~Logger();
 
         /**

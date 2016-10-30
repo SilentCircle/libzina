@@ -667,17 +667,20 @@ AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &
     }
     // The user blocks local data retention, thus vetos setting of retention policy of the organization
     if ((drBldr_ && drLrmp_) || (drBlmr_ && drLrmm_)) {
+        LOGGER(INFO, __func__, " <-- Reject data retention - 1.");
         return REJECT_DATA_RETENTION;
     }
 
     NameLookup *nameLookup = NameLookup::getInstance();
     auto remoteUserInfo = nameLookup->getUserInfo(recipient, authorization_, false);
     if (!remoteUserInfo) {
+        LOGGER(INFO, __func__, " <-- Data missing.");
         return DATA_MISSING;        // No info for remote user??
     }
 
     // User blocks remote data retention and remote party retains data - reject sending
     if ((drBrdr_ && remoteUserInfo->drRrmp) || (drBrmr_ && remoteUserInfo->drRrmm)) {
+        LOGGER(INFO, __func__, " <-- Reject data retention - 2.");
         return REJECT_DATA_RETENTION;
     }
 

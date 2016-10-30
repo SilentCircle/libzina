@@ -28,8 +28,7 @@ FileLogPolicy::~FileLogPolicy()
 void FileLogPolicy::openStream(const std::string& name)
 {
     outStream->open(name.c_str(), std::ios_base::binary|std::ios_base::out);
-    if (!outStream->is_open())
-    {
+    if (!outStream->is_open()) {
         throw(std::runtime_error("LOGGER: Unable to open an output stream"));
     }
 }
