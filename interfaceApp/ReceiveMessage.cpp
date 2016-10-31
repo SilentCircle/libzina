@@ -307,7 +307,6 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     plainMsgInfo->queueInfo_message_desc = msgDescriptor;
     plainMsgInfo->queueInfo_supplement = *supplementsPlain;
     plainMsgInfo->queueInfo_msgType = msgType;
-    LOGGER(INFO, __func__, " cnd4 ", plainMsgInfo->queueInfo_supplement);
 
     // At this point, in one DB transaction:
     // - save msgDescriptor and supplements plain in DB,
