@@ -906,11 +906,7 @@ void ScDataRetention::processRequests()
             }
             if (!request->run()) {
                 LOGGER(ERROR, "Could not run data retention pending request - remaining in the queue to retry later");
-                // If the request failed to run we don't run any further requests. This
-                // is to avoid multiple failures if the drbroker service is down
-                // or network access isn't available. They'll be retried on the next
-                // message send.
-                break;
+                continue;
             }
         }
 
