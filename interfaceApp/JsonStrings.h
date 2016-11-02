@@ -57,6 +57,7 @@ namespace zina {
     static const char* DR_DATA_REJECTED = "errdrj";     //!< Not Delivered Due to Policy: DR rejected [ERRDRJ]
     static const char* DR_META_REJECTED = "errmrj";     //!< Not Delivered Due to Policy: MR rejected [ERRMRJ]
     static const char* DECRYPTION_FAILED = "errdecf";   //!< Not Delivered Due to decryption failure [ERRDECF]
+    static const char* COMM_BLOCKED     = "errblk";     //!< Not Delivered Due to DR policy and user blocked DR
 
     static const char* GROUP_COMMAND = "grp";
 

@@ -427,10 +427,18 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
         return true;
     }
 
+
     // Parse a msg descriptor that's always correct because it was constructed above :-)
     parseMsgDescriptor(plainMsgInfo->queueInfo_message_desc, &sender, &msgId, &message, true);
 
 //    LOGGER(WARNING, " ++++ DR receive flags, local ", drLrmp_, ", ", drLrmm_, ", block flags: ", drBrdr_, ", ", drBrmr_);
+
+    // The user blocks local data retention, thus vetos setting of retention policy of the organization
+    if ((drBldr_ && drLrmp_) || (drBlmr_ && drLrmm_)) {
+        LOGGER(INFO, __func__, " <-- Reject data retention.");
+        sendErrorCommand(COMM_BLOCKED, sender, msgId);
+        return false;
+    }
 
     if (plainMsgInfo->queueInfo_supplement.empty()) {   // No attributes -> no RAP, no RAM -> default false
         if (drLrmp_) {                                  // local client requires to retain plaintext data -> reject
