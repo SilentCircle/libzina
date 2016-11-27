@@ -347,6 +347,14 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_deleteEvent
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    deleteEvent
+ * Signature: ([B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_deleteAllEvents
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    insertObject
  * Signature: ([B[B[B[B)I
  */

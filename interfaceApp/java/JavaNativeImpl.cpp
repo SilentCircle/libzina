@@ -1995,6 +1995,31 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
     return appRepository->deleteEvent(name, id);
 }
 
+/*
+ * Class:     zina_ZinaNative
+ * Method:    deleteAllEvents
+ * Signature: ([B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(deleteAllEvents) (JNIEnv* env, jclass clazz, jbyteArray inName)
+{
+    string name;
+    if (!arrayToString(env, inName, &name) || name.empty()) {
+        return -1;
+    }
+
+    // try to delete all associated objects first otherwise there can be constraint violation
+    int rc = appRepository->deleteAttachmentStatusWithName(name);
+    Log("deleteAllEvents: after removing attachment status: %d\n", rc);
+
+    rc = appRepository->deleteObjectName(name);
+    Log("deleteAllEvents: after removing attachment objects: %d\n", rc);
+
+    rc = appRepository->deleteEventName(name);
+    Log("deleteAllEvents: after removing events: %d\n", rc);
+
+    return rc;
+}
 
 /*
  * Class:     zina_ZinaNative

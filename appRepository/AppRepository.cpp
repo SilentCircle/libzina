@@ -132,6 +132,7 @@ static const char* selectObjectsMsg = "SELECT data FROM objects WHERE event=?1 A
 static const char* deleteObjectSql = "DELETE FROM objects WHERE objectid=?1 AND event=?2 AND conv=?3;";
 static const char* deleteObjectMsgSql = "DELETE FROM objects WHERE event=?1 AND conv=?2;";
 
+static const char* deleteObjectsWithNameSql = "DELETE FROM objects WHERE conv=?1;";
 
 /* *****************************************************************************
  * SQL statements to process the attahcment status table.
@@ -149,6 +150,8 @@ static const char* selectMsgIdsWithStatus = "SELECT msgId, partnerName FROM atta
 static const char* deleteAttachmentStatusMsgIdSql = "DELETE FROM attachmentStatus WHERE msgId=?1;";
 static const char* deleteAttachmentStatusMsgIdSql2 = "DELETE FROM attachmentStatus WHERE msgId=?1 AND partnerName=?2;";
 static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
+
+static const char* deleteAttachmentStatusWithNameSql = "DELETE FROM attachmentStatus WHERE partnerName=?1;";
 
 /* *****************************************************************************
  * SQL statements to process the pending data retention event metadata
@@ -945,6 +948,27 @@ cleanup:
     return sqlResult;
 }
 
+int32_t AppRepository::deleteObjectName(const std::string& name)
+{
+    LOGGER(INFO, __func__ , " -->");
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // deleteObjectsWithNameSql = "DELETE FROM objects WHERE conv=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, deleteObjectsWithNameSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), static_cast<int>(name.size()), SQLITE_STATIC));
+
+    sqlResult= sqlite3_step(stmt);
+//    std::cerr << "Deleted records: " << sqlite3_changes(db) << std::endl;
+    ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    return sqlResult;
+}
+
 int32_t AppRepository::storeAttachmentStatus(const string& mesgId, const string& partnerName, int32_t status)
 {
     LOGGER(INFO, __func__ , " -->");
@@ -1007,6 +1031,25 @@ int32_t AppRepository::deleteWithAttachmentStatus(int32_t status)
     // static const char* deleteAttachmentStatusWithStatusSql = "DELETE FROM attachmentStatus WHERE status=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusWithStatusSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, status));
+
+    sqlResult= sqlite3_step(stmt);
+    ERRMSG;
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    return sqlResult;
+}
+
+int32_t AppRepository::deleteAttachmentStatusWithName(const std::string& name)
+{
+    LOGGER(INFO, __func__ , " -->");
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    // static const char* deleteAttachmentStatusWithNameSql = "DELETE FROM attachmentStatus WHERE partnerName=?1;";
+    SQLITE_CHK(SQLITE_PREPARE(db, deleteAttachmentStatusWithNameSql, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, name.data(), static_cast<int>(name.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
     ERRMSG;

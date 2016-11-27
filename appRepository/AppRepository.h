@@ -349,6 +349,14 @@ public:
     int32_t deleteObjectMsg(const string& name, const string& eventId);
 
     /**
+     * @brief Delete all objects that belong to a conversation.
+     *
+     * @param name The conversation partner's name
+     * @return An SQLITE code.
+     */
+    int32_t deleteObjectName(const string& name);
+
+    /**
      * @brief Insert or update the attachment status.
      *
      * If no entry exists for the msgId then insert a new entry and set its
@@ -385,6 +393,14 @@ public:
      * @return the SQL code
      */
     int32_t deleteWithAttachmentStatus(int32_t status);
+
+    /**
+     * @brief Delete all attachment status entries for a given conversation.
+     *
+     * @param @param partnerName Name of the conversation partner
+     * @return the SQL code
+     */
+    int32_t deleteAttachmentStatusWithName(const string& partnerName);
 
     /**
      * @brief Return attachment status for message id.
