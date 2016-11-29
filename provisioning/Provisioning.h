@@ -55,7 +55,6 @@ public:
     /**
      * @brief Remove a ZINA device from user's account.
      * 
-     * @param name the user's name
      * @param scClientDevId the unique device id of one of the user's registered ZINA devices
      * @param authorization autorization data, may be needed for some servers
      * @param result To store the result data of the server, usually in case of an error only
