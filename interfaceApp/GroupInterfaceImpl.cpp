@@ -511,10 +511,12 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
         }
     } else if (groupCommand.compare(MEMBER_LIST) == 0) {
         processMemberListAnswer(root);
+        groupCmdCallback_(commandIn);
     } else if (groupCommand.compare(REQ_MEMBER_LIST) == 0) {
         createMemberListAnswer(root);
     } else if (groupCommand.compare(LEAVE) == 0 || groupCommand.compare(NOT_MEMBER) == 0) {
         processLeaveGroupCommand(root);
+        groupCmdCallback_(commandIn);
     } else if (groupCommand.compare(HELLO) == 0) {
         groupCmdCallback_(commandIn);
         processHelloCommand(root);
