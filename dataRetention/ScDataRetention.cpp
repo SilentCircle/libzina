@@ -206,6 +206,7 @@ DrAttachmentData::DrAttachmentData(cJSON* json, bool detailed)
     }
 }
 
+#if defined(SC_ENABLE_DR)
 DrRequest::DrRequest(HTTP_FUNC httpHelper, S3_FUNC s3Helper, const std::string& authorization) :
     httpHelper_(httpHelper),
     s3Helper_(s3Helper),
@@ -785,6 +786,7 @@ bool SilentWorldCallMetadataRequest::run()
     LOGGER(INFO, __func__, " <--");
     return true;
 }
+#endif
 
 HTTP_FUNC ScDataRetention::httpHelper_ = nullptr;
 S3_FUNC ScDataRetention::s3Helper_ = nullptr;
@@ -805,6 +807,7 @@ void ScDataRetention::setAuthorization(const std::string& authorization)
     authorization_ = authorization;
 }
 
+#if defined(SC_ENABLE_DR)
 DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
 {
     unique_ptr<DrRequest> request;
@@ -835,52 +838,60 @@ DrRequest* ScDataRetention::requestFromJSON(const std::string& json)
 
     return request.release();
 }
-
+#endif
 
 void ScDataRetention::sendMessageData(const std::string& callid, const std::string& direction, const std::string& recipient, time_t composed, time_t sent, const std::string& message)
 {
+#if defined(SC_ENABLE_DR)
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
     unique_ptr<DrRequest> request(new MessageRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, composed, sent, message));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");
+#endif
 }
 
 void ScDataRetention::sendMessageMetadata(const std::string& callid, const std::string& direction, const DrLocationData& location, const DrAttachmentData& attachment, const std::string& recipient, time_t composed, time_t sent)
 {
+#if defined(SC_ENABLE_DR)
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
     unique_ptr<DrRequest> request(new MessageMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, location, attachment, recipient, composed, sent));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");
+#endif
 }
 
 void ScDataRetention::sendInCircleCallMetadata(const std::string& callid, const std::string& direction, const std::string& recipient, time_t start, time_t end)
 {
+#if defined(SC_ENABLE_DR)
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
     unique_ptr<DrRequest> request(new InCircleCallMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, recipient, start, end));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");
+#endif
 }
 
 void ScDataRetention::sendSilentWorldCallMetadata(const std::string& callid, const std::string& direction, const std::string& srctn, const std::string& dsttn, time_t start, time_t end)
 {
+#if defined(SC_ENABLE_DR)
     LOGGER(INFO, __func__, " -->");
     AppRepository* store = AppRepository::getStore();
     unique_ptr<DrRequest> request(new SilentWorldCallMetadataRequest(httpHelper_, s3Helper_, authorization_, callid, direction, srctn, dsttn, start, end));
     store->storeDrPendingEvent(time(NULL), request->toJSON().c_str());
     processRequests();
     LOGGER(INFO, __func__, " <--");
+#endif
 }
 
 void ScDataRetention::processRequests()
 {
+#if defined(SC_ENABLE_DR)
     LOGGER(INFO, __func__, " -->");
-
     bool enabled = false;
     if (ScDataRetention::isEnabled(&enabled) != 200) {
         LOGGER(ERROR, "Could not determine if data retention is enabled.");
@@ -915,12 +926,16 @@ void ScDataRetention::processRequests()
 
     store->deleteDrPendingEvents(rowsToDelete);
     LOGGER(INFO, __func__, " <--");
+#endif
 }
 
 int ScDataRetention::isEnabled(bool* enabled)
 {
     LOGGER(INFO, __func__, " -->");
-
+#if !defined(SC_ENABLE_DR)
+    *enabled = false;
+    return 0;
+#else
     static const char* baseUrl = "/drbroker/check/?api_key=";
 
     std::string requestUrl(baseUrl);
@@ -950,12 +965,16 @@ int ScDataRetention::isEnabled(bool* enabled)
     }
 
     return rc;
+#endif
 }
 
 int ScDataRetention::isEnabled(const string& user, bool* enabled)
 {
     LOGGER(INFO, __func__, " -->");
-
+#if !defined(SC_ENABLE_DR)
+    *enabled = false;
+    return 0;
+#else
     static const char* baseUrl = "/drbroker/check-user/";
 
     std::string requestUrl(baseUrl);
@@ -997,4 +1016,5 @@ int ScDataRetention::isEnabled(const string& user, bool* enabled)
     }
 
     return rc;
+#endif
 }

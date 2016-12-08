@@ -28,6 +28,11 @@ limitations under the License.
 #include <memory>
 #include <time.h>
 
+/* Macro to control whether data retention functionality is enabled or disabled.
+   Use "#if defined(SC_ENABLE_DR)" to test.
+*/
+//#define SC_ENABLE_DR
+
 typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& method, const std::string& requestData, std::string* response);
 
 typedef int32_t (*S3_FUNC)(const std::string& requestUri, const std::string& requestData, std::string* response);
@@ -101,6 +106,10 @@ struct DrAttachmentData {
     explicit DrAttachmentData(cJSON* json, bool detailed);
 };
 
+#if defined(SC_ENABLE_DR)
+/* The request classes are only compiled if data retention is enabled. This makes
+   accidental use of DR in a disabled build a compile error.
+*/
 class DrRequest {
 private:
     std::string authorization_;
@@ -312,6 +321,7 @@ public:
     virtual std::string toJSON() override;
     virtual bool run() override;
 };
+#endif
 
 class ScDataRetention
 {
@@ -361,6 +371,7 @@ public:
     ScDataRetention() {}
     ~ScDataRetention() {}
 
+#if defined(SC_ENABLE_DR)
     /**
      * @brief Convert a serialized request in JSON format back to a DrRequest object
      *
@@ -368,6 +379,7 @@ public:
      * @return The DrRequest object deserialized from JSON.
      */
     static DrRequest* requestFromJSON(const std::string& json);
+#endif
 
     /**
      * @brief Store message data in the customers Amazon S3 bucket.
