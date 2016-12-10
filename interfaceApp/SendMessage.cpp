@@ -245,6 +245,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     if (toSibling) {
         recipient = ownUser_;
     }
+#ifdef SC_ENABLE_DR_SEND
     else if (!isCommand(messageType, messageAttributes)) {      // No data retention for commands yet
         auto newAttributes = make_shared<string>();
         if ((errorCode_ = checkDataRetentionSend(recipient, msgAttributes, newAttributes, &localRetentionFlags)) != OK) {
@@ -252,6 +253,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         }
         msgAttributes = *newAttributes;
     }
+#endif // SC_ENABLE_DR_SEND
 
     // When sending to sibling devices getIdentityKeys(...) returns an empty list if the user
     // has no sibling devices.
@@ -649,6 +651,7 @@ string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const 
     return result;
 }
 
+#ifdef SC_ENABLE_DR_SEND
 int32_t
 AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &msgAttributes,
                                          shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags) {
@@ -716,6 +719,7 @@ AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &
     LOGGER(INFO, __func__, " <-- ", *newMsgAttributes);
     return OK;
 }
+#endif // SC_ENABLE_DR_SEND
 
 int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo)
 {

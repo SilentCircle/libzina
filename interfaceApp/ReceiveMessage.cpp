@@ -26,7 +26,6 @@ limitations under the License.
 #include "../util/b64helper.h"
 #include "../util/Utilities.h"
 #include "JsonStrings.h"
-#include "../storage/NameLookup.h"
 #include "../dataRetention/ScDataRetention.h"
 
 #include <zrtp/crypto/sha256.h>
@@ -97,10 +96,7 @@ bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
         return true;
 
     possibleCmd = Utilities::getJsonString(attributesRoot, GROUP_COMMAND, "");
-    if (!possibleCmd.empty())
-        return true;
-
-    return false;
+    return !possibleCmd.empty();
 }
 
 bool AppInterfaceImpl::isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
@@ -335,7 +331,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         // If this function returns false then don't store the plaintext in the plaintext
         // message queue, however commit the transaction to delete the raw data and save
         // the ratchet context
-#ifndef UNITTESTS
+#if !defined (UNITTESTS) && defined(SC_ENABLE_DR_RECV)
         if (!dataRetentionReceive(plainMsgInfo)) {
             goto success_;
         }
@@ -372,7 +368,6 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
-    int64_t sequence;
     int32_t result;
 
     string attachmentDescr;
@@ -414,6 +409,7 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     LOGGER(INFO, __func__, " <--");
 }
 
+#ifdef SC_ENABLE_DR_RECV
 bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
@@ -559,6 +555,7 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     LOGGER(INFO, __func__, " <--");
     return true;
 }
+#endif // SC_ENABLE_DR_RECV
 
 void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {

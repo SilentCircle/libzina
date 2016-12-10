@@ -545,6 +545,7 @@ private:
      */
     string createMessageDescriptor(const string& recipient, const string& msgId, const string& msg = Empty);
 
+#ifdef SC_ENABLE_DR_SEND
     /**
      * @brief Check data retentions flags and prepare for data retention.
      *
@@ -564,7 +565,9 @@ private:
      */
     int32_t checkDataRetentionSend(const string &recipient, const string &msgAttributes,
                                    shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags);
+#endif //SC_ENABLE_DR_SEND
 
+#ifdef SC_ENABLE_DR_RECV
     /**
      * @brief Check and perform data retention, send delivery receipt or reject message.
      *
@@ -582,6 +585,7 @@ private:
      * @return @c true or @c false in case the message was rejected due to DR policy
      */
     bool dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo);
+#endif // SC_ENABLE_DR_RECV
 
     /**
      * @brief Check if the message is a command message
