@@ -17,13 +17,36 @@ limitations under the License.
 // Created by werner on 30.11.15.
 //
 
+
+
 #include "ZinaLogging.h"
+
+/**
+ * The following code is for internal logging only
+ *
+ */
+static void (*_zina_log_cb)(void *ret, const char *tag, const char *buf) = nullptr;
+static void *pLogRet = nullptr;
+
+// this function must be public. Tivi C++ code set its internal log function
+void set_zina_log_cb(void *pRet, void (*cb)(void *ret, const char *tag, const char *buf)){
+    _zina_log_cb = cb;
+    pLogRet = pRet;
+}
+
+// This function is static (could be global) to reduce visibility
+/*static*/ void zina_log(const char *tag, const char *buf) {
+    if(_zina_log_cb){
+        _zina_log_cb(pLogRet, tag, buf);
+    }
+}
 
 #ifdef ANDROID_LOGGER
 std::shared_ptr<logging::Logger<logging::AndroidLogPolicy> >
         _globalLogger = std::make_shared<logging::Logger<logging::AndroidLogPolicy> >(std::string(""),  std::string("libzina"));
 
 #elif defined(LINUX_LOGGER) || defined(APPLE_LOGGER)
+
 std::shared_ptr<logging::Logger<logging::CerrLogPolicy> >
         _globalLogger = std::make_shared<logging::Logger<logging::CerrLogPolicy> >(std::string(""), std::string("libzina"));
 

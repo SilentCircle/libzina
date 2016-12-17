@@ -159,7 +159,11 @@ namespace logging {
 
         void openStream(const std::string& name) {};
         void closeStream() {};
-        void write(LoggingLogLevel level, const std::string& tag, const std::string& msg) { std::cerr << msg << std::endl;};
+        void write(LoggingLogLevel level, const std::string& tag, const std::string& msg) {
+            void zina_log(const char *tag, const char *buf);
+            zina_log("ZINA", msg.c_str());
+            std::cerr << msg << std::endl;
+        };
         LoggingLogType getLoggingLogType() { return FULL; }
     };
 
