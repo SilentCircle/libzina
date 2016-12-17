@@ -260,7 +260,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         if (errorCode_ == DATABASE_ERROR) {
             LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
         }
-        if (msgType != MSG_DEC_FAILED) {
+        // Don't report decryption failure on command messages
+        if (msgType < MSG_CMD) {
             sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
         }
         return;
