@@ -35,7 +35,7 @@ void set_zina_log_cb(void *pRet, void (*cb)(void *ret, const char *tag, const ch
 }
 
 // This function is static (could be global) to reduce visibility
-/*static*/ void zina_log(const char *tag, const char *buf) {
+/*static*/ void logging::zina_log(const char *tag, const char *buf) {
     if(_zina_log_cb){
         _zina_log_cb(pLogRet, tag, buf);
     }
