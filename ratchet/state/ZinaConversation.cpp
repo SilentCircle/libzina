@@ -522,6 +522,13 @@ cJSON *ZinaConversation::prepareForCapture(cJSON *existingRoot, bool beforeActio
     else
         cJSON_AddStringToObject(jsonItem, "A0", "");
 
+    // The two chain keys
+    b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+    cJSON_AddStringToObject(root, "CKs", b64Buffer);
+
+    b64Encode((const uint8_t*)CKr.data(), CKr.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+    cJSON_AddStringToObject(root, "CKr", b64Buffer);
+
     cJSON_AddNumberToObject(jsonItem, "Ns", Ns);
     cJSON_AddNumberToObject(jsonItem, "Nr", Nr);
     cJSON_AddNumberToObject(jsonItem, "PNs", PNs);
