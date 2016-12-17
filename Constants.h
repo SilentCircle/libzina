@@ -45,7 +45,10 @@ namespace zina {
 
     // Normal message types, MSG_NORMAL must be 0.
     static const uint32_t MSG_NORMAL       = 0;
+    // Commands must be > than MSG_NORMAL.
     static const uint32_t MSG_CMD          = 1;
+    static const uint32_t MSG_DEC_FAILED   = 2;
+
 
     // Group message types,
     static const uint32_t GROUP_MSG_NORMAL = 10;    //!< 0xa - normal group message

@@ -75,7 +75,7 @@ bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
 {
     LOGGER(INFO, __func__, " -->");
 
-    if (msgType == GROUP_MSG_CMD || msgType == MSG_CMD)
+    if (msgType == GROUP_MSG_CMD || msgType >= MSG_CMD)
         return true;
 
     if (attributes.empty())
@@ -260,7 +260,9 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         if (errorCode_ == DATABASE_ERROR) {
             LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
         }
-        sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
+        if (msgType != MSG_DEC_FAILED) {
+            sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
+        }
         return;
     }
     convJson = axoConv->prepareForCapture(convJson, false);
@@ -612,7 +614,7 @@ void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sende
     free(out);
 
     int32_t result;
-    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(sender, msgId), Empty, command, false, MSG_CMD, &result);
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(sender, msgId), Empty, command, false, MSG_DEC_FAILED, &result);
 
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
