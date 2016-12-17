@@ -192,17 +192,17 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         sentToId = envelope.recvdevidbin();
 
     bool wrongDeviceId = false;
+    char receiverDevId[16] = {0};
     if (!sentToId.empty()) {
         uint8_t binDevId[20];
         hex2bin(scClientDevId_.c_str(), binDevId);
 
         wrongDeviceId = memcmp((void*)sentToId.data(), binDevId, sentToId.size()) != 0;
 
-        char receiverId[16] = {0};
         size_t len;
-        bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), receiverId, &len);
+        bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), receiverDevId, &len);
         if (wrongDeviceId) {
-            LOGGER(ERROR, __func__, "Message is for device id: ", receiverId, ", my device id: ", scClientDevId_);
+            LOGGER(ERROR, __func__, "Message is for device id: ", receiverDevId, ", my device id: ", scClientDevId_);
         }
     }
     uuid_t uu = {0};
@@ -255,7 +255,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         size_t msgLen = min(message.size(), (size_t)500);
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
-        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, sentToId, axoConv->getSqlErrorCode(), msgType));
+        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
         LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         if (errorCode_ == DATABASE_ERROR) {
             LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
