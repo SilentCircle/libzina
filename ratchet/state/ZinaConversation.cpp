@@ -176,7 +176,6 @@ shared_ptr<list<string> > ZinaConversation::loadStagedMks()
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     shared_ptr<list<string> > keys = store->loadStagedMks(partner_.getName(), deviceId_, localUser_, &result);
-    LOGGER(WARNING, "Got MK: ", keys->size());
 
     if (SQL_FAIL(result)) {
         errorCode_ = DATABASE_ERROR;

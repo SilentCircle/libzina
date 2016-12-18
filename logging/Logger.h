@@ -160,8 +160,6 @@ namespace logging {
         void openStream(const std::string& name) {};
         void closeStream() {};
         void write(LoggingLogLevel level, const std::string& tag, const std::string& msg) {
-            void zina_log(const char *tag, const char *buf);
-            zina_log("ZINA", msg.c_str());
             std::cerr << msg << std::endl;
         };
         LoggingLogType getLoggingLogType() { return FULL; }
@@ -184,6 +182,25 @@ namespace logging {
     };
 #endif
 
+#ifdef APPLE_LOGGER
+    /**
+     * Implements a logging Policy designed for iOS logging
+     */
+    class __EXPORT IosLogPolicy : public LogPolicy
+    {
+    public:
+        IosLogPolicy() {}
+        ~IosLogPolicy() {};
+
+        void openStream(const std::string& name) {};
+        void closeStream() {};
+        void write(LoggingLogLevel level, const std::string& tag, const std::string& msg)  {
+            void zina_log(const char *t, const char *buf);
+            zina_log(tag.c_str(), msg.c_str());
+        };
+        LoggingLogType getLoggingLogType() { return RAW; }
+    };
+#endif
 
 /**
  * The Logger class uses a LogPolicy which implements the low level functions to output
