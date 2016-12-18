@@ -1419,6 +1419,7 @@ shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, cons
         string traceRecord(out);
         cJSON_Delete(root); free(out);
         traceRecords->push_back(traceRecord);
+        LOGGER(WARNING, __func__, " record: ", traceRecord);
 
         sqlResult = sqlite3_step(stmt);
     }

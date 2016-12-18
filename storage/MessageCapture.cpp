@@ -56,7 +56,7 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
     LOGGER(INFO, __func__ , " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
+    if (force || LOGGER_INSTANCE getLogLevel() >= WARNING) {
         shared_ptr<string> filteredAttributes = make_shared<string>();
         int32_t result = filterAttributes(attributes, filteredAttributes);
         if (result < 0) {
