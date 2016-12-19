@@ -127,6 +127,10 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
                     obj->processMessagePlain(cmdInfo);
                     break;
 
+                case CkeckRemoteIdKey:
+                    obj->checkRemoteIdKeyCommand(cmdInfo);
+                    break;
+
                 case CheckForRetry:
 
                     break;

@@ -552,4 +552,37 @@ int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
     return SUCCESS;
 }
 
+void AppInterfaceImpl::checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command)
+{
+    /*
+     * Command data usage:
+
+    command->command = CkeckRemoteIdKey;
+    command->stringData1 = remoteName;
+    command->stringData2 = deviceId;
+    command->stringData3 = pubKey;
+    command->int32Data = verifyState;
+     */
+    auto remote = ZinaConversation::loadConversation(getOwnUser(), command->stringData1, command->stringData2);
+
+    if (!remote->isValid()) {
+        LOGGER(ERROR, "<-- No conversation, user: '", command->stringData1, "', device: ", command->stringData2);
+        return;
+    }
+    const DhPublicKey* remoteId = remote->getDHIr();
+    const string remoteIdKey = remoteId->getPublicKey();
+
+//     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
+//     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
+    if (command->stringData3.compare(remoteIdKey) != 0) {
+        LOGGER(ERROR, "<-- Messaging keys do not match, user: '", command->stringData1, "', device: ", command->stringData2);
+        return;
+    }
+    // if verifyState is 1 then both users verified their SAS and thus set the Axolotl conversation
+    // to fully verified, otherwise at least the identity keys are equal and we proved that via
+    // a ZRTP session.
+    int32_t verify = (command->int32Data == 1) ? 2 : 1;
+    remote->setZrtpVerifyState(verify);
+    remote->storeConversation();
+}
 #pragma clang diagnostic pop

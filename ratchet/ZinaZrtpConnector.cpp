@@ -16,9 +16,9 @@ limitations under the License.
 #include "ZinaZrtpConnector.h"
 #include "crypto/EcCurve.h"
 #include "crypto/HKDF.h"
-#include "../Constants.h"
 #include "../interfaceApp/AppInterface.h"
 #include "../logging/ZinaLogging.h"
+#include "../interfaceApp/AppInterfaceImpl.h"
 
 #include <map>
 
@@ -135,7 +135,7 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
 void createDerivedKeys(const string& masterSecret, string* root, string* chain, size_t requested)
 {
     LOGGER(INFO, __func__, " -->");
-    uint8_t derivedSecretBytes[256];     // we support upto 128 byte symmetric keys.
+    uint8_t derivedSecretBytes[256];     // we support up to 128 byte symmetric keys.
 
     // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes.
     HKDF::deriveSecrets((uint8_t*)masterSecret.data(), masterSecret.size(), 
@@ -264,6 +264,8 @@ const string getOwnAxoIdKey()
     return key;
 }
 
+// This function queues a command to check and modify the conversation's verify state
+// This must run via the command queue because it modifies the conversation (ratchet context)
 void checkRemoteAxoIdKey(const string user, const string deviceId, const string pubKey, int32_t verifyState)
 {
     LOGGER(INFO, __func__, " -->");
@@ -284,27 +286,16 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     if (remoteName.empty()) {
         remoteName = localUser;
     }
-    auto remote = ZinaConversation::loadConversation(localUser, remoteName, deviceId);
 
-    if (!remote->isValid()) {
-        LOGGER(ERROR, "<-- No conversation, user: '", user, "', device: ", deviceId);
-        return;
-    }
-    const DhPublicKey* remoteId = remote->getDHIr();
-    const string remoteIdKey = remoteId->getPublicKey();
+    auto checkRemoteIdKeyCmd = make_shared<CmdQueueInfo>();
 
-//     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
-//     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
-    if (pubKey.compare(remoteIdKey) != 0) {
-        LOGGER(ERROR, "<-- Messaging keys do not match, user: '", user, "', device: ", deviceId);
-        return;
-    }
-    // if verifyState is 1 then both users verified their SAS and thus set the Axolotl conversation
-    // to fully verified, otherwise at least the identity keys are equal and we proved that via
-    // a ZRTP session.
-    int32_t verify = (verifyState == 1) ? 2 : 1;
-    remote->setZrtpVerifyState(verify);
-    remote->storeConversation();
+    checkRemoteIdKeyCmd->command = CkeckRemoteIdKey;
+    checkRemoteIdKeyCmd->stringData1 = remoteName;
+    checkRemoteIdKeyCmd->stringData2 = deviceId;
+    checkRemoteIdKeyCmd->stringData3 = pubKey;
+    checkRemoteIdKeyCmd->int32Data = verifyState;
+    appIf->addMsgInfoToRunQueue(checkRemoteIdKeyCmd);
+
     LOGGER(INFO, __func__, " <--");
 }
 

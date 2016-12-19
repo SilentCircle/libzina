@@ -266,6 +266,16 @@ public:
      */
     virtual int32_t getNumPreKeys() const = 0;
 
+    /**
+     * @brief Add one message info data structure to the run queue.
+     *
+     * The function checks if the run-Q thread is active and starts it if not. It
+     * then appends the data structure to the end of the run-Q.
+     *
+     * @param messageToProcess message info structure
+     */
+    virtual void addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess) = 0;
+
     // *************************************************************
     // Device handling functions
     // *************************************************************

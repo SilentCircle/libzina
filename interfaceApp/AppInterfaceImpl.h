@@ -44,7 +44,8 @@ typedef enum CmdQueueCommands_ {
     SendMessage = 1,
     ReceivedRawData,
     ReceivedTempMsg,
-    CheckForRetry
+    CheckForRetry,
+    CkeckRemoteIdKey
 } CmdQueueCommands;
 
 typedef struct CmdQueueInfo_ {
@@ -129,6 +130,8 @@ public:
     int32_t removeZinaDevice(string& scClientDevId, string* result);
 
     int32_t newPreKeys(int32_t number);
+
+    void addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess);
 
     int32_t getNumPreKeys() const;
 
@@ -443,16 +446,6 @@ private:
     int32_t doSendSingleMessage(uint64_t transportId);
 
     /**
-     * @brief Add one message info data structure to the run queue.
-     *
-     * The function checks if the run-Q thread is active and starts it if not. It
-     * then appends the data structure to the end of the run-Q.
-     *
-     * @param messageToProcess message info structure
-     */
-    void addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess);
-
-    /**
      * @brief Add a List of message info structure to the run queue.
      *
      * The function checks if the run-Q thread is active and starts it if not. It
@@ -627,6 +620,8 @@ private:
      * @return SUCCESS or an error code
      */
     int32_t doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo);
+
+    void checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command);
 
     /**
      * @brief Helper function to create the JSON formatted supplementary message data.
