@@ -596,7 +596,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     // SIP NOTIFY could have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
     auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
-    if (zinaConversation->isValid()) {
+    if (zinaConversation->isValid() && !zinaConversation->getRK().empty()) {
         return sendMessageExisting(sendInfo, zinaConversation);
     }
 

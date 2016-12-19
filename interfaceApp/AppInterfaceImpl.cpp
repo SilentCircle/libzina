@@ -481,10 +481,11 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
         return;
     }
 
-    // Check if server still knows this device, if no device at all -> remove conversation.
+    // Check if server still knows this device.
+    // If no device at all for his user -> remove all conversations (ratchet contexts) of this user.
     shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
     if (!devices || devices->empty()) {
-        store_->deleteConversation(userName, deviceId, ownUser_);
+        store_->deleteConversationsName(userName, ownUser_);
         return;
     }
     bool deviceFound = false;
@@ -497,7 +498,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
         }
     }
 
-    // The server does not know this device anymore. In this case remove the conversation.
+    // The server does not know this device anymore. In this case remove the conversation (ratchet contexts).
     if (!deviceFound) {
         store_->deleteConversation(userName, deviceId, ownUser_);
         return;
