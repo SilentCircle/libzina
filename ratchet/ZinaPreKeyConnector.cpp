@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+#include <cryptcommon/ZrtpRandom.h>
 #include "ZinaPreKeyConnector.h"
 
 #include "../ratchet/crypto/EcCurve.h"
@@ -73,6 +74,7 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
         retVal = conv->getErrorCode();
         return retVal;
     }
+    conv->reset();
 
     auto localConv = ZinaConversation::loadLocalConversation(localUser);
     if (!localConv->isValid()) {
@@ -80,6 +82,15 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
         retVal = (localConv->getErrorCode() == SUCCESS) ? NO_OWN_ID : localConv->getErrorCode();
         return retVal;
     }
+
+    // Identify our context and count how often we ran thru this setup
+    uint32_t contextId;
+    ZrtpRandom::getRandomData((uint8_t*)&contextId, sizeof(uint32_t));
+    contextId &= 0xffff0000;
+    uint32_t sequence = conv->getContextId() & 0xffff;
+    sequence++;
+    contextId |= sequence;
+    conv->setContextId(contextId);
 
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));    // Alice's Identity key pair
     const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);   // generate Alice's pre-key

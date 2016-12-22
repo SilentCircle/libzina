@@ -162,7 +162,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     store_->deleteMsgHashes(timestamp);
 
     if (messageEnvelope.size() > tempBufferSize_) {
-        delete tempBuffer_;
+        delete[] tempBuffer_;
         tempBuffer_ = new char[messageEnvelope.size()];
         tempBufferSize_ = messageEnvelope.size();
     }
@@ -172,21 +172,12 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
 
-    // ****** TODO -- remove once group chat becomes availabe
-    // **** this is for backward compatibility only --- remove once group chat becomes availabe
-//    if (envelope.has_msgtype() && envelope.msgtype() >= GROUP_MSG_NORMAL)
-//        return OK;
-    // **** Until here
-
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
     const string& sender = uid.empty() ? envelope.name() : uid;
 
-    const string& senderScClientDevId = envelope.scclientdevid();
-    const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
-    const string& message = envelope.message();
-    const string& msgId = envelope.msgid();
-
+    // Check if this message was really intended to this client. The sender added a short id to the
+    // envelope that we can use to check this
     string sentToId;
     if (envelope.has_recvdevidbin())
         sentToId = envelope.recvdevidbin();
@@ -205,6 +196,11 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
             LOGGER(ERROR, __func__, "Message is for device id: ", receiverDevId, ", my device id: ", scClientDevId_);
         }
     }
+    // Get the sender's device id and the message id
+    const string& senderScClientDevId = envelope.scclientdevid();
+    const string& msgId = envelope.msgid();
+
+    // The msg id is a time based UUID, parse it and check if the message is too old
     uuid_t uu = {0};
     uuid_parse(msgId.c_str(), uu);
     time_t msgTime = uuid_time(uu, NULL);
@@ -213,23 +209,14 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
 
     bool oldMessage = (timeDiff > 0 && timeDiff >= MK_STORE_TIME);
 
-    pair<string, string> idHashes;
-    bool hasIdHashes = false;
-    if (envelope.has_recvidhash() && envelope.has_senderidhash()) {
-        hasIdHashes = true;
-        const string& recvIdHash = envelope.recvidhash();
-        const string& senderIdHash = envelope.senderidhash();
-        idHashes.first = recvIdHash;
-        idHashes.second = senderIdHash;
-    }
+    // Extract the truncated long term identity key hashes
     auto axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
-
-    shared_ptr<string> supplementsPlain = make_shared<string>();
-    shared_ptr<const string> messagePlain;
 
     cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
 
-    messagePlain = ZinaRatchet::decrypt(axoConv.get(), message, supplements, supplementsPlain, hasIdHashes ? &idHashes : NULL);
+    string supplementsPlain;
+    shared_ptr<const string> messagePlain;
+    messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope,  &supplementsPlain);
     errorCode_ = axoConv->getErrorCode();
 
     int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
@@ -252,6 +239,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
             errorCode_ = OLD_MESSAGE;
         if (wrongDeviceId)
             errorCode_ = WRONG_RECV_DEV_ID;
+
+        const string& message = envelope.message();
         size_t msgLen = min(message.size(), (size_t)500);
         size_t outLen;
         bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
@@ -304,7 +293,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
     shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
     plainMsgInfo->command = ReceivedTempMsg;
     plainMsgInfo->queueInfo_message_desc = msgDescriptor;
-    plainMsgInfo->queueInfo_supplement = *supplementsPlain;
+    plainMsgInfo->queueInfo_supplement = supplementsPlain;
     plainMsgInfo->queueInfo_msgType = msgType;
 
     // At this point, in one DB transaction:

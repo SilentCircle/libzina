@@ -50,7 +50,7 @@ namespace zina {
  * @param crypText pointer to a @c std::string that gets the encrypted data
  * @return @c SUCCESS if encryption was OK, an error code otherwise
  */
-int32_t aesCbcEncrypt(const string& key, const string& IV, const string& plainText, shared_ptr<string> cryptText);
+int32_t aesCbcEncrypt(const string& key, const string& IV, const string& plainText, string* cryptText);
 
 /**
  * @brief Decrypt data with AES CBC mode.
@@ -67,9 +67,9 @@ int32_t aesCbcEncrypt(const string& key, const string& IV, const string& plainTe
  * @param plainText pointer to a @c std::string that gets the decrypted data
  * @return @c SUCCESS if decryption was OK, an error code otherwise
  */
-int32_t aesCbcDecrypt(const string& key, const string& IV, const string& cryptText, shared_ptr<string>  plainText);
+int32_t aesCbcDecrypt(const string& key, const string& IV, const string& cryptText, string* plainText);
 
-bool checkAndRemovePadding(shared_ptr<string> data);
+bool checkAndRemovePadding(string* data);
 
 } // namespace
 #endif // AESCBC_H

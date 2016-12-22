@@ -27,6 +27,7 @@ limitations under the License.
 #include "../crypto/DhKeyPair.h"
 #include "../crypto/DhPublicKey.h"
 #include "../state/ZinaConversation.h"
+#include "../../interfaceApp/MessageEnvelope.pb.h"
 
 using namespace std;
 
@@ -39,13 +40,11 @@ public:
      *
      * @param conv The Axolotl conversation
      * @param message The plaintext message bytes.
+     * @param envelope The ProtoBuffer data structure to create the wire data
      * @param supplements Additional data for the message, will be encrypted with the message key
-     * @param idHashes The sender's and receiver's id hashes to send with the message, can be @c NULL if
-     *                 not required
-     * @return An encrypted wire message, ready to send to the recipient+device tuple.
+     * @return SUCCESS or a failure code
      */
-    static shared_ptr<const string> encrypt(ZinaConversation& conv, const string& message, const string& supplements,
-                                            shared_ptr<string> supplementsEncrypted, pair<string, string>* idHashes = NULL);
+    static int32_t encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements);
 
     /**
      * @brief Parse a wire message and decrypt the payload.
@@ -58,8 +57,8 @@ public:
      *                 not available
      * @return Plaintext or @c NULL if decryption failed
      */
-    static shared_ptr<const string> decrypt(ZinaConversation* conv, const string& wire, const string& supplements,
-                                            shared_ptr<string> supplementsPlain, pair<string, string>* idHashes = NULL);
+    static shared_ptr<const string> decrypt(ZinaConversation* conv, MessageEnvelope& envelope, string* supplementsPlain);
+
 private:
     ZinaRatchet() {};
 

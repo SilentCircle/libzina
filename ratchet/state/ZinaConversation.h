@@ -63,8 +63,8 @@ public:
     ZinaConversation(const string& localUser, const string& user, const string& deviceId) :
             partner_(user, emptyString),
             deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0),
-            Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS),
-            valid_(false)
+            Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0),
+            versionNumber(0), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS), valid_(false)
     { stagedMk = make_shared<list<string> >(); }
 
 
@@ -177,6 +177,14 @@ public:
 
     bool isValid()                          { return valid_; }
 
+    uint32_t getContextId() const { return contextId; }
+
+    void setContextId(uint32_t ctxId) { contextId = ctxId; }
+
+    int32_t getVersionNumber() const { return versionNumber; }
+
+    void setVersionNumber(int32_t version) { versionNumber = version; }
+
     shared_ptr<list<string> > stagedMk;
 
     void reset();
@@ -233,6 +241,8 @@ private:
     int32_t      preKeyId;      //!< Remote party's pre-key id
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
     int32_t   zrtpVerifyState;
+    uint32_t  contextId;        //!< unique ID of context, changes with every re-keying
+    int32_t   versionNumber;    //!< This is the version number the partner supports
     // ***** end of persistent data
 
     /*

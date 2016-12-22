@@ -184,6 +184,7 @@ void AppInterfaceImpl::queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo)
 //
 static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
 {
+#ifdef SC_ENABLE_DR_SEND
     LOGGER(INFO, __func__, " --> ", id);
 
     unique_lock<mutex> listLock(retainInfoLock);
@@ -205,6 +206,9 @@ static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
     }
     LOGGER(INFO, __func__, " <-- ", retainFlags);
     return retainFlags;
+#else
+    return 0;
+#endif
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
@@ -485,6 +489,15 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
 
     string supplements = createSupplementString(sendInfo->queueInfo_attachment, sendInfo->queueInfo_attributes);
 
+    // This append is necessary: the GCC C++ string implementation uses shared strings, reference counted. Thus
+    // if we set the data buffer to 0 then all other references are also cleared. Appending a blank forces the string
+    // implementation to really copy the string and we can set the contents to 0. string.clear() does not clear the
+    // contents, just sets the length to 0 which is not good enough.
+    sendInfo->queueInfo_attachment.append(" ");
+    sendInfo->queueInfo_attributes.append(" ");
+    memset_volatile((void*)sendInfo->queueInfo_attachment.data(), 0, sendInfo->queueInfo_attachment.size());
+    memset_volatile((void*)sendInfo->queueInfo_attributes.data(), 0, sendInfo->queueInfo_attributes.size());
+
     if (zinaConversation == nullptr) {
         zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
         if (!zinaConversation->isValid()) {
@@ -497,14 +510,15 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
         }
     }
 
-    shared_ptr<string> supplementsEncrypted = make_shared<string>();
-
     cJSON* convJson = zinaConversation->prepareForCapture(nullptr, true);
 
     // Encrypt the user's message and the supplementary data if necessary
-    pair<string, string> idHashes;
-    shared_ptr<const string> wireMessage = ZinaRatchet::encrypt(*zinaConversation, sendInfo->queueInfo_message, supplements,
-                                                               supplementsEncrypted, &idHashes);
+    MessageEnvelope envelope;
+    int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo->queueInfo_message, envelope, supplements);
+
+    sendInfo->queueInfo_message.append(" ");
+    memset_volatile((void*)sendInfo->queueInfo_message.data(), 0, sendInfo->queueInfo_message.size());
+    memset_volatile((void*)supplements.data(), 0, supplements.size());
 
     convJson = zinaConversation->prepareForCapture(convJson, false);
 
@@ -516,15 +530,13 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
                                        sendInfo->queueInfo_attributes, !sendInfo->queueInfo_attachment.empty());
 
     // If encrypt does not return encrypted data then report an error, code was set by the encrypt function
-    if (!wireMessage) {
+    if (result != SUCCESS) {
         LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
         getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
         return zinaConversation->getErrorCode();
     }
     zinaConversation->storeConversation();
-
-    bool hasIdHashes = !idHashes.first.empty() && !idHashes.second.empty();
     /*
      * Create the message envelope:
      {
@@ -535,19 +547,10 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
      }
     */
 
-    MessageEnvelope envelope;
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
     envelope.set_msgid(sendInfo->queueInfo_msgId);
     envelope.set_msgtype(static_cast<uint32_t>(sendInfo->queueInfo_transportMsgId & MSG_TYPE_MASK));
-    if (!supplementsEncrypted->empty())
-        envelope.set_supplement(*supplementsEncrypted);
-    envelope.set_message(*wireMessage);
-    if (hasIdHashes) {
-        envelope.set_recvidhash(idHashes.first.data(), 4);
-        envelope.set_senderidhash(idHashes.second.data(), 4);
-    }
-    wireMessage.reset();
 
     uint8_t binDevId[20];
     size_t res = hex2bin(sendInfo->queueInfo_deviceId.c_str(), binDevId);
@@ -568,11 +571,12 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     // replace the binary data with B64 representation
     serialized.assign(tempBuffer_, b64Len);
 
-    memset_volatile((void*)supplementsEncrypted->data(), 0, supplementsEncrypted->size());
+#ifdef SC_ENABLE_DR_SEND
     uint32_t retainInfo = getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, true);
     if (retainInfo != 0) {
         doSendDataRetention(retainInfo, sendInfo);
     }
+#endif
     transport_->sendAxoMessage(sendInfo, serialized);
     LOGGER(INFO, __func__, " <--");
 
@@ -593,7 +597,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
     }
 
     // Check if conversation/user really not known. On new users the 'reScan' triggered by
-    // SIP NOTIFY could have already created the conversation. In this case skip further
+    // SIP NOTIFY may have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
     auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
     if (zinaConversation->isValid() && !zinaConversation->getRK().empty()) {
@@ -719,7 +723,6 @@ AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &
     LOGGER(INFO, __func__, " <-- ", *newMsgAttributes);
     return OK;
 }
-#endif // SC_ENABLE_DR_SEND
 
 int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo)
 {
@@ -749,3 +752,5 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
 }
+#endif // SC_ENABLE_DR_SEND
+
