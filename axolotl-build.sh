@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -x
+
 if [ ! -d "${WORKSPACE}/silentphone2" ]; then
     echo '***** Variable WORKSPACE does not point to correct directory *****'
     exit 1
