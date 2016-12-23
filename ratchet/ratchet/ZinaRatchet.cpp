@@ -20,6 +20,7 @@ limitations under the License.
 #include "../crypto/AesCbc.h"
 #include "../crypto/HKDF.h"
 #include "../../logging/ZinaLogging.h"
+#include "../../interfaceApp/MessageEnvelope.pb.h"
 
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>

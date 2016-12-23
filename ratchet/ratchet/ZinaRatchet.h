@@ -27,11 +27,12 @@ limitations under the License.
 #include "../crypto/DhKeyPair.h"
 #include "../crypto/DhPublicKey.h"
 #include "../state/ZinaConversation.h"
-#include "../../interfaceApp/MessageEnvelope.pb.h"
 
 using namespace std;
 
 namespace zina {
+class MessageEnvelope;
+
 class ZinaRatchet
 {
 public:
