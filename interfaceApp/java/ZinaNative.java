@@ -878,13 +878,25 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * Deletes an event/message and all its related data.
      *
-     * This function does no trigger any network actions, save to run from UI thread.
+     * This function does not trigger any network actions, save to run from UI thread.
      *
      * @param name Name of conversation
      * @param eventId Id of the event
      * @return A SQLITE code.
      */
     public static native int deleteEvent(byte[] name, byte[] eventId);
+
+    /**
+     * Delete all events from given conversation.
+     *
+     * Deletes all events/messages for conversation and their related data in data base.
+     *
+     * This function does not trigger any network actions, safe to run from UI thread.
+     *
+     * @param name Name of conversation
+     * @return A SQLITE code.
+     */
+    public static native int deleteAllEvents(byte[] name);
 
     /**
      * Insert serialized Object (attachment) data.
