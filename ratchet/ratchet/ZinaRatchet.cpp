@@ -19,7 +19,6 @@ limitations under the License.
 #include "../crypto/EcCurve.h"
 #include "../crypto/AesCbc.h"
 #include "../crypto/HKDF.h"
-#include "../../Constants.h"
 #include "../../logging/ZinaLogging.h"
 
 #include <zrtp/crypto/hmac256.h>
@@ -59,8 +58,10 @@ typedef struct parsedMessage_ {
     uint32_t version;
     uint32_t flags;
 
+    int32_t maxVersion;
     uint32_t Np;
     uint32_t PNp;
+    uint32_t contextId;
 
     const uint8_t*  ratchet;
 
@@ -69,7 +70,6 @@ typedef struct parsedMessage_ {
     int32_t   localPreKeyId;
     const uint8_t*  remotePreKey;
     const uint8_t*  remoteIdKey;
-
 
     size_t  encryptedMsgLen;
     const uint8_t*  encryptedMsg;
@@ -139,7 +139,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 #define FIXED_TYPE1_OVERHEAD  (4 + 4 + 4 + 4 + 8)
 #define ADD_TYPE2_OVERHEAD    (4)
 
-static void createWireMessage(ZinaConversation& conv, string& message, string& mac, shared_ptr<string> wire)
+static void createWireMessageV1(ZinaConversation &conv, string &message, string &mac, string* wire)
 {
     LOGGER(INFO, __func__, " -->");
     // Determine the wire message type:
@@ -222,9 +222,45 @@ static void createWireMessage(ZinaConversation& conv, string& message, string& m
     LOGGER(INFO, __func__, " <--");
 }
 
+// Set up the message (enevlope) for protocol version 2 or better. If the version number changes this
+// function is the right place to handle protocol differences. Also see parseWireMsgVx.
+static void createWireMessageVx(ZinaConversation &conv, MessageEnvelope& envelope, string& encryptedData,
+                                string& computedMac, int32_t useVersion)
+{
+    envelope.set_message(encryptedData);
+
+    // Determine the wire message type:
+    // 1: Normal message with new Ratchet key
+    // 2: Message with new Ratchet Key and pre-key information, set-up context
+
+    // A0 is set only if we use pre-keys and this is 'Alice' and generated a pre-key info, thus
+    // wire message type 2 only if we use pre-key initialization
+    int32_t msgType = static_cast<uint8_t>((conv.getA0() == NULL) ? 1 : 2);
+
+    RatchetData* ratchet = envelope.mutable_ratchet();
+    ratchet->set_ratchetmsgtype(msgType);
+    ratchet->set_curvetype(EcCurveTypes::Curve25519);
+
+    ratchet->set_useversion(useVersion);
+
+    ratchet->set_np(conv.getNs());
+    ratchet->set_pnp(conv.getPNs());
+
+    const DhPublicKey& rKey = conv.getDHRs()->getPublicKey();
+    ratchet->set_ratchet(conv.getDHRs()->getPublicKey().getPublicKey());
+
+    ratchet->set_mac(computedMac.data(), 8);
+
+    if (msgType == 2) {
+        ratchet->set_localprekeyid(conv.getPreKeyId());
+        ratchet->set_remoteidkey(conv.getDHIs()->getPublicKey().getPublicKey());
+        ratchet->set_remoteprekey(conv.getA0()->getPublicKey().getPublicKey());
+    }
+}
+
 // Parse a wire message and setup a structure with data from and pointers into wire message.
 //
-static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct) 
+static int32_t parseWireMsgV1(const string &wire, ParsedMessage *msgStruct)
 {
 //    hexdump("parse wire", wire); LOGGER(VERBOSE, hexBuffer);
 
@@ -264,8 +300,8 @@ static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct)
     }
     else {
         msgStruct->localPreKeyId = 0;
-        msgStruct->remoteIdKey = NULL;
-        msgStruct->remotePreKey = NULL;
+        msgStruct->remoteIdKey = nullptr;
+        msgStruct->remotePreKey = nullptr;
     }
     msgStruct->encryptedMsgLen = zrtpNtohl(dPi[intIndex]); byteIndex += sizeof(int32_t);
     msgStruct->encryptedMsg = &data[byteIndex];
@@ -279,11 +315,51 @@ static int32_t parseWireMsg(const string& wire, ParsedMessage* msgStruct)
         return RECV_DATA_LENGTH;
     }
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return SUCCESS;
 }
 
-static int32_t decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey, 
-                               const string& mac, shared_ptr<string> decrypted, shared_ptr<string> supplementsPlain, bool expectFail=false)
+static int32_t parseWireMsgVx(const MessageEnvelope &envelope, ParsedMessage *msgStruct)
+{
+
+    // ATTENTION: this holds a pointer into the MessageEnvelope data structure. This OK because the
+    // the lifetime of ParsedMessage is shorter than the envelope.
+
+    // Proto buffer uses C++ string to store byte data (binary data), thus in this case it's
+    // just a container. Thus we need a reinterpret_cast here to set the uint8_t* without
+    // compiler warning.
+    msgStruct->encryptedMsg = reinterpret_cast<const uint8_t*>(envelope.message().data());
+    msgStruct->encryptedMsgLen = envelope.message().size();
+
+    const RatchetData& ratchet = envelope.ratchet();
+
+    msgStruct->msgType = static_cast<uint32_t>(ratchet.ratchetmsgtype());
+    msgStruct->curveType = static_cast<uint32_t>(ratchet.curvetype());
+    msgStruct->version = static_cast<uint32_t>(ratchet.useversion());
+    msgStruct->flags = ratchet.has_flags() ? ratchet.flags() : 0;
+
+    msgStruct->Np = static_cast<uint32_t>(ratchet.np());
+    msgStruct->PNp = static_cast<uint32_t>(ratchet.pnp());
+
+    // ATTENTION: same note as for encryptedMsg above
+    msgStruct->ratchet = reinterpret_cast<const uint8_t*>(ratchet.ratchet().data());
+    msgStruct->mac = reinterpret_cast<const uint8_t*>(ratchet.mac().data());
+
+    // This is a context setup message, get additional data
+    if (msgStruct->msgType == 2) {
+        msgStruct->localPreKeyId = ratchet.localprekeyid();
+        msgStruct->remoteIdKey = reinterpret_cast<const uint8_t*>(ratchet.remoteidkey().data());
+        msgStruct->remotePreKey = reinterpret_cast<const uint8_t*>(ratchet.remoteprekey().data());
+    }
+    else {
+        msgStruct->localPreKeyId = 0;
+        msgStruct->remoteIdKey = nullptr;
+        msgStruct->remotePreKey = nullptr;
+    }
+    return SUCCESS;
+}
+
+static int32_t decryptAndCheck(const string& MK, const string& iv, const string& encrypted, const string& supplements, const string& macKey,
+                               const string& mac, string* decrypted, string* supplementsPlain, bool expectFail=false)
 {
 
     LOGGER(INFO, __func__, " -->");
@@ -334,7 +410,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
 }
 
 static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encrypted, const string& supplements, const string& mac,
-                                     shared_ptr<string> plaintext, shared_ptr<string> supplementsPlain)
+                                     string* plaintext, string* supplementsPlain)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -465,22 +541,17 @@ else:
 commit_skipped_header_and_message_keys()
 Nr = Np + 1
 CKr = CKp
-return read()*/
-shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const string& wire, const string& supplements,
-                                             shared_ptr<string> supplementsPlain, pair<string, string>* idHashes)
+return read()
+ */
+static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& supplements,
+    string* supplementsPlain, pair<string, string>* idHashes)
 {
-    LOGGER(INFO, __func__, " -->");
-    ParsedMessage msgStruct;
-    int32_t result = parseWireMsg(wire, &msgStruct);
+    // The partner shows that it supports a proto version > 1, save this in the context data
+    // When creating a message to this partner we use this info to create a message with the
+    // best available version number we support.
+    conv->setVersionNumber(msgStruct.maxVersion);
 
-    if (msgStruct.encryptedMsg == NULL) {
-        conv->setErrorCode(CORRUPT_DATA);
-        return shared_ptr<string>();
-    }
-    if (result < 0) {
-        conv->setErrorCode(result);
-        return shared_ptr<string>();
-    }
+    int32_t result;
 
     // This is a message with embedded pre-key and identity key. Need to setup the
     // Axolotl conversation first. According to the optimized pre-key handling this
@@ -488,6 +559,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
     if (msgStruct.msgType == 2) {
         const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
+        conv->setContextId(msgStruct.contextId);
         result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
         if (result != SUCCESS)
             return shared_ptr<string>();
@@ -498,8 +570,15 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
         conv->setErrorCode(SESSION_NOT_INITED);
         return shared_ptr<string>();
     }
+    conv->setVersionNumber(msgStruct.maxVersion);
 
-    if (idHashes != NULL) {
+    if (conv->getContextId() != 0 && msgStruct.contextId != 0 && conv->getContextId() != msgStruct.contextId) {
+        LOGGER(ERROR, __func__, " <-- Context ID mismatch, message ignored: ", conv->getContextId(), ", ", msgStruct.contextId);
+        conv->setErrorCode(OLD_MESSAGE);
+        return shared_ptr<string>();
+    }
+
+    if (idHashes != nullptr) {
         string recvIdHash;
         auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser());
         if (localConv->isValid()) {
@@ -520,7 +599,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
     shared_ptr<string> decrypted = make_shared<string>();
 
     string mac((const char*)msgStruct.mac, 8);
-    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted, supplementsPlain) == SUCCESS) {
+    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted.get(), supplementsPlain) == SUCCESS) {
         return decrypted;
     }
 
@@ -540,7 +619,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
             LOGGER(ERROR, __func__, " <-- Old ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
             return shared_ptr<string>();
         }
-        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted, supplementsPlain);
+        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted.get(), supplementsPlain);
         if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Old ratchet, decrypt failed, staged MK not stored.");
             conv->setErrorCode(status);
@@ -584,7 +663,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
             return shared_ptr<string>();
         }
 
-        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted, supplementsPlain);
+        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted.get(), supplementsPlain);
         if (status != SUCCESS) {
             conv->setDHRr(saveDHRr);
             delete DHRp;
@@ -606,6 +685,59 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, const stri
 
     LOGGER(INFO, __func__, " <--");
     return decrypted;
+}
+
+shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnvelope& envelope, string* supplementsPlain)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    int32_t useVersion = 1;
+    int32_t result = 0;
+    ParsedMessage msgStruct;
+
+    memset(&msgStruct, 0, sizeof(msgStruct));
+    msgStruct.maxVersion = 1;               // Initialize with minimum version
+
+    // A client supporting protocol version 2 or better created this message. In this case get some
+    // data now and not during parsing.
+    if (envelope.has_ratchet()) {
+        useVersion = envelope.ratchet().useversion();
+        if (useVersion > SUPPORTED_VERSION) {
+            conv->setErrorCode(VERSION_NOT_SUPPORTED);
+            return shared_ptr<string>();
+        }
+        msgStruct.maxVersion = envelope.ratchet().maxversion();
+        msgStruct.contextId = envelope.ratchet().contextid();
+    }
+    if (useVersion > 1) {
+        result = parseWireMsgVx(envelope, &msgStruct);
+    }
+    else {
+        const string& wire = envelope.message();
+        result = parseWireMsgV1(wire, &msgStruct);
+    }
+    if (msgStruct.encryptedMsg == NULL) {
+        conv->setErrorCode(CORRUPT_DATA);
+        return shared_ptr<string>();
+    }
+    if (result < 0) {
+        conv->setErrorCode(result);
+        return shared_ptr<string>();
+    }
+
+    pair<string, string> idHashes;
+    bool hasIdHashes = false;
+    if (envelope.has_recvidhash() && envelope.has_senderidhash()) {
+        hasIdHashes = true;
+        const string& recvIdHash = envelope.recvidhash();
+        const string& senderIdHash = envelope.senderidhash();
+        idHashes.first = recvIdHash;
+        idHashes.second = senderIdHash;
+    }
+
+    const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
+
+    return decryptInternal(conv, msgStruct, supplements, supplementsPlain, hasIdHashes ? &idHashes : nullptr);
 }
 
 /*
@@ -631,36 +763,40 @@ return msg
  *
  * This implementation does not use header keys.
  */
-shared_ptr<const string> ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, const string& supplements,
-                                             shared_ptr<string> encryptedSupplements, pair<string, string>* idHashes)
+int32_t
+ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements)
 {
     LOGGER(INFO, __func__, " -->");
     if (conv.getRK().empty()) {
         conv.setErrorCode(SESSION_NOT_INITED);
-        return shared_ptr<string>();
+        return SESSION_NOT_INITED;
     }
 
-    if (idHashes != NULL) {
-        string senderIdHash;
+    // Encrypt the user's message and the supplementary data if necessary
+    pair<string, string> idHashes;
 
-        auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser());
-        if (localConv->isValid()) {
-            const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
-            computeIdHash(idPub, &senderIdHash);
-        }
+    string wireMessage;
+    string supplementsEncrypted;;
 
-        string recvIdHash;
-        const string idPub = conv.getDHIr()->getPublicKey();
-        computeIdHash(idPub, &recvIdHash);
-        idHashes->first = recvIdHash;
-        idHashes->second = senderIdHash;
+    string senderIdHash;
+
+    auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser());
+    if (localConv->isValid()) {
+        const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
+        computeIdHash(idPub, &senderIdHash);
     }
+
+    string recvIdHash;
+    const string idPub = conv.getDHIr()->getPublicKey();
+    computeIdHash(idPub, &recvIdHash);
+    idHashes.first = recvIdHash;
+    idHashes.second = senderIdHash;
 
     bool ratchetSave = conv.getRatchetFlag();
 
     if (ratchetSave) {
-        const DhKeyPair* oldDHRs = conv.getDHRs();
-        const DhKeyPair* newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+        const DhKeyPair *oldDHRs = conv.getDHRs();
+        const DhKeyPair *newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         conv.setDHRs(newDHRs);
         delete oldDHRs;
         string newRK;
@@ -678,31 +814,63 @@ shared_ptr<const string> ZinaRatchet::encrypt(ZinaConversation& conv, const stri
     deriveMk(conv.getCKs(), &MK, &iv, &macKey);
 
 //    Log("Encrypt message to: %s, ratchet: %d, Nr: %d, Ns: %d, PNp: %d", conv.getPartner().getName().c_str(), ratchetSave, conv.getNr(), conv.getNr(), conv.getPNs());
-    shared_ptr<string> encryptedData = make_shared<string>();
+    string encryptedData;
 
-    int32_t ret = aesCbcEncrypt(MK, iv, message, encryptedData);
+    int32_t ret = aesCbcEncrypt(MK, iv, message, &encryptedData);
     if (ret != SUCCESS) {
         conv.setErrorCode(ret);
         LOGGER(ERROR, __func__, " <-- Encryption failed.");
-        return shared_ptr<string>();
+        return ret;
     }
-    if (!supplements.empty() > 0 && encryptedSupplements) {
-        ret = aesCbcEncrypt(MK, iv, supplements, encryptedSupplements);
+    if (!supplements.empty()) {
+        ret = aesCbcEncrypt(MK, iv, supplements, &supplementsEncrypted);
         if (ret != SUCCESS) {
             conv.setErrorCode(ret);
             LOGGER(ERROR, __func__, " <-- Encryption failed (supplements).");
-            return shared_ptr<string>();
+            return ret;
         }
     }
 
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
-    hmac_sha256((uint8_t*)macKey.data(), (uint32_t)macKey.size(), (uint8_t*)encryptedData->data(),
-                static_cast<int32_t>(encryptedData->size()), mac, &macLen);
-    string computedMac((const char*)mac, SHA256_DIGEST_LENGTH);
+    hmac_sha256((uint8_t *) macKey.data(), (uint32_t) macKey.size(), (uint8_t *) encryptedData.data(),
+                static_cast<int32_t>(encryptedData.size()), mac, &macLen);
+    string computedMac((const char *) mac, SHA256_DIGEST_LENGTH);
 
-    shared_ptr<string> wireMessage = make_shared<string>();
-    createWireMessage(conv, *encryptedData, computedMac, wireMessage);
+    // if partner supports a better version than we: use our supported version, else the version of out partner
+    // which may be lower than our version number. A new partner's conversation currently has a initial version
+    // number 0 which is treated as version 1. This is for backward compatibility with older clients.
+    // If we dismiss version 1 sometimes in the future a new conversation will have another initial version number.
+
+    // The first message after the initial set-up message from our partner contains the partner's supported
+    // version. The receiver functions (in decrypt, parseWireMessageVx) handle this and store the partner's
+    // version in its conversation (ratchet context).
+    // The receiver uses the 'useVersion' to call the correct parser. Old clients will always use V1 because their
+    // version values are either 0 or 1
+    int32_t useVersion = conv.getVersionNumber() >= SUPPORTED_VERSION ? SUPPORTED_VERSION : conv.getVersionNumber();
+    useVersion = useVersion == 0 ? 1 : useVersion;      // version 0 is the same as version 1
+
+    RatchetData* ratchet = envelope.mutable_ratchet();
+    if (useVersion <= 1) {
+        createWireMessageV1(conv, encryptedData, computedMac, &wireMessage);
+        envelope.set_message(wireMessage);
+
+        ratchet->set_useversion(1);
+    }
+    else {
+        createWireMessageVx(conv, envelope, encryptedData, computedMac, useVersion);
+    }
+
+    // Common fields for all protocol versions in envelope.
+    ratchet->set_maxversion(SUPPORTED_VERSION);
+    ratchet->set_contextid(conv.getContextId());
+
+    if (!supplementsEncrypted.empty())
+        envelope.set_supplement(supplementsEncrypted);
+    envelope.set_recvidhash(idHashes.first.data(), 4);
+    envelope.set_senderidhash(idHashes.second.data(), 4);
+
+    // After creating the wire message update the conversation (ratchet context) data
     conv.setNs(conv.getNs() + 1);
 
     // Hash CKs with "1"
@@ -711,5 +879,5 @@ shared_ptr<const string> ZinaRatchet::encrypt(ZinaConversation& conv, const stri
     conv.setCKs(newCKs);
 
     LOGGER(INFO, __func__, " <--");
-    return wireMessage;
+    return SUCCESS;
 }

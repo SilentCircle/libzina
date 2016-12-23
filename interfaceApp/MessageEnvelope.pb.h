@@ -33,6 +33,7 @@ void protobuf_AssignDesc_MessageEnvelope_2eproto();
 void protobuf_ShutdownFile_MessageEnvelope_2eproto();
 
 class MessageEnvelope;
+class RatchetData;
 
 // ===================================================================
 
@@ -188,18 +189,6 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_senderidhash();
   inline void set_allocated_senderidhash(::std::string* senderidhash);
 
-  // optional string recvDeviceId = 9;
-  inline bool has_recvdeviceid() const;
-  inline void clear_recvdeviceid();
-  static const int kRecvDeviceIdFieldNumber = 9;
-  inline const ::std::string& recvdeviceid() const;
-  inline void set_recvdeviceid(const ::std::string& value);
-  inline void set_recvdeviceid(const char* value);
-  inline void set_recvdeviceid(const char* value, size_t size);
-  inline ::std::string* mutable_recvdeviceid();
-  inline ::std::string* release_recvdeviceid();
-  inline void set_allocated_recvdeviceid(::std::string* recvdeviceid);
-
   // optional bytes recvDevIdBin = 10;
   inline bool has_recvdevidbin() const;
   inline void clear_recvdevidbin();
@@ -212,17 +201,14 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline ::std::string* release_recvdevidbin();
   inline void set_allocated_recvdevidbin(::std::string* recvdevidbin);
 
-  // optional string uid = 11;
-  inline bool has_uid() const;
-  inline void clear_uid();
-  static const int kUidFieldNumber = 11;
-  inline const ::std::string& uid() const;
-  inline void set_uid(const ::std::string& value);
-  inline void set_uid(const char* value);
-  inline void set_uid(const char* value, size_t size);
-  inline ::std::string* mutable_uid();
-  inline ::std::string* release_uid();
-  inline void set_allocated_uid(::std::string* uid);
+  // optional .zina.RatchetData ratchet = 12;
+  inline bool has_ratchet() const;
+  inline void clear_ratchet();
+  static const int kRatchetFieldNumber = 12;
+  inline const ::zina::RatchetData& ratchet() const;
+  inline ::zina::RatchetData* mutable_ratchet();
+  inline ::zina::RatchetData* release_ratchet();
+  inline void set_allocated_ratchet(::zina::RatchetData* ratchet);
 
   // @@protoc_insertion_point(class_scope:zina.MessageEnvelope)
  private:
@@ -242,12 +228,10 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   inline void clear_has_recvidhash();
   inline void set_has_senderidhash();
   inline void clear_has_senderidhash();
-  inline void set_has_recvdeviceid();
-  inline void clear_has_recvdeviceid();
   inline void set_has_recvdevidbin();
   inline void clear_has_recvdevidbin();
-  inline void set_has_uid();
-  inline void clear_has_uid();
+  inline void set_has_ratchet();
+  inline void clear_has_ratchet();
 
   ::std::string _unknown_fields_;
 
@@ -260,9 +244,8 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
   ::std::string* msgid_;
   ::std::string* recvidhash_;
   ::std::string* senderidhash_;
-  ::std::string* recvdeviceid_;
   ::std::string* recvdevidbin_;
-  ::std::string* uid_;
+  ::zina::RatchetData* ratchet_;
   ::google::protobuf::uint32 msgtype_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
@@ -274,6 +257,237 @@ class MessageEnvelope : public ::google::protobuf::MessageLite {
 
   void InitAsDefaultInstance();
   static MessageEnvelope* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class RatchetData : public ::google::protobuf::MessageLite {
+ public:
+  RatchetData();
+  virtual ~RatchetData();
+
+  RatchetData(const RatchetData& from);
+
+  inline RatchetData& operator=(const RatchetData& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::std::string& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::std::string* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const RatchetData& default_instance();
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const RatchetData* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+
+  void Swap(RatchetData* other);
+
+  // implements Message ----------------------------------------------
+
+  RatchetData* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const RatchetData& from);
+  void MergeFrom(const RatchetData& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  void DiscardUnknownFields();
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  ::std::string GetTypeName() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional int32 useVersion = 1;
+  inline bool has_useversion() const;
+  inline void clear_useversion();
+  static const int kUseVersionFieldNumber = 1;
+  inline ::google::protobuf::int32 useversion() const;
+  inline void set_useversion(::google::protobuf::int32 value);
+
+  // optional int32 maxVersion = 2;
+  inline bool has_maxversion() const;
+  inline void clear_maxversion();
+  static const int kMaxVersionFieldNumber = 2;
+  inline ::google::protobuf::int32 maxversion() const;
+  inline void set_maxversion(::google::protobuf::int32 value);
+
+  // optional uint32 contextId = 3;
+  inline bool has_contextid() const;
+  inline void clear_contextid();
+  static const int kContextIdFieldNumber = 3;
+  inline ::google::protobuf::uint32 contextid() const;
+  inline void set_contextid(::google::protobuf::uint32 value);
+
+  // optional int32 curveType = 4;
+  inline bool has_curvetype() const;
+  inline void clear_curvetype();
+  static const int kCurveTypeFieldNumber = 4;
+  inline ::google::protobuf::int32 curvetype() const;
+  inline void set_curvetype(::google::protobuf::int32 value);
+
+  // optional uint32 flags = 5;
+  inline bool has_flags() const;
+  inline void clear_flags();
+  static const int kFlagsFieldNumber = 5;
+  inline ::google::protobuf::uint32 flags() const;
+  inline void set_flags(::google::protobuf::uint32 value);
+
+  // optional int32 ratchetMsgType = 6;
+  inline bool has_ratchetmsgtype() const;
+  inline void clear_ratchetmsgtype();
+  static const int kRatchetMsgTypeFieldNumber = 6;
+  inline ::google::protobuf::int32 ratchetmsgtype() const;
+  inline void set_ratchetmsgtype(::google::protobuf::int32 value);
+
+  // optional int32 Np = 7;
+  inline bool has_np() const;
+  inline void clear_np();
+  static const int kNpFieldNumber = 7;
+  inline ::google::protobuf::int32 np() const;
+  inline void set_np(::google::protobuf::int32 value);
+
+  // optional int32 PNp = 8;
+  inline bool has_pnp() const;
+  inline void clear_pnp();
+  static const int kPNpFieldNumber = 8;
+  inline ::google::protobuf::int32 pnp() const;
+  inline void set_pnp(::google::protobuf::int32 value);
+
+  // optional bytes ratchet = 9;
+  inline bool has_ratchet() const;
+  inline void clear_ratchet();
+  static const int kRatchetFieldNumber = 9;
+  inline const ::std::string& ratchet() const;
+  inline void set_ratchet(const ::std::string& value);
+  inline void set_ratchet(const char* value);
+  inline void set_ratchet(const void* value, size_t size);
+  inline ::std::string* mutable_ratchet();
+  inline ::std::string* release_ratchet();
+  inline void set_allocated_ratchet(::std::string* ratchet);
+
+  // optional bytes mac = 10;
+  inline bool has_mac() const;
+  inline void clear_mac();
+  static const int kMacFieldNumber = 10;
+  inline const ::std::string& mac() const;
+  inline void set_mac(const ::std::string& value);
+  inline void set_mac(const char* value);
+  inline void set_mac(const void* value, size_t size);
+  inline ::std::string* mutable_mac();
+  inline ::std::string* release_mac();
+  inline void set_allocated_mac(::std::string* mac);
+
+  // optional int32 localPreKeyId = 11;
+  inline bool has_localprekeyid() const;
+  inline void clear_localprekeyid();
+  static const int kLocalPreKeyIdFieldNumber = 11;
+  inline ::google::protobuf::int32 localprekeyid() const;
+  inline void set_localprekeyid(::google::protobuf::int32 value);
+
+  // optional bytes remotePreKey = 12;
+  inline bool has_remoteprekey() const;
+  inline void clear_remoteprekey();
+  static const int kRemotePreKeyFieldNumber = 12;
+  inline const ::std::string& remoteprekey() const;
+  inline void set_remoteprekey(const ::std::string& value);
+  inline void set_remoteprekey(const char* value);
+  inline void set_remoteprekey(const void* value, size_t size);
+  inline ::std::string* mutable_remoteprekey();
+  inline ::std::string* release_remoteprekey();
+  inline void set_allocated_remoteprekey(::std::string* remoteprekey);
+
+  // optional bytes remoteIdKey = 13;
+  inline bool has_remoteidkey() const;
+  inline void clear_remoteidkey();
+  static const int kRemoteIdKeyFieldNumber = 13;
+  inline const ::std::string& remoteidkey() const;
+  inline void set_remoteidkey(const ::std::string& value);
+  inline void set_remoteidkey(const char* value);
+  inline void set_remoteidkey(const void* value, size_t size);
+  inline ::std::string* mutable_remoteidkey();
+  inline ::std::string* release_remoteidkey();
+  inline void set_allocated_remoteidkey(::std::string* remoteidkey);
+
+  // @@protoc_insertion_point(class_scope:zina.RatchetData)
+ private:
+  inline void set_has_useversion();
+  inline void clear_has_useversion();
+  inline void set_has_maxversion();
+  inline void clear_has_maxversion();
+  inline void set_has_contextid();
+  inline void clear_has_contextid();
+  inline void set_has_curvetype();
+  inline void clear_has_curvetype();
+  inline void set_has_flags();
+  inline void clear_has_flags();
+  inline void set_has_ratchetmsgtype();
+  inline void clear_has_ratchetmsgtype();
+  inline void set_has_np();
+  inline void clear_has_np();
+  inline void set_has_pnp();
+  inline void clear_has_pnp();
+  inline void set_has_ratchet();
+  inline void clear_has_ratchet();
+  inline void set_has_mac();
+  inline void clear_has_mac();
+  inline void set_has_localprekeyid();
+  inline void clear_has_localprekeyid();
+  inline void set_has_remoteprekey();
+  inline void clear_has_remoteprekey();
+  inline void set_has_remoteidkey();
+  inline void clear_has_remoteidkey();
+
+  ::std::string _unknown_fields_;
+
+  ::google::protobuf::uint32 _has_bits_[1];
+  mutable int _cached_size_;
+  ::google::protobuf::int32 useversion_;
+  ::google::protobuf::int32 maxversion_;
+  ::google::protobuf::uint32 contextid_;
+  ::google::protobuf::int32 curvetype_;
+  ::google::protobuf::uint32 flags_;
+  ::google::protobuf::int32 ratchetmsgtype_;
+  ::google::protobuf::int32 np_;
+  ::google::protobuf::int32 pnp_;
+  ::std::string* ratchet_;
+  ::std::string* mac_;
+  ::std::string* remoteprekey_;
+  ::std::string* remoteidkey_;
+  ::google::protobuf::int32 localprekeyid_;
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_MessageEnvelope_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_MessageEnvelope_2eproto();
+  friend void protobuf_ShutdownFile_MessageEnvelope_2eproto();
+
+  void InitAsDefaultInstance();
+  static RatchetData* default_instance_;
 };
 // ===================================================================
 
@@ -838,91 +1052,15 @@ inline void MessageEnvelope::set_allocated_senderidhash(::std::string* senderidh
   // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.senderIdHash)
 }
 
-// optional string recvDeviceId = 9;
-inline bool MessageEnvelope::has_recvdeviceid() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
-}
-inline void MessageEnvelope::set_has_recvdeviceid() {
-  _has_bits_[0] |= 0x00000100u;
-}
-inline void MessageEnvelope::clear_has_recvdeviceid() {
-  _has_bits_[0] &= ~0x00000100u;
-}
-inline void MessageEnvelope::clear_recvdeviceid() {
-  if (recvdeviceid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    recvdeviceid_->clear();
-  }
-  clear_has_recvdeviceid();
-}
-inline const ::std::string& MessageEnvelope::recvdeviceid() const {
-  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.recvDeviceId)
-  return *recvdeviceid_;
-}
-inline void MessageEnvelope::set_recvdeviceid(const ::std::string& value) {
-  set_has_recvdeviceid();
-  if (recvdeviceid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    recvdeviceid_ = new ::std::string;
-  }
-  recvdeviceid_->assign(value);
-  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.recvDeviceId)
-}
-inline void MessageEnvelope::set_recvdeviceid(const char* value) {
-  set_has_recvdeviceid();
-  if (recvdeviceid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    recvdeviceid_ = new ::std::string;
-  }
-  recvdeviceid_->assign(value);
-  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.recvDeviceId)
-}
-inline void MessageEnvelope::set_recvdeviceid(const char* value, size_t size) {
-  set_has_recvdeviceid();
-  if (recvdeviceid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    recvdeviceid_ = new ::std::string;
-  }
-  recvdeviceid_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.recvDeviceId)
-}
-inline ::std::string* MessageEnvelope::mutable_recvdeviceid() {
-  set_has_recvdeviceid();
-  if (recvdeviceid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    recvdeviceid_ = new ::std::string;
-  }
-  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.recvDeviceId)
-  return recvdeviceid_;
-}
-inline ::std::string* MessageEnvelope::release_recvdeviceid() {
-  clear_has_recvdeviceid();
-  if (recvdeviceid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    return NULL;
-  } else {
-    ::std::string* temp = recvdeviceid_;
-    recvdeviceid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-    return temp;
-  }
-}
-inline void MessageEnvelope::set_allocated_recvdeviceid(::std::string* recvdeviceid) {
-  if (recvdeviceid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete recvdeviceid_;
-  }
-  if (recvdeviceid) {
-    set_has_recvdeviceid();
-    recvdeviceid_ = recvdeviceid;
-  } else {
-    clear_has_recvdeviceid();
-    recvdeviceid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  }
-  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.recvDeviceId)
-}
-
 // optional bytes recvDevIdBin = 10;
 inline bool MessageEnvelope::has_recvdevidbin() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void MessageEnvelope::set_has_recvdevidbin() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void MessageEnvelope::clear_has_recvdevidbin() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void MessageEnvelope::clear_recvdevidbin() {
   if (recvdevidbin_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
@@ -990,80 +1128,573 @@ inline void MessageEnvelope::set_allocated_recvdevidbin(::std::string* recvdevid
   // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.recvDevIdBin)
 }
 
-// optional string uid = 11;
-inline bool MessageEnvelope::has_uid() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+// optional .zina.RatchetData ratchet = 12;
+inline bool MessageEnvelope::has_ratchet() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
-inline void MessageEnvelope::set_has_uid() {
-  _has_bits_[0] |= 0x00000400u;
+inline void MessageEnvelope::set_has_ratchet() {
+  _has_bits_[0] |= 0x00000200u;
 }
-inline void MessageEnvelope::clear_has_uid() {
-  _has_bits_[0] &= ~0x00000400u;
+inline void MessageEnvelope::clear_has_ratchet() {
+  _has_bits_[0] &= ~0x00000200u;
 }
-inline void MessageEnvelope::clear_uid() {
-  if (uid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    uid_->clear();
+inline void MessageEnvelope::clear_ratchet() {
+  if (ratchet_ != NULL) ratchet_->::zina::RatchetData::Clear();
+  clear_has_ratchet();
+}
+inline const ::zina::RatchetData& MessageEnvelope::ratchet() const {
+  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.ratchet)
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return ratchet_ != NULL ? *ratchet_ : *default_instance().ratchet_;
+#else
+  return ratchet_ != NULL ? *ratchet_ : *default_instance_->ratchet_;
+#endif
+}
+inline ::zina::RatchetData* MessageEnvelope::mutable_ratchet() {
+  set_has_ratchet();
+  if (ratchet_ == NULL) ratchet_ = new ::zina::RatchetData;
+  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.ratchet)
+  return ratchet_;
+}
+inline ::zina::RatchetData* MessageEnvelope::release_ratchet() {
+  clear_has_ratchet();
+  ::zina::RatchetData* temp = ratchet_;
+  ratchet_ = NULL;
+  return temp;
+}
+inline void MessageEnvelope::set_allocated_ratchet(::zina::RatchetData* ratchet) {
+  delete ratchet_;
+  ratchet_ = ratchet;
+  if (ratchet) {
+    set_has_ratchet();
+  } else {
+    clear_has_ratchet();
   }
-  clear_has_uid();
+  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.ratchet)
 }
-inline const ::std::string& MessageEnvelope::uid() const {
-  // @@protoc_insertion_point(field_get:zina.MessageEnvelope.uid)
-  return *uid_;
+
+// -------------------------------------------------------------------
+
+// RatchetData
+
+// optional int32 useVersion = 1;
+inline bool RatchetData::has_useversion() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void MessageEnvelope::set_uid(const ::std::string& value) {
-  set_has_uid();
-  if (uid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    uid_ = new ::std::string;
+inline void RatchetData::set_has_useversion() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void RatchetData::clear_has_useversion() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void RatchetData::clear_useversion() {
+  useversion_ = 0;
+  clear_has_useversion();
+}
+inline ::google::protobuf::int32 RatchetData::useversion() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.useVersion)
+  return useversion_;
+}
+inline void RatchetData::set_useversion(::google::protobuf::int32 value) {
+  set_has_useversion();
+  useversion_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.useVersion)
+}
+
+// optional int32 maxVersion = 2;
+inline bool RatchetData::has_maxversion() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void RatchetData::set_has_maxversion() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void RatchetData::clear_has_maxversion() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void RatchetData::clear_maxversion() {
+  maxversion_ = 0;
+  clear_has_maxversion();
+}
+inline ::google::protobuf::int32 RatchetData::maxversion() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.maxVersion)
+  return maxversion_;
+}
+inline void RatchetData::set_maxversion(::google::protobuf::int32 value) {
+  set_has_maxversion();
+  maxversion_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.maxVersion)
+}
+
+// optional uint32 contextId = 3;
+inline bool RatchetData::has_contextid() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void RatchetData::set_has_contextid() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void RatchetData::clear_has_contextid() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void RatchetData::clear_contextid() {
+  contextid_ = 0u;
+  clear_has_contextid();
+}
+inline ::google::protobuf::uint32 RatchetData::contextid() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.contextId)
+  return contextid_;
+}
+inline void RatchetData::set_contextid(::google::protobuf::uint32 value) {
+  set_has_contextid();
+  contextid_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.contextId)
+}
+
+// optional int32 curveType = 4;
+inline bool RatchetData::has_curvetype() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void RatchetData::set_has_curvetype() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void RatchetData::clear_has_curvetype() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void RatchetData::clear_curvetype() {
+  curvetype_ = 0;
+  clear_has_curvetype();
+}
+inline ::google::protobuf::int32 RatchetData::curvetype() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.curveType)
+  return curvetype_;
+}
+inline void RatchetData::set_curvetype(::google::protobuf::int32 value) {
+  set_has_curvetype();
+  curvetype_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.curveType)
+}
+
+// optional uint32 flags = 5;
+inline bool RatchetData::has_flags() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void RatchetData::set_has_flags() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void RatchetData::clear_has_flags() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void RatchetData::clear_flags() {
+  flags_ = 0u;
+  clear_has_flags();
+}
+inline ::google::protobuf::uint32 RatchetData::flags() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.flags)
+  return flags_;
+}
+inline void RatchetData::set_flags(::google::protobuf::uint32 value) {
+  set_has_flags();
+  flags_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.flags)
+}
+
+// optional int32 ratchetMsgType = 6;
+inline bool RatchetData::has_ratchetmsgtype() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void RatchetData::set_has_ratchetmsgtype() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void RatchetData::clear_has_ratchetmsgtype() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void RatchetData::clear_ratchetmsgtype() {
+  ratchetmsgtype_ = 0;
+  clear_has_ratchetmsgtype();
+}
+inline ::google::protobuf::int32 RatchetData::ratchetmsgtype() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.ratchetMsgType)
+  return ratchetmsgtype_;
+}
+inline void RatchetData::set_ratchetmsgtype(::google::protobuf::int32 value) {
+  set_has_ratchetmsgtype();
+  ratchetmsgtype_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.ratchetMsgType)
+}
+
+// optional int32 Np = 7;
+inline bool RatchetData::has_np() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void RatchetData::set_has_np() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void RatchetData::clear_has_np() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void RatchetData::clear_np() {
+  np_ = 0;
+  clear_has_np();
+}
+inline ::google::protobuf::int32 RatchetData::np() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.Np)
+  return np_;
+}
+inline void RatchetData::set_np(::google::protobuf::int32 value) {
+  set_has_np();
+  np_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.Np)
+}
+
+// optional int32 PNp = 8;
+inline bool RatchetData::has_pnp() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void RatchetData::set_has_pnp() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void RatchetData::clear_has_pnp() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void RatchetData::clear_pnp() {
+  pnp_ = 0;
+  clear_has_pnp();
+}
+inline ::google::protobuf::int32 RatchetData::pnp() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.PNp)
+  return pnp_;
+}
+inline void RatchetData::set_pnp(::google::protobuf::int32 value) {
+  set_has_pnp();
+  pnp_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.PNp)
+}
+
+// optional bytes ratchet = 9;
+inline bool RatchetData::has_ratchet() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void RatchetData::set_has_ratchet() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void RatchetData::clear_has_ratchet() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void RatchetData::clear_ratchet() {
+  if (ratchet_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    ratchet_->clear();
   }
-  uid_->assign(value);
-  // @@protoc_insertion_point(field_set:zina.MessageEnvelope.uid)
+  clear_has_ratchet();
 }
-inline void MessageEnvelope::set_uid(const char* value) {
-  set_has_uid();
-  if (uid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    uid_ = new ::std::string;
+inline const ::std::string& RatchetData::ratchet() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.ratchet)
+  return *ratchet_;
+}
+inline void RatchetData::set_ratchet(const ::std::string& value) {
+  set_has_ratchet();
+  if (ratchet_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    ratchet_ = new ::std::string;
   }
-  uid_->assign(value);
-  // @@protoc_insertion_point(field_set_char:zina.MessageEnvelope.uid)
+  ratchet_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.RatchetData.ratchet)
 }
-inline void MessageEnvelope::set_uid(const char* value, size_t size) {
-  set_has_uid();
-  if (uid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    uid_ = new ::std::string;
+inline void RatchetData::set_ratchet(const char* value) {
+  set_has_ratchet();
+  if (ratchet_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    ratchet_ = new ::std::string;
   }
-  uid_->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:zina.MessageEnvelope.uid)
+  ratchet_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.RatchetData.ratchet)
 }
-inline ::std::string* MessageEnvelope::mutable_uid() {
-  set_has_uid();
-  if (uid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    uid_ = new ::std::string;
+inline void RatchetData::set_ratchet(const void* value, size_t size) {
+  set_has_ratchet();
+  if (ratchet_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    ratchet_ = new ::std::string;
   }
-  // @@protoc_insertion_point(field_mutable:zina.MessageEnvelope.uid)
-  return uid_;
+  ratchet_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.RatchetData.ratchet)
 }
-inline ::std::string* MessageEnvelope::release_uid() {
-  clear_has_uid();
-  if (uid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+inline ::std::string* RatchetData::mutable_ratchet() {
+  set_has_ratchet();
+  if (ratchet_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    ratchet_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.RatchetData.ratchet)
+  return ratchet_;
+}
+inline ::std::string* RatchetData::release_ratchet() {
+  clear_has_ratchet();
+  if (ratchet_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     return NULL;
   } else {
-    ::std::string* temp = uid_;
-    uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    ::std::string* temp = ratchet_;
+    ratchet_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
     return temp;
   }
 }
-inline void MessageEnvelope::set_allocated_uid(::std::string* uid) {
-  if (uid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete uid_;
+inline void RatchetData::set_allocated_ratchet(::std::string* ratchet) {
+  if (ratchet_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete ratchet_;
   }
-  if (uid) {
-    set_has_uid();
-    uid_ = uid;
+  if (ratchet) {
+    set_has_ratchet();
+    ratchet_ = ratchet;
   } else {
-    clear_has_uid();
-    uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    clear_has_ratchet();
+    ratchet_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
-  // @@protoc_insertion_point(field_set_allocated:zina.MessageEnvelope.uid)
+  // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.ratchet)
+}
+
+// optional bytes mac = 10;
+inline bool RatchetData::has_mac() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void RatchetData::set_has_mac() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void RatchetData::clear_has_mac() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void RatchetData::clear_mac() {
+  if (mac_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    mac_->clear();
+  }
+  clear_has_mac();
+}
+inline const ::std::string& RatchetData::mac() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.mac)
+  return *mac_;
+}
+inline void RatchetData::set_mac(const ::std::string& value) {
+  set_has_mac();
+  if (mac_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    mac_ = new ::std::string;
+  }
+  mac_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.RatchetData.mac)
+}
+inline void RatchetData::set_mac(const char* value) {
+  set_has_mac();
+  if (mac_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    mac_ = new ::std::string;
+  }
+  mac_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.RatchetData.mac)
+}
+inline void RatchetData::set_mac(const void* value, size_t size) {
+  set_has_mac();
+  if (mac_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    mac_ = new ::std::string;
+  }
+  mac_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.RatchetData.mac)
+}
+inline ::std::string* RatchetData::mutable_mac() {
+  set_has_mac();
+  if (mac_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    mac_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.RatchetData.mac)
+  return mac_;
+}
+inline ::std::string* RatchetData::release_mac() {
+  clear_has_mac();
+  if (mac_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = mac_;
+    mac_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void RatchetData::set_allocated_mac(::std::string* mac) {
+  if (mac_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete mac_;
+  }
+  if (mac) {
+    set_has_mac();
+    mac_ = mac;
+  } else {
+    clear_has_mac();
+    mac_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.mac)
+}
+
+// optional int32 localPreKeyId = 11;
+inline bool RatchetData::has_localprekeyid() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void RatchetData::set_has_localprekeyid() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void RatchetData::clear_has_localprekeyid() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void RatchetData::clear_localprekeyid() {
+  localprekeyid_ = 0;
+  clear_has_localprekeyid();
+}
+inline ::google::protobuf::int32 RatchetData::localprekeyid() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.localPreKeyId)
+  return localprekeyid_;
+}
+inline void RatchetData::set_localprekeyid(::google::protobuf::int32 value) {
+  set_has_localprekeyid();
+  localprekeyid_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.localPreKeyId)
+}
+
+// optional bytes remotePreKey = 12;
+inline bool RatchetData::has_remoteprekey() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void RatchetData::set_has_remoteprekey() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void RatchetData::clear_has_remoteprekey() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void RatchetData::clear_remoteprekey() {
+  if (remoteprekey_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteprekey_->clear();
+  }
+  clear_has_remoteprekey();
+}
+inline const ::std::string& RatchetData::remoteprekey() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.remotePreKey)
+  return *remoteprekey_;
+}
+inline void RatchetData::set_remoteprekey(const ::std::string& value) {
+  set_has_remoteprekey();
+  if (remoteprekey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteprekey_ = new ::std::string;
+  }
+  remoteprekey_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.RatchetData.remotePreKey)
+}
+inline void RatchetData::set_remoteprekey(const char* value) {
+  set_has_remoteprekey();
+  if (remoteprekey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteprekey_ = new ::std::string;
+  }
+  remoteprekey_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.RatchetData.remotePreKey)
+}
+inline void RatchetData::set_remoteprekey(const void* value, size_t size) {
+  set_has_remoteprekey();
+  if (remoteprekey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteprekey_ = new ::std::string;
+  }
+  remoteprekey_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.RatchetData.remotePreKey)
+}
+inline ::std::string* RatchetData::mutable_remoteprekey() {
+  set_has_remoteprekey();
+  if (remoteprekey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteprekey_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.RatchetData.remotePreKey)
+  return remoteprekey_;
+}
+inline ::std::string* RatchetData::release_remoteprekey() {
+  clear_has_remoteprekey();
+  if (remoteprekey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = remoteprekey_;
+    remoteprekey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void RatchetData::set_allocated_remoteprekey(::std::string* remoteprekey) {
+  if (remoteprekey_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete remoteprekey_;
+  }
+  if (remoteprekey) {
+    set_has_remoteprekey();
+    remoteprekey_ = remoteprekey;
+  } else {
+    clear_has_remoteprekey();
+    remoteprekey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.remotePreKey)
+}
+
+// optional bytes remoteIdKey = 13;
+inline bool RatchetData::has_remoteidkey() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void RatchetData::set_has_remoteidkey() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void RatchetData::clear_has_remoteidkey() {
+  _has_bits_[0] &= ~0x00001000u;
+}
+inline void RatchetData::clear_remoteidkey() {
+  if (remoteidkey_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteidkey_->clear();
+  }
+  clear_has_remoteidkey();
+}
+inline const ::std::string& RatchetData::remoteidkey() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.remoteIdKey)
+  return *remoteidkey_;
+}
+inline void RatchetData::set_remoteidkey(const ::std::string& value) {
+  set_has_remoteidkey();
+  if (remoteidkey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteidkey_ = new ::std::string;
+  }
+  remoteidkey_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.RatchetData.remoteIdKey)
+}
+inline void RatchetData::set_remoteidkey(const char* value) {
+  set_has_remoteidkey();
+  if (remoteidkey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteidkey_ = new ::std::string;
+  }
+  remoteidkey_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.RatchetData.remoteIdKey)
+}
+inline void RatchetData::set_remoteidkey(const void* value, size_t size) {
+  set_has_remoteidkey();
+  if (remoteidkey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteidkey_ = new ::std::string;
+  }
+  remoteidkey_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.RatchetData.remoteIdKey)
+}
+inline ::std::string* RatchetData::mutable_remoteidkey() {
+  set_has_remoteidkey();
+  if (remoteidkey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    remoteidkey_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.RatchetData.remoteIdKey)
+  return remoteidkey_;
+}
+inline ::std::string* RatchetData::release_remoteidkey() {
+  clear_has_remoteidkey();
+  if (remoteidkey_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = remoteidkey_;
+    remoteidkey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void RatchetData::set_allocated_remoteidkey(::std::string* remoteidkey) {
+  if (remoteidkey_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete remoteidkey_;
+  }
+  if (remoteidkey) {
+    set_has_remoteidkey();
+    remoteidkey_ = remoteidkey;
+  } else {
+    clear_has_remoteidkey();
+    remoteidkey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.remoteIdKey)
 }
 
 

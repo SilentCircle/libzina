@@ -31,6 +31,9 @@ limitations under the License.
 #include <string>
 using namespace std;
 namespace zina {
+
+    static const int32_t SUPPORTED_VERSION = 2;       //!< This is the ratchet protocol version we currently support
+
     static string Empty;                              //!< For default return of an empty string
     static const int MAX_KEY_BYTES         = 128;     //!< This would cover a EC with a prime of 1024 bits
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
@@ -79,7 +82,7 @@ namespace zina {
 
     // Error codes for message processing, between -10 and -99, code -1 used for other purposes already
     static const int32_t GENERIC_ERROR     = -10;     //!< Generic error code, unspecified error
-    static const int32_t VERSION_NO_SUPPORTED = -11;  //!< Unsupported protocol version
+    static const int32_t VERSION_NOT_SUPPORTED = -11;  //!< Unsupported protocol version
     static const int32_t BUFFER_TOO_SMALL  = -12;     //!< Buffer too small to store some data
     static const int32_t NOT_DECRYPTABLE = -13;       //!< Could not decrypt received message
     static const int32_t NO_OWN_ID  = -14;            //!< Found no own identity for registration

@@ -20,6 +20,7 @@ limitations under the License.
 #include "../../Constants.h"
 #include "../crypto/EcCurve.h"
 #include "../../logging/ZinaLogging.h"
+#include "../../util/Utilities.h"
 
 using namespace zina;
 using namespace std;
@@ -333,6 +334,9 @@ void ZinaConversation::deserialize(const std::string& data)
     if (jsonItem != NULL)
         zrtpVerifyState = jsonItem->valueint;
 
+    contextId = (Utilities::getJsonInt(root, "contextId", 0) & 0xFFFFFFFF);
+    versionNumber = Utilities::getJsonInt(root, "versionNumber", 0);
+
     cJSON_Delete(root);
     LOGGER(INFO, __func__, " <--");
 }
@@ -431,6 +435,9 @@ const string* ZinaConversation::serialize() const
     cJSON_AddNumberToObject(root, "ratchet", (ratchetFlag) ? 1 : 0);
     cJSON_AddNumberToObject(root, "zrtpState", zrtpVerifyState);
 
+    cJSON_AddNumberToObject(root, "contextId", contextId);
+    cJSON_AddNumberToObject(root, "versionNumber", versionNumber);
+
     char *out = cJSON_PrintUnformatted(root);
     string* data = new string(out);
     cJSON_Delete(root); free(out);
@@ -459,8 +466,10 @@ void ZinaConversation::reset()
     if (!RK.empty())
         memset_volatile((void*)RK.data(), 0 , RK.size());
     RK.clear();
-    Nr = Ns = PNs = preKeyId = 0;
+    Nr = Ns = PNs = preKeyId = versionNumber = 0;
     ratchetFlag = false;
+
+    // Don't reset the context id, we use its sequence number part to count re-syncs
     LOGGER(INFO, __func__, " <--");
 }
 
