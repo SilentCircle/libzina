@@ -14,22 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include "SipTransport.h"
-#include "../../storage/sqlite/SQLiteStoreConv.h"
-#include "../../logging/ZinaLogging.h"
-#include "../../Constants.h"
 #include <stdlib.h>
-#include <map>
+
 #include <thread>
 #include <condition_variable>
-#include <chrono>
-#include <cryptcommon/ZrtpRandom.h>
 
 #ifndef MAX_TIME_WAIT_FOR_SLOTS
 #define MAX_TIME_WAIT_FOR_SLOTS 1500
 #endif
 
 // In silentphone, tiviandroid/t_a_main, at/around line 1280: ph = new CTiViPhone(this,&strings,30);
-#define MAX_AVAILABLE_SLOTS     30
+// #define MAX_AVAILABLE_SLOTS     30
 #define KEEP_SLOTS              10
 
 using namespace zina;

@@ -26,7 +26,6 @@ limitations under the License.
 #include "../ratchet/ratchet/ZinaRatchet.h"
 #include "../ratchet/ZinaPreKeyConnector.h"
 #include "JsonStrings.h"
-#include "../storage/NameLookup.h"
 #include "../dataRetention/ScDataRetention.h"
 
 using namespace zina;

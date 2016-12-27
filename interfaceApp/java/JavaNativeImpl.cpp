@@ -819,6 +819,8 @@ JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray mes
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(doSendMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
 {
+    (void)clazz;
+
     if (ids == NULL)
         return DATA_MISSING;
 
@@ -847,6 +849,8 @@ JNI_FUNCTION(doSendMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(removePreparedMessages)(JNIEnv* env, jclass clazz, jlongArray ids)
 {
+    (void)clazz;
+
     if (ids == NULL)
         return DATA_MISSING;
 
@@ -2000,6 +2004,8 @@ JNI_FUNCTION(deleteEvent) (JNIEnv* env, jclass clazz, jbyteArray inName, jbyteAr
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(deleteAllEvents) (JNIEnv* env, jclass clazz, jbyteArray inName)
 {
+    (void)clazz;
+
     string name;
     if (!arrayToString(env, inName, &name) || name.empty()) {
         return -1;
@@ -2811,6 +2817,8 @@ JNI_FUNCTION(getUserInfoFromCache)(JNIEnv* env, jclass clazz, jstring alias)
 JNIEXPORT jbyteArray
 JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, jbyteArray authorization)
 {
+    (void)clazz;
+
     string auth;
     if (!arrayToString(env, authorization, &auth) || auth.empty()) {
         if (zinaAppInterface == NULL)
@@ -3134,6 +3142,9 @@ JNI_FUNCTION(processPendingDrRequests)(JNIEnv * env, jclass clazz)
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(isDrEnabled)(JNIEnv * env, jclass clazz)
 {
+    (void)env;
+    (void)clazz;
+
     bool enabled = false;
     ScDataRetention::isEnabled(&enabled);
     return static_cast<jboolean>(enabled);

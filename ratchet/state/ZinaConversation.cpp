@@ -15,11 +15,8 @@ limitations under the License.
 */
 #include "ZinaConversation.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
-#include "../../util/cJSON.h"
 #include "../../util/b64helper.h"
-#include "../../Constants.h"
 #include "../crypto/EcCurve.h"
-#include "../../logging/ZinaLogging.h"
 #include "../../util/Utilities.h"
 
 using namespace zina;

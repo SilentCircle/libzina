@@ -255,7 +255,7 @@ public:
      *                      number of the oldest message in the returned data list.
      * @return A SQLite code.
      */
-    int32_t loadEvents(const string& name, uint32_t offset, int32_t number, int32_t direction, list<string*>* const events, int32_t* const lastMsgNumber) const;
+    int32_t loadEvents(const string& name, int32_t offset, int32_t number, int32_t direction, list<string*>* const events, int32_t* const lastMsgNumber) const;
 
     /**
      * @brief Delete a single event.

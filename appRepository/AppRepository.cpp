@@ -18,7 +18,6 @@ limitations under the License.
 #include <iostream>
 #include <mutex>          // std::mutex, std::unique_lock
 #include <algorithm>
-#include <functional>
 
 #include <cryptcommon/ZrtpRandom.h>
 
@@ -715,7 +714,7 @@ static const char* selectEventBetweenDesc = "SELECT data, msgNumber FROM events 
 #define FROM_YOUNGEST_TO_OLDEST -1
 #define FROM_OLDEST_TO_YOUNGEST 1
 
-int32_t AppRepository::loadEvents(const string& name, uint32_t offset, int32_t number, int32_t direction, list<std::string*>* const events, int32_t* const lastMsgNumber) const
+int32_t AppRepository::loadEvents(const string& name, int32_t offset, int32_t number, int32_t direction, list<std::string*>* const events, int32_t* const lastMsgNumber) const
 {
     LOGGER(INFO, __func__ , " -->");
     sqlite3_stmt *stmt;
