@@ -320,10 +320,10 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         if (SQL_FAIL(result))
             goto error_;
 
+#if !defined (UNITTESTS) && defined(SC_ENABLE_DR_RECV)
         // If this function returns false then don't store the plaintext in the plaintext
         // message queue, however commit the transaction to delete the raw data and save
         // the ratchet context
-#if !defined (UNITTESTS) && defined(SC_ENABLE_DR_RECV)
         if (!dataRetentionReceive(plainMsgInfo)) {
             goto success_;
         }
@@ -581,7 +581,7 @@ void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return;
     }
-    doSendMessages(extractTransportIds(preparedMsgData));
+    doSendMessages(extractTransportIds(preparedMsgData.get()));
     LOGGER(INFO, __func__, " <--");
 }
 
@@ -610,6 +610,6 @@ void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sende
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return;
     }
-    doSendMessages(extractTransportIds(preparedMsgData));
+    doSendMessages(extractTransportIds(preparedMsgData.get()));
     LOGGER(INFO, __func__, " <-- ", command);
 }

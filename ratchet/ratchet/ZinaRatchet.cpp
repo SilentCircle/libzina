@@ -21,6 +21,7 @@ limitations under the License.
 #include "../crypto/HKDF.h"
 #include "../../logging/ZinaLogging.h"
 #include "../../interfaceApp/MessageEnvelope.pb.h"
+#include "../../util/Utilities.h"
 
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>
@@ -89,8 +90,8 @@ static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
         LOGGER(ERROR, __func__, " <-- agreement computation failed");
         return agreementLength;
     }
-
     size_t length = static_cast<size_t>(agreementLength);
+
     // We need to derive key data for two keys: the new RK and the sender's CK (CKs), thus use
     // a larger buffer
     uint8_t derivedSecretBytes[MAX_KEY_BYTES*2];
@@ -102,37 +103,44 @@ static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
                         SILENT_RATCHET_DERIVE.size(),                       // fixed string "SilentCircleRKCKDerive" as info
                        derivedSecretBytes, SYMMETRIC_KEY_LENGTH*2);
 
+    memset_volatile((void*)agreement, 0, MAX_KEY_BYTES);
+
     newRK->assign((const char*)derivedSecretBytes, length);
     newCK->assign((const char*)derivedSecretBytes+length, length);
 //     hexdump("deriveRkCk old RK", conv.getRK());  LOGGER(VERBOSE, hexBuffer);
 //     hexdump("deriveRkCk RK", *newRK);  LOGGER(VERBOSE, hexBuffer);
 //     hexdump("deriveRkCk CK", *newCK);  LOGGER(VERBOSE, hexBuffer);
+    memset_volatile((void*)derivedSecretBytes, 0, MAX_KEY_BYTES*2);
     LOGGER(INFO, __func__, " <--");
     return OK;
 }
 
 static void deriveMk(const string& chainKey, string* MK, string* iv, string* macKey)
 {
-    // MK = HMAC-HASH(CKs, "0")
-
-    // Hash CKs with "0"
     LOGGER(INFO, __func__, " -->");
-    uint8_t mac[SHA256_DIGEST_LENGTH];
-    uint32_t macLen;
-    hmac_sha256((uint8_t*)chainKey.data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"0", 1, mac, &macLen);
+    uint8_t ckMac[SHA256_DIGEST_LENGTH];
+    uint32_t ckMacLen;
+
+    // MK = HMAC-HASH(CKs, "0")
+    // Hash CKs with "0"
+    hmac_sha256((uint8_t*)chainKey.data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"0", 1, ckMac, &ckMacLen);
 
     // We need a key, an IV, and a MAC key
     uint8_t keyMaterialBytes[SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE + SYMMETRIC_KEY_LENGTH];
 
     // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes
-    HKDF::deriveSecrets((uint8_t*)mac, macLen,                          // inpunt key material: hashed CKs
+    HKDF::deriveSecrets((uint8_t*)ckMac, ckMacLen,                      // input key material: hashed CKs
                         (uint8_t*)SILENT_MSG_DERIVE.data(), 
                         SILENT_MSG_DERIVE.size(),                       // fixed string "SilentCircleMessageKeyDerive" as info
                         keyMaterialBytes, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
 
+    memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
+
     MK->assign((const char*)keyMaterialBytes, SYMMETRIC_KEY_LENGTH);
     iv->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
     macKey->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE, SYMMETRIC_KEY_LENGTH);
+
+    memset_volatile((void*)keyMaterialBytes, 0, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
     LOGGER(INFO, __func__, " <--");
 }
 
@@ -428,7 +436,7 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
 
     // During the loop we expect that decryptAndCheck fails
     for (auto it = mks->begin(); it != mks->end(); ++it) {
-        string MKiv = *it;
+        string& MKiv = *it;
         if (MKiv.size() < SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE + SHORT_MAC_LENGTH)
             continue;
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
@@ -436,11 +444,16 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
         if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == SUCCESS) {
             conv->deleteStagedMk(MKiv);
-            memset_volatile((void*)MKiv.data(), 0, MKiv.size());
-            mks->erase(it);
+        }
+        // First really clear the memory, the set size to 0.
+        Utilities::wipeString(MK); MK.clear();
+        Utilities::wipeString(iv); iv.clear();
+        Utilities::wipeString(macKey); macKey.clear();
+        if (retVal == SUCCESS) {
             break;
         }
     }
+    // Clear staged keys really clears memory of list data and resets the list to null
     conv->clearStagedMks(mks);
     LOGGER(INFO, __func__, " <-- ", (retVal != SUCCESS) ? "no matching MK found." : "matching MK found");
     return retVal;
@@ -455,8 +468,8 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     string iv;
     string mKey;
 
-    uint8_t mac[SHA256_DIGEST_LENGTH];
-    uint32_t macLen;
+    uint8_t ckMac[SHA256_DIGEST_LENGTH];
+    uint32_t ckMacLen;
     *CKp = CKr;
 
     shared_ptr<list<string> > mks = conv->getEmptyStagedMks();
@@ -465,22 +478,39 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
 
     for (int32_t i = Nr; i < Np; i++) {
         deriveMk(*CKp, &MK, &iv, &mKey);
-        string mkivmac(MK);
-        mkivmac.append(iv).append(mKey);
+
+        // Use append here to work around GCC's Copy-On-Write behaviour (COW) for strings.
+        string mkivmac;
+        mkivmac.append(MK).append(iv).append(mKey);
         mks->push_back(mkivmac);
 
         // Hash CK with "1"
-        hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, mac, &macLen);
-        CKp->assign((const char*)mac, macLen);
+        hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, ckMac, &ckMacLen);
+        CKp->assign((const char*)ckMac, ckMacLen);
+
+        Utilities::wipeString(MK); MK.clear();
+        Utilities::wipeString(iv); iv.clear();
+        Utilities::wipeString(mKey); mKey.clear();
+
+        mkivmac.append(" ");    // COW workaround
+        Utilities::wipeString(mkivmac); mkivmac.clear();
     }
     deriveMk(*CKp, &MK, &iv, &mKey);
-    MKp->first = MK;
-    MKp->second = iv;
-    *macKey = mKey;
+
+    // Use assign here to work around GCC's Copy-On-Write behaviour for strings.
+    MKp->first.assign(MK.c_str(), MK.size());
+    MKp->second.assign(iv.c_str(), iv.size());
+    macKey->assign(mKey.c_str(), mKey.size());
 
     // Hash CK with "1"
-    hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, mac, &macLen);
-    CKp->assign((const char*)mac, macLen);
+    hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, ckMac, &ckMacLen);
+    CKp->assign((const char*)ckMac, ckMacLen);
+
+    Utilities::wipeString(MK); MK.clear();
+    Utilities::wipeString(iv); iv.clear();
+    Utilities::wipeString(mKey); mKey.clear();
+    memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
+
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
 }
@@ -611,7 +641,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     string CKp;
     string macKey;
     pair <string, string> MK;
-//    LOGGER(ERROR, "++++ Decrypt message from: ", conv->getPartner().getName(), " Nr: ", conv->getNr(), " Np: ", msgStruct.Np, " PNp: ", msgStruct.PNp, "newR: ", newRatchet);
+//    LOGGER(ERROR, "++++ Decrypt message from: ", conv->getPartner().getName(), " Nr: ", conv->getNr(), " Np: ", msgStruct.Np, " PNp: ", msgStruct.PNp, " newR: ", newRatchet);
 
     if (!newRatchet) {
         delete(DHRp);
@@ -673,16 +703,23 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
             return shared_ptr<string>();
         }
         conv->setRK(RKp);
+        RKp.append(" ");            // Use append here to work around GCC's COW for strings.
+        Utilities::wipeString(RKp); RKp.clear();
         delete saveDHRr;
         conv->setRatchetFlag(true);
     }
     conv->setCKr(CKp);
-    conv->setNr(msgStruct.Np + 1);     // Receiver: expected next message number 
+    CKp.append(" ");                // Use append here to work around GCC's COW for strings.
+    Utilities::wipeString(CKp); CKp.clear();
+
+    conv->setNr(msgStruct.Np + 1);  // Receiver: expected next message number
 
     // Here we can delete A0 in case it was set, if this was Alice then Bob replied and
     // A0 is not needed anymore.
     delete(conv->getA0());
     conv->setA0(NULL);
+
+    Utilities::wipeString(macKey); macKey.clear();
 
     LOGGER(INFO, __func__, " <--");
     return decrypted;
@@ -814,7 +851,6 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     string macKey;
     deriveMk(conv.getCKs(), &MK, &iv, &macKey);
 
-//    Log("Encrypt message to: %s, ratchet: %d, Nr: %d, Ns: %d, PNp: %d", conv.getPartner().getName().c_str(), ratchetSave, conv.getNr(), conv.getNr(), conv.getPNs());
     string encryptedData;
 
     int32_t ret = aesCbcEncrypt(MK, iv, message, &encryptedData);
@@ -831,11 +867,15 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
             return ret;
         }
     }
+    Utilities::wipeString(MK); MK.clear();
+    Utilities::wipeString(iv); iv.clear();
 
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
     hmac_sha256((uint8_t *) macKey.data(), (uint32_t) macKey.size(), (uint8_t *) encryptedData.data(),
                 static_cast<int32_t>(encryptedData.size()), mac, &macLen);
+
+    Utilities::wipeString(macKey); macKey.clear();
     string computedMac((const char *) mac, SHA256_DIGEST_LENGTH);
 
     // if partner supports a better version than we: use our supported version, else the version of out partner
@@ -871,6 +911,7 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     envelope.set_recvidhash(idHashes.first.data(), 4);
     envelope.set_senderidhash(idHashes.second.data(), 4);
 
+//    LOGGER(ERROR, "++++ Encrypt message to:   ", conv.getPartner().getName(), " Nr: ", conv.getNr(), " Np: ", conv.getNs(), " PNp: ", conv.getPNs(), " newR: ", ratchetSave);
     // After creating the wire message update the conversation (ratchet context) data
     conv.setNs(conv.getNs() + 1);
 

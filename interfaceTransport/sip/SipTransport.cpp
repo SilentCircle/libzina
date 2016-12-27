@@ -84,15 +84,14 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
         while (!runSend) sendCv.wait(run);
 
         unique_lock<mutex> listLock(sendListLock);
-        while (!sendMessageList.empty()) {
+        for (; !sendMessageList.empty(); sendMessageList.pop_front()) {
             for (int32_t slots = getNumOfSlots(); slots < KEEP_SLOTS;) {
                 listLock.unlock();
                 std::this_thread::sleep_for (std::chrono::milliseconds(sleepTime));
                 listLock.lock();
                 slots = getNumOfSlots();
             }
-            shared_ptr<SendMsgInfo> sendInfo = sendMessageList.front();
-            sendMessageList.pop_front();
+            shared_ptr<SendMsgInfo>& sendInfo = sendMessageList.front();
             bool result = sendAxoData((uint8_t*)sendInfo->recipient.c_str(), (uint8_t*)sendInfo->deviceId.c_str(),
                                        (uint8_t*)sendInfo->envelope.data(), sendInfo->envelope.size(), sendInfo->transportMsgId);
             if (!result) {

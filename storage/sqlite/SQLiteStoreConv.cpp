@@ -908,7 +908,7 @@ cleanup:
 
 void SQLiteStoreConv::deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode)
 {
-    sqlite3_stmt *stmt;
+    sqlite3_stmt *stmt = nullptr;
     int32_t sqlResult;
 
     LOGGER(INFO, __func__, " -->");
@@ -1500,7 +1500,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::loadReceivedRawData(shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData)
+int32_t SQLiteStoreConv::loadReceivedRawData(list<shared_ptr<StoredMsgInfo> >* rawMessageData)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -1611,7 +1611,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::loadTempMsg(shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMessageData)
+int32_t SQLiteStoreConv::loadTempMsg(list<shared_ptr<StoredMsgInfo> >* tempMessageData)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;

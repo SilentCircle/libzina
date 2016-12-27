@@ -73,7 +73,7 @@ getDevicesNewUser(string& recipient, string& authorization, int32_t* errorCode)
 }
 
 static string
-createIdDevInfo(pair<string, string> newDev)
+createIdDevInfo(const pair<string, string>& newDev)
 {
     string newDevInfo(string("<NOT_YET_AVAILABLE>:"));
     newDevInfo.append(newDev.second).append(":").append(newDev.first).append(":0");
@@ -94,9 +94,8 @@ createIdDevInfo(shared_ptr<list<pair<string, string> > > newDevList) {
 
     auto devInfoList = make_shared<list<string> >();
 
-    while (!newDevList->empty()) {
-        pair<string, string> devInfo = newDevList->front();
-        newDevList->pop_front();
+    for (; !newDevList->empty(); newDevList->pop_front()) {
+        const pair<string, string>& devInfo = newDevList->front();
         devInfoList->push_back(createIdDevInfo(devInfo));
     }
     return devInfoList;
@@ -155,13 +154,15 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
 static mutex preparedMessagesLock;
 static map<uint64_t, shared_ptr<CmdQueueInfo> > preparedMessages;
 
+#ifdef SC_ENABLE_DR_SEND
 static mutex retainInfoLock;
 static map<uint64_t, uint32_t > retainInfoMap;
+#endif
 
 void AppInterfaceImpl::queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo)
 {
     unique_lock<mutex> listLock(preparedMessagesLock);
-    preparedMessages.insert(pair<uint64_t, shared_ptr<CmdQueueInfo>>(msgInfo->queueInfo_transportMsgId, msgInfo));
+    preparedMessages.insert(pair<uint64_t, shared_ptr<CmdQueueInfo> >(msgInfo->queueInfo_transportMsgId, msgInfo));
 }
 
 // Check if we have a retain info entry for this id.
@@ -325,13 +326,13 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     uint64_t counter = 0;
 
     while (!idKeys->empty() || handleNewSiblings) {
-        const string idDevInfo = idKeys->front();
-        idKeys->pop_front();
+        const string idDevInfo = (idKeys->front());
 
         // idDevInfo has the format:
         //       0           1         2        3
         // 'identityKey:deviceName:deviceId:verifyState', deviceName may be empty
         auto info = Utilities::splitString(idDevInfo, ":");
+        idKeys->pop_front();
 
         // This is a bit tricky: if we prepare to send messages to siblings then 'idKeys'
         // list contains the information of known sibling devices, 'newSiblingDevices' list
@@ -380,6 +381,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         messageData->push_back(resultData);
     }
 
+#ifdef SC_ENABLE_DR_SEND
     if (localRetentionFlags != 0) {
         uint8_t numPreparedMsgs = static_cast<uint8_t>(counter);
         // retainInfo stores: number of prepared msg data and the local retention flags
@@ -388,6 +390,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         unique_lock<mutex> listLock(retainInfoLock);
         retainInfoMap.insert(pair<uint64_t, uint32_t>(transportMsgId, retainInfo));
     }
+#endif
 
     LOGGER(INFO, __func__, " <-- ", messageData->size());
     return messageData;
@@ -585,7 +588,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
 }
 
 int32_t
-AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo)
+AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo>& sendInfo)
 {
     LOGGER(INFO, __func__, " -->");
 

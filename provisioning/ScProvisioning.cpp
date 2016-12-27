@@ -282,7 +282,7 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
         cJSON* devName = cJSON_GetObjectItem(arrayItem, "device_name");
         if (devName != NULL)
             nameString.assign(devName->valuestring);
-        pair<string, string>idName(id, nameString);
+        pair<string, string> idName(id, nameString);
         deviceIds->push_back(idName);
     }
     // Clear JSON buffer and context
@@ -325,10 +325,8 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
     list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store, number);
-    size_t size = preList->size();
-    for (size_t i = 0; i < size; i++) {
-        pair<int32_t, const DhKeyPair*> prePair = preList->front();
-        preList->pop_front();
+    for (; !preList->empty(); preList->pop_front()) {
+        pair<int32_t, const DhKeyPair*>& prePair = preList->front();
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());

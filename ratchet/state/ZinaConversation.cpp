@@ -128,9 +128,9 @@ int32_t ZinaConversation::storeStagedMks() {
 
     errorCode_ = SUCCESS;
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    while (stagedMk && !stagedMk->empty()) {
-        string mkIvMac = stagedMk->front();
-        stagedMk->pop_front();
+
+    for (; stagedMk && !stagedMk->empty(); stagedMk->pop_front()) {
+        string& mkIvMac = stagedMk->front();
         if (!mkIvMac.empty()) {
             int32_t result;
             store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac, &result);
@@ -140,8 +140,8 @@ int32_t ZinaConversation::storeStagedMks() {
                 LOGGER(ERROR, __func__, " <--, error: ");
                 return result;
             }
+            memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size()); mkIvMac.clear();
         }
-        memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size());
     }
     clearStagedMks(stagedMk);
     LOGGER(INFO, __func__, " <--");
@@ -153,10 +153,10 @@ void ZinaConversation::clearStagedMks(shared_ptr<list<string> > keys)
     LOGGER(INFO, __func__, " -->");
 
     if (keys) {
-        while (!keys->empty()) {
-            string mkIvMac = keys->front();
-            keys->pop_front();
-            memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size());
+        for (; !keys->empty(); keys->pop_front()) {
+            string& mkIvMac = keys->front();
+            // This actually clears the memory of the string inside the list
+            memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size()); mkIvMac.clear();
         }
         keys.reset();
     }
@@ -530,7 +530,7 @@ cJSON *ZinaConversation::prepareForCapture(cJSON *existingRoot, bool beforeActio
     else
         cJSON_AddStringToObject(jsonItem, "A0", "");
 
-    // The two chain keys, enable only if need to do error analysis
+    // The two chain keys, enable only if needed to do error analysis
 //    b64Encode((const uint8_t*)CKs.data(), CKs.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 //    cJSON_AddStringToObject(root, "CKs", b64Buffer);
 //

@@ -432,7 +432,7 @@ private:
      * @param sendInfo The message information structure of the message to send
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageNewUser(shared_ptr<CmdQueueInfo> sendInfo);
+    int32_t sendMessageNewUser(shared_ptr<CmdQueueInfo>& sendInfo);
 
     /**
      * @brief Move a single prepared message info to the processing queue.
@@ -453,7 +453,7 @@ private:
      *
      * @param messagesToProcess The list of message info structures
      */
-    void addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> > messagesToProcess);
+    void addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> >& messagesToProcess);
 
     /**
      * @brief Setup a retry command message info structure and add it to the run-Q.
@@ -650,7 +650,7 @@ private:
      * @param data List of prepared message data
      * @return Vector with the transport ids
      */
-    static shared_ptr<vector<uint64_t> > extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessageData> > > data);
+    static shared_ptr<vector<uint64_t> > extractTransportIds(list<shared_ptr<PreparedMessageData> >* data);
 
 #ifndef UNITTESTS
     static string generateMsgIdTime() {

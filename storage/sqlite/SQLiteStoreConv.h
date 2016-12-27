@@ -275,7 +275,7 @@ public:
      * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
      * @return SQLite code
      */
-    int32_t loadReceivedRawData(shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData);
+    int32_t loadReceivedRawData(list<shared_ptr<StoredMsgInfo> >* rawMessageData);
 
     /**
      * @brief Delete a message raw data record.
@@ -306,10 +306,10 @@ public:
     /**
      * @brief Retrive stored temporary message data.
      *
-     * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
+     * @param rawMessageData Pointer to a list of shared pointer where the function returns the StoredMsgInfo.
      * @return SQLite code
      */
-    int32_t loadTempMsg(shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMessageData);
+    int32_t loadTempMsg(list<shared_ptr<StoredMsgInfo> >* tempMessageData);
 
     /**
      * @brief Delete a message raw data record.

@@ -407,7 +407,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
             LOGGER(ERROR, __func__, " <-- Error: ", result);
             return result;
         }
-        doSendMessages(extractTransportIds(preparedMsgData));
+        doSendMessages(extractTransportIds(preparedMsgData.get()));
     }
     LOGGER(INFO, __func__, " <--, ", membersFound);
     return OK;
@@ -537,7 +537,7 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return result;
     }
-    doSendMessages(extractTransportIds(preparedMsgData));
+    doSendMessages(extractTransportIds(preparedMsgData.get()));
 
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -720,9 +720,8 @@ void AppInterfaceImpl::clearGroupData()
     LOGGER(INFO, __func__, " --> ");
     shared_ptr<list<shared_ptr<cJSON> > > groups = store_->listAllGroups();
 
-    while (groups && !groups->empty()) {
-        shared_ptr<cJSON> group = groups->front();
-        groups->pop_front();
+    for (; groups && !groups->empty(); groups->pop_front()) {
+        shared_ptr<cJSON>& group = groups->front();
         string groupId(Utilities::getJsonString(group.get(), GROUP_ID, ""));
         store_->deleteAllMembers(groupId);
         store_->deleteGroup(groupId);

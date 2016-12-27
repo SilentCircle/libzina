@@ -165,8 +165,8 @@ string Utilities::urlEncode(string s)
         else
         {
             v.push_back('%');
-            unsigned char d1 = decimal2hex[c >> 4];
-            unsigned char d2 = decimal2hex[c & 0x0F];
+            char d1 = decimal2hex[c >> 4];
+            char d2 = decimal2hex[c & 0x0F];
 
             v.push_back(d1);
             v.push_back(d2);

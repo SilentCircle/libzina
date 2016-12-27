@@ -933,9 +933,8 @@ JNI_FUNCTION(getIdentityKeys) (JNIEnv* env, jclass clazz, jbyteArray userName)
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(idKeys->size()), byteArrayClass, NULL);
 
     int32_t index = 0;
-    while (!idKeys->empty()) {
-        string s = idKeys->front();
-        idKeys->pop_front();
+    for (; !idKeys->empty(); idKeys->pop_front()) {
+        const string& s = idKeys->front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);
@@ -968,9 +967,8 @@ JNI_FUNCTION(getZinaDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName
     cJSON_AddItemToObject(root, "version", cJSON_CreateNumber(1));
     cJSON_AddItemToObject(root, "devices", devArray = cJSON_CreateArray());
 
-    while (!devices->empty()) {
-        pair<string, string> idName = devices->front();
-        devices->pop_front();
+    for (; !devices->empty(); devices->pop_front()) {
+        const pair<string, string>& idName = devices->front();
         devInfo = cJSON_CreateObject();
         cJSON_AddStringToObject(devInfo, "id", idName.first.c_str());
         cJSON_AddStringToObject(devInfo, "device_name", idName.second.c_str());
@@ -1788,9 +1786,8 @@ JNI_FUNCTION(listConversations) (JNIEnv* env, jclass clazz)
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(convNames->size()), byteArrayClass, NULL);
 
     int32_t index = 0;
-    while (!convNames->empty()) {
-        string s = convNames->front();
-        convNames->pop_front();
+    for (; !convNames->empty(); convNames->pop_front()) {
+        const string& s = convNames->front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);
@@ -1944,7 +1941,7 @@ JNI_FUNCTION(loadEvents) (JNIEnv* env, jclass clazz, jbyteArray inName, jint off
 
     int32_t msgNumber = 0;
     list<string*> events;
-    int32_t result = appRepository->loadEvents(name, static_cast<uint32_t>(offset), number, direction, &events, &msgNumber);
+    int32_t result = appRepository->loadEvents(name, offset, number, direction, &events, &msgNumber);
 
     if (SQL_FAIL(result)) {
         setReturnCode(env, code, result);
@@ -2321,9 +2318,8 @@ JNI_FUNCTION(loadMsgsIdsWithAttachmentStatus) (JNIEnv* env, jclass clazz, jint s
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(msgIds.size()), stringArrayClass, NULL);
 
     int32_t index = 0;
-    while (!msgIds.empty()) {
-        string s = msgIds.front();
-        msgIds.pop_front();
+    for (; !msgIds.empty(); msgIds.pop_front()) {
+        const string& s = msgIds.front();
         jstring stringData = env->NewStringUTF(s.c_str());
         env->SetObjectArrayElement(retArray, index++, stringData);
         env->DeleteLocalRef(stringData);
@@ -2871,9 +2867,9 @@ JNI_FUNCTION(getAliases)(JNIEnv* env, jclass clazz, jstring uuid)
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
 
     int32_t index = 0;
-    while (!aliases->empty()) {
-        string s = aliases->front();
-        aliases->pop_front();
+    for (; !aliases->empty(); aliases->pop_front()) {
+        const string& s = aliases->front();
+        ;
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);
@@ -2975,9 +2971,8 @@ JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyte
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(records->size()), byteArrayClass, NULL);
 
     int32_t index = 0;
-    while (!records->empty()) {
-        string s = records->front();
-        records->pop_front();
+    for (; !records->empty(); records->pop_front()) {
+        const string& s = records->front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);

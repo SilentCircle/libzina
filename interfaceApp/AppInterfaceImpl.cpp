@@ -21,9 +21,6 @@ limitations under the License.
 #include "../provisioning/Provisioning.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../dataRetention/ScDataRetention.h"
-#include "../logging/ZinaLogging.h"
-#include "../storage/MessageCapture.h"
-#include "MessageEnvelope.pb.h"
 #include "JsonStrings.h"
 #include "../util/Utilities.h"
 
@@ -31,7 +28,7 @@ limitations under the License.
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
-static mutex convLock;
+static mutex conversationLock;
 
 using namespace zina;
 
@@ -107,7 +104,7 @@ string* AppInterfaceImpl::getKnownUsers()
     cJSON_AddItemToObject(root, "users", nameArray = cJSON_CreateArray());
 
     for (int32_t i = 0; i < size; i++) {
-        string name = names->front();
+        const string& name = names->front();
         cJSON_AddItemToArray(nameArray, cJSON_CreateString(name.c_str()));
         names->pop_front();
     }
@@ -169,11 +166,8 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
 
     list<pair<int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
 
-    int32_t size = static_cast<int32_t>(preList->size());
-
-    for (int32_t i = 0; i < size; i++) {
-        pair< int32_t, const DhKeyPair* >pkPair = preList->front();
-        preList->pop_front();
+    for (; !preList->empty(); preList->pop_front()) {
+        const pair< int32_t, const DhKeyPair* >& pkPair = preList->front();
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());
@@ -239,9 +233,8 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     shared_ptr<list<string> > devicesDb = store_->getLongDeviceIds(userName, ownUser_);
 
     if (devicesDb) {
-        while (!devicesDb->empty()) {
-            string devIdDb = devicesDb->front();
-            devicesDb->pop_front();
+        for (; !devicesDb->empty(); devicesDb->pop_front()) {
+            const string& devIdDb = devicesDb->front();
             bool found = false;
 
             for (list<pair<string, string> >::iterator devIterator = devices->begin();
@@ -273,11 +266,10 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
-    unique_lock<mutex> lck(convLock);
-    while (!devices->empty()) {
-        string deviceId = devices->front().first;
-        string deviceName = devices->front().second;
-        devices->pop_front();
+    unique_lock<mutex> lck(conversationLock);
+    for (; !devices->empty(); devices->pop_front()) {
+        const string& deviceId = devices->front().first;
+        const string& deviceName = devices->front().second;
 
         // Don't re-scan own device, just check if name changed
         bool toSibling = userName == ownUser_;
@@ -426,9 +418,8 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user) const
 
     shared_ptr<list<string> > devices = store_->getLongDeviceIds(user, ownUser_);
 
-    while (!devices->empty()) {
-        string recipientDeviceId = devices->front();
-        devices->pop_front();
+    for (; !devices->empty(); devices->pop_front()) {
+        const string& recipientDeviceId = devices->front();
         auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId);
         if (!axoConv->isValid()) {
             continue;
@@ -468,7 +459,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     if (toSibling && deviceId == scClientDevId_)
         return;
 
-    unique_lock<mutex> lck(convLock);
+    unique_lock<mutex> lck(conversationLock);
 
     // clear data and store the nearly empty conversation
     shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
@@ -557,7 +548,6 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command)
 {
     /*
      * Command data usage:
-
     command->command = CkeckRemoteIdKey;
     command->stringData1 = remoteName;
     command->stringData2 = deviceId;

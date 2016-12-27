@@ -32,7 +32,6 @@ static list<shared_ptr<CmdQueueInfo> > commandQueue;
 static mutex threadLock;
 static condition_variable commandQueueCv;
 static thread commandQueueThread;
-static bool commandThreadActive;
 
 #ifdef UNITTESTS
 static AppInterfaceImpl* testIf_;
@@ -44,10 +43,9 @@ void setTestIfObj_(AppInterfaceImpl* obj)
 
 void AppInterfaceImpl::checkStartRunThread()
 {
-    if (!commandThreadActive) {
+    if (!commandQueueThread.joinable()) {
         unique_lock<mutex> lck(threadLock);
-        if (!commandThreadActive) {
-            commandThreadActive = true;
+        if (!commandQueueThread.joinable()) {
             commandQueueThread = thread(commandQueueHandler, this);
         }
         lck.unlock();
@@ -65,7 +63,7 @@ void AppInterfaceImpl::addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToPr
     listLock.unlock();
 }
 
-void AppInterfaceImpl::addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> > messagesToProcess)
+void AppInterfaceImpl::addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> >& messagesToProcess)
 {
     checkStartRunThread();
 
@@ -83,12 +81,11 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
     LOGGER(INFO, __func__, " -->");
 
     unique_lock<mutex> listLock(commandQueueLock);
-    while (commandThreadActive) {
+    while (commandQueueThread.joinable()) {
         while (commandQueue.empty()) commandQueueCv.wait(listLock);
 
-        while (!commandQueue.empty()) {
-            auto cmdInfo = commandQueue.front();
-            commandQueue.pop_front();
+        for (; !commandQueue.empty(); commandQueue.pop_front()) {
+            auto& cmdInfo = commandQueue.front();
             listLock.unlock();
 
             int32_t result;
@@ -141,7 +138,7 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
 }
 
 shared_ptr<vector<uint64_t> >
-AppInterfaceImpl::extractTransportIds(shared_ptr<list<shared_ptr<PreparedMessageData> > > data)
+AppInterfaceImpl::extractTransportIds(list<shared_ptr<PreparedMessageData> >* data)
 {
     auto ids = make_shared<vector<uint64_t> >();
 
@@ -166,12 +163,12 @@ void AppInterfaceImpl::retryReceivedMessages()
     int32_t plainCounter = 0;
     int32_t rawCounter = 0;
 
-    shared_ptr<list<shared_ptr<StoredMsgInfo> > > storedMsgInfos = make_shared<list<shared_ptr<StoredMsgInfo> > > ();
-    int32_t result = store_->loadTempMsg(storedMsgInfos);
+    list<shared_ptr<StoredMsgInfo> > storedMsgInfos;
+    int32_t result = store_->loadTempMsg(&storedMsgInfos);
 
     if (!SQL_FAIL(result)) {
-        while (!storedMsgInfos->empty()) {
-            auto storedInfo = storedMsgInfos->front();
+        for (; !storedMsgInfos.empty(); storedMsgInfos.pop_front()) {
+            auto& storedInfo = storedMsgInfos.front();
             auto plainMsgInfo = make_shared<CmdQueueInfo>();
 
             plainMsgInfo->command = ReceivedTempMsg;
@@ -182,14 +179,13 @@ void AppInterfaceImpl::retryReceivedMessages()
 
             messagesToProcess.push_back(plainMsgInfo);
             sendDeliveryReceipt(plainMsgInfo);
-            storedMsgInfos->pop_front();
             plainCounter++;
         }
     }
-    result = store_->loadReceivedRawData(storedMsgInfos);
+    result = store_->loadReceivedRawData(&storedMsgInfos);
     if (!SQL_FAIL(result)) {
-        while (!storedMsgInfos->empty()) {
-            auto storedInfo = storedMsgInfos->front();
+        for (; !storedMsgInfos.empty(); storedMsgInfos.pop_front()) {
+            auto& storedInfo = storedMsgInfos.front();
             auto rawMsgInfo = make_shared<CmdQueueInfo>();
 
             rawMsgInfo->command = ReceivedRawData;
@@ -199,7 +195,6 @@ void AppInterfaceImpl::retryReceivedMessages()
             rawMsgInfo->queueInfo_displayName = storedInfo->info_displayName;
 
             messagesToProcess.push_back(rawMsgInfo);
-            storedMsgInfos->pop_front();
             rawCounter++;
         }
     }
