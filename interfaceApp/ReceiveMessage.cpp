@@ -117,7 +117,11 @@ bool AppInterfaceImpl::isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
 int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& uidString, const string& displayName)
 {
     int64_t sequence;
-    store_->insertReceivedRawData(envelope, uidString, displayName, &sequence);
+    int32_t sqlResult = store_->insertReceivedRawData(envelope, uidString, displayName, &sequence);
+
+    if (SQL_FAIL(sqlResult)) {
+        return DATABASE_ERROR;
+    }
 
     shared_ptr<CmdQueueInfo> msgInfo = make_shared<CmdQueueInfo>();
     msgInfo->command = ReceivedRawData;
