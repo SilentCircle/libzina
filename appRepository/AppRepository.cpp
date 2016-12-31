@@ -267,11 +267,13 @@ int AppRepository::openStore(const std::string& name)
         LOGGER(ERROR, __func__ , " <-- error code: ", sqlCode_);
         return(sqlCode_);
     }
-    if (keyData_ != NULL)
+    if (keyData_ != NULL) {
         sqlite3_key(db, keyData_->data(), static_cast<int>(keyData_->size()));
 
-    memset_volatile((void*)keyData_->data(), 0, keyData_->size());
-    delete keyData_; keyData_ = NULL;
+        memset_volatile((void *) keyData_->data(), 0, keyData_->size());
+        delete keyData_;
+        keyData_ = NULL;
+    }
 
     enableForeignKeys(db);
 

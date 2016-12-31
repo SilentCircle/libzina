@@ -393,10 +393,13 @@ int SQLiteStoreConv::openStore(const std::string& name)
         LOGGER(ERROR, __func__, " Failed to open database: ", sqlCode_, ", ", lastError_);
         return(sqlCode_);
     }
-    sqlite3_key(db, keyData_->data(), static_cast<int>(keyData_->size()));
+    if (keyData_ != NULL) {
+        sqlite3_key(db, keyData_->data(), static_cast<int>(keyData_->size()));
 
-    memset_volatile((void*)keyData_->data(), 0, keyData_->size());
-    delete keyData_; keyData_ = NULL;
+        memset_volatile((void *) keyData_->data(), 0, keyData_->size());
+        delete keyData_;
+        keyData_ = NULL;
+    }
 
     enableForeignKeys(db);
 
