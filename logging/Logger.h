@@ -269,8 +269,10 @@ return 0;
  * level - if it isn't compiled then it will not run :-). If you set @c MAX_LOG_LEVEL to
  * @c NONE then no log statement is left in the compiled code.
  */
+
+    // When creating a standalone (library) version of Logger then enable the __EXPORT attribute
     template<typename log_policy >
-    class __EXPORT Logger
+    class /* __EXPORT */ Logger
     {
         std::string getTime();
         std::string getLogLineHeader();

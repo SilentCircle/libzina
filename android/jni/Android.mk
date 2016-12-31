@@ -46,6 +46,9 @@ LOCAL_MODULE := zina
 
 LOCAL_CPP_EXTENSION := .cpp .cc
 LOCAL_STATIC_LIBRARIES := protobuf
-LOCAL_CFLAGS := @EMBEDDED@ @LOG_MAX_LEVEL@ -DSQLITE_HAS_CODEC -DSQL_CIPHER -DANDROID_NDK
+
+# For this Android build we can set the visibility to hidden. Access to functions is only via
+# exported JNI functions.
+LOCAL_CFLAGS := @EMBEDDED@ @LOG_MAX_LEVEL@ @NO_VISIBILITY@ -DSQLITE_HAS_CODEC -DSQL_CIPHER -DANDROID_NDK
 include $(BUILD_@LIBRARY_BUILD_TYPE@_LIBRARY)
 

@@ -59,7 +59,7 @@ extern "C"
 {
 #endif
 
-__EXPORT extern void setZinaLogLevel(int32_t level);
+extern void setZinaLogLevel(int32_t level);
 
 #if defined(__cplusplus)
 }

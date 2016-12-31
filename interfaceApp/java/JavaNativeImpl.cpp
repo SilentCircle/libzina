@@ -47,6 +47,9 @@ using namespace std;
 
 #define JNI_FUNCTION(FUNC_NAME)  CONCAT(PACKAGE_NAME, FUNC_NAME)
 
+#ifndef JNIEXPORT
+#error "JNIEXPORT not defined"
+#endif
 
 #define LOGGING
 #ifdef LOGGING
@@ -654,7 +657,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     memset_volatile((void*)pw, 0, pwLen);
     env->ReleaseByteArrayElements(dbPassphrase, (jbyte*)pw, 0);
 
-    // initialize and open the persitent store singleton instance
+    // initialize and open the persistent store singleton instance
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->setKey(dbPw);
 

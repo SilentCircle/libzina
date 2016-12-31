@@ -239,6 +239,8 @@ if (UNITTESTS)
     set (EMBEDDED -DUNITTESTS)
 endif()
 
+set(NO_VISIBILITY "-fvisibility=hidden -fvisibility-inlines-hidden")
+
 string(REPLACE ";" " " zina_src_spc "${zina_src}")
 set(local_cpp_features "exceptions")
 
