@@ -42,7 +42,7 @@ shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& lo
     }
     if (!found) {
         LOGGER(INFO, __func__, " <-- No such conversation: ", user);
-        return conv;
+        return conv;            // SUCCESS, however return an empty conversation
     }
 
     string* data = store->loadConversation(user, deviceId, localUser, &result);
@@ -53,6 +53,7 @@ shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& lo
     }
     if (data == NULL || data->empty()) {   // Illegal state, should not happen
         LOGGER(ERROR, __func__, " <-- Cannot load conversation: ", user);
+        conv->errorCode_ = NO_SESSION_DATA;
         return conv;
     }
 

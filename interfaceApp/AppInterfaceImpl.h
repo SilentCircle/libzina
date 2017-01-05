@@ -121,9 +121,9 @@ public:
 
     string* getKnownUsers();
 
-    string getOwnIdentityKey() const;
+    string getOwnIdentityKey();
 
-    shared_ptr<list<string> > getIdentityKeys(string& user) const;
+    shared_ptr<list<string> > getIdentityKeys(string& user);
 
     int32_t registerZinaDevice(string* result);
 

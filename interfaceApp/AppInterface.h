@@ -206,7 +206,7 @@ public:
      *
      * @return formatted string, device name part may be empty if no device name was defined.
      */
-    virtual string getOwnIdentityKey() const = 0;
+    virtual string getOwnIdentityKey() = 0;
 
     /**
      * @brief Get own device identifier.
@@ -233,7 +233,7 @@ public:
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.
      */
-    virtual shared_ptr<list<string> > getIdentityKeys(string& user) const = 0;
+    virtual shared_ptr<list<string> > getIdentityKeys(string& user) = 0;
 
     /**
      * @brief Register device

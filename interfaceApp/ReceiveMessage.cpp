@@ -138,19 +138,18 @@ int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& u
 // forward the data to the UI layer.
 static int32_t duplicates = 0;
 
-void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
-{
+void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     LOGGER(INFO, __func__, " -->");
 
-    string& messageEnvelope = msgInfo->queueInfo_envelope;
-    string& uid = msgInfo->queueInfo_uid;
-    string& displayName = msgInfo->queueInfo_displayName;
+    string &messageEnvelope = msgInfo->queueInfo_envelope;
+    string &uid = msgInfo->queueInfo_uid;
+    string &displayName = msgInfo->queueInfo_displayName;
 
     uint8_t hash[SHA256_DIGEST_LENGTH];
-    sha256((uint8_t*)messageEnvelope.data(), (uint32_t)messageEnvelope.size(), hash);
+    sha256((uint8_t *) messageEnvelope.data(), (uint32_t) messageEnvelope.size(), hash);
 
     string msgHash;
-    msgHash.assign((const char*)hash, SHA256_DIGEST_LENGTH);
+    msgHash.assign((const char *) hash, SHA256_DIGEST_LENGTH);
 
     int32_t sqlResult = store_->hasMsgHash(msgHash);
 
@@ -170,15 +169,16 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         tempBuffer_ = new char[messageEnvelope.size()];
         tempBufferSize_ = messageEnvelope.size();
     }
-    size_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t*)tempBuffer_, tempBufferSize_);
-    string envelopeBin((const char*)tempBuffer_, binLength);
+    size_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t *) tempBuffer_,
+                                 tempBufferSize_);
+    string envelopeBin((const char *) tempBuffer_, binLength);
 
     MessageEnvelope envelope;
     envelope.ParseFromString(envelopeBin);
 
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
-    const string& sender = uid.empty() ? envelope.name() : uid;
+    const string &sender = uid.empty() ? envelope.name() : uid;
 
     // Check if this message was really intended to this client. The sender added a short id to the
     // envelope that we can use to check this
@@ -192,17 +192,17 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
         uint8_t binDevId[20];
         hex2bin(scClientDevId_.c_str(), binDevId);
 
-        wrongDeviceId = memcmp((void*)sentToId.data(), binDevId, sentToId.size()) != 0;
+        wrongDeviceId = memcmp((void *) sentToId.data(), binDevId, sentToId.size()) != 0;
 
         size_t len;
-        bin2hex((const uint8_t*)sentToId.data(), sentToId.size(), receiverDevId, &len);
+        bin2hex((const uint8_t *) sentToId.data(), sentToId.size(), receiverDevId, &len);
         if (wrongDeviceId) {
             LOGGER(ERROR, __func__, "Message is for device id: ", receiverDevId, ", my device id: ", scClientDevId_);
         }
     }
     // Get the sender's device id and the message id
-    const string& senderScClientDevId = envelope.scclientdevid();
-    const string& msgId = envelope.msgid();
+    const string &senderScClientDevId = envelope.scclientdevid();
+    const string &msgId = envelope.msgid();
 
     // The msg id is a time based UUID, parse it and check if the message is too old
     uuid_t uu = {0};
@@ -213,27 +213,33 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo)
 
     bool oldMessage = (timeDiff > 0 && timeDiff >= MK_STORE_TIME);
 
-    // Extract the truncated long term identity key hashes
-    auto axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
-
-    cJSON* convJson = axoConv->prepareForCapture(nullptr, true);
-
     string supplementsPlain;
     shared_ptr<const string> messagePlain;
-    messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope,  &supplementsPlain);
-    errorCode_ = axoConv->getErrorCode();
+    cJSON *convJson = nullptr;
 
     int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
+
+    auto axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
+    errorCode_ = axoConv->getErrorCode();
+    if (errorCode_ == SUCCESS) {
+        convJson = axoConv->prepareForCapture(nullptr, true);
+
+        messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, &supplementsPlain);
+        errorCode_ = axoConv->getErrorCode();
+    }
 
 //    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
     if (!messagePlain) {
 
         char* out = cJSON_PrintUnformatted(convJson);
-        string convState(out);
-        cJSON_Delete(convJson);
-        free(out);
+        if (out) {
+            string convState(out);
+            cJSON_Delete(convJson);
+            free(out);
 
-        MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"failed\"}"), false, true);
+            MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
+                                                   string("{\"cmd\":\"failed\"}"), false, true);
+        }
         char b2hexBuffer[1004] = {0};
 
         // Remove un-decryptable message data

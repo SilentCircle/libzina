@@ -382,7 +382,7 @@ int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, st
     return OK;
 }
 
-string AppInterfaceImpl::getOwnIdentityKey() const
+string AppInterfaceImpl::getOwnIdentityKey()
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -391,6 +391,8 @@ string AppInterfaceImpl::getOwnIdentityKey() const
     if (!axoConv->isValid()) {
         LOGGER(ERROR, "No own conversation, ignore.")
         LOGGER(INFO, __func__, " <-- No own conversation.");
+        errorInfo_ = "Failed to read own conversation from database";
+        errorCode_ = axoConv->getErrorCode();
         return Empty;
     }
 
@@ -409,7 +411,7 @@ string AppInterfaceImpl::getOwnIdentityKey() const
     return idKey;
 }
 
-shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user) const
+shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -421,8 +423,11 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user) const
     for (; !devices->empty(); devices->pop_front()) {
         const string& recipientDeviceId = devices->front();
         auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId);
-        if (!axoConv->isValid()) {
-            continue;
+        errorCode_ = axoConv->getErrorCode();
+        if (errorCode_ != SUCCESS || !axoConv->isValid()) { // A database problem when loading the conversation
+            errorInfo_ = "Failed to read remote conversation from database";
+            idKeys->clear();                // return an empty list, all gathered info may be invalid
+            return idKeys;
         }
         const DhPublicKey* idKey = axoConv->getDHIr();
         if (idKey == NULL) {
