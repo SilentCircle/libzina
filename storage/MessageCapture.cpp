@@ -18,11 +18,9 @@ const static char* FIELD_ACCURACY_VERTICAL = "h";
 using namespace std;
 using namespace zina;
 
-static int32_t filterAttributes(const string& attributes, shared_ptr<string> filteredAttributes)
+static int32_t filterAttributes(const string& attributes, string *filteredAttributes)
 {
     LOGGER(INFO, __func__, " -->");
-    cJSON* cjTemp;
-    char* jsString;
 
     cJSON* root = cJSON_Parse(attributes.c_str());
     if (root == NULL) {
@@ -57,14 +55,14 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
-        shared_ptr<string> filteredAttributes = make_shared<string>();
-        int32_t result = filterAttributes(attributes, filteredAttributes);
+        string filteredAttributes;
+        int32_t result = filterAttributes(attributes, &filteredAttributes);
         if (result < 0) {
             LOGGER(ERROR, __func__, " Cannot parse received message attributes: ", attributes);
             return result;
         }
 
-        result = store->insertMsgTrace(sender, messageId, deviceId, convState, *filteredAttributes, attachments, true);
+        result = store->insertMsgTrace(sender, messageId, deviceId, convState, filteredAttributes, attachments, true);
         if (SQL_FAIL(result)) {
             LOGGER(ERROR, __func__, " <-- Cannot store received message trace data.", result);
             return result;
@@ -81,14 +79,14 @@ int32_t MessageCapture::captureSendMessage(const string &receiver, const string 
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
-        shared_ptr<string> filteredAttributes = make_shared<string>();
-        int32_t result = filterAttributes(attributes, filteredAttributes);
+        string filteredAttributes;
+        int32_t result = filterAttributes(attributes, &filteredAttributes);
         if (result < 0) {
             LOGGER(ERROR, __func__, " Cannot parse sent message attributes: ", attributes);
             return result;
         }
 
-        result = store->insertMsgTrace(receiver, messageId, deviceId, convState, *filteredAttributes, attachments, false);
+        result = store->insertMsgTrace(receiver, messageId, deviceId, convState, filteredAttributes, attachments, false);
         if (SQL_FAIL(result)) {
             LOGGER(ERROR, __func__, " <-- Cannot store sent message trace data.", result);
             return result;

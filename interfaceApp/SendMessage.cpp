@@ -497,8 +497,6 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     // contents, just sets the length to 0 which is not good enough.
     sendInfo->queueInfo_attachment.append(" ");
     sendInfo->queueInfo_attributes.append(" ");
-    memset_volatile((void*)sendInfo->queueInfo_attachment.data(), 0, sendInfo->queueInfo_attachment.size());
-    memset_volatile((void*)sendInfo->queueInfo_attributes.data(), 0, sendInfo->queueInfo_attributes.size());
 
     if (zinaConversation == nullptr) {
         zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
@@ -508,6 +506,8 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
             errorCode_ = zinaConversation->getErrorCode();
             errorInfo_ = sendInfo->queueInfo_deviceId;
             getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
+            Utilities::wipeString(sendInfo->queueInfo_attachment);
+            Utilities::wipeString(sendInfo->queueInfo_attributes);
             return errorCode_;
         }
     }
@@ -519,8 +519,8 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo->queueInfo_message, envelope, supplements);
 
     sendInfo->queueInfo_message.append(" ");
-    memset_volatile((void*)sendInfo->queueInfo_message.data(), 0, sendInfo->queueInfo_message.size());
-    memset_volatile((void*)supplements.data(), 0, supplements.size());
+    Utilities::wipeString(sendInfo->queueInfo_message);
+    Utilities::wipeString(supplements);
 
     convJson = zinaConversation->prepareForCapture(convJson, false);
 
@@ -530,6 +530,9 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
 
     MessageCapture::captureSendMessage(sendInfo->queueInfo_recipient, sendInfo->queueInfo_msgId, sendInfo->queueInfo_deviceId, convState,
                                        sendInfo->queueInfo_attributes, !sendInfo->queueInfo_attachment.empty());
+
+    Utilities::wipeString(sendInfo->queueInfo_attachment);
+    Utilities::wipeString(sendInfo->queueInfo_attributes);
 
     // If encrypt does not return encrypted data then report an error, code was set by the encrypt function
     if (result != SUCCESS) {
