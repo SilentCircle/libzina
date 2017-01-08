@@ -35,9 +35,11 @@ size_t b64Decode(const char *b64Data, size_t b64length, uint8_t *binData, size_t
     if (b64length == 0)
         return 0;
 
-    size_t codelength = binLength;
-    base64decode (b64Data, b64length, binData, &codelength);
-    return codelength;
+    size_t codeLength = binLength;
+    if (base64decode (b64Data, b64length, binData, &codeLength) != 0) {
+        return 0;
+    }
+    return codeLength;
 }
 
  

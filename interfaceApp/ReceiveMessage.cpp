@@ -33,7 +33,7 @@ limitations under the License.
 using namespace zina;
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,
-                               const char* msgHex, int32_t errorCode, const string& sentToId, int32_t sqlCode, int32_t msgType)
+                               const char* other, int32_t errorCode, const string& sentToId, int32_t sqlCode, int32_t msgType)
 {
     shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
     cJSON* root = sharedRoot.get();
@@ -44,7 +44,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
 
     cJSON_AddStringToObject(details, "name", sender.c_str());
     cJSON_AddStringToObject(details, "scClientDevId", senderScClientDevId.c_str());
-    cJSON_AddStringToObject(details, "otherInfo", msgHex);            // App may use this to retry after fixing the problem
+    cJSON_AddStringToObject(details, "otherInfo", other);
     cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
     cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
@@ -171,150 +171,155 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     }
     size_t binLength = b64Decode(messageEnvelope.data(), messageEnvelope.size(), (uint8_t *) tempBuffer_,
                                  tempBufferSize_);
-    string envelopeBin((const char *) tempBuffer_, binLength);
+    if (binLength == 0) {
+        LOGGER(ERROR, __func__, "Base64 decoding of received message failed.");
+        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+        return;
+    }
 
     MessageEnvelope envelope;
-    envelope.ParseFromString(envelopeBin);
+    if (!envelope.ParseFromArray(tempBuffer_, static_cast<int32_t>(binLength))) {
+        LOGGER(ERROR, __func__, "ProtoBuffer decoding of received message failed.");
+        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+        return;
+    }
 
     // backward compatibility or in case the message Transport does not support
     // UID. Then fallback to data in the message envelope.
     const string &sender = uid.empty() ? envelope.name() : uid;
 
-    // Check if this message was really intended to this client. The sender added a short id to the
-    // envelope that we can use to check this
-    string sentToId;
-    if (envelope.has_recvdevidbin())
-        sentToId = envelope.recvdevidbin();
-
-    bool wrongDeviceId = false;
-    char receiverDevId[16] = {0};
-    if (!sentToId.empty()) {
-        uint8_t binDevId[20];
-        hex2bin(scClientDevId_.c_str(), binDevId);
-
-        wrongDeviceId = memcmp((void *) sentToId.data(), binDevId, sentToId.size()) != 0;
-
-        size_t len;
-        bin2hex((const uint8_t *) sentToId.data(), sentToId.size(), receiverDevId, &len);
-        if (wrongDeviceId) {
-            LOGGER(ERROR, __func__, "Message is for device id: ", receiverDevId, ", my device id: ", scClientDevId_);
-        }
-    }
-    // Get the sender's device id and the message id
+    // Seems we have a valid message envelope
+    // Get the sender's device id and the message id and the message type
     const string &senderScClientDevId = envelope.scclientdevid();
     const string &msgId = envelope.msgid();
+    int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
 
-    // The msg id is a time based UUID, parse it and check if the message is too old
-    uuid_t uu = {0};
-    uuid_parse(msgId.c_str(), uu);
-    time_t msgTime = uuid_time(uu, NULL);
-    time_t currentTime = time(NULL);
-    time_t timeDiff = currentTime - msgTime;
+    errorCode_ = SUCCESS;       // Be optimistic and assume success
 
-    bool oldMessage = (timeDiff > 0 && timeDiff >= MK_STORE_TIME);
+    // Define / initialize some variables at this point because in case of an error
+    // we use goto and the compiler does not like cross-initialization of variables.
+    char receiverDevId[16] = {0};
+    string sentToId;
 
     string supplementsPlain;
     shared_ptr<const string> messagePlain;
     cJSON *convJson = nullptr;
+    shared_ptr<CmdQueueInfo> plainMsgInfo;
+    shared_ptr<ZinaConversation> axoConv;
+    string msgDescriptor;
 
-    int32_t msgType = envelope.has_msgtype() ? envelope.msgtype() : MSG_NORMAL;
+    // The msg id is a time based UUID, parse it and check if the message is too old
+    uuid_t uu = {0};
+    time_t msgTime, currentTime, timeDiff = 0;
+    if (uuid_parse(msgId.c_str(), uu) != 0) {
+        errorCode_ = CORRUPT_DATA;
+        goto errorMessage_;
+    }
+    msgTime = uuid_time(uu, NULL);
+    currentTime = time(NULL);
+    timeDiff = currentTime - msgTime;
 
-    auto axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
+    // We can't process very old messages, the keys are already gone
+    if (timeDiff > 0 && timeDiff >= MK_STORE_TIME) {
+        errorCode_ = OLD_MESSAGE;
+        goto errorMessage_;
+    }
+
+    // Check if this message was really intended to this client. If the sender added a short id to the
+    // envelope that we can use to check this
+    if (envelope.has_recvdevidbin()) {
+        sentToId = envelope.recvdevidbin();
+    }
+
+    if (!sentToId.empty()) {
+        uint8_t binDevId[20];
+        hex2bin(scClientDevId_.c_str(), binDevId);
+
+        bool wrongDeviceId = memcmp((void *) sentToId.data(), binDevId, sentToId.size()) != 0;
+
+        if (wrongDeviceId) {
+            size_t len;
+            bin2hex((const uint8_t *) sentToId.data(), sentToId.size(), receiverDevId, &len);
+            errorCode_ = WRONG_RECV_DEV_ID;
+            LOGGER(ERROR, __func__, "Message is for device id: ", receiverDevId, ", my device id: ", scClientDevId_);
+            goto errorMessage_;
+        }
+    }
+
+    axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
     errorCode_ = axoConv->getErrorCode();
     if (errorCode_ == SUCCESS) {
-        convJson = axoConv->prepareForCapture(nullptr, true);
+        // Prepare some data for debugging if we have a develop build and debugging is enabled
+        if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+            convJson = axoConv->prepareForCapture(nullptr, true);
+        }
 
         messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, &supplementsPlain);
         errorCode_ = axoConv->getErrorCode();
+        if (!messagePlain) {
+            goto errorMessage_;
+        }
     }
 
-//    LOGGER(DEBUGGING, __func__, "++++ After decrypt: %s", messagePlain ? messagePlain->c_str() : "NULL");
-    if (!messagePlain) {
+    // At this point we have a valid decrypted message
 
-        char* out = cJSON_PrintUnformatted(convJson);
-        if (out) {
-            string convState(out);
-            cJSON_Delete(convJson);
-            free(out);
-
-            MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
-                                                   string("{\"cmd\":\"failed\"}"), false, true);
-        }
-        char b2hexBuffer[1004] = {0};
-
-        // Remove un-decryptable message data
-        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
-
-        if (oldMessage)
-            errorCode_ = OLD_MESSAGE;
-        if (wrongDeviceId)
-            errorCode_ = WRONG_RECV_DEV_ID;
-
-        const string& message = envelope.message();
-        size_t msgLen = min(message.size(), (size_t)500);
-        size_t outLen;
-        bin2hex((const uint8_t*)message.data(), msgLen, b2hexBuffer, &outLen);
-        stateReportCallback_(0, errorCode_, receiveErrorJson(sender, senderScClientDevId, msgId, b2hexBuffer, errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
-        LOGGER(ERROR, __func__ , " Decryption failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
-        if (errorCode_ == DATABASE_ERROR) {
-            LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
-        }
-        // Don't report decryption failure on command messages
-        if (msgType < MSG_CMD) {
-            sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
-        }
-        return;
+    // Prepare some data for debugging if we have a develop build and debugging is enabled
+    // We don't capture the message itself but only some relevant, public context data
+    if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+        convJson = axoConv->prepareForCapture(convJson, false);
+        char *out = cJSON_PrintUnformatted(convJson);
+        string convState(out);
+        cJSON_Delete(convJson);
+        free(out);
+        MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
+                                               string("{\"cmd\":\"dummy\"}"), false);
     }
-    convJson = axoConv->prepareForCapture(convJson, false);
-    char* out = cJSON_PrintUnformatted(convJson);
-    string convState(out);
-    cJSON_Delete(convJson); free(out);
-    MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState, string("{\"cmd\":\"dummy\"}"), false);
+    {
+        /*
+         * Message descriptor for received message:
+         {
+             "version":    <int32_t>,            # Version of JSON send message descriptor, 1 for the first implementation
+             "sender":     <string>,             # for SC this is either the user's name or the user's DID
+             "scClientDevId" : <string>,         # the sender's long device id
+             "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
+        }
+        */
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddNumberToObject(root, "version", 1);
+        cJSON_AddStringToObject(root, MSG_SENDER, sender.c_str());        // sender is the UUID string
 
-    /*
-     * Message descriptor for received message:
-     {
-         "version":    <int32_t>,            # Version of JSON send message descriptor, 1 for the first implementation
-         "sender":     <string>,             # for SC this is either the user's name or the user's DID
-         "scClientDevId" : <string>,         # the sender's long device id
-         "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
+        // backward compatibility or in case the message Transport does not support
+        // alias handling. Then fallback to data in the message envelope.
+        cJSON_AddStringToObject(root, MSG_DISPLAY_NAME,
+                                displayName.empty() ? envelope.name().c_str() : displayName.c_str());
+        cJSON_AddStringToObject(root, MSG_DEVICE_ID, senderScClientDevId.c_str());
+        cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
+        cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
+
+        cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
+        messagePlain.reset();
+
+        char *msg = cJSON_PrintUnformatted(root);
+        msgDescriptor = msg;
+        cJSON_Delete(root);
+        free(msg);
     }
-    */
-    cJSON* root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(root, "version", 1);
-    cJSON_AddStringToObject(root, MSG_SENDER, sender.c_str());        // sender is the UUID string
 
-    // backward compatibility or in case the message Transport does not support
-    // alias handling. Then fallback to data in the message envelope.
-    cJSON_AddStringToObject(root, MSG_DISPLAY_NAME, displayName.empty() ? envelope.name().c_str() : displayName.c_str());
-    cJSON_AddStringToObject(root, MSG_DEVICE_ID, senderScClientDevId.c_str());
-    cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
-    cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
-
-    cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
-    messagePlain.reset();
-
-    out = cJSON_PrintUnformatted(root);
-    string msgDescriptor(out);
-    cJSON_Delete(root);
-    free(out);
-
-
-    shared_ptr<CmdQueueInfo> plainMsgInfo = make_shared<CmdQueueInfo>();
+    plainMsgInfo = make_shared<CmdQueueInfo>();
     plainMsgInfo->command = ReceivedTempMsg;
     plainMsgInfo->queueInfo_message_desc = msgDescriptor;
     plainMsgInfo->queueInfo_supplement = supplementsPlain;
     plainMsgInfo->queueInfo_msgType = msgType;
 
     // At this point, in one DB transaction:
-    // - save msgDescriptor and supplements plain in DB,
-    // - store msgHash,
+    // - save msgDescriptor and supplements plain data in DB,
+    // - store msgHash to detect duplicate messages,
     // - store staged message keys,
-    // - save conversation,
-    // - delete raw message data
+    // - save conversation (ratchet context),
+    // - delete raw message data because it's processed
     int64_t sequence;
     int32_t result;
-    bool processPlaintext = false;
+//    bool processPlaintext = false;
     {
         store_->beginTransaction();
 
@@ -339,23 +344,24 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
         }
 #endif
         result = store_->insertTempMsg(msgDescriptor, plainMsgInfo->queueInfo_supplement, msgType, &sequence);
-        processPlaintext = true;
+//        processPlaintext = true;
         if (!SQL_FAIL(result))
             goto success_;
 
         error_:
             store_->rollbackTransaction();
-            stateReportCallback_(0, DATABASE_ERROR, receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data", DATABASE_ERROR, sentToId, result, msgType));
+            stateReportCallback_(0, DATABASE_ERROR,
+                                 receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data", DATABASE_ERROR, sentToId, result, msgType));
             return;
 
         success_:
            store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
            store_->commitTransaction();
     }
-    if (!processPlaintext) {
-        LOGGER(INFO, __func__, " <-- don't process plaintext, DR policy");
-        return;
-    }
+//    if (!processPlaintext) {
+//        LOGGER(INFO, __func__, " <-- don't process plaintext, DR policy");
+//        return;
+//    }
     plainMsgInfo->queueInfo_sequence = sequence;
 
 #ifndef UNITTESTS
@@ -364,6 +370,43 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
 
     processMessagePlain(plainMsgInfo);
     LOGGER(INFO, __func__, " <--");
+    return;
+
+    // Come here if something went wrong after parsing of the input data (proto buffer parsing)
+    // was OK. The errorCode_ must contain the reason of the problem
+  errorMessage_:
+    {
+        // Remove raw message data, we can't process it anyway
+        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+
+        // In case of error we capture some additional data, prepared above. This additional data
+        // does not reveal any security relevant data. We do this for builds which are able to log
+        // INFO and if log level is INFO or higher
+        if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+            char *out = cJSON_PrintUnformatted(convJson);
+            if (out) {
+                string convState(out);
+                cJSON_Delete(convJson);
+                free(out);
+
+                MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
+                                                       string("{\"cmd\":\"failed\"}"), false);
+            }
+        }
+
+        stateReportCallback_(0, errorCode_,
+                             receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
+                                              errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
+
+        LOGGER(ERROR, __func__ , " Message processing failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
+        if (errorCode_ == DATABASE_ERROR) {
+            LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
+        }
+        // Don't report processing failures on command messages
+        if (msgType < MSG_CMD) {
+            sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
+        }
+    }
 }
 
 void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)

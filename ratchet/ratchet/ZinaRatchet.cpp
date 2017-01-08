@@ -648,6 +648,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
         if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Old ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
+            conv->setErrorCode(status);
             return shared_ptr<string>();
         }
         status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted.get(), supplementsPlain);
@@ -663,6 +664,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.PNp, conv->getCKr(), &CKp, &MK, &macKey);
         if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- New ratchet, staging MK for old ratchet failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
+            conv->setErrorCode(status);
             return shared_ptr<string>();
         }
 
@@ -690,6 +692,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         if (status != SUCCESS) {
             conv->setDHRr(saveDHRr);
             delete DHRp;
+            conv->setErrorCode(status);
             LOGGER(ERROR, __func__, " <-- New ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
             return shared_ptr<string>();
         }

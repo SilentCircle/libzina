@@ -23,7 +23,6 @@ limitations under the License.
 #include "../util/cJSON.h"
 #include "../Constants.h"
 #include "../provisioning/Provisioning.h"
-#include "../logging/ZinaLogging.h"
 #include "../util/Utilities.h"
 
 

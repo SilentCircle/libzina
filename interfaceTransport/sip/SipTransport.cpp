@@ -99,60 +99,6 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
     }
 }
 
-#if 0
-// The library calls this for a single recipient with multiple devices, the function supports
-// up to 16 devices per recipient. If the caller exceeds this number the functions returns nullptr
-vector<int64_t>* SipTransport::sendAxoMessage(const string& recipient, vector<pair<string, string> >* msgPairs, uint32_t messageType)
-{
-    LOGGER(INFO, __func__, " -->");
-
-    if (!sendThread.joinable()) {
-        unique_lock<mutex> lck(threadLock);
-        if (!sendThread.joinable()) {
-            sendingActive = true;
-            sendThread = thread(runSendQueue, sendAxoData_, this);
-        }
-        lck.unlock();
-    }
-
-    size_t numPairs = msgPairs->size();
-    if (numPairs <= 0 || numPairs > 16)
-        return nullptr;
-
-    vector<int64_t>* msgIdsReturn = new vector<int64_t>;
-    int64_t transportMsgId;
-    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
-
-    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
-    transportMsgId &= ~0xff;
-
-    unique_lock<mutex> listLock(sendListLock);
-
-    // The loop stores all relevant data to send a message in a structure, queues the message
-    // info structure and stores the transport message id in a vector to return them to the caller.
-    uint64_t typeMask = messageType >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
-    for (size_t i = 0; i < numPairs; i++) {
-        shared_ptr<SendMsgInfo> msgInfo = make_shared<SendMsgInfo>();
-        msgInfo->recipient = recipient;
-        pair<string, string>& msgPair = msgPairs->at(i);
-        msgInfo->deviceId = msgPair.first;
-        msgInfo->envelope = msgPair.second;
-        msgInfo->transportMsgId = transportMsgId | (i << 4) | typeMask;
-        msgIdsReturn->push_back(msgInfo->transportMsgId);
-
-        sendMessageList.push_back(msgInfo);
-    }
-    // This should clear everything because no pointers involved
-    msgPairs->clear();
-    runSend = true;
-    sendCv.notify_one();
-    listLock.unlock();
-
-    LOGGER(INFO, __func__, " <--");
-    return msgIdsReturn;
-}
-#endif
-
 void SipTransport::sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope)
 {
     LOGGER(INFO, __func__, " -->");
@@ -196,6 +142,11 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
                                         uint8_t* displayName, size_t dpNameLen) {
     LOGGER(INFO, __func__, " -->");
+
+    if (length > MAX_ENCODED_MSG_LENGTH) {
+        LOGGER(ERROR, __func__, " Ignore a too long message: ", length);
+        return OK;                  // Silently ignore, server should drop it as well
+    }
     string envelope((const char *) data, length);
 
     string uidString;
