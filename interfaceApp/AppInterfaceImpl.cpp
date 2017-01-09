@@ -514,7 +514,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     msgInfo->queueInfo_msgId = generateMsgIdTime();
     msgInfo->queueInfo_message = Empty;
     msgInfo->queueInfo_attachment = Empty;
-    msgInfo->queueInfo_message = ping;
+    msgInfo->queueInfo_attributes = ping;
     msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(MSG_NORMAL);
     msgInfo->queueInfo_toSibling = toSibling;
     msgInfo->queueInfo_newUserDevice = true;
