@@ -248,17 +248,19 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
 
     axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
     errorCode_ = axoConv->getErrorCode();
-    if (errorCode_ == SUCCESS) {
-        // Prepare some data for debugging if we have a develop build and debugging is enabled
-        if (LOGGER_INSTANCE getLogLevel() >= INFO) {
-            convJson = axoConv->prepareForCapture(nullptr, true);
-        }
+    if (errorCode_ != SUCCESS) {
+        goto errorMessage_;
+    }
+    // Prepare some data for debugging if we have a develop build and debugging is enabled
+    if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+        convJson = axoConv->prepareForCapture(nullptr, true);
+    }
 
-        messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, &supplementsPlain);
+    // OK, do the real decryption here
+    messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, &supplementsPlain);
+    if (!messagePlain) {
         errorCode_ = axoConv->getErrorCode();
-        if (!messagePlain) {
-            goto errorMessage_;
-        }
+        goto errorMessage_;
     }
 
     // At this point we have a valid decrypted message
@@ -404,7 +406,11 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
         }
         // Don't report processing failures on command messages
         if (msgType < MSG_CMD) {
-            sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
+            if (errorCode_ == MAC_CHECK_FAILED || errorCode_ == MSG_PADDING_FAILED || errorCode_ == SUP_PADDING_FAILED
+                    || errorCode_ == WRONG_BLK_SIZE || errorCode_ ==  UNSUPPORTED_KEY_SIZE) {
+                sendErrorCommand(DECRYPTION_FAILED, sender, msgId);
+            }
+            // TODO: check if we should inform sender about non critical processing failures that lead to a non-visible message
         }
     }
 }
