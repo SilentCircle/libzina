@@ -398,9 +398,8 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     int32_t result;
     shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
     size_t membersFound = members->size();
-    while (!members->empty()) {
+    for (; !members->empty(); members->pop_front()) {
         string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
-        members->pop_front();
         bool toSibling = recipient == ownUser_;
         auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes, toSibling, GROUP_MSG_NORMAL, &result, recipient);
         if (result != SUCCESS) {
@@ -527,6 +526,23 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
     return OK;
 }
 
+int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command) {
+    LOGGER(INFO, __func__, " --> ");
+
+    int32_t result;
+    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
+    for (; !members->empty(); members->pop_front()) {
+        string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
+        sendGroupCommand(recipient, msgId, command);
+        if (result != SUCCESS) {
+            LOGGER(ERROR, __func__, " <-- Error: ", result);
+            return result;
+        }
+    }
+    LOGGER(INFO, __func__, " <--");
+    return OK;
+}
+
 int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string &msgId, const string &command) {
     LOGGER(INFO, __func__, " --> ", recipient, ", ", ownUser_);
 
@@ -557,16 +573,15 @@ int32_t AppInterfaceImpl::invitationAccepted(const cJSON *root)
     const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
     const string invitedMember(Utilities::getJsonString(root, MEMBER_ID, ""));
 
-    // Get all known members of the group before adding the invited member
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-
-    const string listCommand = prepareListAnswer(groupId, ownUser_, Empty, members, true);
-
-    // Now insert the new group member in our database
+    // Insert the new group member in our database
     if (!store_->isMemberOfGroup(groupId, invitedMember))
         store_->insertMember(groupId, invitedMember);
 
-    sendGroupCommand(invitedMember, generateMsgIdTime(), listCommand);
+    // Get all known members of the group including the new member and prepare the member list data
+    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
+    const string listCommand = prepareListAnswer(groupId, ownUser_, Empty, members, true);
+
+    sendGroupCommandToAll(groupId, generateMsgIdTime(), listCommand);
 
     LOGGER(INFO, __func__, " <-- ", listCommand);
     return OK;
@@ -774,7 +789,7 @@ int32_t AppInterfaceImpl::parseMemberList(const cJSON* root, bool initialList, c
                 return GROUP_MEMBER_NOT_STORED;
             }
             // Sending a command to a member creates the ratchet data for all devices of
-            // a user if necessary.
+            // that user if necessary.
             sendGroupCommand(memberId, generateMsgIdTime(), initialList ? helloCommand : ping);
         }
     }
