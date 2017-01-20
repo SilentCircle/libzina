@@ -74,6 +74,19 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
         retVal = conv->getErrorCode();
         return retVal;
     }
+
+    const DhPublicKey *existingIdKey = conv->getDHIr();     // get a possible existing long term id key
+
+    if (existingIdKey == nullptr) {
+        conv->setZrtpVerifyState(0);
+        conv->setIdentityKeyChanged(true);
+    }
+    else if (!(*existingIdKey == *bobKeys.first)) {
+        conv->setIdentityKeyChanged(true);
+        delete existingIdKey;
+        conv->setDHIr(nullptr);
+    }
+
     conv->reset();
 
     auto localConv = ZinaConversation::loadLocalConversation(localUser);
@@ -165,6 +178,18 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
             return SUCCESS;
         }
     }
+    const DhPublicKey *existingIdKey = conv->getDHIr();     // get a possible existing long term id key
+
+    if (existingIdKey == nullptr) {
+        conv->setZrtpVerifyState(0);
+        conv->setIdentityKeyChanged(true);
+    }
+    else if (!(*existingIdKey == *aliceId)) {
+        conv->setIdentityKeyChanged(true);
+        delete existingIdKey;
+        conv->setDHIr(nullptr);
+    }
+
     // Remove the pre-key from database because Alice used the key
     store->removePreKey(bobPreKeyId);
     conv->reset();

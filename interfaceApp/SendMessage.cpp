@@ -622,6 +622,8 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo>& sendInfo)
 
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult != SUCCESS) {
+        delete preIdKeys.first;
+        delete preIdKeys.second;
         errorCode_ = buildResult;
         errorInfo_ = sendInfo->queueInfo_deviceId;
         getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);

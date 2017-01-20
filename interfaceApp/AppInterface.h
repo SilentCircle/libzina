@@ -281,12 +281,27 @@ public:
     // *************************************************************
 
     /**
-     * @brief Rescan user device.
+     * @brief Rescan user devices.
      *
-     * Checks if a use has registered a new Axolotl device
+     * Checks if a user has registered a new Axolotl device and adds it to our conversations.
+     * Ths function also performs housekeeping in case the user deleted a device and remove it
+     * from our database.
+     *
+     * @param userName The user account to check.
      *
      */
     virtual void rescanUserDevices(string& userName) = 0;
+
+    /**
+     * @brief Resyncs (re-keying) alle devices of a user account.
+     *
+     * This function performs a re-keying of all devices of a user account. It does it
+     * without changing the long-term identity key. The re-keying just uses a new pre-key
+     * of the user's account and resets and re-initializes the ratchet contexts.
+     *
+     * @param userName The user account to sync.
+     */
+    virtual void reKeyAllDevices(string& userName) = 0;
 
     /**
      * @brief Resynchronize conversation data and status of a remote user's device.
@@ -301,6 +316,20 @@ public:
      *
      */
     virtual void reSyncConversation(const string& userName, const string& deviceId) = 0;
+
+    /**
+     * @brief Set Identity key changed flag.
+     *
+     * If the user (manually) verified the long-term identity key of the partner then the
+     * applicatuion can call this function to set the flag,
+     *
+     * @param user the name of the user
+     * @param deviceId the user's device
+     * @param flag Set the changed id key flag to @c true or @c false
+     *
+     */
+    virtual void setIdKeyVerified(const string& userName, const string& deviceId, bool flag) = 0;
+
 
     // *************************************************************
     // Group chat functions

@@ -107,6 +107,7 @@ namespace zina {
     static const int32_t DATA_MISSING = -32;          //!< Some data for a function is missing
     static const int32_t DATABASE_ERROR = -33;        //!< SQLCipher/SQLite returned and error code
     static const int32_t REJECT_DATA_RETENTION = -34; //!< Reject data retention when sending a message
+    static const int32_t PRE_KEY_HASH_WRONG = -35;    //!< Pre-key check failed during setup of new conversation or re-keying
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported

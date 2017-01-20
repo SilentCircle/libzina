@@ -289,7 +289,7 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
 
     auto checkRemoteIdKeyCmd = make_shared<CmdQueueInfo>();
 
-    checkRemoteIdKeyCmd->command = CkeckRemoteIdKey;
+    checkRemoteIdKeyCmd->command = CheckRemoteIdKey;
     checkRemoteIdKeyCmd->stringData1 = remoteName;
     checkRemoteIdKeyCmd->stringData2 = deviceId;
     checkRemoteIdKeyCmd->stringData3 = pubKey;

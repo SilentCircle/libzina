@@ -47,6 +47,7 @@ namespace zina {
     static const char* MSG_COMMAND = "cmd";
     static const char* MSG_SYNC_COMMAND = "syc";
     static const char* MSG_TYPE = "type";
+    static const char* MSG_ID_KEY_CHANGED = "idkc";
 
     // The following strings follow the MSG_COMMAND and identify the command
     static const char* DELIVERY_RECEIPT = "dr";

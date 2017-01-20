@@ -334,6 +334,10 @@ void ZinaConversation::deserialize(const std::string& data)
 
     contextId = (Utilities::getJsonInt(root, "contextId", 0) & 0xFFFFFFFF);
     versionNumber = Utilities::getJsonInt(root, "versionNumber", 0);
+    identityKeyChanged = Utilities::getJsonBool(root, "identityKeyChanged", true);
+    if (zrtpVerifyState > 0) {
+        identityKeyChanged = false;
+    }
 
     cJSON_Delete(root);
     LOGGER(INFO, __func__, " <--");
@@ -435,6 +439,7 @@ const string* ZinaConversation::serialize() const
 
     cJSON_AddNumberToObject(root, "contextId", contextId);
     cJSON_AddNumberToObject(root, "versionNumber", versionNumber);
+    cJSON_AddBoolToObject(root, "identityKeyChanged", identityKeyChanged);
 
     char *out = cJSON_PrintUnformatted(root);
     string* data = new string(out);
@@ -450,7 +455,7 @@ void ZinaConversation::reset()
     delete DHRs; DHRs = NULL;
     delete DHRr; DHRr = NULL;
     delete DHIs; DHIs = NULL;
-    delete DHIr; DHIr = NULL; 
+// Keep it to detect changes of the long-term identity key    delete DHIr; DHIr = NULL;
     delete A0; A0 = NULL;
 
     if (!CKr.empty())

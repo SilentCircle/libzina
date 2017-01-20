@@ -64,7 +64,7 @@ public:
             partner_(user, emptyString),
             deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0),
             Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0),
-            versionNumber(0), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS), valid_(false)
+            versionNumber(0), identityKeyChanged(false), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS), valid_(false)
     { stagedMk = make_shared<list<string> >(); }
 
 
@@ -175,6 +175,9 @@ public:
     void setZrtpVerifyState(int32_t state)  { zrtpVerifyState = state; }
     int32_t getZrtpVerifyState() const      { return zrtpVerifyState; }
 
+    void setIdentityKeyChanged(bool flag)   { identityKeyChanged = flag; }
+    bool isIdentityKeyChanged() const       { return identityKeyChanged; }
+
     bool isValid()                          { return valid_; }
 
     uint32_t getContextId() const { return contextId; }
@@ -243,6 +246,7 @@ private:
     int32_t   zrtpVerifyState;
     uint32_t  contextId;        //!< unique ID of context, changes with every re-keying
     int32_t   versionNumber;    //!< This is the version number the partner supports
+    bool      identityKeyChanged;
     // ***** end of persistent data
 
     /*

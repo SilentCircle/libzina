@@ -28,7 +28,6 @@ limitations under the License.
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
-static mutex conversationLock;
 
 using namespace zina;
 
@@ -215,112 +214,21 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
 
 // Get known Axolotl device from provisioning server, check if we have a new one
 // and if yes send a "ping" message to the new devices to create an Axolotl conversation
-// for the new devices.
+// for the new devices. The real implementation is in the command handling function below.
 
 void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(INFO, __func__, " -->");
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
-    if (!devices|| devices->empty()) {
-        return;
-    }
 
-    // Get known devices from DB, compare with devices from provisioning server
-    // and remove old devices in DB, i.e. devices not longer known to provisioning server
-    //
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    auto msgInfo = make_shared<CmdQueueInfo>();
+    msgInfo->command = ReSyncDeviceConversation;
+    msgInfo->queueInfo_recipient = userName;
+    addMsgInfoToRunQueue(msgInfo);
 
-    shared_ptr<list<string> > devicesDb = store_->getLongDeviceIds(userName, ownUser_);
-
-    if (devicesDb) {
-        for (; !devicesDb->empty(); devicesDb->pop_front()) {
-            const string& devIdDb = devicesDb->front();
-            bool found = false;
-
-            for (list<pair<string, string> >::iterator devIterator = devices->begin();
-                 devIterator != devices->end(); ++devIterator) {
-                string devId = (*devIterator).first;
-                if (devIdDb == devId) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                store->deleteConversation(userName, devIdDb, ownUser_);
-                LOGGER(DEBUGGING, "Remove device from database: ", devIdDb);
-            }
-        }
-    }
-
-    // Prepare and send this to the new learned device:
-    // - an Empty message
-    // - a message command attribute with a ping command
-    // For each Ping message the code generates a new UUID
-
-    // Prepare the messages for all known new devices of this user
-
-    int64_t transportMsgId;
-    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
-    uint64_t counter = 0;
-
-    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
-    transportMsgId &= ~0xff;
-
-    unique_lock<mutex> lck(conversationLock);
-    for (; !devices->empty(); devices->pop_front()) {
-        const string& deviceId = devices->front().first;
-        const string& deviceName = devices->front().second;
-
-        // Don't re-scan own device, just check if name changed
-        bool toSibling = userName == ownUser_;
-        if (toSibling && scClientDevId_ == deviceId) {
-            shared_ptr<ZinaConversation> conv = ZinaConversation::loadLocalConversation(ownUser_);
-            if (conv->isValid()) {
-                const string &convDevName = conv->getDeviceName();
-                if (deviceName.compare(convDevName) != 0) {
-                    conv->setDeviceName(deviceName);
-                    conv->storeConversation();
-                }
-            }
-            continue;
-        }
-
-        // If we already have a conversation for this device skip further processing
-        // after storing a user defined device name. The user may change a device's name
-        // using the Web interface of the provisioning server
-        if (store->hasConversation(userName, deviceId, ownUser_)) {
-            shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
-            if (conv->isValid()) {
-                const string &convDevName = conv->getDeviceName();
-                if (deviceName.compare(convDevName) != 0) {
-                    conv->setDeviceName(deviceName);
-                    conv->storeConversation();
-                }
-            }
-            continue;
-        }
-
-        LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
-        auto msgInfo = make_shared<CmdQueueInfo>();
-        msgInfo->command = SendMessage;
-        msgInfo->queueInfo_recipient = userName;
-        msgInfo->queueInfo_deviceName = deviceName;
-        msgInfo->queueInfo_deviceId = deviceId;
-        msgInfo->queueInfo_msgId = generateMsgIdTime();
-        msgInfo->queueInfo_message = Empty;
-        msgInfo->queueInfo_attachment = Empty;
-        msgInfo->queueInfo_attributes = ping;
-        msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | MSG_NORMAL;
-        msgInfo->queueInfo_toSibling = toSibling;
-        msgInfo->queueInfo_newUserDevice = true;
-        counter++;
-        queuePreparedMessage(msgInfo);
-        doSendSingleMessage(msgInfo->queueInfo_transportMsgId);  // Process it immediately, usually only one new device at a time
-        LOGGER(DEBUGGING, "Queued message to ping a new device.");
-    }
     LOGGER(INFO, __func__, " <--");
     return;
 }
+
 
 void AppInterfaceImpl::setHttpHelper(HTTP_FUNC httpHelper)
 {
@@ -333,7 +241,43 @@ void AppInterfaceImpl::setS3Helper(S3_FUNC s3Helper)
     ScDataRetention::setS3Helper(s3Helper);
 }
 
-// ***** Private functions 
+void AppInterfaceImpl::reKeyAllDevices(string &userName) {
+    shared_ptr<list<string> > devices = store_->getLongDeviceIds(userName, ownUser_);
+
+    if (!store_->isReady()) {
+        LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
+        return;
+    }
+    for (; !devices->empty(); devices->pop_front()) {
+        const string &recipientDeviceId = devices->front();
+        reSyncConversation(userName, recipientDeviceId);
+    }
+}
+
+void AppInterfaceImpl::reSyncConversation(const string &userName, const string& deviceId) {
+    LOGGER(INFO, __func__, " -->");
+
+    if (!store_->isReady()) {
+        LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
+        return;
+    }
+    // Don't re-sync this device
+    bool toSibling = userName == ownUser_;
+    if (toSibling && deviceId == scClientDevId_) {
+        return;
+    }
+    auto msgInfo = make_shared<CmdQueueInfo>();
+    msgInfo->command = ReSyncDeviceConversation;
+    msgInfo->queueInfo_recipient = userName;
+    msgInfo->queueInfo_deviceId = deviceId;
+    msgInfo->boolData1 = toSibling;
+    addMsgInfoToRunQueue(msgInfo);
+
+    LOGGER(INFO, __func__, " <--");
+    return;
+}
+
+// ***** Private functions
 // *******************************
 
 int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message, bool receivedMsg)
@@ -452,22 +396,16 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
     return idKeys;
 }
 
-void AppInterfaceImpl::reSyncConversation(const string &userName, const string& deviceId) {
+
+void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> command) {
     LOGGER(INFO, __func__, " -->");
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
         return;
     }
-    // Don't re-sync this device
-    bool toSibling = userName == ownUser_;
-    if (toSibling && deviceId == scClientDevId_)
-        return;
-
-    unique_lock<mutex> lck(conversationLock);
-
     // clear data and store the nearly empty conversation
-    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
+    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command->queueInfo_recipient, command->queueInfo_deviceId);
     if (!conv->isValid()) {
         return;
     }
@@ -479,24 +417,24 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
     // Check if server still knows this device.
     // If no device at all for his user -> remove all conversations (ratchet contexts) of this user.
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(command->queueInfo_recipient, authorization_);
     if (!devices || devices->empty()) {
-        store_->deleteConversationsName(userName, ownUser_);
+        store_->deleteConversationsName(command->queueInfo_recipient, ownUser_);
         return;
     }
     bool deviceFound = false;
     string deviceName;
     for (auto it = devices->cbegin(); it != devices->cend(); ++it) {
-        if (deviceId == (*it).first) {
+        if (command->queueInfo_deviceId == (*it).first) {
             deviceName = (*it).second;
             deviceFound = true;
             break;
         }
     }
 
-    // The server does not know this device anymore. In this case remove the conversation (ratchet contexts).
+    // The server does not know this device anymore. In this case remove the conversation (ratchet context), done.
     if (!deviceFound) {
-        store_->deleteConversation(userName, deviceId, ownUser_);
+        store_->deleteConversation(command->queueInfo_recipient, command->queueInfo_deviceId, ownUser_);
         return;
     }
 
@@ -508,18 +446,41 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
     auto msgInfo = make_shared<CmdQueueInfo>();
     msgInfo->command = SendMessage;
-    msgInfo->queueInfo_recipient = userName;
+    msgInfo->queueInfo_recipient = command->queueInfo_recipient;
     msgInfo->queueInfo_deviceName = deviceName;
-    msgInfo->queueInfo_deviceId = deviceId;
+    msgInfo->queueInfo_deviceId = command->queueInfo_deviceId;
     msgInfo->queueInfo_msgId = generateMsgIdTime();
     msgInfo->queueInfo_message = Empty;
     msgInfo->queueInfo_attachment = Empty;
     msgInfo->queueInfo_attributes = ping;
     msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(MSG_NORMAL);
-    msgInfo->queueInfo_toSibling = toSibling;
+    msgInfo->queueInfo_toSibling = command->boolData1;
     msgInfo->queueInfo_newUserDevice = true;
     queuePreparedMessage(msgInfo);
     doSendSingleMessage(msgInfo->queueInfo_transportMsgId);
+
+    LOGGER(INFO, __func__, " <--");
+    return;
+}
+
+void AppInterfaceImpl::setIdKeyVerified(const string &userName, const string& deviceId, bool flag) {
+    LOGGER(INFO, __func__, " -->");
+
+    if (!store_->isReady()) {
+        LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
+        return;
+    }
+    // Don't do this for own devices
+    bool toSibling = userName == ownUser_;
+    if (toSibling && deviceId == scClientDevId_)
+        return;
+
+    auto msgInfo = make_shared<CmdQueueInfo>();
+    msgInfo->command = SetIdKeyChangeFlag;
+    msgInfo->queueInfo_recipient = userName;
+    msgInfo->queueInfo_deviceId = deviceId;
+    msgInfo->boolData1 = flag;
+    addMsgInfoToRunQueue(msgInfo);
 
     LOGGER(INFO, __func__, " <--");
     return;
@@ -579,6 +540,134 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command)
     // a ZRTP session.
     int32_t verify = (command->int32Data == 1) ? 2 : 1;
     remote->setZrtpVerifyState(verify);
+    remote->setIdentityKeyChanged(false);
     remote->storeConversation();
 }
+
+void AppInterfaceImpl::setIdKeyVerifiedCommand(shared_ptr<CmdQueueInfo> command)
+{
+    /*
+     * Command data usage:
+    command->command = SetIdKeyChangeFlag;
+    command->queueInfo_recipient = remoteName;
+    command->queueInfo_deviceId = deviceId;
+    command->boolData1 = flag;
+     */
+    auto remote = ZinaConversation::loadConversation(getOwnUser(), command->queueInfo_recipient, command->queueInfo_deviceId);
+
+    if (!remote->isValid()) {
+        LOGGER(ERROR, "<-- No conversation, user: '", command->queueInfo_recipient, "', device: ", command->queueInfo_deviceId);
+        return;
+    }
+    remote->setIdentityKeyChanged(command->boolData1);
+    remote->storeConversation();
+}
+
+void AppInterfaceImpl::rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    const string &userName = command->queueInfo_recipient;
+
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
+    if (!devices|| devices->empty()) {
+        return;
+    }
+
+    // Get known devices from DB, compare with devices from provisioning server
+    // and remove old devices in DB, i.e. devices not longer known to provisioning server
+    //
+    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+
+    shared_ptr<list<string> > devicesDb = store_->getLongDeviceIds(userName, ownUser_);
+
+    if (devicesDb) {
+        for (; !devicesDb->empty(); devicesDb->pop_front()) {
+            const string& devIdDb = devicesDb->front();
+            bool found = false;
+
+            for (list<pair<string, string> >::iterator devIterator = devices->begin();
+                 devIterator != devices->end(); ++devIterator) {
+                string devId = (*devIterator).first;
+                if (devIdDb == devId) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                store->deleteConversation(userName, devIdDb, ownUser_);
+                LOGGER(DEBUGGING, "Remove device from database: ", devIdDb);
+            }
+        }
+    }
+
+    // Prepare and send this to the new learned device:
+    // - an Empty message
+    // - a message command attribute with a ping command
+    // For each Ping message the code generates a new UUID
+
+    // Prepare the messages for all known new devices of this user
+
+    int64_t transportMsgId;
+    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
+    uint64_t counter = 0;
+
+    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
+    transportMsgId &= ~0xff;
+
+    for (; !devices->empty(); devices->pop_front()) {
+        const string& deviceId = devices->front().first;
+        const string& deviceName = devices->front().second;
+
+        // Don't re-scan own device, just check if name changed
+        bool toSibling = userName == ownUser_;
+        if (toSibling && scClientDevId_ == deviceId) {
+            shared_ptr<ZinaConversation> conv = ZinaConversation::loadLocalConversation(ownUser_);
+            if (conv->isValid()) {
+                const string &convDevName = conv->getDeviceName();
+                if (deviceName.compare(convDevName) != 0) {
+                    conv->setDeviceName(deviceName);
+                    conv->storeConversation();
+                }
+            }
+            continue;
+        }
+
+        // If we already have a conversation for this device skip further processing
+        // after storing a user defined device name. The user may change a device's name
+        // using the Web interface of the provisioning server
+        if (store->hasConversation(userName, deviceId, ownUser_)) {
+            shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
+            if (conv->isValid()) {
+                const string &convDevName = conv->getDeviceName();
+                if (deviceName.compare(convDevName) != 0) {
+                    conv->setDeviceName(deviceName);
+                    conv->storeConversation();
+                }
+            }
+            continue;
+        }
+
+        LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
+        auto msgInfo = make_shared<CmdQueueInfo>();
+        msgInfo->command = SendMessage;
+        msgInfo->queueInfo_recipient = userName;
+        msgInfo->queueInfo_deviceName = deviceName;
+        msgInfo->queueInfo_deviceId = deviceId;
+        msgInfo->queueInfo_msgId = generateMsgIdTime();
+        msgInfo->queueInfo_message = Empty;
+        msgInfo->queueInfo_attachment = Empty;
+        msgInfo->queueInfo_attributes = ping;
+        msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | MSG_NORMAL;
+        msgInfo->queueInfo_toSibling = toSibling;
+        msgInfo->queueInfo_newUserDevice = true;
+        counter++;
+        queuePreparedMessage(msgInfo);
+        doSendSingleMessage(msgInfo->queueInfo_transportMsgId);  // Process it immediately, usually only one new device at a time
+        LOGGER(DEBUGGING, "Queued message to ping a new device.");
+    }
+    LOGGER(INFO, __func__, " <--");
+    return;
+}
+
 #pragma clang diagnostic pop

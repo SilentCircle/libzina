@@ -432,6 +432,18 @@ class RatchetData : public ::google::protobuf::MessageLite {
   inline ::std::string* release_remoteidkey();
   inline void set_allocated_remoteidkey(::std::string* remoteidkey);
 
+  // optional bytes preKeyHash = 14;
+  inline bool has_prekeyhash() const;
+  inline void clear_prekeyhash();
+  static const int kPreKeyHashFieldNumber = 14;
+  inline const ::std::string& prekeyhash() const;
+  inline void set_prekeyhash(const ::std::string& value);
+  inline void set_prekeyhash(const char* value);
+  inline void set_prekeyhash(const void* value, size_t size);
+  inline ::std::string* mutable_prekeyhash();
+  inline ::std::string* release_prekeyhash();
+  inline void set_allocated_prekeyhash(::std::string* prekeyhash);
+
   // @@protoc_insertion_point(class_scope:zina.RatchetData)
  private:
   inline void set_has_useversion();
@@ -460,6 +472,8 @@ class RatchetData : public ::google::protobuf::MessageLite {
   inline void clear_has_remoteprekey();
   inline void set_has_remoteidkey();
   inline void clear_has_remoteidkey();
+  inline void set_has_prekeyhash();
+  inline void clear_has_prekeyhash();
 
   ::std::string _unknown_fields_;
 
@@ -477,6 +491,7 @@ class RatchetData : public ::google::protobuf::MessageLite {
   ::std::string* mac_;
   ::std::string* remoteprekey_;
   ::std::string* remoteidkey_;
+  ::std::string* prekeyhash_;
   ::google::protobuf::int32 localprekeyid_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
@@ -1695,6 +1710,82 @@ inline void RatchetData::set_allocated_remoteidkey(::std::string* remoteidkey) {
     remoteidkey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.remoteIdKey)
+}
+
+// optional bytes preKeyHash = 14;
+inline bool RatchetData::has_prekeyhash() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void RatchetData::set_has_prekeyhash() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void RatchetData::clear_has_prekeyhash() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void RatchetData::clear_prekeyhash() {
+  if (prekeyhash_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    prekeyhash_->clear();
+  }
+  clear_has_prekeyhash();
+}
+inline const ::std::string& RatchetData::prekeyhash() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.preKeyHash)
+  return *prekeyhash_;
+}
+inline void RatchetData::set_prekeyhash(const ::std::string& value) {
+  set_has_prekeyhash();
+  if (prekeyhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    prekeyhash_ = new ::std::string;
+  }
+  prekeyhash_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.RatchetData.preKeyHash)
+}
+inline void RatchetData::set_prekeyhash(const char* value) {
+  set_has_prekeyhash();
+  if (prekeyhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    prekeyhash_ = new ::std::string;
+  }
+  prekeyhash_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.RatchetData.preKeyHash)
+}
+inline void RatchetData::set_prekeyhash(const void* value, size_t size) {
+  set_has_prekeyhash();
+  if (prekeyhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    prekeyhash_ = new ::std::string;
+  }
+  prekeyhash_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.RatchetData.preKeyHash)
+}
+inline ::std::string* RatchetData::mutable_prekeyhash() {
+  set_has_prekeyhash();
+  if (prekeyhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    prekeyhash_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.RatchetData.preKeyHash)
+  return prekeyhash_;
+}
+inline ::std::string* RatchetData::release_prekeyhash() {
+  clear_has_prekeyhash();
+  if (prekeyhash_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = prekeyhash_;
+    prekeyhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void RatchetData::set_allocated_prekeyhash(::std::string* prekeyhash) {
+  if (prekeyhash_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete prekeyhash_;
+  }
+  if (prekeyhash) {
+    set_has_prekeyhash();
+    prekeyhash_ = prekeyhash;
+  } else {
+    clear_has_prekeyhash();
+    prekeyhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.preKeyHash)
 }
 
 

@@ -30,6 +30,7 @@ limitations under the License.
 #include "../../storage/NameLookup.h"
 #include "../../dataRetention/ScDataRetention.h"
 #include "../JsonStrings.h"
+#include "../../util/Utilities.h"
 
 using namespace zina;
 using namespace std;
@@ -1199,12 +1200,12 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
             result = env->NewStringUTF(store->getLastError());
             setReturnCode(env, code, sqlResult);
         }
-        else {
-            zinaAppInterface->rescanUserDevices(dataContainer);
-        }
     }
     else if (strcmp("rescanUserDevices", cmd) == 0 && !dataContainer.empty()) {
         zinaAppInterface->rescanUserDevices(dataContainer);
+    }
+    else if (strcmp("reKeyAllDevices", cmd) == 0 && !dataContainer.empty()) {
+        zinaAppInterface->reKeyAllDevices(dataContainer);
     }
     else if (strcmp("reSyncConversation", cmd) == 0 && !dataContainer.empty()) {
         cJSON* root = cJSON_Parse(dataContainer.c_str());
@@ -1229,12 +1230,33 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
             }
         }
         cJSON_Delete(root);
-    } else if (strcmp("clearGroupData", cmd) == 0) {
+    }
+    else if (strcmp("clearGroupData", cmd) == 0) {
         zinaAppInterface->clearGroupData();
-    } else if (strcmp("runRetry", cmd) == 0) {
-        // Check for left-over messages in persitent queues, can happen if app crashes in
+    }
+    else if (strcmp("runRetry", cmd) == 0) {
+        // Check for left-over messages in persistent queues, can happen if app crashes in
         // the middle of receive message processing.
         zinaAppInterface->retryReceivedMessages();
+    }
+    else if (strcmp("setIdKeyVerified", cmd) == 0 && !dataContainer.empty()) {
+        cJSON* root = cJSON_Parse(dataContainer.c_str());
+        if (root != nullptr) {
+            string userName;
+            cJSON *jsonItem = cJSON_GetObjectItem(root, "name");
+            if (jsonItem != NULL) {
+                userName.assign(jsonItem->valuestring);
+            }
+            string deviceId;
+            jsonItem = cJSON_GetObjectItem(root, "scClientDevId");
+            if (jsonItem != NULL) {
+                deviceId.assign(jsonItem->valuestring);
+            }
+            bool flag = Utilities::getJsonBool(root, "flag", true);
+            if (!userName.empty() && !deviceId.empty()) {
+                zinaAppInterface->setIdKeyVerified(userName, deviceId, flag);
+            }
+        }
     }
     env->ReleaseStringUTFChars(command, cmd);
     return result;

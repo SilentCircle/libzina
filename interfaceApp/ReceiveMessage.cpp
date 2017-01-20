@@ -297,6 +297,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
         cJSON_AddStringToObject(root, MSG_DEVICE_ID, senderScClientDevId.c_str());
         cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
         cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
+        cJSON_AddBoolToObject(root, MSG_ID_KEY_CHANGED, axoConv->isIdentityKeyChanged());
 
         cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
         messagePlain.reset();
@@ -395,7 +396,6 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
                                                        string("{\"cmd\":\"failed\"}"), false);
             }
         }
-
         stateReportCallback_(0, errorCode_,
                              receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
                                               errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));

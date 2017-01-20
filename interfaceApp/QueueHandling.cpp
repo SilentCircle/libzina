@@ -124,8 +124,20 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
                     obj->processMessagePlain(cmdInfo);
                     break;
 
-                case CkeckRemoteIdKey:
+                case CheckRemoteIdKey:
                     obj->checkRemoteIdKeyCommand(cmdInfo);
+                    break;
+
+                case SetIdKeyChangeFlag:
+                    obj->setIdKeyVerifiedCommand(cmdInfo);
+                    break;
+
+                case ReSyncDeviceConversation:
+                    obj->reSyncConversationCommand(cmdInfo);
+                    break;
+
+                case ReScanUserDevices:
+                    obj->rescanUserDevicesCommand(cmdInfo);
                     break;
 
                 case CheckForRetry:

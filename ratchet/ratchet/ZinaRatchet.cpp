@@ -72,6 +72,7 @@ typedef struct parsedMessage_ {
     int32_t   localPreKeyId;
     const uint8_t*  remotePreKey;
     const uint8_t*  remoteIdKey;
+    const uint8_t*  preKeyHash;
 
     size_t  encryptedMsgLen;
     const uint8_t*  encryptedMsg;
@@ -588,12 +589,30 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     // Axolotl conversation first. According to the optimized pre-key handling this
     // client takes the Axolotl 'Bob' role.
     if (msgStruct.msgType == 2) {
-        const Ec255PublicKey* aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
-        const Ec255PublicKey* alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
+        const Ec255PublicKey *aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
+        const Ec255PublicKey *alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
         conv->setContextId(msgStruct.contextId);
         result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
-        if (result != SUCCESS)
+        if (result != SUCCESS) {
+            delete aliceId;
+            delete alicePreKey;
             return shared_ptr<string>();
+        }
+
+        if (msgStruct.preKeyHash != nullptr) {
+            // Right after initialization of the ratchet Bob's DHRs contains his copy of Bob's pre-key that
+            // Alice used to setup the ratchet context. Compute and check hashes.
+            uint8_t hash[SHA256_DIGEST_LENGTH];
+
+            const string& pubKeyData = conv->getDHRs()->getPublicKey().getPublicKey();
+            sha256((uint8_t*)pubKeyData.data(), static_cast<uint>(pubKeyData.size()), hash);
+
+            if (memcmp(msgStruct.preKeyHash, hash, SHA256_DIGEST_LENGTH) != 0) {
+                LOGGER(ERROR, __func__, " Pre-key hash check failed");
+                conv->setErrorCode(PRE_KEY_HASH_WRONG);
+                return shared_ptr<string>();
+            }
+        }
     }
 
     // Check if conversation is really setup - identity key must be available in any case
@@ -720,7 +739,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     // Here we can delete A0 in case it was set, if this was Alice then Bob replied and
     // A0 is not needed anymore.
     delete(conv->getA0());
-    conv->setA0(NULL);
+    conv->setA0(nullptr);
 
     Utilities::wipeString(macKey); macKey.clear();
 
@@ -749,6 +768,8 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnv
         }
         msgStruct.maxVersion = envelope.ratchet().maxversion();
         msgStruct.contextId = envelope.ratchet().contextid();
+
+        msgStruct.preKeyHash = reinterpret_cast<const uint8_t*>(envelope.ratchet().prekeyhash().data());
     }
     if (useVersion > 1) {
         result = parseWireMsgVx(envelope, &msgStruct);
@@ -908,6 +929,16 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     // Common fields for all protocol versions in envelope.
     ratchet->set_maxversion(SUPPORTED_VERSION);
     ratchet->set_contextid(conv.getContextId());
+
+    // We still send setup messages because Bob has not yet answered our messages yet
+    if (conv.getA0() != nullptr) {
+        uint8_t hash[SHA256_DIGEST_LENGTH];
+
+        const string& pubKeyData = conv.getDHRr()->getPublicKey();
+        sha256((uint8_t*)pubKeyData.data(), static_cast<uint>(pubKeyData.size()), hash);
+
+        ratchet->set_prekeyhash(hash, SHA256_DIGEST_LENGTH);
+    }
 
     if (!supplementsEncrypted.empty())
         envelope.set_supplement(supplementsEncrypted);

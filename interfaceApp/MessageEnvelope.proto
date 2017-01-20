@@ -56,4 +56,5 @@ message RatchetData {
     optional int32 localPreKeyId = 11;      // Alice used this pre-key of Bob id to set-up conversation with Bob
     optional bytes remotePreKey = 12;       // The public key of Alice's generated pre-key
     optional bytes remoteIdKey  = 13;       // The public key of Alice's long term identity key
+    optional bytes preKeyHash = 14;         // Hash of the pre-key Alice use to setup the ratchet context
 }

@@ -45,7 +45,10 @@ typedef enum CmdQueueCommands_ {
     ReceivedRawData,
     ReceivedTempMsg,
     CheckForRetry,
-    CkeckRemoteIdKey
+    CheckRemoteIdKey,
+    SetIdKeyChangeFlag,
+    ReSyncDeviceConversation,
+    ReScanUserDevices
 } CmdQueueCommands;
 
 typedef struct CmdQueueInfo_ {
@@ -137,7 +140,11 @@ public:
 
     void rescanUserDevices(string& userName);
 
+    void reKeyAllDevices(string &userName);
+
     void reSyncConversation(const string& userName, const string& deviceId);
+
+    void setIdKeyVerified(const string& userName, const string& deviceId, bool flag);
 
     string createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers);
 
@@ -320,6 +327,8 @@ private:
      * the message type.
      */
     int32_t processGroupCommand(const string& commandIn);
+
+    int32_t sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command);
 
     int32_t sendGroupCommand(const string &recipient, const string &msgId, const string &command);
 
@@ -622,6 +631,12 @@ private:
     int32_t doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo);
 
     void checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command);
+
+    void setIdKeyVerifiedCommand(shared_ptr<CmdQueueInfo> command);
+
+    void reSyncConversationCommand(shared_ptr<CmdQueueInfo> command);
+
+    void rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command);
 
     /**
      * @brief Helper function to create the JSON formatted supplementary message data.
