@@ -360,7 +360,10 @@ int32_t AppInterfaceImpl::answerInvitation(const string &command, bool accept, c
 
     // Prepare invite-sync and sync the sibling devices
     cJSON_ReplaceItemInObject(root, GROUP_COMMAND, cJSON_CreateString(INVITE_SYNC));
-    sendGroupCommand(ownUser_, messageId, command);
+    char *out = cJSON_PrintUnformatted(root);
+    string inviteSyncCommand(out);
+    free(out);
+    sendGroupCommand(ownUser_, messageId, inviteSyncCommand);
 
     // Now send the accept message to the inviting user
     return sendGroupCommand(invitingUser, messageId,
@@ -502,6 +505,7 @@ int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
         syncNewGroup(root);
     } else if (groupCommand.compare(INVITE_SYNC) == 0) {
         answerInvitation(commandIn, true, Empty);
+        groupCmdCallback_(commandIn);
     } else if (groupCommand.compare(INVITE_ANSWER) == 0) {
         groupCmdCallback_(commandIn);
         bool accepted = Utilities::getJsonBool(root, ACCEPTED, false);
