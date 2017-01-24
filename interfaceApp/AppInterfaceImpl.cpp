@@ -221,7 +221,7 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
     LOGGER(INFO, __func__, " -->");
 
     auto msgInfo = make_shared<CmdQueueInfo>();
-    msgInfo->command = ReSyncDeviceConversation;
+    msgInfo->command = ReScanUserDevices;
     msgInfo->queueInfo_recipient = userName;
     addMsgInfoToRunQueue(msgInfo);
 
