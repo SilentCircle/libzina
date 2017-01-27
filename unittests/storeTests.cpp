@@ -208,10 +208,10 @@ TEST_F(StoreTestFixture, MsgTraceStore)
 TEST_F(StoreTestFixture, ReceivedRawData)
 {
     // Fresh DB, no received raw records
-    shared_ptr<list<shared_ptr<StoredMsgInfo> > > rawMessageData = make_shared<list<shared_ptr<StoredMsgInfo> > > ();
-    int32_t result = pks->loadReceivedRawData(rawMessageData);
+    list<shared_ptr<StoredMsgInfo> >  rawMessageData;
+    int32_t result = pks->loadReceivedRawData(&rawMessageData);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_TRUE(rawMessageData->empty());
+    ASSERT_TRUE(rawMessageData.empty());
 
     // Insert a raw message record
     int64_t sequence = 0;
@@ -219,12 +219,12 @@ TEST_F(StoreTestFixture, ReceivedRawData)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, sequence);
 
-    rawMessageData->clear();
-    result = pks->loadReceivedRawData(rawMessageData);
+    rawMessageData.clear();
+    result = pks->loadReceivedRawData(&rawMessageData);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(1, rawMessageData->size());
+    ASSERT_EQ(1, rawMessageData.size());
 
-    shared_ptr<StoredMsgInfo> msgInfo = rawMessageData->front();
+    shared_ptr<StoredMsgInfo> &msgInfo = rawMessageData.front();
     ASSERT_EQ(rawData, msgInfo->info_rawMsgData);
     ASSERT_EQ(name, msgInfo->info_uid);
     ASSERT_EQ(displayName, msgInfo->info_displayName);
@@ -235,10 +235,10 @@ TEST_F(StoreTestFixture, ReceivedRawData)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // Now list must be empty
-    rawMessageData->clear();
-    result = pks->loadReceivedRawData(rawMessageData);
+    rawMessageData.clear();
+    result = pks->loadReceivedRawData(&rawMessageData);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_TRUE(rawMessageData->empty());
+    ASSERT_TRUE(rawMessageData.empty());
 
     // insert a second record (using same data), now sequence number must be 2
     result = pks->insertReceivedRawData(rawData, name, displayName, &sequence);
@@ -250,10 +250,10 @@ TEST_F(StoreTestFixture, ReceivedRawData)
     result = pks->cleanReceivedRawData(nowMinus1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    result = pks->loadReceivedRawData(rawMessageData);
+    result = pks->loadReceivedRawData(&rawMessageData);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_FALSE(rawMessageData->empty());
-    rawMessageData->clear();
+    ASSERT_FALSE(rawMessageData.empty());
+    rawMessageData.clear();
 
     sqlite3_sleep(2000);
     nowMinus1 = time(NULL) - 1;
@@ -262,18 +262,18 @@ TEST_F(StoreTestFixture, ReceivedRawData)
     result = pks->cleanReceivedRawData(nowMinus1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    result = pks->loadReceivedRawData(rawMessageData);
+    result = pks->loadReceivedRawData(&rawMessageData);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_TRUE(rawMessageData->empty());
+    ASSERT_TRUE(rawMessageData.empty());
 }
 
 TEST_F(StoreTestFixture, TempMsg)
 {
     // Fresh DB, no received raw records
-    shared_ptr<list<shared_ptr<StoredMsgInfo> > > tempMsg = make_shared<list<shared_ptr<StoredMsgInfo> > > ();
-    int32_t result = pks->loadTempMsg(tempMsg);
+    list<shared_ptr<StoredMsgInfo> > tempMsg;
+    int32_t result = pks->loadTempMsg(&tempMsg);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_TRUE(tempMsg->empty());
+    ASSERT_TRUE(tempMsg.empty());
 
     // Insert a message record, use some data
     int64_t sequence = 0;
@@ -281,12 +281,12 @@ TEST_F(StoreTestFixture, TempMsg)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, sequence);
 
-    tempMsg->clear();
-    result = pks->loadTempMsg(tempMsg);
+    tempMsg.clear();
+    result = pks->loadTempMsg(&tempMsg);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(1, tempMsg->size());
+    ASSERT_EQ(1, tempMsg.size());
 
-    shared_ptr<StoredMsgInfo> msgInfo = tempMsg->front();
+    shared_ptr<StoredMsgInfo> &msgInfo = tempMsg.front();
     ASSERT_EQ(rawData, msgInfo->info_msgDescriptor);
     ASSERT_EQ(name, msgInfo->info_supplementary);
     ASSERT_EQ(sequence, msgInfo->sequence);
@@ -296,10 +296,10 @@ TEST_F(StoreTestFixture, TempMsg)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // Now list must be empty
-    tempMsg->clear();
-    result = pks->loadReceivedRawData(tempMsg);
+    tempMsg.clear();
+    result = pks->loadReceivedRawData(&tempMsg);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_TRUE(tempMsg->empty());
+    ASSERT_TRUE(tempMsg.empty());
 
     // insert a second record (using same data), now sequence number must be 2
     result = pks->insertTempMsg(rawData, name, 0, &sequence);
@@ -311,10 +311,10 @@ TEST_F(StoreTestFixture, TempMsg)
     result = pks->cleanTempMsg(nowMinus1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    result = pks->loadTempMsg(tempMsg);
+    result = pks->loadTempMsg(&tempMsg);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_FALSE(tempMsg->empty());
-    tempMsg->clear();
+    ASSERT_FALSE(tempMsg.empty());
+    tempMsg.clear();
 
     sqlite3_sleep(2000);
     nowMinus1 = time(NULL) - 1;
@@ -323,9 +323,9 @@ TEST_F(StoreTestFixture, TempMsg)
     result = pks->cleanTempMsg(nowMinus1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    result = pks->loadTempMsg(tempMsg);
+    result = pks->loadTempMsg(&tempMsg);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_TRUE(tempMsg->empty());
+    ASSERT_TRUE(tempMsg.empty());
 }
 
 static string groupId_1("6ba7b810-9dad-11d1-80b4-00c04fd43001");
@@ -523,9 +523,10 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
 
     // Try to delete conversation of the group member, must fail with code 19 (SQLITE_CONSTRAINT)
-    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
-    ASSERT_TRUE(SQL_FAIL(result));
-    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
+    // This was remove from DB (references, need to check it manually)
+//    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
+//    ASSERT_TRUE(SQL_FAIL(result));
+//    ASSERT_EQ(SQLITE_CONSTRAINT, result)  << pks->getLastError() << ", code: " << result;
 
     // Delete the first member
     result = pks->deleteMember(groupId_1, memberId_1);

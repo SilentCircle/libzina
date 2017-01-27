@@ -230,20 +230,20 @@ TEST_F(CryptoTestFixture, AesBasic)
     std::string iv((const char*)ivData, sizeof(ivData));
 
     std::string plainText("0123456789");   // 10 characters, expect 6 bytes padding
-    shared_ptr<string> cryptText = make_shared<string>();
+    string cryptText;
 
-    aesCbcEncrypt(key, iv, plainText, cryptText);
-    ASSERT_EQ(cryptText->size(), 16) << "Wrong cryptText size";
-    ASSERT_NE(plainText, *cryptText);
+    aesCbcEncrypt(key, iv, plainText, &cryptText);
+    ASSERT_EQ(cryptText.size(), 16) << "Wrong cryptText size";
+    ASSERT_NE(plainText, cryptText);
 
-    shared_ptr<string> newPlainText = make_shared<string>();
+    string newPlainText;
 
-    aesCbcDecrypt(key, iv, *cryptText, newPlainText);
-    ASSERT_EQ(newPlainText->size(), 16) << "Wrong newPlainText size";
-    ASSERT_EQ((*newPlainText)[15], '\6') << "Wrong padding byte";
+    aesCbcDecrypt(key, iv, cryptText, &newPlainText);
+    ASSERT_EQ(newPlainText.size(), 16) << "Wrong newPlainText size";
+    ASSERT_EQ(newPlainText[15], '\6') << "Wrong padding byte";
     
-    ASSERT_TRUE(checkAndRemovePadding(newPlainText));
-    ASSERT_EQ(plainText, *newPlainText);
+    ASSERT_TRUE(checkAndRemovePadding(&newPlainText));
+    ASSERT_EQ(plainText, newPlainText);
 }
 
 TEST_F(CryptoTestFixture, AesZeroLen)
@@ -257,18 +257,18 @@ TEST_F(CryptoTestFixture, AesZeroLen)
     std::string iv((const char*)ivData, sizeof(ivData));
 
     std::string plainText;   // 0 characters, expect 16 bytes padding
-    shared_ptr<string> cryptText = make_shared<string>();
+    string cryptText;;
 
-    aesCbcEncrypt(key, iv, plainText, cryptText);
-    ASSERT_EQ(cryptText->size(), 16) << "Wrong cryptText size";
-    ASSERT_NE(plainText, *cryptText);
+    aesCbcEncrypt(key, iv, plainText, &cryptText);
+    ASSERT_EQ(cryptText.size(), 16) << "Wrong cryptText size";
+    ASSERT_NE(plainText, cryptText);
 
-    shared_ptr<string> newPlainText = make_shared<string>();
+    string newPlainText;
 
-    aesCbcDecrypt(key, iv, *cryptText, newPlainText);
-    ASSERT_EQ(newPlainText->size(), 16) << "Wrong newPlainText size";
-    ASSERT_EQ(16, (*newPlainText)[15]) << "Wrong padding byte";
+    aesCbcDecrypt(key, iv, cryptText, &newPlainText);
+    ASSERT_EQ(newPlainText.size(), 16) << "Wrong newPlainText size";
+    ASSERT_EQ(16, newPlainText[15]) << "Wrong padding byte";
 
-    ASSERT_TRUE(checkAndRemovePadding(newPlainText));
-    ASSERT_EQ(plainText, *newPlainText);
+    ASSERT_TRUE(checkAndRemovePadding(&newPlainText));
+    ASSERT_EQ(plainText, newPlainText);
 }
