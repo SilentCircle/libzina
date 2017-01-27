@@ -249,8 +249,6 @@ static void hexdump(const char* title, const std::string& in)
 
 using namespace zina;
 
-void Log(const char* format, ...);
-
 static int32_t getUserVersion(sqlite3* db)
 {
     sqlite3_stmt *stmt;
@@ -278,6 +276,20 @@ static int32_t setUserVersion(sqlite3* db, int32_t newVersion)
     sqlite3_finalize(stmt);
 
    return rc;
+}
+
+
+static int64_t getSequenceNumber(sqlite3* db, string tableName)
+{
+    static const char* selectSeq = "select seq from sqlite_sequence where name=?1;";
+    sqlite3_stmt *stmt;
+
+    sqlite3_prepare(db, selectSeq, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, tableName.data(), static_cast<int32_t>(tableName.size()), SQLITE_STATIC);
+    sqlite3_step(stmt);
+    int64_t sequence = sqlite3_column_int64(stmt, 0);
+    sqlite3_finalize(stmt);
+    return sequence;
 }
 
 SQLiteStoreConv* SQLiteStoreConv::instance_ = NULL;
@@ -792,7 +804,6 @@ void SQLiteStoreConv::storeConversation(const string& name, const string& longDe
     }
     // Lock the DB in this case because it's a two-step procedure where we use
     // some data from the shared DB pointer (sqlite3_changes(db))
-    // Also protect against multi-thread inserts because of auto-increment handling that we use in some tables
     unique_lock<mutex> lck(sqlLock);
 
     // updateConversation = "UPDATE Conversations SET data=?1, WHERE name=?2 AND longDevId=?3 AND ownName=?4;";
@@ -1035,8 +1046,6 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
         return;
     }
 
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
 //     insertStagedMkSql =
 //     "INSERT OR REPLACE INTO stagedMk (name, longDevId, ownName, since, otherkey, ivkeymk, ivkeyhdr) "
 //     "VALUES(?1, ?2, ?3, strftime('%s', ?4, 'unixepoch'), ?5, ?6, ?7);";
@@ -1159,8 +1168,6 @@ void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, in
     // insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
     LOGGER(INFO, __func__, " -->");
 
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
     SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 2, preKeyData.data(), static_cast<int32_t>(preKeyData.size()), SQLITE_STATIC));
@@ -1251,9 +1258,6 @@ int32_t SQLiteStoreConv::insertMsgHash(const string& msgHash)
 
     LOGGER(INFO, __func__, " -->");
 
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
-
     // char* insertMsgHashSql = "INSERT INTO MsgHash (msgHash, since) VALUES (?1, strftime('%s', ?2, 'unixepoch'));";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMsgHashSql, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_blob(stmt,  1, msgHash.data(), static_cast<int32_t>(msgHash.size()), SQLITE_STATIC));
@@ -1302,8 +1306,6 @@ int32_t SQLiteStoreConv::deleteMsgHashes(time_t timestamp)
     SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
 
     sqlResult= sqlite3_step(stmt);
-//    cleaned = sqlite3_changes(db);
-//    Log("Number of removed old MK: %d", cleaned);
     if (sqlResult != SQLITE_DONE)
         ERRMSG;
 
@@ -1324,8 +1326,6 @@ int32_t SQLiteStoreConv::insertMsgTrace(const string &name, const string &messag
 
     int32_t flag = attachment ? ATTACHMENT : 0;
     flag = received ? flag | RECEIVED : flag;
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
 
     // char* insertMsgTraceSql = "INSERT INTO MsgTrace (name, messageId, deviceId, convstate, attributes, flags) VALUES (?1, ?2, ?3, ?4, ?5);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMsgTraceSql, -1, &stmt, NULL));
@@ -1481,8 +1481,6 @@ int32_t SQLiteStoreConv::insertReceivedRawData(const string& rawData, const stri
     int32_t sqlResult;
 
     LOGGER(INFO, __func__, " -->");
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
 
     // char* insertReceivedRawSql = "INSERT INTO receivedRaw (rawData, uid, displayName) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertReceivedRawSql, -1, &stmt, NULL));
@@ -1491,7 +1489,7 @@ int32_t SQLiteStoreConv::insertReceivedRawData(const string& rawData, const stri
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, displayName.data(), static_cast<int32_t>(displayName.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
-    *sequence = sqlite3_last_insert_rowid(db);  // This call is not thread-save for multi-thread insert with same db connection
+    *sequence = getSequenceNumber(db, "receivedRaw");
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
     }
@@ -1592,8 +1590,6 @@ int32_t SQLiteStoreConv::insertTempMsg(const string& messageData, const string& 
     int32_t sqlResult;
 
     LOGGER(INFO, __func__, " -->");
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
 
     // char* insertTempMsgSql = "INSERT INTO TempMsg (messageData, supplementData, msgType) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertTempMsgSql, -1, &stmt, NULL));
@@ -1602,7 +1598,7 @@ int32_t SQLiteStoreConv::insertTempMsg(const string& messageData, const string& 
     SQLITE_CHK(sqlite3_bind_int(stmt, 3, msgType));
 
     sqlResult= sqlite3_step(stmt);
-    *sequence = sqlite3_last_insert_rowid(db);
+    *sequence = getSequenceNumber(db, "TempMsg");
     if (sqlResult != SQLITE_DONE) {
         ERRMSG;
     }
@@ -1696,8 +1692,6 @@ int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name
     int32_t sqlResult;
 
     LOGGER(INFO, __func__, " -->");
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
 
     // char* insertGroupsSql = "INSERT INTO groups (groupId, name, ownerId, description, maxMembers, memberCount, attribute) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertGroupsSql, -1, &stmt, NULL));
@@ -1998,8 +1992,6 @@ int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &mem
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult, sqlResultIncrement;
-    // Protect against multi-thread inserts because of auto-increment handling that we use in some tables
-    unique_lock<mutex> lck(sqlLock);
 
     // char* insertMemberSql = "INSERT INTO members (groupId, memberId, attributes) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMemberSql, -1, &stmt, NULL));
