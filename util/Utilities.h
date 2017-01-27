@@ -106,6 +106,20 @@ namespace zina {
          */
         static string currentTimeISO8601();
 
+        /**
+         * @brief get the cuurent time in milliseconds.
+         *
+         * @return The time in milliseconds
+         */
+        static uint64_t currentTimeMillis();
+
+        /**
+         * @brief Wipe a string.
+         *
+         * Fills the internal buffer of a string with zeros.
+         *
+         * @param toWipe The string to wipe.
+         */
         static void wipeString(string toWipe);
 
         /**

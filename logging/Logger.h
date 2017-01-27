@@ -117,6 +117,9 @@ enum LoggingLogType {
  */
 #define LOGGER_END }
 
+/**
+ * @brief Groups the logging implementation
+ */
 namespace logging {
 
     /**

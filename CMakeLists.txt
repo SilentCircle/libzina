@@ -135,8 +135,8 @@ set (protocol_src
     ratchet/ZinaZrtpConnector.cpp
     ratchet/ZinaPreKeyConnector.cpp
     ratchet/ratchet/ZinaRatchet.cpp
-    ratchet/state/ZinaConversation.cpp
-)
+    ratchet/state/ZinaConversation.cpp)
+
 set (interface_src 
     interfaceApp/AppInterfaceImpl.cpp
     interfaceApp/MessageEnvelope.pb.cc
@@ -170,7 +170,7 @@ set (util_src
     util/b64helper.cpp
     util/UUID.cpp
     logging/Logger.cpp
-        logging/ZinaLogging.cpp
+    logging/ZinaLogging.cpp
     util/Utilities.cpp)
 
 set (app_repo_src

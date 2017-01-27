@@ -135,6 +135,17 @@ string Utilities::currentTimeISO8601()
     return string(outbuf);
 }
 
+uint64_t Utilities::currentTimeMillis()
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, 0);
+
+    uint64_t timeStamp = static_cast<uint64_t>(tv.tv_usec / 1000);
+    timeStamp += ((uint64_t) tv.tv_sec) * 1000;
+    return timeStamp;
+}
+
 static void *(*volatile memset_volatile)(void*, int, size_t) = memset;
 
 void Utilities::wipeString(string toWipe)

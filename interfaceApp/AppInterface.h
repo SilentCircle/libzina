@@ -40,6 +40,9 @@ typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string& commandMessage);
 typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const string& stateInformation);
 
+/**
+ * @brief Groups classes and data of the ZINA implementation.
+ */
 namespace zina {
 
 /**
