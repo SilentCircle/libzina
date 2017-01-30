@@ -140,6 +140,7 @@ set (protocol_src
 set (interface_src 
     interfaceApp/AppInterfaceImpl.cpp
     interfaceApp/MessageEnvelope.pb.cc
+    interfaceApp/GroupProtocol.pb.cc
     interfaceApp/java/JavaNativeImpl.cpp
     interfaceTransport/sip/SipTransport.cpp
     interfaceApp/GroupInterfaceImpl.cpp
@@ -177,6 +178,10 @@ set (app_repo_src
     appRepository/AppRepository.cpp
 )
 
+set (vector_src
+        vectorclock/VectorHelper.cpp
+)
+
 if (STANDALONE)
     set (external_src
         ${ZRTP_BASE_DIR}/common/osSpecifics.c)
@@ -194,6 +199,7 @@ set (zina_src
     ${util_src}
     ${external_src}
     ${app_repo_src}
+    ${vector_src}
 )
 
 include(FindDoxygen)

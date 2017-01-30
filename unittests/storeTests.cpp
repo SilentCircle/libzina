@@ -389,7 +389,28 @@ TEST_F(StoreTestFixture, GroupChatStore)
     bool has = pks->hasGroup(groupId_1);
     ASSERT_FALSE(has);
 
-    int32_t result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
+    // Test with empty group name and group decsription
+    int32_t result = pks->insertGroup(groupId_1, Empty, groupOwner, Empty, 10);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    has = pks->hasGroup(groupId_1);
+    ASSERT_TRUE(has);
+
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    cJSON* root = group.get();
+
+    ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+    ASSERT_TRUE(Empty == string(getJsonString(root, GROUP_NAME, "no empty")));
+    ASSERT_TRUE(Empty == string(getJsonString(root, GROUP_DESC, "no empty")));
+
+    // Delete the group
+    result = pks->deleteGroup(groupId_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError() << ", code: " << result;
+
+    result = pks->insertGroup(groupId_1, groupName_1, groupOwner, groupDescription, 10);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     has = pks->hasGroup(groupId_1);
@@ -415,7 +436,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     groups = pks->listAllGroups(&result);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, groups->size());
-    cJSON* root = groups->front().get();
+    root = groups->front().get();
     ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 

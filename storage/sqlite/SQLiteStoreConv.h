@@ -570,6 +570,57 @@ public:
      */
     int32_t resetStore() { return createTables(); }
 
+    /* ***************************************************
+     * Functions to handle vector clock data
+     * ************************************************* */
+
+    /**
+     * @brief Insert/update a vector clock record.
+     *
+     * The table stores vector clocks and groups them by an id and an event type. An id could be
+     * unique id such as a UUID according to RFC4122, type 4.
+     *
+     * The event type is a simple 32-bit integer that defines an event. The event type must be unique
+     * inside an id.
+     *
+     * The vector clock data is a blob, thus the table stores serialized data. When inserting data
+     * it's always an INSERT OR REPLACE and the table has only one row per (id, event type) tuple.
+     *
+     * @param id The identifier of the event group
+     * @param type The event type in the group
+     * @param vectorClock The vector clock data. The string may serve as a container to hold binary data.
+     * @return SQLite code
+     */
+    int32_t insertReplaceVectorClock(const string &id, int32_t type, const string &vectorClock);
+
+    /**
+     * @brief Load the serialized data of a vector clock.
+     *
+     * @param id The identifier of the event group
+     * @param type The event type in the group
+     * @param vectorClock Where to store the serialized data, empty string if no record found
+     * @return SQLite code
+     */
+    int32_t loadVectorClock(const string& id, int32_t type, string *vectorClock);
+
+    /**
+     * @brief Delete a vector clock record.
+     *
+     * @param id The identifier of the event group
+     * @param type The event type in the group
+     * @return SQLite code
+     */
+    int32_t deleteVectorClock(const string& id, int32_t type);
+
+    /**
+     * @brief Delete a group of vector clock records.
+     *
+     * @param id The identifier of the event group
+     * @return SQLite code
+     */
+    int32_t deleteVectorClocks(const string& id);
+
+
     int beginTransaction();
     int commitTransaction();
     int rollbackTransaction();

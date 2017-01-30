@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Silent Circle, LLC
+Copyright 2017 Silent Circle, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ namespace zina {
 
     // Error codes for message processing, between -10 and -99, code -1 used for other purposes already
     static const int32_t GENERIC_ERROR     = -10;     //!< Generic error code, unspecified error
-    static const int32_t VERSION_NOT_SUPPORTED = -11;  //!< Unsupported protocol version
+    static const int32_t VERSION_NOT_SUPPORTED = -11; //!< Unsupported protocol version
     static const int32_t BUFFER_TOO_SMALL  = -12;     //!< Buffer too small to store some data
     static const int32_t NOT_DECRYPTABLE = -13;       //!< Could not decrypt received message
     static const int32_t NO_OWN_ID  = -14;            //!< Found no own identity for registration
@@ -121,13 +121,15 @@ namespace zina {
     static const int32_t UNSUPPORTED_KEY_SIZE = -301; //!< Key size not supported for this cipher
 
     // Error codes group chat
-    static const int32_t GROUP_ERROR_BASE = -400;     //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
-    static const int32_t MAX_MEMBERS_REACHED = -450;  //!< Maximum members for this group reached
+    static const int32_t GROUP_ERROR_BASE = -400;       //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
+    static const int32_t MAX_MEMBERS_REACHED = -450;    //!< Maximum members for this group reached
     static const int32_t GROUP_CMD_MISSING_DATA = -451; //<! Message has type group command but no data
     static const int32_t GROUP_CMD_DATA_INCONSISTENT = -452; //<! Message is group command but has no command
     static const int32_t GROUP_MSG_DATA_INCONSISTENT = -453; //<! Message is normal group message command but has no data
     static const int32_t GROUP_MEMBER_NOT_STORED = -454; //<! Cannot store a new member
-    static const int32_t NO_SUCH_ACTIVE_GROUP = -455; //<! Group does not exist or is not acive
+    static const int32_t NO_SUCH_ACTIVE_GROUP = -455;   //<! Group does not exist or is not acive
+    static const int32_t WRONG_UPDATE_TYPE = -456;      //<! Update type not known
+    static const int32_t NO_VECTOR_CLOCK = -457;        //<! No vector clock for group/event pair
 
 }  // namespace
 

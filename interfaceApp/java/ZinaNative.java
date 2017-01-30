@@ -482,7 +482,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return the group's UUID, if the string is empty then group creation failed, use
      *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
      */
-    public static native String createNewGroup(/*!@NonNull!*/ byte[] groupName, /*!@NonNull!*/ byte[] groupDescription, int maxMembers);
+    public static native String createNewGroup(byte[] groupName, byte[] groupDescription, int maxMembers);
 
     /**
      * Modify number maximum group member.

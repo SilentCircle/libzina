@@ -6,19 +6,29 @@
 
 #include "gtest/gtest.h"
 #include "../vectorclock/VectorClock.h"
-#include "../logging/ZinaLogging.h"
+#include "../vectorclock/VectorHelper.h"
+#include "../storage/sqlite/SQLiteStoreConv.h"
 
 using namespace std;
 using namespace vectorclock;
+using namespace zina;
 
-// static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
-string node_1("node_1");
-string node_2("node_2");
-string node_3("node_3");
-string node_4("node_4");
-string node_5("node_5");
-string node_6("node_6");
+static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
+static const void *inData = keyInData;
 
+string groupId_1("group_id_1");
+string groupId_2("group_id_2");
+
+// Make each id 8 characters/bytes
+string node_1("node_1--");
+string node_2("node_2--");
+string node_3("node_3--");
+string node_4("node_4--");
+string node_5("node_5--");
+string node_6("node_6--");
+
+string updateId_1("update_id_1");
+string updateId_2("update_id_2");
 
 class VectorClocksTestsFixture: public ::testing::Test {
 public:
@@ -29,24 +39,24 @@ public:
     void SetUp() {
         // code here will execute just before the test ensues
         LOGGER_INSTANCE setLogLevel(ERROR);
-//        pks = SQLiteStoreConv::getStore();
-//        pks->setKey(std::string((const char*)keyInData, 32));
-//        pks->openStore(std::string());
+        pks = SQLiteStoreConv::getStore();
+        pks->setKey(std::string((const char*)keyInData, 32));
+        pks->openStore(std::string());
     }
 
-    void TearDown( ) {
+    void TearDown() {
         // code here will be called just after the test completes
         // ok to through exceptions from here if need be
-//        SQLiteStoreConv::closeStore();
+        SQLiteStoreConv::closeStore();
     }
 
-    ~VectorClocksTestsFixture( )  {
+    ~VectorClocksTestsFixture()  {
         // cleanup any pending stuff, but no exceptions allowed
         LOGGER_INSTANCE setLogLevel(VERBOSE);
     }
 
     // put in any custom data members that you need
-//    SQLiteStoreConv* pks;
+    SQLiteStoreConv* pks;
 };
 
 
@@ -146,4 +156,146 @@ TEST_F(VectorClocksTestsFixture, CompareTests) {
 
     // Reverse
     ASSERT_EQ(After, vc_2.compare(vc_3));
+}
+
+TEST_F(VectorClocksTestsFixture, PersitenceTests) {
+    string someData_1("some data_1\1\2");
+    string someData_2;
+    someData_2.assign(static_cast<const char*>(inData), sizeof(keyInData));
+
+    // Store and check some data
+    int32_t result = pks->insertReplaceVectorClock(node_1, 1, someData_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    string read_1;
+    result = pks->loadVectorClock(node_1, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_1, read_1);
+
+    // Replace existing with some other data and check
+    result = pks->insertReplaceVectorClock(node_1, 1, someData_2);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    result = pks->loadVectorClock(node_1, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_2, read_1);
+    ASSERT_EQ(someData_2.size(), read_1.size());
+
+    // Delete this record, check
+    result = pks->deleteVectorClock(node_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    result = pks->loadVectorClock(node_1, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_TRUE(read_1.empty());
+
+    // Insert a few records for different nodes, different types, check
+    result = pks->insertReplaceVectorClock(node_1, 1, someData_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    result = pks->insertReplaceVectorClock(node_1, 2, someData_2);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    result = pks->insertReplaceVectorClock(node_2, 1, someData_2);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    result = pks->insertReplaceVectorClock(node_2, 2, someData_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    result = pks->loadVectorClock(node_1, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_1, read_1);
+    ASSERT_EQ(someData_1.size(), read_1.size());
+
+    result = pks->loadVectorClock(node_1, 2, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_2, read_1);
+    ASSERT_EQ(someData_2.size(), read_1.size());
+
+    result = pks->loadVectorClock(node_2, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_2, read_1);
+    ASSERT_EQ(someData_2.size(), read_1.size());
+
+    result = pks->loadVectorClock(node_2, 2, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_1, read_1);
+    ASSERT_EQ(someData_1.size(), read_1.size());
+
+    // Delete a whole vector clock group, check
+    result = pks->deleteVectorClocks(node_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    // Both must return an empty string
+    result = pks->loadVectorClock(node_1, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_TRUE(read_1.empty());
+
+    result = pks->loadVectorClock(node_1, 2, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_TRUE(read_1.empty());
+
+    // Delete event type 1 record of node_2 group, check
+    result = pks->deleteVectorClock(node_2, 1);
+    ASSERT_FALSE(SQL_FAIL(result));
+
+    // Event type 1 vector clock gone
+    result = pks->loadVectorClock(node_2, 1, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_TRUE(read_1.empty());
+
+    // Event type 2 vector clock still available
+    result = pks->loadVectorClock(node_2, 2, &read_1);
+    ASSERT_FALSE(SQL_FAIL(result));
+    ASSERT_EQ(someData_1, read_1);
+    ASSERT_EQ(someData_1.size(), read_1.size());
+}
+
+TEST_F(VectorClocksTestsFixture, HelperLocalTests) {
+
+    LocalVClock lvc;
+    
+    lvc.set_update_id(updateId_1);
+    
+    VClock *vc = lvc.add_vclock();
+    vc->set_device_id(node_1);
+    vc->set_value(1);
+
+    vc = lvc.add_vclock();
+    vc->set_device_id(node_2);
+    vc->set_value(2);
+
+    LocalVClock read_lvc;
+
+    // Fail to store, illegal update type
+    int32_t result = storeLocalVectorClock(*pks, groupId_1, TYPE_NONE, lvc);
+    ASSERT_EQ(WRONG_UPDATE_TYPE, result);
+
+    // Fail to store, illegal update type
+    result = storeLocalVectorClock(*pks, groupId_1, (GroupUpdateType)20, lvc);
+    ASSERT_EQ(WRONG_UPDATE_TYPE, result);
+
+    result = storeLocalVectorClock(*pks, groupId_1, GROUP_SET_NAME, lvc);
+    ASSERT_EQ(SUCCESS, result);
+
+    // Fail to read, wrong group id
+    result = readLocalVectorClock(*pks, groupId_2, GROUP_SET_NAME, &read_lvc);
+    ASSERT_EQ(NO_VECTOR_CLOCK, result);
+
+    // Fail to read, wrong update type
+    result = readLocalVectorClock(*pks, groupId_1, GROUP_SET_BURN, &read_lvc);
+    ASSERT_EQ(NO_VECTOR_CLOCK, result);
+
+    // Read must succeed, we have 2 VClocks, in same order as added before
+    result = readLocalVectorClock(*pks, groupId_1, GROUP_SET_NAME, &read_lvc);
+    ASSERT_EQ(SUCCESS, result);
+    ASSERT_EQ(2, read_lvc.vclock_size());
+    
+    ASSERT_EQ(updateId_1, read_lvc.update_id());
+
+    ASSERT_EQ(node_1, read_lvc.vclock(0).device_id());
+    ASSERT_EQ(1, read_lvc.vclock(0).value());
+
+    ASSERT_EQ(node_2, read_lvc.vclock(1).device_id());
+    ASSERT_EQ(2, read_lvc.vclock(1).value());
 }

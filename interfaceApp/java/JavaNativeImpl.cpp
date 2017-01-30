@@ -1282,13 +1282,11 @@ JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jb
         return NULL;
 
     string group;
-    if (!arrayToString(env, groupName, &group)) {
-        return NULL;
-    }
+    arrayToString(env, groupName, &group);
+
     string description;
-    if (!arrayToString(env, groupDescription, &description)) {
-        return NULL;
-    }
+    arrayToString(env, groupDescription, &description);
+
     string groupUuid = zinaAppInterface->createNewGroup(group, description, maxMembers);
     if (groupUuid.empty())
         return NULL;
