@@ -56,6 +56,9 @@ target_link_libraries(group_invite_test ${zinaLibName})
 add_executable(versioning_test VersioningTests.cpp)
 target_link_libraries(versioning_test gtest_main ${zinaLibName})
 
+add_executable(changeset_test ChangesetTests.cpp)
+target_link_libraries(changeset_test gtest_main ${zinaLibName})
+
 # 
 # ############## Java testing #####################
 # 

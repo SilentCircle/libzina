@@ -388,15 +388,92 @@ public:
      */
     virtual bool modifyGroupSize(string& groupUuid, int32_t newSize) = 0;
 
+    /**
+     * @brief Set a group's new name.
+     *
+     * The function sets a new group name and synchronizes this with the other group
+     * members if the user sends a message.
+     *
+     * @param groupUuid the group id
+     * @param groupName the new group name. An empty string deletes the existing info in the change set.
+     * @return @c OK if new name could be set, or an error code
+     */
+    virtual int32_t setGroupName(const string& groupUuid, const string& groupName) = 0;
+
+    /**
+     * @brief Set a group's new burn time and mode.
+     *
+     * The function sets a new group bur time and mode and synchronizes this with the other group
+     * members if the user sends a message.
+     *
+     * Currently group burn time handling supports one mode only and it has the value 1.
+     *
+     * `FROM_SEND_RETROACTIVE = 1:` a mode in which the time a message burns is based on the time
+     * it was sent and the current relative burn time on the group (not the burn time in effect when
+     * the message was sent or received).
+     *
+     * @param groupUuid the group id
+     * @param burnTime the new group's burn time in seconds
+     * @param mode
+     * @return @c OK if new name could be set, or an error code
+     */
+    virtual int32_t setGroupBurnTime(const string& groupUuid, uint64_t burnTime, int32_t mode) = 0;
+
+    /**
+     * @brief Set a group's new avatar data.
+     *
+     * The function sets a new group avatar data and synchronizes this with the other group
+     * members if the user sends a message.
+     *
+     * @param groupUuid the group id
+     * @param avatar the new avatar data. An empty string deletes the existing info in the change set.
+     * @return @c OK if new name could be set, or an error code
+     */
+    virtual int32_t setGroupAvatar(const string& groupUuid, const string& avatar) = 0;
 
     /**
      * @brief Invite a user to a group.
+     *
+     * This function adds a user id (name) to the group's add member change set. If the same name
+     * is also present on the group's current remove name change setz then this function removes
+     * the name from the remove change set
      *
      * @param groupUuid Invite for this group
      * @param userId The invited user's unique id
      * @return @c OK if function could send invitation, error code (<0) otherwise
      */
-    virtual int32_t inviteUser(string& groupUuid, string& userId) = 0;
+    virtual int32_t inviteUser(const string& groupUuid, const string& userId) = 0;
+
+    /**
+     * @brief Add a user to a group (same as invite)
+     *
+     * @param groupUuid Invite for this group
+     * @param userId The invited user's unique id
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t addUser(const string& groupUuid, const string& userId) = 0;
+
+    /**
+     * @brief Remove a user's name from the add member update change set.
+     *
+     * Just remove the user's uid from the add member update change set, no other
+     * actions or side effects.
+     *
+     * @param groupUuid The group id
+     * @param userId The user id to remove from the change set
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId) = 0;
+
+    /**
+     * @brief Cancel group's current change set.
+     *
+     * Clears the group's current change set.
+     *
+     * @param groupUuid Invite for this group
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t cancelGroupChanges(const string& groupUuid) = 0;
 
     /**
      * @brief Answer a group Invitation.
@@ -450,13 +527,28 @@ public:
      * @brief Leave a group.
      *
      * The application (UI part) calls this function to remove this member from the
-     * group. The functions sends a 'leave group' command to all members of the group,
-     * including it's own sibling devices.
+     * group.
+     *
+     * This function adds a user id (name) to the group's remove member change set. If the same name
+     * is also present on the group's current add name change set then this function removes
+     * the name from the add change set, thus is opposite to invite/add member
      *
      * @param groupId The group to leave
      * @return @c OK if 'leave group' processing was OK, error code (<0) otherwise
      */
-    virtual int32_t leaveGroup(const string& groupId) = 0;
+    virtual int32_t leaveGroup(const string& groupId, const string& userId) = 0;
+
+    /**
+     * @brief Remove a user's name from the remove member update change set.
+     *
+     * Just remove the user's uid from the remove (leave group) member update change set, no other
+     * actions or side effects.
+     *
+     * @param groupUuid The group id
+     * @param userId The user id to remove from the change set
+     * @return @c OK if function could send invitation, error code (<0) otherwise
+     */
+    virtual int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId) = 0;
 
     /**
      * @brief Synchronize sibling devices if group UI removed a group message.

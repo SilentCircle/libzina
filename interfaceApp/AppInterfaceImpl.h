@@ -152,13 +152,26 @@ public:
 
     bool modifyGroupSize(string& groupId, int32_t newSize);
 
-    int32_t inviteUser(string& groupUuid, string& userId);
+    int32_t setGroupName(const string& groupUuid, const string& groupName);
+
+    int32_t setGroupBurnTime(const string& groupUuid, uint64_t burnTime, int32_t mode);
+
+    int32_t setGroupAvatar(const string& groupUuid, const string& avatar);
+
+    int32_t inviteUser(const string& groupUuid, const string& userId);
+    int32_t addUser(const string& groupUuid, const string& userId);
+
+    int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId);
+
+    int32_t cancelGroupChanges(const string& groupUuid);
 
     int32_t answerInvitation(const string& command, bool accept, const string& reason);
 
     int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
-    int32_t leaveGroup(const string& groupId);
+    int32_t leaveGroup(const string& groupId, const string& userId = Empty);
+
+    int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId);
 
     int32_t groupMessageRemoved(const string& groupId, const string& messageId);
 

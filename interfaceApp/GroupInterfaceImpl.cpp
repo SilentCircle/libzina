@@ -208,29 +208,29 @@ static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* sto
 
 // ****** Public instance functions
 // *******************************************************
-string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
-    LOGGER(INFO, __func__, " -->");
-
-    if (maxMembers > MAXIMUM_GROUP_SIZE)
-        return Empty;
-
-    uuid_t groupUuid = {0};
-    uuid_string_t uuidString = {0};
-
-    uuid_generate_time(groupUuid);
-    uuid_unparse(groupUuid, uuidString);
-    string groupId(uuidString);
-
-    store_->insertGroup(groupId, groupName, ownUser_, groupDescription, maxMembers);
-
-    // Add myself to the new group, this saves us a "send to sibling" group function, then inform my sibling about
-    // the new group
-    store_->insertMember(groupId, ownUser_);
-    sendGroupCommand(ownUser_, generateMsgIdTime(), syncNewGroupCommand(groupId, groupName, groupDescription, ownUser_, maxMembers));
-
-    LOGGER(INFO, __func__, " <--");
-    return groupId;
-}
+//string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
+//    LOGGER(INFO, __func__, " -->");
+//
+//    if (maxMembers > MAXIMUM_GROUP_SIZE)
+//        return Empty;
+//
+//    uuid_t groupUuid = {0};
+//    uuid_string_t uuidString = {0};
+//
+//    uuid_generate_time(groupUuid);
+//    uuid_unparse(groupUuid, uuidString);
+//    string groupId(uuidString);
+//
+//    store_->insertGroup(groupId, groupName, ownUser_, groupDescription, maxMembers);
+//
+//    // Add myself to the new group, this saves us a "send to sibling" group function, then inform my sibling about
+//    // the new group
+//    store_->insertMember(groupId, ownUser_);
+//    sendGroupCommand(ownUser_, generateMsgIdTime(), syncNewGroupCommand(groupId, groupName, groupDescription, ownUser_, maxMembers));
+//
+//    LOGGER(INFO, __func__, " <--");
+//    return groupId;
+//}
 
 int32_t AppInterfaceImpl::createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers)
 {
@@ -280,49 +280,49 @@ bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
     return true;
 }
 
-int32_t AppInterfaceImpl::inviteUser(string& groupUuid, string& userId)
-{
-    LOGGER(INFO, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    if (!store->isReady()) {
-        errorInfo_ = " Conversation store not ready.";
-        LOGGER(ERROR, __func__, errorInfo_);
-        return false;
-    }
-
-    int32_t result;
-    shared_ptr<cJSON> group = store->listGroup(groupUuid, &result);
-    if (!group || SQL_FAIL(result)) {
-        errorInfo_ = " Cannot get group data: ";
-        errorInfo_.append(groupUuid);
-        LOGGER(ERROR, __func__, errorInfo_);
-        return GROUP_ERROR_BASE + result;
-    }
-    cJSON* root = group.get();
-    int32_t members = Utilities::getJsonInt(root, GROUP_MEMBER_COUNT, 1);
-    int32_t maxMembers = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
-
-    if (members >= maxMembers) {
-        errorInfo_ = " Member limit reached.";
-        LOGGER(ERROR, __func__, errorInfo_);
-        return MAX_MEMBERS_REACHED;
-    }
-    cJSON_DeleteItemFromObject(root, GROUP_MOD_TIME);
-
-    string tokenString = getRandomToken();
-    storeRandomToken(tokenString);
-
-    cJSON_AddStringToObject(root, GROUP_COMMAND, INVITE);
-    cJSON_AddStringToObject(root, TOKEN, tokenString.c_str());
-    cJSON_AddStringToObject(root, MEMBER_ID, ownUser_.c_str());     // which member sends the Invite
-
-    char *out = cJSON_PrintUnformatted(root);
-    string inviteCommand(out);
-    free(out);
-
-    LOGGER(INFO, __func__, " <--");
-    return sendGroupCommand(userId, generateMsgIdTime(), inviteCommand);
-}
+//int32_t AppInterfaceImpl::inviteUser(string& groupUuid, string& userId)
+//{
+//    LOGGER(INFO, __func__, " -->");
+//    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+//    if (!store->isReady()) {
+//        errorInfo_ = " Conversation store not ready.";
+//        LOGGER(ERROR, __func__, errorInfo_);
+//        return false;
+//    }
+//
+//    int32_t result;
+//    shared_ptr<cJSON> group = store->listGroup(groupUuid, &result);
+//    if (!group || SQL_FAIL(result)) {
+//        errorInfo_ = " Cannot get group data: ";
+//        errorInfo_.append(groupUuid);
+//        LOGGER(ERROR, __func__, errorInfo_);
+//        return GROUP_ERROR_BASE + result;
+//    }
+//    cJSON* root = group.get();
+//    int32_t members = Utilities::getJsonInt(root, GROUP_MEMBER_COUNT, 1);
+//    int32_t maxMembers = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
+//
+//    if (members >= maxMembers) {
+//        errorInfo_ = " Member limit reached.";
+//        LOGGER(ERROR, __func__, errorInfo_);
+//        return MAX_MEMBERS_REACHED;
+//    }
+//    cJSON_DeleteItemFromObject(root, GROUP_MOD_TIME);
+//
+//    string tokenString = getRandomToken();
+//    storeRandomToken(tokenString);
+//
+//    cJSON_AddStringToObject(root, GROUP_COMMAND, INVITE);
+//    cJSON_AddStringToObject(root, TOKEN, tokenString.c_str());
+//    cJSON_AddStringToObject(root, MEMBER_ID, ownUser_.c_str());     // which member sends the Invite
+//
+//    char *out = cJSON_PrintUnformatted(root);
+//    string inviteCommand(out);
+//    free(out);
+//
+//    LOGGER(INFO, __func__, " <--");
+//    return sendGroupCommand(userId, generateMsgIdTime(), inviteCommand);
+//}
 
 int32_t AppInterfaceImpl::answerInvitation(const string &command, bool accept, const string &reason)
 {
@@ -415,27 +415,27 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     return OK;
 }
 
-int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
-    LOGGER(INFO, __func__, " -->");
-
-    int32_t result;
-    string msgId = generateMsgIdTime();
-    string leaveCommand = leaveNotMemberCommand(groupId, ownUser_, true);
-
-    // Get the member list and send out the Leave command before deleting the data
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-    for (auto it = members->begin(); it != members->end(); ++it) {
-        string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
-
-        if (sendGroupCommand(recipient, msgId, leaveCommand) != OK) {
-            LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
-            return errorCode_;
-        }
-    }
-    LOGGER(INFO, __func__, " <-- ");
-
-    return deleteGroupAndMembers(groupId, store_);
-}
+//int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
+//    LOGGER(INFO, __func__, " -->");
+//
+//    int32_t result;
+//    string msgId = generateMsgIdTime();
+//    string leaveCommand = leaveNotMemberCommand(groupId, ownUser_, true);
+//
+//    // Get the member list and send out the Leave command before deleting the data
+//    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
+//    for (auto it = members->begin(); it != members->end(); ++it) {
+//        string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
+//
+//        if (sendGroupCommand(recipient, msgId, leaveCommand) != OK) {
+//            LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
+//            return errorCode_;
+//        }
+//    }
+//    LOGGER(INFO, __func__, " <-- ");
+//
+//    return deleteGroupAndMembers(groupId, store_);
+//}
 
 int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const string& messageId)
 {
