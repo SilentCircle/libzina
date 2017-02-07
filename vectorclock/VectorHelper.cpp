@@ -46,6 +46,16 @@ int32_t zina::readLocalVectorClock(SQLiteStoreConv &store, const string& groupId
     return SUCCESS;
 }
 
+void zina::deserializeVectorClock(const google::protobuf::RepeatedPtrField<VClock> &protoVc, vectorclock::VectorClock<string> *vc)
+{
+    int32_t numClocks = protoVc.size();
+
+    for (int i = 0; i < numClocks; i++) {
+        const VClock &vcData = protoVc.Get(i);
+        vc->insertNodeWithValue(vcData.device_id(), vcData.value());
+    }
+}
+
 int32_t zina::storeLocalVectorClock(SQLiteStoreConv &store, const string& groupId, GroupUpdateType type, const LocalVClock &vectorClock)
 {
     LOGGER(INFO, __func__, " -->");
@@ -65,4 +75,15 @@ int32_t zina::storeLocalVectorClock(SQLiteStoreConv &store, const string& groupI
     }
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
+}
+
+void zina::serializeVectorClock(const vectorclock::VectorClock<string> &vc, google::protobuf::RepeatedPtrField<VClock> *changeVc) {
+    const auto end = vc.cend();
+
+    changeVc->Clear();
+    for (auto it = vc.cbegin(); it != end; ++it) {
+        VClock *vectorClock = changeVc->Add();
+        vectorClock->set_device_id(it->first);
+        vectorClock->set_value(it->second);
+    }
 }

@@ -31,6 +31,12 @@ namespace zina {
     static const char* GROUP_MEMBER_COUNT = "mbrCnt";
     static const char* GROUP_ATTRIBUTE = "grpA";
     static const char* GROUP_MOD_TIME = "grpMT";
+    static const char* GROUP_BURN_SEC = "grpBSec";
+    static const char* GROUP_BURN_MODE = "grpBMode";
+    static const char* GROUP_AVATAR = "grpAva";
+
+    static const char* GROUP_CHANGE_SET = "grpChg";
+
 
     static const char* MEMBER_ID = "mbrId";
 //    static const char* MEMBER_DEVICE_ID = "devId";

@@ -180,26 +180,26 @@ static string listHashB64(const string& groupId, SQLiteStoreConv* store)
 
 }
 
-static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* store)
+int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
 {
     LOGGER(INFO, __func__, " --> ");
 
     int32_t returnCode = OK;
-    int32_t result = store->deleteAllMembers(groupId);
+    int32_t result = store_->deleteAllMembers(groupId);
     if (SQL_FAIL(result)) {
         LOGGER(ERROR, __func__, "Could not delete all members of group: ", groupId, ", SQL code: ", result);
         // Try to deactivate group at least
-        store->clearGroupAttribute(groupId, ACTIVE);
-        store->setGroupAttribute(groupId, INACTIVE);
+        store_->clearGroupAttribute(groupId, ACTIVE);
+        store_->setGroupAttribute(groupId, INACTIVE);
         returnCode = GROUP_ERROR_BASE + result;
     }
     if (returnCode == OK) {
-        result = store->deleteGroup(groupId);
+        result = store_->deleteGroup(groupId);
         if (SQL_FAIL(result)) {
             LOGGER(ERROR, __func__, "Could not delete group: ", groupId, ", SQL code: ", result);
             // Try to deactivate group at least
-            store->clearGroupAttribute(groupId, ACTIVE);
-            store->setGroupAttribute(groupId, INACTIVE);
+            store_->clearGroupAttribute(groupId, ACTIVE);
+            store_->setGroupAttribute(groupId, INACTIVE);
             returnCode = GROUP_ERROR_BASE + result;
         }
     }
@@ -208,29 +208,6 @@ static int32_t deleteGroupAndMembers(string const& groupId, SQLiteStoreConv* sto
 
 // ****** Public instance functions
 // *******************************************************
-//string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
-//    LOGGER(INFO, __func__, " -->");
-//
-//    if (maxMembers > MAXIMUM_GROUP_SIZE)
-//        return Empty;
-//
-//    uuid_t groupUuid = {0};
-//    uuid_string_t uuidString = {0};
-//
-//    uuid_generate_time(groupUuid);
-//    uuid_unparse(groupUuid, uuidString);
-//    string groupId(uuidString);
-//
-//    store_->insertGroup(groupId, groupName, ownUser_, groupDescription, maxMembers);
-//
-//    // Add myself to the new group, this saves us a "send to sibling" group function, then inform my sibling about
-//    // the new group
-//    store_->insertMember(groupId, ownUser_);
-//    sendGroupCommand(ownUser_, generateMsgIdTime(), syncNewGroupCommand(groupId, groupName, groupDescription, ownUser_, maxMembers));
-//
-//    LOGGER(INFO, __func__, " <--");
-//    return groupId;
-//}
 
 int32_t AppInterfaceImpl::createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers)
 {
@@ -377,11 +354,11 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     string message;
 
     LOGGER(INFO, __func__, " -->");
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &groupId, &msgId, &message);
-    if (parseResult < 0) {
-        errorCode_ = parseResult;
-        LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", parseResult);
-        return parseResult;
+    int32_t returnCode = parseMsgDescriptor(messageDescriptor, &groupId, &msgId, &message);
+    if (returnCode < 0) {
+        errorCode_ = returnCode;
+        LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", returnCode);
+        return returnCode;
     }
     if (!store_->hasGroup(groupId) || ((store_->getGroupAttribute(groupId).first & ACTIVE) != ACTIVE)) {
         return NO_SUCH_ACTIVE_GROUP;
@@ -393,6 +370,14 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
 
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, LIST_HASH, b64Hash.c_str());
+
+    returnCode = prepareChangeSetSend(groupId);
+    if (returnCode < 0) {
+        errorCode_ = returnCode;
+        errorInfo_ = "Error preparing group change set";
+        LOGGER(ERROR, __func__, " Error preparing group change set, error code: ", returnCode);
+        return returnCode;
+    }
 
     char *out = cJSON_PrintUnformatted(root);
     string newAttributes(out);
@@ -411,31 +396,10 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         }
         doSendMessages(extractTransportIds(preparedMsgData.get()));
     }
+    groupUpdateSendDone(groupId);
     LOGGER(INFO, __func__, " <--, ", membersFound);
     return OK;
 }
-
-//int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
-//    LOGGER(INFO, __func__, " -->");
-//
-//    int32_t result;
-//    string msgId = generateMsgIdTime();
-//    string leaveCommand = leaveNotMemberCommand(groupId, ownUser_, true);
-//
-//    // Get the member list and send out the Leave command before deleting the data
-//    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-//    for (auto it = members->begin(); it != members->end(); ++it) {
-//        string recipient(Utilities::getJsonString(it->get(), MEMBER_ID, ""));
-//
-//        if (sendGroupCommand(recipient, msgId, leaveCommand) != OK) {
-//            LOGGER(ERROR, __func__, " <-- Error: ", errorCode_);
-//            return errorCode_;
-//        }
-//    }
-//    LOGGER(INFO, __func__, " <-- ");
-//
-//    return deleteGroupAndMembers(groupId, store_);
-//}
 
 int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const string& messageId)
 {
@@ -697,8 +661,8 @@ int32_t AppInterfaceImpl::processLeaveGroupCommand(const cJSON* root) {
     const string memberId(Utilities::getJsonString(root, MEMBER_ID, ""));
 
     // The leave/not user command from a sibling, thus remove group completely
-    if (ownUser_ == MEMBER_ID) {
-        return deleteGroupAndMembers(groupId, store_);
+    if (ownUser_ == memberId) {
+        return deleteGroupAndMembers(groupId);
     }
     int32_t result = store_->deleteMember(groupId, memberId);
     int32_t returnCode = OK;

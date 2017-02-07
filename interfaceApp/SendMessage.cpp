@@ -230,14 +230,14 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         *result = SUCCESS;
         errorCode_ = SUCCESS;
     }
-    int32_t parseResult = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
-    if (parseResult < 0) {
+    int32_t returnCode = parseMsgDescriptor(messageDescriptor, &recipient, &msgId, &message);
+    if (returnCode < 0) {
         if (result != nullptr) {
-            *result = parseResult;
+            *result = returnCode;
         }
-        errorCode_ = parseResult;
+        errorCode_ = returnCode;
         errorInfo_ = "Wrong JSON data to send message";
-        LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", parseResult);
+        LOGGER(ERROR, __func__, " Wrong JSON data to send message, error code: ", returnCode);
         return messageData;
     }
     if (!grpRecipient.empty()) {
@@ -360,13 +360,32 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         // Setup and queue the prepared message info data
         auto msgInfo = make_shared<CmdQueueInfo>();
         msgInfo->command = SendMessage;
+
+        // Each device may have its own update change set, depending on it's ACK status.
+        if (messageType == GROUP_MSG_NORMAL) {
+            string newAttributes;
+            returnCode = createChangeSetDevice(grpRecipient, deviceId, msgAttributes, &newAttributes);
+            if (returnCode < 0) {
+                if (result != nullptr) {
+                    *result = returnCode;
+                }
+                errorCode_ = returnCode;
+                errorInfo_ = "Cannot create and store group update records for a device";
+                LOGGER(ERROR, __func__, " Cannot create and store group update records, error code: ", returnCode);
+                return messageData;
+            }
+            msgInfo->queueInfo_attributes = newAttributes.empty() ? msgAttributes : newAttributes;
+        }
+        else {
+            msgInfo->queueInfo_attributes = msgAttributes;
+        }
+
         msgInfo->queueInfo_recipient = recipient;
         msgInfo->queueInfo_deviceName = info->at(1);
         msgInfo->queueInfo_deviceId = deviceId;
         msgInfo->queueInfo_msgId = msgId;
         msgInfo->queueInfo_message = message;
         msgInfo->queueInfo_attachment = attachmentDescriptor;
-        msgInfo->queueInfo_attributes = msgAttributes;
         msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | messageType;
         msgInfo->queueInfo_toSibling = toSibling;
         msgInfo->queueInfo_newUserDevice = newUser;

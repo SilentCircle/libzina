@@ -31,8 +31,9 @@ limitations under the License.
  * 
  * @param binData Pointer to binary data byte array
  * @param binlength length of binary data array
- * @param b64Data return buffer for the B64 data. The size of this buffer should
+ * @param b64Data output buffer for the B64 data. The size of this buffer should
  *        be ~1.4 * binLength (rule of thumb).
+ * @param resultSize length of output buffer
  * @return number of B64 characters in the @c b64Data buffer.
  */
 size_t b64Encode(const uint8_t *binData, size_t binLength, char *b64Data, size_t resultSize);

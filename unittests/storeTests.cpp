@@ -456,6 +456,34 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(30, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 
+    result = pks->setGroupName(groupId_1, rawData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(rawData, getJsonString(root, GROUP_NAME, ""));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+
+    result = pks->setGroupBurnTime(groupId_1, 4711, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(4711, getJsonInt(root, GROUP_BURN_SEC, -1));
+    ASSERT_EQ(1, getJsonInt(root, GROUP_BURN_MODE, -1));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+
+    result = pks->setGroupAvatarInfo(groupId_1, rawData);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    group = pks->listGroup(groupId_1, &result);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE((bool)group);
+    root = group.get();
+    ASSERT_EQ(rawData, string(getJsonString(root, GROUP_AVATAR, "")));
+    ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
+
     // Add a ratchet conversation for the member, use some dummy data. Keys are
     // important here
     pks->storeConversation(memberId_1, deviceId_1, ownName, attrib, &result);
@@ -592,6 +620,57 @@ TEST_F(StoreTestFixture, GroupChatStore)
     // Delete conversation of the group member, must succeed now
     pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
     ASSERT_FALSE(SQL_FAIL(result));
+}
+
+static string updateId_1("update-id-1");
+
+TEST_F(StoreTestFixture, WaitForAck)
+{
+    // No record stored yet, thus return false
+    ASSERT_FALSE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+
+    // insert a record and check
+    int32_t result = pks->insertWaitAck(groupId_1, deviceId_1, updateId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+    ASSERT_TRUE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
+
+    // Remove this specific record and check
+    result = pks->removeWaitAck(groupId_1, deviceId_1, updateId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_FALSE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+    ASSERT_FALSE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
+
+    // insert record again
+    result = pks->insertWaitAck(groupId_1, deviceId_1, updateId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+    ASSERT_TRUE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
+
+    // Remove every group/device record with give type, check
+    result = pks->removeWaitAckWithType(groupId_1, deviceId_1, 1);
+    ASSERT_FALSE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+    ASSERT_FALSE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
+
+    // insert again, then check clean
+    result = pks->insertWaitAck(groupId_1, deviceId_1, updateId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+    ASSERT_TRUE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
+
+    // Don't clean it yet
+    time_t nowMinus1 = time(NULL)-1;
+    result = pks->cleanWaitAck(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+
+    sqlite3_sleep(2000);
+    nowMinus1 = time(NULL) - 1;
+
+    // wipe old records
+    result = pks->cleanWaitAck(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_FALSE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
+    ASSERT_FALSE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
 }
 
 class NameLookTestFixture: public ::testing::Test {

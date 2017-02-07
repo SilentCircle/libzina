@@ -63,6 +63,13 @@ const char *const Utilities::getJsonString(const cJSON* const root, const char* 
     return jsonItem->valuestring;
 }
 
+void Utilities::setJsonString(cJSON* const root, const char* const name, const char *value, const char *def) {
+    if (root == nullptr || name == nullptr)
+        return;
+
+    cJSON_AddStringToObject(root, name, value == nullptr ? def : value);
+    return;
+}
 
 bool Utilities::getJsonBool(const cJSON *const root, const char *const name, bool error) {
     if (root == nullptr)

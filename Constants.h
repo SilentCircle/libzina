@@ -62,6 +62,9 @@ namespace zina {
 
     static const uint64_t GROUP_TRANSPORT  = 0x8;   //!< Bit in transport message id to identify this as a group message
 
+    static const size_t UPDATE_ID_LENGTH   = 8;     //!< Length of update id in change set and vector clocks
+    static const size_t VC_ID_LENGTH       = 8;     //!< Length of id in vector clocks
+
     static const uint64_t MSG_TYPE_MASK    = 0xf;   //!< Lower 4 bits hold the message type
 
     // Bits defining which R* flags were true
@@ -131,6 +134,8 @@ namespace zina {
     static const int32_t NO_SUCH_ACTIVE_GROUP = -455;   //<! Group does not exist or is not acive
     static const int32_t WRONG_UPDATE_TYPE = -456;      //<! Update type not known
     static const int32_t NO_VECTOR_CLOCK = -457;        //<! No vector clock for group/event pair
+    static const int32_t GROUP_UPDATE_RUNNING = -458;   //<! Currently preparing an sending group updates
+    static const int32_t GROUP_UPDATE_INCONSISTENT = -459; //<! A Prepared change set is not available
 
 }  // namespace
 

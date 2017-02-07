@@ -152,24 +152,28 @@ public:
 
     bool modifyGroupSize(string& groupId, int32_t newSize);
 
-    int32_t setGroupName(const string& groupUuid, const string& groupName);
+    int32_t setGroupName(const string& groupUuid, const string* groupName);
 
     int32_t setGroupBurnTime(const string& groupUuid, uint64_t burnTime, int32_t mode);
 
-    int32_t setGroupAvatar(const string& groupUuid, const string& avatar);
+    int32_t setGroupAvatar(const string& groupUuid, const string* avatar);
 
     int32_t inviteUser(const string& groupUuid, const string& userId);
     int32_t addUser(const string& groupUuid, const string& userId);
 
     int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId);
 
-    int32_t cancelGroupChanges(const string& groupUuid);
+    int32_t cancelGroupChangeSet(const string& groupUuid);
+
+    int32_t applyGroupChangeSet(const string& groupId);
 
     int32_t answerInvitation(const string& command, bool accept, const string& reason);
 
     int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
-    int32_t leaveGroup(const string& groupId, const string& userId = Empty);
+    int32_t leaveGroup(const string& groupId);
+
+    int32_t removeUser(const string& groupId, const string& userId);
 
     int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId);
 
@@ -306,18 +310,11 @@ public:
         void setGroupMsgCallback(GROUP_MSG_RECV_FUNC callback) { groupMsgCallback_ = callback; }
         void setOwnChecked(bool value) {siblingDevicesScanned_ = value; }
 
-        static string generateMsgIdTime() {
-            uuid_t uuid = {0};
-            uuid_string_t uuidString = {0};
-
-            uuid_generate_time(uuid);
-            uuid_unparse(uuid, uuidString);
-            return string(uuidString);
-        }
-
 #endif
 
+#ifndef UNITTESTS
 private:
+#endif
     // do not support copy, assignment and equals
     AppInterfaceImpl (const AppInterfaceImpl& other ) = delete;
     AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
@@ -398,7 +395,7 @@ private:
      *
      * The receiver of the command inserts the member to the group.
      *
-     * @param root The parsed cJSON data structure of the leave group command.
+     * @param root The parsed cJSON data structure of the group command.
      * @return OK if the message list was processed without error.
      */
     int32_t processHelloCommand(const cJSON* root);
@@ -406,11 +403,45 @@ private:
      /**
       * @brief Parse a member list array in JSON and update in database.
       *
-      * @param root The parsed cJSON data structure of the leave group command.
+      * @param root The parsed cJSON data structure of the group command.
       * @param initialList if @c true the list was sent during invitation processing
       * @return OK if the message list was processed without error.
       */
     int32_t parseMemberList(const cJSON* root, bool initialList, const string& groupId);
+
+    /**
+     * @brief Prepare the change set before sending.
+     *
+     * The function creates a unique update id, blocks update processing, prepares the
+     * change set, updates the group and member database.
+     *
+     * @param groupId The group id of the change set
+     * @return SUCCESS if processing was successful, an error code otherwise
+     */
+    int32_t prepareChangeSetSend(const string &groupId);
+
+    /**
+     * @brief Create the device specific change set.
+     *
+     * Each device may have its own change set, depending on ACK state.
+     *
+     * @param groupId The group id
+     * @param deviceId The device id
+     * @param attributes The attribute string
+     * @param newAttributes The upadted attribute string which contains the change set
+     * @return SUCCESS or an error code
+     */
+    int32_t createChangeSetDevice(const string &groupId, const string &deviceId, const string &attributes, string *newAttributes);
+
+
+    /**
+     * @brief All messages containing a change set were queued for sending.
+     *
+     * The function removes old change sets and enables update processing.
+     *
+     * @param groupId The group id of the processed change set
+     */
+    void groupUpdateSendDone(const string& groupId);
 
     /**
      * @brief Helper function add a message info structure to the run-Q
@@ -641,7 +672,7 @@ private:
      * @param sendInfo The message information
      * @return SUCCESS or an error code
      */
-    int32_t doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo);
+//    int32_t doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo);
 
     void checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command);
 
@@ -651,6 +682,7 @@ private:
 
     void rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command);
 
+    int32_t deleteGroupAndMembers(string const& groupId);
     /**
      * @brief Helper function to create the JSON formatted supplementary message data.
      *
@@ -680,7 +712,6 @@ private:
      */
     static shared_ptr<vector<uint64_t> > extractTransportIds(list<shared_ptr<PreparedMessageData> >* data);
 
-#ifndef UNITTESTS
     static string generateMsgIdTime() {
         uuid_t uuid = {0};
         uuid_string_t uuidString = {0};
@@ -689,7 +720,6 @@ private:
         uuid_unparse(uuid, uuidString);
         return string(uuidString);
     }
-#endif
 
     char* tempBuffer_;
     size_t tempBufferSize_;

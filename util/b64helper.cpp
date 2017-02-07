@@ -19,14 +19,15 @@ limitations under the License.
 static int base64encode(const void* data_buf, size_t dataLength, char* result, size_t resultSize);
 static int base64decode (const char *in, size_t inLen, unsigned char *out, size_t *outLen);
 
-size_t b64Encode(const uint8_t *binData, size_t binLength, char *b64Data, size_t b64length)
-{
+size_t b64Encode(const uint8_t *binData, size_t binLength, char *b64Data, size_t b64length) {
     if (binLength == 0) {
         b64Data[0] = 0;
         return 0;
     }
 
-    base64encode(binData, binLength, b64Data, b64length);
+    if (base64encode(binData, binLength, b64Data, b64length) != 0) {
+        return 0;
+    }
     return strlen(b64Data);
 }
 

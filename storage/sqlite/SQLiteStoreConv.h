@@ -435,10 +435,36 @@ public:
     int32_t clearGroupAttribute(const string& groupUuid, int32_t attributeMask);
 
     /**
+     * @brief Set the group's name.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param name The new group name
+     * @return SQLite code
+     */
+    int32_t setGroupName(const string& groupUuid, const string& name);
+
+    /**
+     * @brief Set the group's burn timer.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param timeInSeconds burn time in seconds
+     * @return SQLite code
+     */
+    int32_t setGroupBurnTime(const string& groupUuid, int64_t timeInSeconds, int32_t mode);
+
+    /**
+     * @brief Set the group's avatar information.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param avatarInfo The avatar information
+     * @return SQLite code
+     */
+    int32_t setGroupAvatarInfo(const string& groupUuid, const string& avatarInfo);
+
+    /**
      * @brief Create a group member
      *
      * Create a new member record. The @c memberUuid must unique.
-     *
      * The functions sets the new member's attribute to @c ACTIVE.
      *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
@@ -620,6 +646,81 @@ public:
      */
     int32_t deleteVectorClocks(const string& id);
 
+    /**
+     * @brief Insert a wait-for-ack record.
+     *
+     * The function stores data for an unacknowledged update. The client stores this data for each device
+     * to which it sent an update.
+     *
+     * @param groupId The group id
+     * @param deviceId The device id as used in the update data
+     * @param updateId The update id as used in the update data
+     * @param updateType The update type
+     * @return SQLite code
+     */
+    int32_t insertWaitAck(const string &groupId, const string &deviceId, const string &updateId, int32_t updateType);
+
+    /**
+     * @brief Check if a specific wait-for-ack record exists.
+     *
+     * @param groupId The group id
+     * @param deviceId The device id as used in the update data
+     * @param updateId The update id as used in the update data
+     * @param updateType The update type
+     * @param sqlCode Receives SQL return code if not `nullptr`
+     * @return `true` if a record exists
+     */
+    bool hasWaitAck(const string &groupId, const string &deviceId, const string &updateId, int32_t updateType, int32_t *sqlCode);
+
+    /**
+     * @brief Check if a wait-for-ack record exists for the specified group and update id.
+     *
+     * @param groupId The group id
+     * @param updateId The update id as used in the update data
+     * @param sqlCode Receives SQL return code if not `nullptr`
+     * @return `true` if a record exists
+     */
+    bool hasWaitAckGroupUpdate(const string &groupId, const string &updateId, int32_t *sqlCode);
+
+    /**
+     * @brief Remove a specific wait-for-ack record.
+     *
+     * @param groupId The group id
+     * @param deviceId The device id as used in the update data
+     * @param updateId The update id as used in the update data
+     * @param updateType The update type
+     * @return SQLite code
+     */
+    int32_t removeWaitAck(const string &groupId, const string &deviceId, const string &updateId, int32_t updateType);
+
+    /**
+     * @brief Remove a group's wait-for-ack records.
+     *
+     * @param groupId The group id
+     * @return SQLite code
+     */
+    int32_t removeWaitAckWithGroup(const string &groupId);
+
+    /**
+     * @brief Remove wait-for-ack records with an update type.
+     *
+     * Remove all wait-for-ack records of a device with a specific update type.
+     *
+     * @param groupId The group id
+     * @param deviceId The device id as used in the update data
+     * @param updateType The update type
+     * @return SQLite code
+     */
+    int32_t removeWaitAckWithType(const string &groupId, const string &deviceId, int32_t updateType);
+
+    /**
+     * @brief Clean wait-for-ack record table - remove old records
+     *
+     * @param timestamp delete all records older than this timestamp (seconds since the epoch)
+     * @return SQLite code
+     */
+    int32_t cleanWaitAck(time_t timestamp);
+
 
     int beginTransaction();
     int commitTransaction();
@@ -640,6 +741,9 @@ private:
      * that Axolotl tables are available in the database.
      */
     int createTables();
+    int createVectorClockTables();
+    int32_t createGroupTables();
+    int32_t createWaitForAckTables();
 
     /**
      * @brief Update database version.
@@ -652,6 +756,9 @@ private:
      * @return SQLITE_OK to commit any changes, any other code closes the database with rollback.
      */
     int32_t updateDb(int32_t oldVersion, int32_t newVersion);
+    int32_t updateVectorClocksDb(int32_t oldVersion);
+    int32_t updateGroupDataDb(int32_t oldVersion);
+    int32_t updateWaitForAckDb(int32_t oldVersion);
 
     static SQLiteStoreConv* instance_;
     sqlite3* db;

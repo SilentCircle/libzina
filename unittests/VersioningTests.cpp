@@ -66,8 +66,8 @@ TEST_F(VectorClocksTestsFixture, EmptyTests) {
     // An empty vector clock has no nodes, thus return 0 when reading a node's clock
     ASSERT_EQ(0, vc.getNodeClock(node_1));
 
-    // Cannot increment it either
-    ASSERT_FALSE(vc.incrementNodeClock(node_1));
+    // increment adds it with value 1 if not yet available
+    ASSERT_TRUE(vc.incrementNodeClock(node_1));
 }
 
 TEST_F(VectorClocksTestsFixture, InsertTests) {

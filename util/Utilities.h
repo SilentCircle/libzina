@@ -63,6 +63,19 @@ namespace zina {
         static const char* const getJsonString(const cJSON* const root, const char* const name, const char* const error);
 
         /**
+         * @brief Set a string in the cJSON root.
+         *
+         * If `root` or `name` are `nullptr` then return and do not change anything. If the `value` is `nullptr`
+         * then use the default.
+         *
+         * @param root cJSON root
+         * @param name the JSON key
+         * @param value The value to set
+         * @param def Set this if the value is `nullptr`
+         */
+        static void setJsonString(cJSON* const root, const char* const name, const char *value, const char *def);
+
+        /**
          * @brief Return a boolean value from a JSON structure.
          *
          * The functions returns the boolean value of a JSON name.
