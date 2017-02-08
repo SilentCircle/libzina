@@ -1274,7 +1274,7 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
  * Signature: ([B[B)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL
-JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jbyteArray groupDescription, jint maxMembers)
+JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jbyteArray groupDescription)
 {
     (void)clazz;
 
@@ -1287,7 +1287,7 @@ JNI_FUNCTION(createNewGroup)(JNIEnv *env, jclass clazz, jbyteArray groupName, jb
     string description;
     arrayToString(env, groupDescription, &description);
 
-    string groupUuid = zinaAppInterface->createNewGroup(group, description, maxMembers);
+    string groupUuid = zinaAppInterface->createNewGroup(group, description);
     if (groupUuid.empty())
         return NULL;
     jstring uuidJava = env->NewStringUTF(groupUuid.c_str());
@@ -1316,6 +1316,85 @@ JNICALL JNI_FUNCTION(modifyGroupSize)(JNIEnv *env, jclass clazz, jstring groupUu
     env->ReleaseStringUTFChars(groupUuid, temp);
     bool result = zinaAppInterface->modifyGroupSize(group, newSize);
     return result ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setGroupName
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(setGroupName)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray name)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string nm;
+    if (name != NULL) {
+        arrayToString(env, name, &nm);
+    }
+    return zinaAppInterface->setGroupName(group, name == NULL? nullptr : &nm);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setGroupBurnTime
+ * Signature: (Ljava/lang/String;JI)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(setGroupBurnTime)(JNIEnv *env, jclass clazz, jstring groupUuid, jlong duration, jint mode)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+    return zinaAppInterface->setGroupBurnTime(group, static_cast<uint64_t>(duration), mode);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setGroupAvatar
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(setGroupAvatar)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray avatar)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string av;
+    if (avatar != NULL) {
+        arrayToString(env, avatar, &av);
+    }
+    return zinaAppInterface->setGroupAvatar(group, avatar == NULL? nullptr : &av);
 }
 
 /*
@@ -1483,11 +1562,11 @@ JNI_FUNCTION(getGroupMember) (JNIEnv *env, jclass clazz, jstring groupUuid, jbyt
 
 /*
  * Class:     zina_ZinaNative
- * Method:    inviteUser
+ * Method:    addUser
  * Signature: (Ljava/lang/String;[B)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(inviteUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray userId)
+JNI_FUNCTION(addUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray userId)
 {
     (void)clazz;
 
@@ -1506,8 +1585,83 @@ JNI_FUNCTION(inviteUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArra
     if (!arrayToString(env, userId, &usr)) {
         return GROUP_MSG_DATA_INCONSISTENT;
     }
-    return zinaAppInterface->inviteUser(group, usr);
+    return zinaAppInterface->addUser(group, usr);
 }
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removeUserFromAddUpdate
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(removeUserFromAddUpdate)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray userId)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string usr;
+    if (!arrayToString(env, userId, &usr)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    return zinaAppInterface->removeUserFromAddUpdate(group, usr);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    cancelGroupChangeSet
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(cancelGroupChangeSet)(JNIEnv *env, jclass clazz, jstring groupUuid)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+    return zinaAppInterface->cancelGroupChangeSet(group);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    applyGroupChangeSet
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(applyGroupChangeSet)(JNIEnv *env, jclass clazz, jstring groupUuid)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+    return zinaAppInterface->applyGroupChangeSet(group);
+}
+
 
 /*
  * Class:     zina_ZinaNative
@@ -1587,6 +1741,62 @@ JNI_FUNCTION(leaveGroup)(JNIEnv *env, jclass clazz, jstring groupUuid)
     env->ReleaseStringUTFChars(groupUuid, temp);
 
     return zinaAppInterface->leaveGroup(group);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removeUser
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(removeUser)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray userId)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string usr;
+    if (!arrayToString(env, userId, &usr)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    return zinaAppInterface->removeUser(group, usr);
+}
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removeUserFromRemoveUpdate
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(removeUserFromRemoveUpdate)(JNIEnv *env, jclass clazz, jstring groupUuid, jbyteArray userId)
+{
+    (void) clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    if (groupUuid == NULL)
+        return DATA_MISSING;
+
+    string group;
+    const char *temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    string usr;
+    if (!arrayToString(env, userId, &usr)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    return zinaAppInterface->removeUserFromRemoveUpdate(group, usr);
 }
 
 /*

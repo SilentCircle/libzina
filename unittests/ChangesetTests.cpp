@@ -101,7 +101,7 @@ public:
 };
 
 TEST_F(ChangeSetTestsFixtureSimple, NewGroupTestsEmpty) {
-    string groupId = appInterface_1->createNewGroup(Empty, Empty, 0);
+    string groupId = appInterface_1->createNewGroup(Empty, Empty);
     ASSERT_FALSE(groupId.empty());
 
     PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
@@ -111,7 +111,7 @@ TEST_F(ChangeSetTestsFixtureSimple, NewGroupTestsEmpty) {
 }
 
 TEST_F(ChangeSetTestsFixtureSimple, NewGroupTests) {
-    string groupId = appInterface_1->createNewGroup(groupName_1, Empty, 0);
+    string groupId = appInterface_1->createNewGroup(groupName_1, Empty);
     ASSERT_FALSE(groupId.empty());
 
     PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
@@ -183,7 +183,7 @@ public:
         store->setKey(std::string((const char*)keyInData, 32));
         store->openStore(std::string());
         appInterface_1 = new AppInterfaceImpl(store, ownName, apiKey_1, longDevId_1);
-        groupId = appInterface_1->createNewGroup(groupName_1, Empty, 0);
+        groupId = appInterface_1->createNewGroup(groupName_1, Empty);
     }
 
     void SetUp() {
@@ -211,31 +211,31 @@ public:
 
 TEST_F(ChangeSetTestsFixtureMembers, AddMemberTests) {
     // Test for illegal parameters
-    ASSERT_EQ(DATA_MISSING, appInterface_1->inviteUser(Empty, Empty));
-    ASSERT_EQ(DATA_MISSING, appInterface_1->inviteUser(groupId, Empty));
-    ASSERT_EQ(DATA_MISSING, appInterface_1->inviteUser(Empty, memberId_1));
+    ASSERT_EQ(DATA_MISSING, appInterface_1->addUser(Empty, Empty));
+    ASSERT_EQ(DATA_MISSING, appInterface_1->addUser(groupId, Empty));
+    ASSERT_EQ(DATA_MISSING, appInterface_1->addUser(Empty, memberId_1));
 
     // Invite a user (addUser), own user is already in the change set, added while creating the group, has index 0
     PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
     ASSERT_TRUE((bool)changeSet);
 
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, memberId_1));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, memberId_1));
     ASSERT_TRUE(changeSet->has_updateaddmember());
     ASSERT_EQ(2, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(memberId_1, changeSet->updateaddmember().addmember(1).user_id());
 
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, otherMemberId_1));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, otherMemberId_1));
     ASSERT_TRUE(changeSet->has_updateaddmember());
     ASSERT_EQ(3, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(otherMemberId_1, changeSet->updateaddmember().addmember(2).user_id());
 
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, otherMemberId_2));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, otherMemberId_2));
     ASSERT_TRUE(changeSet->has_updateaddmember());
     ASSERT_EQ(4, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(otherMemberId_2, changeSet->updateaddmember().addmember(3).user_id());
 
     // adding a name a second time, ignore silently, no changes in change set
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, otherMemberId_2));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, otherMemberId_2));
     ASSERT_TRUE(changeSet->has_updateaddmember());
     ASSERT_EQ(4, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(otherMemberId_2, changeSet->updateaddmember().addmember(3).user_id());
@@ -276,12 +276,12 @@ TEST_F(ChangeSetTestsFixtureMembers, AddRemoveMemberTests) {
 
     // Own user is already in the change set, added while creating the group, has index 0
     // At first add a member, check data
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, memberId_1));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, memberId_1));
     ASSERT_EQ(2, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(memberId_1, changeSet->updateaddmember().addmember(1).user_id());
 
     // add a second member
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, otherMemberId_1));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, otherMemberId_1));
     ASSERT_EQ(3, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(otherMemberId_1, changeSet->updateaddmember().addmember(2).user_id());
 
@@ -305,7 +305,7 @@ TEST_F(ChangeSetTestsFixtureMembers, AddRemoveMemberTests) {
 
     // now re-add the first member. It should be re-added to add update, removed from
     // remove update
-    ASSERT_EQ(SUCCESS, appInterface_1->inviteUser(groupId, memberId_1));
+    ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, memberId_1));
     ASSERT_TRUE(changeSet->has_updateaddmember());
     ASSERT_EQ(3, changeSet->updateaddmember().addmember_size());
     ASSERT_EQ(memberId_1, changeSet->updateaddmember().addmember(2).user_id());

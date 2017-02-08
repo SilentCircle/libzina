@@ -482,7 +482,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return the group's UUID, if the string is empty then group creation failed, use
      *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
      */
-    public static native String createNewGroup(byte[] groupName, byte[] groupDescription, int maxMembers);
+    public static native String createNewGroup(byte[] groupName, byte[] groupDescription);
 
     /**
      * Modify number maximum group member.
@@ -501,6 +501,51 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
      */
     public static native boolean modifyGroupSize(/*!@NonNull!*/ String groupUuid, int newSize);
+
+    /**
+     * Set a group's new name.
+     *
+     * The function sets a new group name and synchronizes this with the other group
+     * members if the user sends a message.
+     *
+     * @param groupUuid the group id
+     * @param groupName the new group name. If this is NULL (nullptr) then the function removes the group name
+     *                  update from the change set.
+     * @return {@code SUCCESS} if new name could be set, or an error code
+     */
+    public static native int setGroupName(/*!@NonNull!*/ String groupUuid, byte[] groupName);
+
+    /**
+     * Set a group's new burn time and mode.
+     *
+     * The function sets a new group bur time and mode and synchronizes this with the other group
+     * members if the user sends a message.
+     *
+     * Currently group burn time handling supports one mode only and it has the value 1.
+     *
+     * `FROM_SEND_RETROACTIVE = 1:` a mode in which the time a message burns is based on the time
+     * it was sent and the current relative burn time on the group (not the burn time in effect when
+     * the message was sent or received).
+     *
+     * @param groupUuid the group id
+     * @param burnTime the new group's burn time in seconds
+     * @param mode
+     * @return {@code SUCCESS} if new name could be set, or an error code
+     */
+    public static native int setGroupBurnTime(/*!@NonNull!*/ String groupUuid, long burnTime, int mode);
+
+    /**
+     * Set a group's new avatar data.
+     *
+     * The function sets a new group avatar data and synchronizes this with the other group
+     * members if the user sends a message.
+     *
+     * @param groupUuid the group id
+     * @param avatar the new avatar data. If this is NULL (nullptr) then the function removes the
+     *               avatar info update from the change set.
+     * @return {@code SUCCESS} if new name could be set, or an error code
+     */
+    public static native int setGroupAvatar(/*!@NonNull!*/ String groupUuid, byte[] avatar);
 
     /**
      * Get data of all known groups.
@@ -560,14 +605,47 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native byte[] getGroupMember(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[]memberUuid, /*!@NonNull!*/ int[] code);
 
     /**
-     * Invite a user to a group.
+     * Add a user to a group (same as invite)
      *
      * @param groupUuid Invite for this group
      * @param userId The invited user's unique id
-     * @return {@code OK} if function could send invitation, error code (<0) otherwise
+     * @return {@code SUCCESS} or error code (<0)
      */
-    //**ANN** @WorkerThread
-    public static native int inviteUser(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[] userId);
+    public static native int addUser(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[] userId);
+
+    /**
+     * Remove a user's name from the add member update change set.
+     *
+     * Just remove the user's uid from the add member update change set, no other
+     * actions or side effects, thus it is the opposite of `addUser`.
+     *
+     * @param groupUuid The group id
+     * @param userId The user id to remove from the change set
+     * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
+     */
+    public static native int removeUserFromAddUpdate(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[] userId);
+
+    /**
+     * Cancel group's current change set.
+     *
+     * Clears the group's current change set.
+     *
+     * @param groupId Cancel current change set for this group
+     * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
+     */
+    public static native int cancelGroupChangeSet(/*!@NonNull!*/ String groupId);
+
+    /**
+     * Apply group's current change set.
+     *
+     * This function applies the current group change set which may include the updates to add
+     * a new member, set a group avatar, etc. The function just sends an empty message and this
+     * checks for change sets
+     *
+     * @param groupId Apply current change set for this group
+     * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
+     */
+    public static native int applyGroupChangeSet(/*!@NonNull!*/ String groupId);
 
     /**
      * Answer a group Invitation.
@@ -621,15 +699,42 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     /**
      * Leave a group.
      *
-     * The application (UI part) calls this function to remove this member from the
-     * group. The functions sends a 'leave group' command to all members of the group,
-     * including it's own sibling devices and then removes the group data.
+     * The application (UI part) calls this function to remove this member (myself) from the
+     * group. This function sends the leave group update immediately.
      *
      * @param groupId The group to leave
-     * @return {@code OK} if 'leave group' processing was OK, error code (<0) otherwise
+     * @return {@code SUCCESS} if 'leave group' processing was OK, error code (<0) otherwise
      */
     //**ANN** @WorkerThread
     public static native int leaveGroup(/*!@NonNull!*/ String groupId);
+
+    /**
+     * Remove another member (not myself) from a group.
+     *
+     * The application (UI part) calls this function to remove a member from the
+     * group.
+     *
+     * This function adds a user id (name) to the group's remove member change set. If the same name
+     * is also present on the group's current add name change set then this function removes
+     * the name from the add change set, thus is opposite to invite/add member
+     *
+     * @param groupId The group id
+     * @param userId The user id of the user to remove
+     * @return {@code SUCCESS} if 'remove from group' processing was OK, error code (<0) otherwise
+     */
+    public static native int removeUser(/*!@NonNull!*/ String groupId, /*!@NonNull!*/ byte[] userId);
+
+    /**
+     * @brief Remove a user's name from the remove member update change set.
+     *
+     * Just remove the user's uid from the remove (remove group) member update change set, no other
+     * actions or side effects, thus this function is the opposite of `removeUser`
+     *
+     * @param groupUuid The group id
+     * @param userId The user id to remove from the change set
+     * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
+     */
+    public static native int removeUserFromRemoveUpdate(/*!@NonNull!*/ String groupId, /*!@NonNull!*/ byte[] userId);
 
     /**
      * Synchronize sibling devices after group UI removed a group message.

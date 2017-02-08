@@ -437,11 +437,8 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
 // ****** Public instance functions
 // *******************************************************
 
-string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) {
+string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription) {
     LOGGER(INFO, __func__, " -->");
-
-    if (maxMembers > MAXIMUM_GROUP_SIZE)
-        return Empty;
 
     uuid_t groupUuid = {0};
     uuid_string_t uuidString = {0};
@@ -457,11 +454,6 @@ string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescript
     }
     LOGGER(INFO, __func__, " <--");
     return groupId;
-}
-
-int32_t AppInterfaceImpl::inviteUser(const string& groupUuid, const string& userId)
-{
-    return addUser(groupUuid, userId);
 }
 
 int32_t AppInterfaceImpl::addUser(const string& groupUuid, const string& userId)

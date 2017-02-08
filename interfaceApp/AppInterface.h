@@ -351,12 +351,10 @@ public:
      *
      * @param groupName The name of the new group
      * @param groupDescription Group description, purpose of the group, etc
-     * @param maxMembers Maximum number of group members. If this number is bigger than a system
-     *                   defined maximum number then the function does not create the group.
      * @return the group's UUID, if the string is empty then group creation failed, use
      *         @c AppInterfaceImpl::getErrorInfo() to get error string.
      */
-    virtual string createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers) = 0;
+    virtual string createNewGroup(string& groupName, string& groupDescription) = 0;
 
     /**
      * @brief Create a new group and assign ownership to the creator
@@ -399,7 +397,7 @@ public:
      * @param groupUuid the group id
      * @param groupName the new group name. If this is NULL (nullptr) then the function removes the group name
      *                  update from the change set.
-     * @return @c OK if new name could be set, or an error code
+     * @return @c SUCCESS if new name could be set, or an error code
      */
     virtual int32_t setGroupName(const string& groupUuid, const string* groupName) = 0;
 
@@ -418,7 +416,7 @@ public:
      * @param groupUuid the group id
      * @param burnTime the new group's burn time in seconds
      * @param mode
-     * @return @c OK if new name could be set, or an error code
+     * @return @c SUCCESS if new name could be set, or an error code
      */
     virtual int32_t setGroupBurnTime(const string& groupUuid, uint64_t burnTime, int32_t mode) = 0;
 
@@ -436,20 +434,11 @@ public:
     virtual int32_t setGroupAvatar(const string& groupUuid, const string* avatar) = 0;
 
     /**
-     * @brief Invite a user to a group.
+     * @brief Add a user to a group.
      *
      * This function adds a user id (name) to the group's add member change set. If the same name
-     * is also present on the group's current remove name change setz then this function removes
+     * is also present on the group's current remove name change set then this function removes
      * the name from the remove change set
-     *
-     * @param groupUuid Invite for this group
-     * @param userId The invited user's unique id
-     * @return @c SUCCESS or error code (<0)
-     */
-    virtual int32_t inviteUser(const string& groupUuid, const string& userId) = 0;
-
-    /**
-     * @brief Add a user to a group (same as invite)
      *
      * @param groupUuid Invite for this group
      * @param userId The invited user's unique id
@@ -465,7 +454,7 @@ public:
      *
      * @param groupUuid The group id
      * @param userId The user id to remove from the change set
-     * @return @c OK if function could send invitation, error code (<0) otherwise
+     * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
      */
     virtual int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId) = 0;
 
@@ -546,7 +535,7 @@ public:
      * group. This function sends the leave group update immediately.
      *
      * @param groupId The group to leave
-     * @return @c OK if 'leave group' processing was OK, error code (<0) otherwise
+     * @return @c SUCCESS if 'leave group' processing was OK, error code (<0) otherwise
      */
     virtual int32_t leaveGroup(const string& groupId) = 0;
 
@@ -562,7 +551,7 @@ public:
      *
      * @param groupId The group id
      * @param userId The user id of the user to remove
-     * @return @c OK if 'remove from group' processing was OK, error code (<0) otherwise
+     * @return @c SUCCESS if 'remove from group' processing was OK, error code (<0) otherwise
      */
     virtual int32_t removeUser(const string& groupId, const string& userId) = 0;
 
@@ -574,7 +563,7 @@ public:
      *
      * @param groupUuid The group id
      * @param userId The user id to remove from the change set
-     * @return @c OK if function could send invitation, error code (<0) otherwise
+     * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
      */
     virtual int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId) = 0;
 

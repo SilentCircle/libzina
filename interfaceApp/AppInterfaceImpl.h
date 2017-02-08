@@ -146,7 +146,7 @@ public:
 
     void setIdKeyVerified(const string& userName, const string& deviceId, bool flag);
 
-    string createNewGroup(string& groupName, string& groupDescription, int32_t maxMembers);
+    string createNewGroup(string& groupName, string& groupDescription);
 
     int32_t createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers);
 
@@ -158,7 +158,6 @@ public:
 
     int32_t setGroupAvatar(const string& groupUuid, const string* avatar);
 
-    int32_t inviteUser(const string& groupUuid, const string& userId);
     int32_t addUser(const string& groupUuid, const string& userId);
 
     int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId);

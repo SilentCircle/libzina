@@ -148,10 +148,10 @@ JNIEXPORT jstring JNICALL Java_zina_ZinaNative_zinaCommand
 /*
  * Class:     zina_ZinaNative
  * Method:    createNewGroup
- * Signature: ([B[BI)Ljava/lang/String;
+ * Signature: ([B[B)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_zina_ZinaNative_createNewGroup
-  (JNIEnv *, jclass, jbyteArray, jbyteArray, jint);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray);
 
 /*
  * Class:     zina_ZinaNative
@@ -160,6 +160,30 @@ JNIEXPORT jstring JNICALL Java_zina_ZinaNative_createNewGroup
  */
 JNIEXPORT jboolean JNICALL Java_zina_ZinaNative_modifyGroupSize
   (JNIEnv *, jclass, jstring, jint);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setGroupName
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_setGroupName
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setGroupBurnTime
+ * Signature: (Ljava/lang/String;JI)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_setGroupBurnTime
+  (JNIEnv *, jclass, jstring, jlong, jint);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setGroupAvatar
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_setGroupAvatar
+  (JNIEnv *, jclass, jstring, jbyteArray);
 
 /*
  * Class:     zina_ZinaNative
@@ -195,11 +219,35 @@ JNIEXPORT jbyteArray JNICALL Java_zina_ZinaNative_getGroupMember
 
 /*
  * Class:     zina_ZinaNative
- * Method:    inviteUser
+ * Method:    addUser
  * Signature: (Ljava/lang/String;[B)I
  */
-JNIEXPORT jint JNICALL Java_zina_ZinaNative_inviteUser
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_addUser
   (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removeUserFromAddUpdate
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_removeUserFromAddUpdate
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    cancelGroupChangeSet
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_cancelGroupChangeSet
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    applyGroupChangeSet
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_applyGroupChangeSet
+  (JNIEnv *, jclass, jstring);
 
 /*
  * Class:     zina_ZinaNative
@@ -224,6 +272,22 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_sendGroupMessage
  */
 JNIEXPORT jint JNICALL Java_zina_ZinaNative_leaveGroup
   (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removeUser
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_removeUser
+  (JNIEnv *, jclass, jstring, jbyteArray);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    removeUserFromRemoveUpdate
+ * Signature: (Ljava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_removeUserFromRemoveUpdate
+  (JNIEnv *, jclass, jstring, jbyteArray);
 
 /*
  * Class:     zina_ZinaNative
@@ -347,7 +411,7 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_deleteEvent
 
 /*
  * Class:     zina_ZinaNative
- * Method:    deleteEvent
+ * Method:    deleteAllEvents
  * Signature: ([B)I
  */
 JNIEXPORT jint JNICALL Java_zina_ZinaNative_deleteAllEvents
