@@ -361,7 +361,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         auto msgInfo = make_shared<CmdQueueInfo>();
         msgInfo->command = SendMessage;
 
-        // Each device may have its own update change set, depending on it's ACK status.
+        // Specific handling to group messages: each device may have its own update change set, depending on it's ACK status.
         if (messageType == GROUP_MSG_NORMAL) {
             string newAttributes;
             returnCode = createChangeSetDevice(grpRecipient, deviceId, msgAttributes, &newAttributes);

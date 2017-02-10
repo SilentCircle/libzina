@@ -409,7 +409,7 @@ public:
 //        int32_t result = appInterface->inviteUser(groupId, memberId_2);
 
         ScProvisioning::setHttpHelper(respondDevIds_M2);
-        int32_t result = appInterface->inviteUser(groupId, memberId_2);
+        int32_t result = appInterface->addUser(groupId, memberId_2);
         waitForEnvelope();                  // inviteUser sends command, sync with send command callback
         LOGGER(INFO, __func__, " <--");
         return true;

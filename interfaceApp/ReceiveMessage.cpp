@@ -443,8 +443,8 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     }
 
     if (msgInfo->queueInfo_msgType >= GROUP_MSG_NORMAL) {
-        result = processGroupMessage(msgInfo->queueInfo_msgType, msgInfo->queueInfo_message_desc, attachmentDescr, attributesDescr);
-        if (result != OK) {
+        result = processGroupMessage(msgInfo->queueInfo_msgType, msgInfo->queueInfo_message_desc, attachmentDescr, &attributesDescr);
+        if (result != SUCCESS) {
             groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result));
             return;
         }

@@ -1662,31 +1662,6 @@ JNI_FUNCTION(applyGroupChangeSet)(JNIEnv *env, jclass clazz, jstring groupUuid)
     return zinaAppInterface->applyGroupChangeSet(group);
 }
 
-
-/*
- * Class:     zina_ZinaNative
- * Method:    answerInvitation
- * Signature: ([BZ[B)I
- */
-JNIEXPORT jint JNICALL
-JNI_FUNCTION(answerInvitation)(JNIEnv *env, jclass clazz, jbyteArray command, jboolean accept, jbyteArray reason)
-{
-    (void)clazz;
-
-    if (zinaAppInterface == NULL)
-        return GENERIC_ERROR;
-
-    string cmd;
-    if (!arrayToString(env, command, &cmd)) {
-        return GROUP_MSG_DATA_INCONSISTENT;
-    }
-    string rsn;
-    if (reason != NULL) {
-        arrayToString(env, reason, &rsn);
-    }
-    return zinaAppInterface->answerInvitation(cmd, accept != 0, rsn);
-}
-
 /*
  * Class:     zina_ZinaNative
  * Method:    sendGroupMessage

@@ -30,7 +30,6 @@ bool Utilities::hasJsonKey(const cJSON* const root, const char* const key) {
         return false;
     cJSON* jsonItem = cJSON_GetObjectItem(const_cast<cJSON*>(root), key);
     return jsonItem != nullptr;
-
 }
 
 

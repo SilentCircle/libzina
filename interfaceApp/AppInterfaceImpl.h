@@ -94,6 +94,10 @@ typedef struct CmdQueueInfo_ {
 
 class SipTransport;
 class MessageEnvelope;
+class GroupChangeSet;
+class GroupUpdateSetName;
+class GroupUpdateSetAvatar;
+class GroupUpdateSetBurn;
 
 // This is the ping command the code sends to new devices to create an Axolotl setup
 static string ping("{\"cmd\":\"ping\"}");
@@ -148,8 +152,6 @@ public:
 
     string createNewGroup(string& groupName, string& groupDescription);
 
-    int32_t createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers);
-
     bool modifyGroupSize(string& groupId, int32_t newSize);
 
     int32_t setGroupName(const string& groupUuid, const string* groupName);
@@ -166,13 +168,11 @@ public:
 
     int32_t applyGroupChangeSet(const string& groupId);
 
-    int32_t answerInvitation(const string& command, bool accept, const string& reason);
-
     int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
 
     int32_t leaveGroup(const string& groupId);
 
-    int32_t removeUser(const string& groupId, const string& userId);
+    int32_t removeUser(const string& groupId, const string& userId, bool allowOwnUser = false);
 
     int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId);
 
@@ -327,53 +327,39 @@ private:
      * The normal receiver function already decrypted the message, attribute, and attachment data.
      */
     int32_t processGroupMessage(int32_t msgType, const string &msgDescriptor,
-                                const string &attachmentDescr, const string &attributesDescr);
+                                const string &attachmentDescr, string *attributesDescr);
+
+    int32_t processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, const string &deviceId);
 
     /**
+     *
      * @brief Process a group command message.
      *
      * The @c processGroupMessage function calls this function after it checked
      * the message type.
      */
-    int32_t processGroupCommand(const string& commandIn);
+    int32_t processGroupCommand(const string &msgDescriptor, string *commandIn);
 
     int32_t sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command);
 
     int32_t sendGroupCommand(const string &recipient, const string &msgId, const string &command);
 
-    int32_t syncNewGroup(const cJSON *root);
-
-    int32_t invitationAccepted(const cJSON *root);
-
-    int32_t createMemberListAnswer(const cJSON* root);
-
-    bool checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes);
+    bool checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes);
 
     /**
-     * @brief Process a member list answer.
-     *
-     * Another client sent a member list answer because this client requested it or as the
-     * final answer if the invitation flow. The functions adds missing member nut does not
-     * check the member-list hash value. The next group message or group command processing
-     * performs this.
-     *
-     * @param root The parsed cJSON data structure of the member list command.
-     * @return OK if the message list was processed without error.
-     */
-    int32_t processMemberListAnswer(const cJSON* root);
-
-    /**
-     * @brief Process a leave group command.
+     * @brief Leave a group.
      *
      * The receiver of the command removes the member from the group. If the receiver is a
      * sibling device, i.e. has the same member id, then it removes all group member data
      * and then the group data. The function only removes/clears group related data, it
      * does not remove/clear the normal ratchet data of the removed group members.
      *
-     * @param root The parsed cJSON data structure of the leave group command.
-     * @return OK if the message list was processed without error.
+     * @param groupId The group to leave.
+     * @param userId Which user leaves
+     * @param fromSibling If a sibling sent this change set
+     * @return SUCCESS if the message list was processed without error.
      */
-    int32_t processLeaveGroupCommand(const cJSON* root);
+    int32_t processLeaveGroup(const string &groupId, const string &userId, bool fromSibling);
 
     /**
      * @brief Checks if the group exists or is active.
@@ -645,7 +631,7 @@ private:
      * @brief Check if the message is a command message
      *
      * @param plainMsgInfo information about the message
-     * @return @c true if it's a command message, @c false otherwise
+     * @return @c true if it's a command message
      */
     bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo);
 
@@ -682,7 +668,43 @@ private:
     void rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command);
 
     int32_t deleteGroupAndMembers(string const& groupId);
+
+    int32_t insertNewGroup(const string &groupId, const GroupChangeSet &changeSet, string *callbackCmd);
+
     /**
+     * @brief Send a message to a specific device of a group member.
+     *
+     * ZINA uses this function to prepare and send a change set to a group member's device.
+     * Thus ZINA can send ACK or other change sets to the sender' device.
+     *
+     * The function adds the group id to the attributes, creates a send message command and
+     * queues it for normal send message processing.
+     *
+     * @param groupId The group id to get the change set
+     * @param userId The group member's id
+     * @param deviceId The device of of the group member
+     * @param attributes The message attributes, may be empty
+     * @param msg the message to send, maybe empty
+     * @return @c SUCCESS or an error code (<0)
+     */
+    int32_t sendGroupMessageToUserDevice(const string &groupId, const string &userId, const string &deviceId,
+                                         const string &attributes, const string &msg, int32_t msgType);
+
+    void makeBinaryDeviceId(const string &deviceId, string *binaryId);
+
+    void removeFromPendingChangeSets(const string &key);
+
+    int32_t processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &deviceId);
+
+    int32_t processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId, const string &binDeviceId, GroupChangeSet *ackSet);
+
+    int32_t processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, const string &binDeviceId, GroupChangeSet *ackSet);
+
+    int32_t processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, const string &binDeviceId, GroupChangeSet *ackSet);
+
+    int32_t processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId, GroupChangeSet *ackSet);
+
+        /**
      * @brief Helper function to create the JSON formatted supplementary message data.
      *
      * @param attachmentDesc The attachment descriptor of the message, may be empty

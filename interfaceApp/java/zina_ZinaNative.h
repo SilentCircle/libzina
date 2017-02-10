@@ -251,14 +251,6 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_applyGroupChangeSet
 
 /*
  * Class:     zina_ZinaNative
- * Method:    answerInvitation
- * Signature: ([BZ[B)I
- */
-JNIEXPORT jint JNICALL Java_zina_ZinaNative_answerInvitation
-  (JNIEnv *, jclass, jbyteArray, jboolean, jbyteArray);
-
-/*
- * Class:     zina_ZinaNative
  * Method:    sendGroupMessage
  * Signature: ([B[B[B)I
  */

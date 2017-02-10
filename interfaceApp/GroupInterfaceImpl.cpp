@@ -20,104 +20,52 @@ limitations under the License.
 // Created by werner on 22.05.16.
 //
 
+#include <cryptcommon/ZrtpRandom.h>
 #include "AppInterfaceImpl.h"
-
+#include "GroupProtocol.pb.h"
 #include "JsonStrings.h"
 #include "../util/Utilities.h"
 #include "../util/b64helper.h"
+#include "../vectorclock/VectorClock.h"
+#include "../vectorclock/VectorHelper.h"
 
 using namespace std;
 using namespace zina;
+using namespace vectorclock;
 
-
-static vector<string> tokens;
-
-static void storeRandomToken(const string &token)
-{
-    tokens.push_back(token);
-}
-
-// Check if a token exist, if yes remove it and return true.
-static bool checkRandomToken(const string& token)
-{
-    for (auto it = tokens.begin(); it != tokens.end(); ++it) {
-        if (token != *it)
-            continue;
-        tokens.erase(it);
-        return true;
-    }
-    return false;
-}
-
-static string getRandomToken()
-{
-    uuid_t randomToken = {0};
-    uuid_string_t tokenString = {0};
-
-    uuid_generate_random(randomToken);
-    uuid_unparse(randomToken, tokenString);
-    return string(tokenString);
-}
-
-static string inviteAnswerCmd(const cJSON* command, const string &user, bool accepted, const string &reason)
-{
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
-    cJSON* root = sharedRoot.get();
-    cJSON_AddStringToObject(root, GROUP_COMMAND, INVITE_ANSWER);
-    cJSON_AddStringToObject(root, GROUP_ID, Utilities::getJsonString(command, GROUP_ID, ""));
-    cJSON_AddStringToObject(root, MEMBER_ID, user.c_str());
-    cJSON_AddStringToObject(root, TOKEN, Utilities::getJsonString(command, TOKEN, ""));
-    cJSON_AddBoolToObject(root, ACCEPTED, accepted);
-
-    if (!accepted && !reason.empty())
-        cJSON_AddStringToObject(root, REASON, reason.c_str());
-
-    char *out = cJSON_PrintUnformatted(root);
-    string inviteCommand(out);
-    free(out);
-    return inviteCommand;
-}
-
-static void fillMemberArray(cJSON* root, shared_ptr<list<shared_ptr<cJSON> > > members)
+static void fillMemberArray(cJSON* root, list<string> &members)
 {
     LOGGER(INFO, __func__, " --> ");
     cJSON* memberArray;
     cJSON_AddItemToObject(root, MEMBERS, memberArray = cJSON_CreateArray());
 
-    // The member list is sorted by memberId
-    for (auto it = members->begin(); it != members->end(); ++it) {
-        cJSON_AddItemToArray(memberArray, cJSON_CreateString(Utilities::getJsonString(it->get(), MEMBER_ID, "")));
+    for (auto it = members.begin(); it != members.end(); ++it) {
+        cJSON_AddItemToArray(memberArray, cJSON_CreateString(it->c_str()));
     }
     LOGGER(INFO, __func__, " <-- ");
 }
 
-static string prepareListAnswer(const string &groupId, const string &sender, const string& token,
-                                           shared_ptr<list<shared_ptr<cJSON> > > members, bool initial)
-{
-    shared_ptr<cJSON> sharedAnswer(cJSON_CreateObject(), cJSON_deleter);
-    cJSON* answer = sharedAnswer.get();
+static string prepareMemberList(const string &groupId, list<string> &members, const char *command) {
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
 
-    cJSON_AddStringToObject(answer, GROUP_COMMAND, MEMBER_LIST);
-    cJSON_AddStringToObject(answer, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(answer, MEMBER_ID,  sender.c_str());
-    cJSON_AddBoolToObject(answer, INITIAL_LIST, initial);
-    if (initial)
-        cJSON_AddStringToObject(answer, TOKEN, token.c_str());
+    cJSON_AddStringToObject(root, GROUP_COMMAND, command);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
 
-    fillMemberArray(answer, members);
+    fillMemberArray(root, members);
 
-    char *out = cJSON_PrintUnformatted(answer);
+    char *out = cJSON_PrintUnformatted(root);
     string listCommand(out);
     free(out);
 
     return listCommand;
 }
 
-static string leaveNotMemberCommand(const string& groupId, const string& memberId, bool leaveCommand)
+static string leaveCommand(const string& groupId, const string& memberId)
 {
     shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
     cJSON* root = sharedRoot.get();
-    cJSON_AddStringToObject(root, GROUP_COMMAND, leaveCommand ? LEAVE : NOT_MEMBER);
+    cJSON_AddStringToObject(root, GROUP_COMMAND, LEAVE);
     cJSON_AddStringToObject(root, MEMBER_ID, memberId.c_str());
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
 
@@ -128,15 +76,12 @@ static string leaveNotMemberCommand(const string& groupId, const string& memberI
     return command;
 }
 
-static string syncNewGroupCommand(const string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers)
+static string newGroupCommand(const string& groupId, int32_t maxMembers)
 {
     shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
     cJSON* root = sharedRoot.get();
-    cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_GROUP_SYNC);
+    cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_GROUP);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(root, GROUP_NAME, groupName.c_str());
-    cJSON_AddStringToObject(root, GROUP_DESC, groupDescription.c_str());
-    cJSON_AddStringToObject(root, GROUP_OWNER, owner.c_str());
     cJSON_AddNumberToObject(root, GROUP_MAX_MEMBERS, maxMembers);
 
     char *out = cJSON_PrintUnformatted(root);
@@ -146,80 +91,81 @@ static string syncNewGroupCommand(const string& groupId, string& groupName, stri
     return command;
 }
 
-// Request a list of known members from another client. The request contains the list of members known
-// by the rquester
-static string requestMemberList(const string& groupId, string& requester, shared_ptr<list<shared_ptr<cJSON> > > members)
+static string newGroupNameCommand(const string& groupId, const string& groupName)
 {
     shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
     cJSON* root = sharedRoot.get();
-
-    cJSON_AddStringToObject(root, GROUP_COMMAND, REQ_MEMBER_LIST);
-    cJSON_AddStringToObject(root, MEMBER_ID, requester.c_str());
-    string token = getRandomToken();
-    storeRandomToken(token);
-    cJSON_AddStringToObject(root, TOKEN, token.c_str());
-
-    fillMemberArray(root, members);
+    cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_NAME);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(root, GROUP_NAME, groupName.c_str());
 
     char *out = cJSON_PrintUnformatted(root);
-    string result(out);
+    string command(out);
     free(out);
 
-    return result;
+    return command;
 }
 
-static string listHashB64(const string& groupId, SQLiteStoreConv* store)
+static string newGroupAvatarCommand(const string& groupId, const string& groupAvatar)
 {
-    // Compute the member list hash and add it to the message attribute
-    uint8_t hash[32];
-    store->memberListHash(groupId, hash);
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+    cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_AVATAR);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(root, GROUP_AVATAR, groupAvatar.c_str());
 
-    char b64Hash[64];
-    b64Encode(hash, 32, b64Hash, 63);
-    return string(b64Hash);
+    char *out = cJSON_PrintUnformatted(root);
+    string command(out);
+    free(out);
 
+    return command;
 }
 
-int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
+static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32_t burnMode)
 {
-    LOGGER(INFO, __func__, " --> ");
+    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+    cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_BURN);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddNumberToObject(root, GROUP_BURN_SEC, burnTime);
+    cJSON_AddNumberToObject(root, GROUP_BURN_MODE, burnMode);
 
-    int32_t returnCode = OK;
-    int32_t result = store_->deleteAllMembers(groupId);
-    if (SQL_FAIL(result)) {
-        LOGGER(ERROR, __func__, "Could not delete all members of group: ", groupId, ", SQL code: ", result);
-        // Try to deactivate group at least
-        store_->clearGroupAttribute(groupId, ACTIVE);
-        store_->setGroupAttribute(groupId, INACTIVE);
-        returnCode = GROUP_ERROR_BASE + result;
+    char *out = cJSON_PrintUnformatted(root);
+    string command(out);
+    free(out);
+
+    return command;
+}
+
+static int32_t serializeAckSet(const GroupChangeSet ackSet, string *attributes)
+{
+
+    string serialized;
+    if (!ackSet.SerializeToString(&serialized)) {
+        return GENERIC_ERROR;
     }
-    if (returnCode == OK) {
-        result = store_->deleteGroup(groupId);
-        if (SQL_FAIL(result)) {
-            LOGGER(ERROR, __func__, "Could not delete group: ", groupId, ", SQL code: ", result);
-            // Try to deactivate group at least
-            store_->clearGroupAttribute(groupId, ACTIVE);
-            store_->setGroupAttribute(groupId, INACTIVE);
-            returnCode = GROUP_ERROR_BASE + result;
-        }
+    size_t b64Size = static_cast<size_t>(serialized.size() * 2);
+    unique_ptr<char[]> b64Buffer(new char[b64Size]);
+    if (b64Encode(reinterpret_cast<const uint8_t *>(serialized.data()), serialized.size(), b64Buffer.get(), b64Size) == 0) {
+        return GENERIC_ERROR;
     }
-    return returnCode;
+
+    cJSON* root = cJSON_CreateObject();
+    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+
+    string serializedSet;
+    serializedSet.assign(b64Buffer.get());
+
+    if (!serializedSet.empty()) {
+        cJSON_AddStringToObject(root, GROUP_CHANGE_SET, serializedSet.c_str());
+    }
+    char* out = cJSON_PrintUnformatted(root);
+    attributes->assign(out); free(out);
+    return SUCCESS;
 }
 
 // ****** Public instance functions
 // *******************************************************
-
-int32_t AppInterfaceImpl::createInvitedGroup(string& groupId, string& groupName, string& groupDescription, string& owner, int32_t maxMembers)
-{
-    LOGGER(INFO, __func__, " -->");
-    int32_t result = store_->insertGroup(groupId, groupName,  owner, groupDescription, maxMembers);
-
-    // Add myself to the new group, this saves us a "send to sibling" group function
-    store_->insertMember(groupId, ownUser_);
-
-    LOGGER(INFO, __func__, " <--");
-    return SUCCESS;
-}
 
 bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
 {
@@ -257,96 +203,6 @@ bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
     return true;
 }
 
-//int32_t AppInterfaceImpl::inviteUser(string& groupUuid, string& userId)
-//{
-//    LOGGER(INFO, __func__, " -->");
-//    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-//    if (!store->isReady()) {
-//        errorInfo_ = " Conversation store not ready.";
-//        LOGGER(ERROR, __func__, errorInfo_);
-//        return false;
-//    }
-//
-//    int32_t result;
-//    shared_ptr<cJSON> group = store->listGroup(groupUuid, &result);
-//    if (!group || SQL_FAIL(result)) {
-//        errorInfo_ = " Cannot get group data: ";
-//        errorInfo_.append(groupUuid);
-//        LOGGER(ERROR, __func__, errorInfo_);
-//        return GROUP_ERROR_BASE + result;
-//    }
-//    cJSON* root = group.get();
-//    int32_t members = Utilities::getJsonInt(root, GROUP_MEMBER_COUNT, 1);
-//    int32_t maxMembers = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
-//
-//    if (members >= maxMembers) {
-//        errorInfo_ = " Member limit reached.";
-//        LOGGER(ERROR, __func__, errorInfo_);
-//        return MAX_MEMBERS_REACHED;
-//    }
-//    cJSON_DeleteItemFromObject(root, GROUP_MOD_TIME);
-//
-//    string tokenString = getRandomToken();
-//    storeRandomToken(tokenString);
-//
-//    cJSON_AddStringToObject(root, GROUP_COMMAND, INVITE);
-//    cJSON_AddStringToObject(root, TOKEN, tokenString.c_str());
-//    cJSON_AddStringToObject(root, MEMBER_ID, ownUser_.c_str());     // which member sends the Invite
-//
-//    char *out = cJSON_PrintUnformatted(root);
-//    string inviteCommand(out);
-//    free(out);
-//
-//    LOGGER(INFO, __func__, " <--");
-//    return sendGroupCommand(userId, generateMsgIdTime(), inviteCommand);
-//}
-
-int32_t AppInterfaceImpl::answerInvitation(const string &command, bool accept, const string &reason)
-{
-    LOGGER(INFO, __func__, " -->");
-
-    if (command.empty()) {
-        return GROUP_CMD_MISSING_DATA;
-    }
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(command.c_str()), cJSON_deleter);
-    cJSON* root = sharedRoot.get();
-
-    string invitingUser(Utilities::getJsonString(root, MEMBER_ID, ""));
-    if (!accept) {
-        return sendGroupCommand(invitingUser, generateMsgIdTime(),
-                                inviteAnswerCmd(root, ownUser_, accept, reason));
-    }
-
-    // User accepted invitation, get necessary data and create group data in database
-    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    string groupName(Utilities::getJsonString(root, GROUP_NAME, ""));
-    string description(Utilities::getJsonString(root, GROUP_DESC, ""));
-    string owner(Utilities::getJsonString(root, GROUP_OWNER, ""));
-    int32_t maxMember = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
-    if (maxMember <= 0 || maxMember > MAXIMUM_GROUP_SIZE)
-        return MAX_MEMBERS_REACHED;
-
-    createInvitedGroup(groupId, groupName, description, owner, maxMember);
-
-    // If this is a invite-sync command then just return, all necessary actions done.
-    string grpCmd(Utilities::getJsonString(root, GROUP_COMMAND, ""));
-    if (grpCmd.compare(INVITE_SYNC) == 0) {
-        return OK;
-    }
-    string messageId = generateMsgIdTime();
-
-    // Prepare invite-sync and sync the sibling devices
-    cJSON_ReplaceItemInObject(root, GROUP_COMMAND, cJSON_CreateString(INVITE_SYNC));
-    char *out = cJSON_PrintUnformatted(root);
-    string inviteSyncCommand(out);
-    free(out);
-    sendGroupCommand(ownUser_, messageId, inviteSyncCommand);
-
-    // Now send the accept message to the inviting user
-    return sendGroupCommand(invitingUser, messageId,
-                            inviteAnswerCmd(root, ownUser_, accept, reason));
-}
-
 int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, const string &attachmentDescriptor,
                                            const string &messageAttributes) {
     string groupId;
@@ -354,37 +210,34 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     string message;
 
     LOGGER(INFO, __func__, " -->");
-    int32_t returnCode = parseMsgDescriptor(messageDescriptor, &groupId, &msgId, &message);
-    if (returnCode < 0) {
-        errorCode_ = returnCode;
-        LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", returnCode);
-        return returnCode;
+    int32_t result = parseMsgDescriptor(messageDescriptor, &groupId, &msgId, &message);
+    if (result < 0) {
+        errorCode_ = result;
+        LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", result);
+        return result;
     }
     if (!store_->hasGroup(groupId) || ((store_->getGroupAttribute(groupId).first & ACTIVE) != ACTIVE)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
 
-    string b64Hash = listHashB64(groupId, store_);
     cJSON* root = !messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject();
     shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
 
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(root, LIST_HASH, b64Hash.c_str());
-
-    returnCode = prepareChangeSetSend(groupId);
-    if (returnCode < 0) {
-        errorCode_ = returnCode;
-        errorInfo_ = "Error preparing group change set";
-        LOGGER(ERROR, __func__, " Error preparing group change set, error code: ", returnCode);
-        return returnCode;
-    }
 
     char *out = cJSON_PrintUnformatted(root);
     string newAttributes(out);
     free(out);
 
-    int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
+    result = prepareChangeSetSend(groupId);
+    if (result < 0) {
+        errorCode_ = result;
+        errorInfo_ = "Error preparing group change set";
+        LOGGER(ERROR, __func__, " Error preparing group change set, error code: ", result);
+        return result;
+    }
+
+    auto members = store_->getAllGroupMembers(groupId, &result);
     size_t membersFound = members->size();
     for (; !members->empty(); members->pop_front()) {
         string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
@@ -425,74 +278,654 @@ int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const strin
 // ******************************************************
 
 int32_t AppInterfaceImpl::processGroupMessage(int32_t msgType, const string &msgDescriptor,
-                                              const string &attachmentDescr, const string &attributesDescr)
+                                              const string &attachmentDescr, string *attributesDescr)
 {
     LOGGER(INFO, __func__, " -->");
 
     if (msgType == GROUP_MSG_CMD) {
-        return processGroupCommand(attributesDescr);
+        return processGroupCommand(msgDescriptor, attributesDescr);
     }
     if (msgType == GROUP_MSG_NORMAL && msgDescriptor.empty()) {
         return GROUP_MSG_DATA_INCONSISTENT;
     }
-    if (checkActiveAndHash(msgDescriptor, attributesDescr)) {
-        groupMsgCallback_(msgDescriptor, attachmentDescr, attributesDescr);
+    if (checkAndProcessChangeSet(msgDescriptor, attributesDescr)) {
+        groupMsgCallback_(msgDescriptor, attachmentDescr, *attributesDescr);
     }
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::processGroupCommand(const string& commandIn)
+int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, string *commandIn)
 {
     LOGGER(INFO, __func__, " --> ", commandIn);
 
-    if (commandIn.empty()) {
+    if (commandIn->empty()) {
         return GROUP_CMD_MISSING_DATA;
     }
-    // wrap the cJSON root into a shared pointer with custom cJSON deleter, this
-    // will always free the cJSON root when we leave the function :-) .
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(commandIn.c_str()), cJSON_deleter);
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(commandIn->c_str()), cJSON_deleter);
     cJSON* root = sharedRoot.get();
-    string groupCommand(Utilities::getJsonString(root, GROUP_COMMAND, ""));
-    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
 
+    if (Utilities::hasJsonKey(root, GROUP_CHANGE_SET)) {
+        return checkAndProcessChangeSet(msgDescriptor, commandIn);
+    }
+
+    string groupCommand(Utilities::getJsonString(root, GROUP_COMMAND, ""));
     if (groupCommand.empty()) {
         return GROUP_CMD_DATA_INCONSISTENT;
     }
-    if (groupCommand.compare(INVITE) == 0) {
-        if (store_->hasGroup(groupId) && ((store_->getGroupAttribute(groupId).first & ACTIVE) == ACTIVE)) {
-            LOGGER(INFO, __func__, " <-- Group exists: ", groupId);
-            return OK;
-        }
-        groupCmdCallback_(commandIn);
-    } else if (groupCommand.compare(NEW_GROUP_SYNC) == 0) {
-        syncNewGroup(root);
-    } else if (groupCommand.compare(INVITE_SYNC) == 0) {
-        answerInvitation(commandIn, true, Empty);
-        groupCmdCallback_(commandIn);
-    } else if (groupCommand.compare(INVITE_ANSWER) == 0) {
-        groupCmdCallback_(commandIn);
-        bool accepted = Utilities::getJsonBool(root, ACCEPTED, false);
-        if (accepted) {
-            invitationAccepted(root);
-        }
-    } else if (groupCommand.compare(MEMBER_LIST) == 0) {
-        processMemberListAnswer(root);
-        groupCmdCallback_(commandIn);
-    } else if (groupCommand.compare(REQ_MEMBER_LIST) == 0) {
-        createMemberListAnswer(root);
-    } else if (groupCommand.compare(LEAVE) == 0 || groupCommand.compare(NOT_MEMBER) == 0) {
-        processLeaveGroupCommand(root);
-        groupCmdCallback_(commandIn);
-    } else if (groupCommand.compare(HELLO) == 0) {
-        groupCmdCallback_(commandIn);
-        processHelloCommand(root);
-    } else if (groupCommand.compare(REMOVE_MSG) == 0) {
-        groupCmdCallback_(commandIn);
+    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
+
+    if (groupCommand.compare(REMOVE_MSG) == 0) {
+        groupCmdCallback_(*commandIn);
     }
     LOGGER(INFO, __func__, " <--");
-    return OK;
+    return SUCCESS;
 }
+
+bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    // Get the member list hash computed by sender of message
+    shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageAttributes->c_str()), cJSON_deleter);
+    cJSON* root = sharedRoot.get();
+    string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
+    if (changeSetString.empty()) {
+        return true;
+    }
+    if (changeSetString.size() > tempBufferSize_) {
+        delete[] tempBuffer_;
+        tempBuffer_ = new char[changeSetString.size()];
+        tempBufferSize_ = changeSetString.size();
+    }
+    size_t binLength = b64Decode(changeSetString.data(), changeSetString.size(), (uint8_t *) tempBuffer_,
+                                 tempBufferSize_);
+    if (binLength == 0) {
+        LOGGER(ERROR, __func__, "Base64 decoding of group change set failed.");
+        return false;
+    }
+    // Remove the long change set b64 data
+    cJSON_DeleteItemFromObject(root, GROUP_CHANGE_SET);
+    char *out = cJSON_PrintUnformatted(root);
+    messageAttributes->assign(out);
+    free(out);
+
+    GroupChangeSet changeSet;
+    if (!changeSet.ParseFromArray(tempBuffer_, static_cast<int32_t>(binLength))) {
+        LOGGER(ERROR, __func__, "ProtoBuffer decoding of group change set failed.");
+        return false;
+    }
+    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
+
+    // Get the message sender info
+    sharedRoot = shared_ptr<cJSON>(cJSON_Parse(msgDescriptor.c_str()), cJSON_deleter);
+    root = sharedRoot.get();
+    string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
+    string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
+
+    int32_t result = processReceivedChangeSet(changeSet, groupId, sender, deviceId);
+    if (result != SUCCESS) {
+        // TODO: add state callback to inform user about problem
+        return false;
+    }
+    LOGGER(INFO, __func__, " <-- ");
+    return true;
+}
+
+int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, const string &deviceId)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    bool fromSibling = sender == getOwnUser();
+    bool hasGroup = store_->hasGroup(groupId);
+
+    // If all this is true then our user left the group, triggered it on a sibling device
+    if (fromSibling && hasGroup &&
+            changeSet.has_updatermmember() &&
+            changeSet.updatermmember().rmmember_size() == 1 &&
+            changeSet.updatermmember().rmmember(0).user_id() == getOwnUser()) {
+
+        const int32_t result = processLeaveGroup(groupId, getOwnUser(), true);
+        if (result != SUCCESS) {
+            errorCode_ = result;
+            errorInfo_ = "Sibling: cannot remove group.";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        groupCmdCallback_(leaveCommand(groupId, getOwnUser()));
+        return result;
+    }
+
+    // Implicitly create a new group if it does not exist yet and we should add a member to it
+    // Works the same for sibling devices and other member devices
+    if (!hasGroup && changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) {
+        string callbackCmd;
+        const int32_t result = insertNewGroup(groupId, changeSet, &callbackCmd);
+        if (result != SUCCESS) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot add new group.";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        hasGroup = true;
+        groupCmdCallback_(callbackCmd);
+    }
+
+    // No such group but some group related update for it? Inform sender that we don't have
+    // this group and ask to remove me. No ACK processing
+    if (!hasGroup && (changeSet.has_updateavatar() || changeSet.has_updateburn() || changeSet.has_updatename()
+                      || changeSet.has_updatermmember() || changeSet.acks_size() > 0)) {
+
+        // If we don't know this group and asked to remove ourselves from it, just ignore it. It's
+        // a loop breaker in case of unusual race conditions.
+        if (changeSet.updatermmember().rmmember_size() == 1 &&
+                changeSet.updatermmember().rmmember(0).user_id() == getOwnUser()) {
+            return SUCCESS;
+        }
+        const int32_t result = removeUser(groupId, getOwnUser(), true /*allowOwnUser*/);
+        if (result != SUCCESS) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot remove own user on unexpected group change set.";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        LOGGER(INFO, __func__, " <-- unexpected group change set");
+        // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
+        return sendGroupMessageToUserDevice(groupId, sender, deviceId, Empty, Empty, GROUP_MSG_CMD);
+    }
+    string binDeviceId;
+    makeBinaryDeviceId(deviceId, &binDeviceId);
+
+    if (changeSet.acks_size() > 0) {
+        // Process ACKs from partners and siblings
+        const int32_t result = processAcks(changeSet, groupId, binDeviceId);
+        if (result != SUCCESS) {
+            return result;
+        }
+    }
+
+    GroupChangeSet ackSet;              // Gathers all ACKs
+
+    if (changeSet.has_updatename()) {
+        // Update the group's name
+        const int32_t result = processUpdateName(changeSet.updatename(), groupId, binDeviceId, &ackSet);
+        if (result != SUCCESS) {
+            return result;
+        }
+    }
+    if (changeSet.has_updateavatar()) {
+        // Update the group's avatar info
+        const int32_t result = processUpdateAvatar(changeSet.updateavatar(), groupId, binDeviceId, &ackSet);
+        if (result != SUCCESS) {
+            return result;
+        }
+    }
+    if (changeSet.has_updateburn()) {
+        // Update the group's burn timer info
+        const int32_t result = processUpdateBurn(changeSet.updateburn(), groupId, binDeviceId, &ackSet);
+        if (result != SUCCESS) {
+            return result;
+        }
+    }
+    if ((changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) ||
+        (changeSet.has_updatermmember() && changeSet.updatermmember().rmmember_size() > 0)) {
+
+        const int32_t result = processUpdateMembers(changeSet, groupId, &ackSet);
+        if (result != SUCCESS) {
+            return result;
+        }
+    }
+
+    if (ackSet.acks_size() > 0) {
+        string attributes;
+        int32_t result = serializeAckSet(ackSet, &attributes);
+        if (result != SUCCESS) {
+            return result;
+        }
+#ifndef UNITTESTS
+        // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
+        result = sendGroupMessageToUserDevice(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
+        if (result != SUCCESS) {
+            return result;
+        }
+#endif
+    }
+    LOGGER(INFO, __func__, " <-- ");
+    return SUCCESS;
+}
+
+int32_t AppInterfaceImpl::processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &binDeviceId)
+{
+    // Clean old wait-for-ack records before processing ACKs. This enables proper cleanup of pending change sets
+    time_t timestamp = time(0) - MK_STORE_TIME;
+    store_->cleanWaitAck(timestamp);
+
+    const int32_t numAcks = changeSet.acks_size();
+
+    for (int32_t i = 0; i < numAcks; i++) {
+        const GroupUpdateAck &ack = changeSet.acks(i);
+
+        const GroupUpdateType type = ack.type();
+        const string &updateId = ack.update_id();
+        store_->removeWaitAck(groupId, binDeviceId, updateId, type);
+
+        // After removing an wait-for-ack record check if we still have an record for the (groupId, updateId)
+        // tuple. If not then all devices sent an ack for the update types and we can remove the pending change set.
+        int32_t result;
+        const bool moreChangeSets = store_->hasWaitAckGroupUpdate(groupId, updateId, &result);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Error checking remaining group change sets";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        if (!moreChangeSets) {
+            string key;
+            key.assign(updateId).append(groupId);
+            removeFromPendingChangeSets(key);
+        }
+    }
+    return SUCCESS;
+}
+
+static Ordering resolveConflict(const VectorClock<string> &remoteVc, const VectorClock<string> &localVc,
+                         const string &updateIdRemote, const string &updateIdLocal)
+{
+    const int64_t remoteSum = remoteVc.sumOfValues();
+    const int64_t localSum = localVc.sumOfValues();
+
+    if (remoteSum == localSum) {
+        return updateIdRemote > updateIdLocal ? After : Before;
+    }
+    return remoteSum > localSum ? After : Before;
+}
+
+int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId,
+                                            const string &binDeviceId, GroupChangeSet *ackSet)
+{
+    const string &updateIdRemote = changeSet.update_id();
+
+    VectorClock<string> remoteVc;
+    deserializeVectorClock(changeSet.vclock(), &remoteVc);
+
+    LocalVClock lvc;                    // the serialized proto-buffer representation
+    VectorClock<string> localVc;
+
+    int32_t result = readLocalVectorClock(*store_, groupId, GROUP_SET_NAME, &lvc);
+    if (result == SUCCESS) {        // we may not yet have a vector clock for this group update type, thus deserialize on SUCCESS only
+        deserializeVectorClock(lvc.vclock(), &localVc);
+    }
+
+    bool hasConflict = false;
+    Ordering order = remoteVc.compare(localVc);
+    if (order == Concurrent) {
+        hasConflict = true;
+        const string &updateIdLocal = lvc.update_id();
+        order = resolveConflict(remoteVc, localVc, updateIdRemote, updateIdLocal);
+    }
+
+    // Remote clock is bigger than local, thus remote data is more recent than local data. Update our group
+    // data, our local vector clock and return an ACK
+    // In case of a conflict the conflict resolution favoured the remote data
+    if (order == After) {
+        const string &groupName = changeSet.name();
+        result = store_->setGroupName(groupId, groupName);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot update group name";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        // Serialize and store the remote vector clock as our new local vector clock because the remote clock
+        // reflects the latest changes.
+        lvc.set_update_id(updateIdRemote.data(), UPDATE_ID_LENGTH);
+        serializeVectorClock(remoteVc, lvc.mutable_vclock());
+
+        result = storeLocalVectorClock(*store_, groupId, GROUP_SET_NAME, lvc);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Group set name: Cannot store new local vector clock";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        GroupUpdateAck *ack = ackSet->add_acks();
+        ack->set_update_id(updateIdRemote);
+        ack->set_type(GROUP_SET_NAME);
+        ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
+
+        groupCmdCallback_(newGroupNameCommand(groupId, groupName));
+        return SUCCESS;
+    }
+    GroupUpdateAck *ack = ackSet->add_acks();
+    ack->set_update_id(updateIdRemote);
+    ack->set_type(GROUP_SET_NAME);
+
+    // The local data is more recent than the remote data. No need to change any data, just return an ACK
+    // In case of a conflict the conflict resolution favoured the local data
+    if (order == Before) {
+        ack->set_result(hasConflict ? REJECTED_CONFLICT : REJECTED_PAST);
+        return SUCCESS;
+    }
+    // The local data is more recent than the remote data (remote change was _before_ ours). No need to
+    // change any data, just return an ACK
+    if (order == Equal) {
+        ack->set_result(REJECTED_NOP);
+        return SUCCESS;
+    }
+    return GENERIC_ERROR;
+}
+
+int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId,
+                                              const string &binDeviceId, GroupChangeSet *ackSet)
+{
+    const string &updateIdRemote = changeSet.update_id();
+
+    VectorClock<string> remoteVc;
+    deserializeVectorClock(changeSet.vclock(), &remoteVc);
+
+    LocalVClock lvc;                    // the serialized proto-buffer representation
+    VectorClock<string> localVc;
+
+    int32_t result = readLocalVectorClock(*store_, groupId, GROUP_SET_AVATAR, &lvc);
+    if (result == SUCCESS) {        // we may not yet have a vector clock for this group update type, thus deserialize on SUCCESS only
+        deserializeVectorClock(lvc.vclock(), &localVc);
+    }
+
+    bool hasConflict = false;
+    Ordering order = remoteVc.compare(localVc);
+    if (order == Concurrent) {
+        hasConflict = true;
+        const string &updateIdLocal = lvc.update_id();
+        order = resolveConflict(remoteVc, localVc, updateIdRemote, updateIdLocal);
+    }
+
+    // Remote clock is bigger than local, thus remote data is more recent than local data. Update our group
+    // data, our local vector clock and return an ACK
+    // In case of a conflict the conflict resolution favoured the remote data
+    if (order == After) {
+        const string &groupAvatar = changeSet.avatar();
+        result = store_->setGroupAvatarInfo(groupId, groupAvatar);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot update group avatar info";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        // Serialize and store the remote vector clock as our new local vector clock because the remote clock
+        // reflects the latest changes.
+        lvc.set_update_id(updateIdRemote.data(), UPDATE_ID_LENGTH);
+        serializeVectorClock(remoteVc, lvc.mutable_vclock());
+
+        result = storeLocalVectorClock(*store_, groupId, GROUP_SET_AVATAR, lvc);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Group set avatar: Cannot store new local vector clock";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        GroupUpdateAck *ack = ackSet->add_acks();
+        ack->set_update_id(updateIdRemote);
+        ack->set_type(GROUP_SET_AVATAR);
+        ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
+
+        groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar));
+        return SUCCESS;
+    }
+    GroupUpdateAck *ack = ackSet->add_acks();
+    ack->set_update_id(updateIdRemote);
+    ack->set_type(GROUP_SET_AVATAR);
+
+    // The local data is more recent than the remote data. No need to change any data, just return an ACK
+    // In case of a conflict the conflict resolution favoured the local data
+    if (order == Before) {
+        ack->set_result(hasConflict ? REJECTED_CONFLICT : REJECTED_PAST);
+        return SUCCESS;
+    }
+    // The local data is more recent than the remote data (remote change was _before_ ours). No need to
+    // change any data, just return an ACK
+    if (order == Equal) {
+        ack->set_result(REJECTED_NOP);
+        return SUCCESS;
+    }
+    return GENERIC_ERROR;
+}
+
+int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId,
+                                            const string &binDeviceId, GroupChangeSet *ackSet)
+{
+    const string &updateIdRemote = changeSet.update_id();
+
+    VectorClock<string> remoteVc;
+    deserializeVectorClock(changeSet.vclock(), &remoteVc);
+
+    LocalVClock lvc;                    // the serialized proto-buffer representation
+    VectorClock<string> localVc;
+
+    int32_t result = readLocalVectorClock(*store_, groupId, GROUP_SET_BURN, &lvc);
+    if (result == SUCCESS) {        // we may not yet have a vector clock for this group update type, thus deserialize on SUCCESS only
+        deserializeVectorClock(lvc.vclock(), &localVc);
+    }
+
+    bool hasConflict = false;
+    Ordering order = remoteVc.compare(localVc);
+
+    // The vector clocks are siblings, not descendent, thus we need to resolve the conflict
+    if (order == Concurrent) {
+        hasConflict = true;
+        const string &updateIdLocal = lvc.update_id();
+        order = resolveConflict(remoteVc, localVc, updateIdRemote, updateIdLocal);
+    }
+
+    // Remote clock is bigger than local, thus remote data is more recent than local data. Update our group
+    // data, our local vector clock and return an ACK
+    // In case of a conflict the conflict resolution favoured the remote data
+    if (order == After) {
+        const int64_t burnTime = changeSet.burn_ttl_sec();
+        const int32_t burnMode = changeSet.burn_mode();
+        result = store_->setGroupBurnTime(groupId, burnTime, burnMode);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot update group avatar info";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        // Serialize and store the remote vector clock as our new local vector clock because the remote clock
+        // reflects the latest changes.
+        lvc.set_update_id(updateIdRemote.data(), UPDATE_ID_LENGTH);
+        serializeVectorClock(remoteVc, lvc.mutable_vclock());
+
+        result = storeLocalVectorClock(*store_, groupId, GROUP_SET_BURN, lvc);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Group set avatar: Cannot store new local vector clock";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        GroupUpdateAck *ack = ackSet->add_acks();
+        ack->set_update_id(updateIdRemote);
+        ack->set_type(GROUP_SET_BURN);
+        ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
+
+        groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode));
+        return SUCCESS;
+    }
+    GroupUpdateAck *ack = ackSet->add_acks();
+    ack->set_update_id(updateIdRemote);
+    ack->set_type(GROUP_SET_BURN);
+
+    // The local data is more recent than the remote data. No need to change any data, just return an ACK
+    // In case of a conflict the conflict resolution favoured the local data
+    if (order == Before) {
+        ack->set_result(hasConflict ? REJECTED_CONFLICT : REJECTED_PAST);
+        return SUCCESS;
+    }
+    // The local data is more recent than the remote data (remote change was _before_ ours). No need to
+    // change any data, just return an ACK
+    if (order == Equal) {
+        ack->set_result(REJECTED_NOP);
+        return SUCCESS;
+    }
+    return GENERIC_ERROR;
+}
+
+int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId,
+                                               GroupChangeSet *ackSet) {
+
+    // The function first processes the add member update, then remove member. It removes member
+    // from the add member list if the member is also in the remove member update.
+    list<string> addMembers;
+    if (changeSet.has_updateaddmember()) {
+        // We always send back an ACK
+        GroupUpdateAck *ack = ackSet->add_acks();
+        ack->set_update_id(changeSet.updateaddmember().update_id());
+        ack->set_type(GROUP_ADD_MEMBER);
+        ack->set_result(ACCEPTED_OK);
+
+        const int32_t size = changeSet.updateaddmember().addmember_size();
+        for (int32_t i = 0; i < size; i++) {
+            const string &name = changeSet.updateaddmember().addmember(i).user_id();
+            addMembers.push_back(name);
+        }
+    }
+
+    list<string> rmMembers;
+    if (changeSet.has_updatermmember()) {
+        // We always send back an ACK
+        GroupUpdateAck *ack = ackSet->add_acks();
+        ack->set_update_id(changeSet.updatermmember().update_id());
+        ack->set_type(GROUP_REMOVE_MEMBER);
+        ack->set_result(ACCEPTED_OK);
+
+        const int32_t size = changeSet.updatermmember().rmmember_size();
+        for (int32_t i = 0; i < size; i++) {
+            const string &name = changeSet.updatermmember().rmmember(i).user_id();
+            rmMembers.push_back(name);
+
+            if (addMembers.empty()) {
+                continue;
+            }
+            auto end = addMembers.end();
+            for (auto it = addMembers.begin(); it != end; ++it) {
+                if (*it == name) {
+                    addMembers.erase(it);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Now iterate over the add member list, check existence of the member. If we already
+    // know the member, remove it from the add member list. Otherwise add it to the member table
+    auto end = addMembers.end();
+    for (auto it = addMembers.begin(); it != end; ) {
+        int32_t result;
+        bool isMember = store_->isMemberOfGroup(groupId, *it, &result);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot check group membership";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        // already a member, remove from list
+        if (isMember) {
+            it = addMembers.erase(it);
+            continue;
+        }
+        result = store_->insertMember(groupId, *it);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot add new group member";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        ++it;
+    }
+
+    // Now iterate over the remove member list, check existence of the member. If we don't
+    // know the member, remove it from the remove member list. Otherwise remove it from the member table
+    end = rmMembers.end();
+    for (auto it = rmMembers.begin(); it != end; ) {
+        int32_t result;
+        bool isMember = store_->isMemberOfGroup(groupId, *it, &result);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot check group membership";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        // Unknown member, no need to remove it
+        if (!isMember) {
+            it = rmMembers.erase(it);
+            continue;
+        }
+        result = store_->insertMember(groupId, *it);
+        if (SQL_FAIL(result)) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot remove group member";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        ++it;
+    }
+    if (!addMembers.empty()) {
+        groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS));
+    }
+
+    if (!rmMembers.empty()) {
+        groupCmdCallback_(prepareMemberList(groupId, addMembers, RM_MEMBERS));
+    }
+    return SUCCESS;
+}
+
+int32_t AppInterfaceImpl::sendGroupMessageToUserDevice(const string &groupId, const string &userId,
+                                                       const string &deviceId, const string &attributes,
+                                                       const string &msg, int32_t msgType)
+{
+    LOGGER(INFO, __func__, " -->");
+
+    cJSON* root = !attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject();
+    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    char *out = cJSON_PrintUnformatted(root);
+    string newAttributes(out);
+    free(out);
+
+    int32_t result = prepareChangeSetSend(groupId);
+    if (result < 0) {
+        errorCode_ = result;
+        errorInfo_ = "Error preparing group change set";
+        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+        return result;
+    }
+
+    const string msgId = generateMsgIdTime();
+
+    int64_t transportMsgId;
+    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
+
+    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
+    transportMsgId &= ~0xff;
+
+    auto msgInfo = make_shared<CmdQueueInfo>();
+    msgInfo->command = SendMessage;
+    msgInfo->queueInfo_recipient = userId;
+    msgInfo->queueInfo_deviceName = Empty;                      // Not relevant in this case, we send to a known user
+    msgInfo->queueInfo_deviceId = deviceId;                     // to this user device
+    msgInfo->queueInfo_msgId = msgId;
+    msgInfo->queueInfo_message = createMessageDescriptor(groupId, msgId, msg);
+    msgInfo->queueInfo_attachment = Empty;
+    msgInfo->queueInfo_attributes = newAttributes;              // message attributes
+    msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(msgType);
+    msgInfo->queueInfo_toSibling = userId == getOwnUser();
+    msgInfo->queueInfo_newUserDevice = false;                   // known user, known device
+    queuePreparedMessage(msgInfo);
+    doSendSingleMessage(msgInfo->queueInfo_transportMsgId);
+
+    LOGGER(INFO, __func__, " <-- ");
+    return SUCCESS;
+}
+
 
 int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command) {
     LOGGER(INFO, __func__, " --> ");
@@ -527,176 +960,6 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
     return OK;
 }
 
-int32_t AppInterfaceImpl::invitationAccepted(const cJSON *root)
-{
-    LOGGER(INFO, __func__, " --> ");
-
-    int32_t result;
-    const string token(Utilities::getJsonString(root, TOKEN, ""));
-
-    if (!checkRandomToken(token)) {
-        LOGGER(INFO, __func__, " <-- No token");
-        return OK;
-    }
-    const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    const string invitedMember(Utilities::getJsonString(root, MEMBER_ID, ""));
-
-    // Insert the new group member in our database
-    if (!store_->isMemberOfGroup(groupId, invitedMember))
-        store_->insertMember(groupId, invitedMember);
-
-    // Get all known members of the group including the new member and prepare the member list data
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-    const string listCommand = prepareListAnswer(groupId, ownUser_, Empty, members, true);
-
-    sendGroupCommandToAll(groupId, generateMsgIdTime(), listCommand);
-
-    LOGGER(INFO, __func__, " <-- ", listCommand);
-    return OK;
-}
-
-int32_t AppInterfaceImpl::createMemberListAnswer(const cJSON *root) {
-    LOGGER(INFO, __func__, " --> ");
-
-    const string token(Utilities::getJsonString(root, TOKEN, ""));
-    const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    const string requester(Utilities::getJsonString(root, MEMBER_ID, ""));
-
-    if (!isGroupActive(groupId, requester)) {
-        LOGGER(INFO, __func__, "<-- no active group: ", groupId);
-        return OK;
-    }
-    // The member list request also contains the requester's member list, parse it
-    // and update our own database
-    parseMemberList(root, false, groupId);
-
-    int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-
-    const string listCommand = prepareListAnswer(groupId, ownUser_, token, members, false);
-
-    sendGroupCommand(requester, generateMsgIdTime(), listCommand);
-
-    LOGGER(INFO, __func__, " <--");
-    return OK;
-}
-
-int32_t AppInterfaceImpl::processMemberListAnswer(const cJSON* root) {
-    LOGGER(INFO, __func__, " --> ");
-
-    const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    const string sender(Utilities::getJsonString(root, MEMBER_ID, ""));
-
-    // Is it an initial list as the last step of the Invite flow?
-    bool initialList = Utilities::getJsonBool(root, INITIAL_LIST, false);
-
-    // If not an initial list then check the request token to avoid multiple
-    // answer processing
-    if (!initialList) {
-        string token(Utilities::getJsonString(root, TOKEN, ""));
-
-        bool groupActive = isGroupActive(groupId, sender);
-
-        // If token was already consumed just return, got the list already from
-        // the member's other device. Also ignore if we don't know the group or
-        // if it's not active anymore
-        if (!checkRandomToken(token) || !groupActive)
-            return OK;
-    }
-
-    return parseMemberList(root, initialList, groupId);
-}
-
-bool AppInterfaceImpl::checkActiveAndHash(const string &msgDescriptor, const string &messageAttributes)
-{
-    LOGGER(INFO, __func__, " -->");
-
-    // Get the member list hash computed by sender of message
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageAttributes.c_str()), cJSON_deleter);
-    cJSON* root = sharedRoot.get();
-    string remoteHash(Utilities::getJsonString(root, LIST_HASH, ""));
-    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-
-    // Get the group id (the recipient) and the message sender
-    sharedRoot = shared_ptr<cJSON>(cJSON_Parse(msgDescriptor.c_str()), cJSON_deleter);
-    root = sharedRoot.get();
-    string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
-
-    if (!isGroupActive(groupId, sender)) {
-        LOGGER(INFO, __func__, " <-- no active group: ", groupId);
-        return false;
-    }
-    string ownHash = listHashB64(groupId, store_);
-
-    if (remoteHash != ownHash) {
-        int32_t result;
-        // Get all known members of the group
-        shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-        sendGroupCommand(sender, generateMsgIdTime(), requestMemberList(groupId, ownUser_, members));
-    }
-    LOGGER(INFO, __func__, " <-- ");
-    return true;
-}
-
-bool AppInterfaceImpl::isGroupActive(const string& groupId, const string& sender)
-{
-    LOGGER(INFO, __func__, " -->");
-
-    if (store_->hasGroup(groupId) && ((store_->getGroupAttribute(groupId).first & ACTIVE) == ACTIVE)) {
-        return true;
-    }
-    string msgId = generateMsgIdTime();
-    string command = leaveNotMemberCommand(groupId, ownUser_, false);
-
-    sendGroupCommand(ownUser_, msgId, command);      // synchronize siblings
-    sendGroupCommand(sender, msgId, command);
-    return false;
-}
-
-int32_t AppInterfaceImpl::processLeaveGroupCommand(const cJSON* root) {
-
-    LOGGER(INFO, __func__, " --> ");
-
-    const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    const string memberId(Utilities::getJsonString(root, MEMBER_ID, ""));
-
-    // The leave/not user command from a sibling, thus remove group completely
-    if (ownUser_ == memberId) {
-        return deleteGroupAndMembers(groupId);
-    }
-    int32_t result = store_->deleteMember(groupId, memberId);
-    int32_t returnCode = OK;
-    if (SQL_FAIL(result)) {
-        LOGGER(ERROR, __func__, "Could not delete member from group: ", groupId, " (", memberId, "), SQL code: ", result);
-        // Try to deactivate the member at least
-        store_->clearMemberAttribute(groupId, memberId, ACTIVE);
-        store_->setMemberAttribute(groupId, memberId, INACTIVE);
-        returnCode = GROUP_ERROR_BASE + result;
-    }
-    return returnCode;
-}
-
-int32_t AppInterfaceImpl::syncNewGroup(const cJSON *root) {
-    LOGGER(INFO, __func__, " --> ");
-
-    // User accepted invitation, get necessary data and create group data in database
-    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    string groupName(Utilities::getJsonString(root, GROUP_NAME, ""));
-    string description(Utilities::getJsonString(root, GROUP_DESC, ""));
-    string owner(Utilities::getJsonString(root, GROUP_OWNER, ""));
-    int32_t maxMember = Utilities::getJsonInt(root, GROUP_MAX_MEMBERS, 0);
-    if (maxMember <= 0 || maxMember > MAXIMUM_GROUP_SIZE)
-        return MAX_MEMBERS_REACHED;
-
-    if (owner != ownUser_) {
-        return GROUP_CMD_DATA_INCONSISTENT;
-    }
-    int32_t result = store_->insertGroup(groupId, groupName,  owner, description, maxMember);
-    store_->insertMember(groupId, ownUser_);
-
-    return OK;
-}
-
 
 void AppInterfaceImpl::clearGroupData()
 {
@@ -712,56 +975,47 @@ void AppInterfaceImpl::clearGroupData()
 }
 
 
-int32_t AppInterfaceImpl::processHelloCommand(const cJSON *root) {
+int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
+{
     LOGGER(INFO, __func__, " --> ");
 
-    const string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    const string memberId(Utilities::getJsonString(root, MEMBER_ID, ""));
-
-    if (!store_->isMemberOfGroup(groupId, memberId)) {
-        int32_t result = store_->insertMember(groupId, memberId);
-        if (SQL_FAIL(result)) {
-            LOGGER(ERROR, __func__, "Cannot store member: ", memberId, ", ", result);
-            return GROUP_MEMBER_NOT_STORED;
-        }
+    int32_t result = store_->deleteAllMembers(groupId);
+    if (SQL_FAIL(result)) {
+        LOGGER(ERROR, __func__, "Could not delete all members of group: ", groupId, ", SQL code: ", result);
+        // Try to deactivate group at least
+        store_->clearGroupAttribute(groupId, ACTIVE);
+        store_->setGroupAttribute(groupId, INACTIVE);
+        return GROUP_ERROR_BASE + result;
     }
-    return OK;
+    result = store_->deleteGroup(groupId);
+    if (SQL_FAIL(result)) {
+        LOGGER(ERROR, __func__, "Could not delete group: ", groupId, ", SQL code: ", result);
+        // Try to deactivate group at least
+        store_->clearGroupAttribute(groupId, ACTIVE);
+        store_->setGroupAttribute(groupId, INACTIVE);
+        return GROUP_ERROR_BASE + result;
+    }
+    return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::parseMemberList(const cJSON* root, bool initialList, const string& groupId) {
-    cJSON* memberArray = cJSON_GetObjectItem(const_cast<cJSON*>(root), MEMBERS);
-    if (memberArray == nullptr || memberArray->type != cJSON_Array)
-        return CORRUPT_DATA;
+// Insert data of a new group into the database. This function also adds myself as a member to the
+// new group.
+int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChangeSet &changeSet, string *callbackCmd) {
+    const string &groupName = changeSet.has_updatename() ? changeSet.updatename().name() : Empty;
 
-
-    shared_ptr<cJSON> sharedHello(cJSON_CreateObject(), cJSON_deleter);
-    cJSON* hello = sharedHello.get();
-    cJSON_AddStringToObject(hello, GROUP_COMMAND, HELLO);
-    cJSON_AddStringToObject(hello, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(hello, MEMBER_ID, ownUser_.c_str());
-
-    char *out = cJSON_PrintUnformatted(hello);
-    string helloCommand(out);
-    free(out);
-
-    int32_t result;
-    int size = cJSON_GetArraySize(memberArray);
-    for (int i = 0; i < size; i++) {
-        cJSON* member = cJSON_GetArrayItem(memberArray, i);
-        const string memberId(member->valuestring);
-
-        if (!store_->isMemberOfGroup(groupId, memberId)) {
-            result = store_->insertMember(groupId, memberId);
-            if (SQL_FAIL(result)) {
-                LOGGER(ERROR, __func__, "Cannot store member: ", memberId, ", ", result);
-                return GROUP_MEMBER_NOT_STORED;
-            }
-            // Sending a command to a member creates the ratchet data for all devices of
-            // that user if necessary.
-            sendGroupCommand(memberId, generateMsgIdTime(), initialList ? helloCommand : ping);
-        }
+    int32_t sqlResult = store_->insertGroup(groupId, groupName, getOwnUser(), Empty, MAXIMUM_GROUP_SIZE);
+    if (SQL_FAIL(sqlResult)) {
+        return GROUP_ERROR_BASE + sqlResult;
     }
-    LOGGER(INFO, __func__, " <--");
-    return OK;
-}
 
+    // Add myself to the new group, this saves us a "send to sibling" group function.
+    sqlResult = store_->insertMember(groupId, getOwnUser());
+    if (SQL_FAIL(sqlResult)) {
+        return GROUP_ERROR_BASE + sqlResult;
+    }
+    if (callbackCmd != nullptr) {
+        callbackCmd->assign(newGroupCommand(groupId, MAXIMUM_GROUP_SIZE));
+    }
+
+    return SUCCESS;
+}

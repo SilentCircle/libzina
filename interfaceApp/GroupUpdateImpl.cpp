@@ -25,12 +25,13 @@ limitations under the License.
 #include "../util/b64helper.h"
 #include "../vectorclock/VectorHelper.h"
 #include "JsonStrings.h"
+#include "../util/Utilities.h"
 
 using namespace std;
 using namespace zina;
 using namespace vectorclock;
 
-typedef shared_ptr<GroupChangeset> PtrChangeSet;
+typedef shared_ptr<GroupChangeSet> PtrChangeSet;
 
 static mutex currentChangeSetLock;
 static map<string, PtrChangeSet> currentChangeSets;
@@ -46,7 +47,7 @@ static bool addNewGroupToChangeSet(const string &groupId)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
-    auto changeSet = make_shared<GroupChangeset>();
+    auto changeSet = make_shared<GroupChangeSet>();
 
     return currentChangeSets.insert(pair<string, PtrChangeSet >(groupId, changeSet)).second;
 }
@@ -97,7 +98,7 @@ PtrChangeSet getGroupChangeSet(const string &groupId, SQLiteStoreConv &store)
     }
 
     // Yes, we have this group, create a change set, insert into map, return the pointer
-    auto changeSet = make_shared<GroupChangeset>();
+    auto changeSet = make_shared<GroupChangeSet>();
     if (!currentChangeSets.insert(pair<string, PtrChangeSet >(groupId, changeSet)).second) {
         return PtrChangeSet();
     }
@@ -330,32 +331,7 @@ static bool addRemoveNameToChangeSet(const string &groupId, const string &name, 
     return addRemoveNameToChangeSet(changeSet, name);
 }
 
-// Insert data of a new group into the database. This function also adds myself as a member to the
-// new group.
-static int32_t insertNewGroup(const string &groupId, const PtrChangeSet changeSet, const string& ownUser, SQLiteStoreConv &store)
-{
-    const string &groupName = changeSet->has_updatename() ? changeSet->updatename().name() : Empty;
-
-    int32_t sqlResult = store.insertGroup(groupId, groupName, ownUser, Empty, MAXIMUM_GROUP_SIZE);
-    if (SQL_FAIL(sqlResult)) {
-        return sqlResult;
-    }
-
-    // Add myself to the new group, this saves us a "send to sibling" group function.
-    return store.insertMember(groupId, ownUser);
-}
-
-// The device_id inside then change set and vector clocks consists of the first 8 binary bytes
-// of the unique device id (16 binary bytes)
-static void makeBinaryDeviceId(const string &deviceId, string *binaryId)
-{
-    unique_ptr<uint8_t[]> binBuffer(new uint8_t[deviceId.size()]);
-    hex2bin(deviceId.c_str(), binBuffer.get());
-    string vecDeviceId;
-    binaryId->assign(reinterpret_cast<const char*>(binBuffer.get()), VC_ID_LENGTH);
-}
-
-static int32_t prepareChangeSet(const string &groupId, const string &deviceId, PtrChangeSet changeSet, GroupUpdateType type, const uint8_t *updateId, SQLiteStoreConv &store)
+static int32_t prepareChangeSet(const string &groupId, const string &binDeviceId, PtrChangeSet changeSet, GroupUpdateType type, const uint8_t *updateId, SQLiteStoreConv &store)
 {
     LocalVClock lvc;
     VectorClock<string> vc;
@@ -369,10 +345,7 @@ static int32_t prepareChangeSet(const string &groupId, const string &deviceId, P
     // increment the clock for our device.
     //
     // In the second step set this new clock to the appropriate update change set.
-    string vecDeviceId;
-    makeBinaryDeviceId(deviceId, &vecDeviceId);
-
-    vc.incrementNodeClock(vecDeviceId);
+    vc.incrementNodeClock(binDeviceId);
 
     switch (type) {
         case GROUP_SET_NAME:
@@ -432,6 +405,17 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
     newAttributes->assign(out); free(out);
     return SUCCESS;
 
+}
+
+static bool attributesHaveChangeSet(const string &attributes)
+{
+    if (attributes.empty()) {
+        return false;
+    }
+    cJSON* root = cJSON_Parse(attributes.c_str());
+    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+
+    return Utilities::hasJsonKey(root, GROUP_CHANGE_SET);
 }
 
 // ****** Public instance functions
@@ -500,26 +484,45 @@ int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
         return NO_SUCH_ACTIVE_GROUP;
     }
     applyGroupChangeSet(groupId);
-    deleteGroupAndMembers(groupId);
 
-    // Not wait-for-ack, ignore any ACKs from members of the group, we are gone
-    store_->removeWaitAckWithGroup(groupId);
-
-    // Remove group's pending change set
-    auto end = pendingChangeSets.end();
-    for (auto it = pendingChangeSets.begin(); it != end; ++it) {
-        string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
-        if (oldGroupId != groupId) {
-            continue;
-        }
-        pendingChangeSets.erase(it);
-    }
+    processLeaveGroup(groupId, getOwnUser(), true);
 
     LOGGER(INFO, __func__, " <--");
     return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::removeUser(const string& groupId, const string& userId)
+int32_t AppInterfaceImpl::processLeaveGroup(const string &groupId, const string &userId, bool fromSibling) {
+
+    LOGGER(INFO, __func__, " --> ");
+
+    // The leave/not user command from a sibling, thus remove group completely
+    if (fromSibling) {
+        // No wait-for-ack, ignore any ACKs from members of the group, we are gone
+        store_->removeWaitAckWithGroup(groupId);
+
+        // Remove group's pending change set
+        auto end = pendingChangeSets.end();
+        for (auto it = pendingChangeSets.begin(); it != end; ++it) {
+            string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
+            if (oldGroupId != groupId) {
+                continue;
+            }
+            pendingChangeSets.erase(it);
+        }
+        return deleteGroupAndMembers(groupId);
+    }
+    int32_t result = store_->deleteMember(groupId, userId);
+    if (SQL_FAIL(result)) {
+        LOGGER(ERROR, __func__, "Could not delete member from group: ", groupId, " (", userId, "), SQL code: ", result);
+        // Try to deactivate the member at least
+        store_->clearMemberAttribute(groupId, userId, ACTIVE);
+        store_->setMemberAttribute(groupId, userId, INACTIVE);
+        return GROUP_ERROR_BASE + result;
+    }
+    return SUCCESS;
+}
+
+int32_t AppInterfaceImpl::removeUser(const string& groupId, const string& userId, bool allowOwnUser)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -527,7 +530,7 @@ int32_t AppInterfaceImpl::removeUser(const string& groupId, const string& userId
         return DATA_MISSING;
     }
 
-    if (userId == getOwnUser()) {
+    if (!allowOwnUser && userId == getOwnUser()) {
         return ILLEGAL_ARGUMENT;
     }
     if (!addRemoveNameToChangeSet(groupId, userId, *store_)) {
@@ -655,16 +658,18 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
 
     // Check if this change set is for a new group
     if (!store_->hasGroup(groupId)) {
-        returnCode = insertNewGroup(groupId, changeSet, getOwnUser(), *store_);
+        returnCode = insertNewGroup(groupId, *changeSet, nullptr);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
         }
     }
+    string binDeviceId;
+    makeBinaryDeviceId(getOwnDeviceId(), &binDeviceId);
 
     // Now check each update: add vector clocks, update id, then store the new data in group and member tables
     if (changeSet->has_updatename()) {
-        returnCode = prepareChangeSet(groupId, getOwnDeviceId(), changeSet, GROUP_SET_NAME, updateId, *store_);
+        returnCode = prepareChangeSet(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateId, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -672,7 +677,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupName(groupId, changeSet->updatename().name());
     }
     if (changeSet->has_updateavatar()) {
-        returnCode = prepareChangeSet(groupId, getOwnDeviceId(), changeSet, GROUP_SET_AVATAR, updateId, *store_);
+        returnCode = prepareChangeSet(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateId, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -680,7 +685,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupAvatarInfo(groupId, changeSet->updateavatar().avatar());
     }
     if (changeSet->has_updateburn()) {
-        returnCode = prepareChangeSet(groupId, getOwnDeviceId(), changeSet, GROUP_SET_BURN, updateId, *store_);
+        returnCode = prepareChangeSet(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateId, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -713,6 +718,12 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     // the 'old' queue
     if (groupId.empty() || deviceId.empty()) {
         return DATA_MISSING;
+    }
+
+    // The attributes string a serialized change set in case ZINA sends ACK change set to a user's device
+    // don't process a current change set
+    if (attributesHaveChangeSet(attributes)) {
+        return SUCCESS;
     }
 
     unique_lock<mutex> lck(currentChangeSetLock);
@@ -847,4 +858,25 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
         pendingChangeSets.erase(it);
     }
     updateInProgress = false;
+}
+
+// The device_id inside then change set and vector clocks consists of the first 8 binary bytes
+// of the unique device id (16 binary bytes)
+void AppInterfaceImpl::makeBinaryDeviceId(const string &deviceId, string *binaryId)
+{
+    unique_ptr<uint8_t[]> binBuffer(new uint8_t[deviceId.size()]);
+    hex2bin(deviceId.c_str(), binBuffer.get());
+    string vecDeviceId;
+    binaryId->assign(reinterpret_cast<const char*>(binBuffer.get()), VC_ID_LENGTH);
+}
+
+void AppInterfaceImpl::removeFromPendingChangeSets(const string &key) 
+{
+    auto oldEnd = pendingChangeSets.end();
+    for (auto it = pendingChangeSets.begin(); it != oldEnd; ++it) {
+        if (it->first == key) {
+            pendingChangeSets.erase(it);
+            break;
+        }
+    }
 }

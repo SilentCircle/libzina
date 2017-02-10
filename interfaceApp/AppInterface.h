@@ -357,23 +357,6 @@ public:
     virtual string createNewGroup(string& groupName, string& groupDescription) = 0;
 
     /**
-     * @brief Create a new group and assign ownership to the creator
-     *
-     * The function creates a group and assigns the group's ownership to the specified owner. This
-     * function creates the group data for invited members. The UI part usually never calls this
-     * function, it's handled internally when the client receives an invite message
-     *
-     * @param groupUuid The group id, part of the invite message
-     * @param groupName The name of the new group
-     * @param groupDescription Group description, purpose of the group, etc
-     * @param maxMembers Maximum number of group members. If this number is bigger than a system
-     *                   defined maximum number then the function does not create the group.
-     * @param owner The owner/creator of the group
-     * @return @c SUCCESS or SQL error code, use @c AppInterfaceImpl::getErrorInfo() to get error string.
-     */
-    virtual int32_t createInvitedGroup(string& groupUud, string& groupName, string& groupDescription, string& owner, int32_t maxMembers) = 0;
-
-    /**
      * @brief Modify number maximum group member.
      *
      * Only the group owner can modify the number of maximum members.
@@ -481,28 +464,6 @@ public:
     virtual int32_t applyGroupChangeSet(const string& groupId) = 0;
 
     /**
-     * @brief Answer a group Invitation.
-     *
-     * The invited user may accept or decline a group invitation. In case the user accepts
-     * the invitation the functions prepares the group data structures in this client, sends
-     * out a synchronization command to its siblings and then sends an invite accepted
-     * to the inviting user.
-     *
-     * Only the invited user calls this function.
-     *
-     * If the user declines the invitation the functions just sends a invitation declined with
-     * an optional reason string to the inviting user.
-     *
-     * @param command the command string as received in the @c groupCmdCallback_. The callback
-     *                function should not modify this command string.
-     * @param accept If true the user accepted the invitation, if false the user declined the invitation.
-     * @param reason In case the user declined a reason why the user declined the invitation. The
-     *               string maybe empty.
-     * @return @c OK if function could send invitation, error code (<0) otherwise
-     */
-    virtual int32_t answerInvitation(const string& command, bool accept, const string& reason) = 0;
-
-    /**
      * @brief Send a message to a group with an optional attachment and attributes.
      *
      * Takes JSON formatted message descriptor and send the message. The function accepts
@@ -551,9 +512,10 @@ public:
      *
      * @param groupId The group id
      * @param userId The user id of the user to remove
+     * @param allowOwnUser If `true* then it's possible to remove the own user. Only ZINA uses this internally
      * @return @c SUCCESS if 'remove from group' processing was OK, error code (<0) otherwise
      */
-    virtual int32_t removeUser(const string& groupId, const string& userId) = 0;
+    virtual int32_t removeUser(const string& groupId, const string& userId, bool allowOwnUser = false) = 0;
 
     /**
      * @brief Remove a user's name from the remove member update change set.

@@ -27,7 +27,7 @@ option optimize_for = LITE_RUNTIME;
 
 message VClock {
   optional bytes device_id  = 1;        // Support binary device id data
-  optional uint64 value     = 2;
+  optional int64 value      = 2;
 }
 
 // A message helper to store the local vector clocks. Mainly to serialze/deserialize
@@ -130,8 +130,9 @@ message GroupUpdateAck {
   optional GroupUpdateResult result = 3;
 }
 
-message GroupChangeset {
-  optional bytes group_id                       = 1;    // group UUID
+message GroupChangeSet {
+  optional bytes group_id                       = 1;    // group UUID, currently not used. The group id is part of other
+                                                        // message data already
   optional GroupUpdateSetName updateName        = 2;    // set group name
   optional GroupUpdateSetAvatar updateAvatar    = 3;    // set group avatar
   optional GroupUpdateSetBurn updateBurn        = 4;    // set group burn time

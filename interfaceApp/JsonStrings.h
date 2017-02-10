@@ -31,15 +31,14 @@ namespace zina {
     static const char* GROUP_MEMBER_COUNT = "mbrCnt";
     static const char* GROUP_ATTRIBUTE = "grpA";
     static const char* GROUP_MOD_TIME = "grpMT";
-    static const char* GROUP_BURN_SEC = "grpBSec";
-    static const char* GROUP_BURN_MODE = "grpBMode";
-    static const char* GROUP_AVATAR = "grpAva";
+    static const char* GROUP_BURN_SEC = "BSec";
+    static const char* GROUP_BURN_MODE = "BMode";
+    static const char* GROUP_AVATAR = "Ava";
 
     static const char* GROUP_CHANGE_SET = "grpChg";
 
 
     static const char* MEMBER_ID = "mbrId";
-//    static const char* MEMBER_DEVICE_ID = "devId";
     static const char* MEMBER_ATTRIBUTE = "mbrA";
     static const char* MEMBER_MOD_TIME = "mbrMT";
 
@@ -69,25 +68,22 @@ namespace zina {
     static const char* GROUP_COMMAND = "grp";
 
     // The following strings follow the GROUP_COMMAND and identify the command
-    static const char* INVITE = "inv";          //!< Group Invitation
-    static const char* INVITE_ANSWER = "ian";   //!< Invitation answer
-    static const char* MEMBER_LIST = "mls";     //!< Command contain a group's member list
+    static const char* ADD_MEMBERS = "addm";    //!< Command to add a list of new group members
+    static const char* RM_MEMBERS = "rmm";      //!< Command to remove a list of group members
     static const char* HELLO = "hel";           //!< Introduce myself as a new member of the list
-    static const char* REQ_MEMBER_LIST = "rls"; //!< Command to request a group's member list
-    static const char* LEAVE = "lve";           //!< Leave a group
-    static const char* NOT_MEMBER = "nmbr";     //!< Not a member of the group
-    static const char* NEW_GROUP_SYNC = "ngrp"; //!< sent to siblings to sync a group creation
+    static const char* LEAVE = "lve";           //!< A member leaves a group
     static const char* REMOVE_MSG = "rmsg";     //!< remove a message from a group conversation
+    static const char* NEW_GROUP = "ngrp";      //!< New group created
+    static const char* NEW_NAME = "nnm";        //!< New group name
+    static const char* NEW_AVATAR = "navtr";    //!< New group avatar information
+    static const char* NEW_BURN = "nbrn";       //!< New group burn information
+
 
     static const char* INVITE_SYNC = "s_inv";   //!< Sync accepted Group Invitation
 
     // Parameters inside commands other than generic Group or Member tags
-    static const char* TOKEN = "tok";
-    static const char* ACCEPTED = "acc";
-    static const char* REASON = "rsn";
     static const char* MEMBERS = "mbrs";
     static const char* INITIAL_LIST = "ini";
-    static const char* LIST_HASH = "hash";
     static const char* DELIVERY_TIME = "dr_time";
     static const char* COMMAND_TIME = "cmd_time"; //!< Time at client (ZULU) when it created the command
 

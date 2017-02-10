@@ -401,7 +401,7 @@ void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> comman
     LOGGER(INFO, __func__, " -->");
 
     if (!store_->isReady()) {
-        LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
+        LOGGER(ERROR, __func__, " ZINA conversation DB not ready.");
         return;
     }
     // clear data and store the nearly empty conversation

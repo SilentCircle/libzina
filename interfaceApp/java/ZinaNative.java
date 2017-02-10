@@ -648,29 +648,6 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int applyGroupChangeSet(/*!@NonNull!*/ String groupId);
 
     /**
-     * Answer a group Invitation.
-     *
-     * The invited user may accept or decline a group invitation. In case the user accepts
-     * the invitation the functions prepares the group data structures in this client, sends
-     * out a synchronization command to its siblings and then sends an invite accepted
-     * to the inviting user.
-     *
-     * Only the invited user calls this function.
-     *
-     * If the user declines the invitation the functions just sends a invitation declined with
-     * an optional reason string to the inviting user.
-     *
-     * @param command the command string as received in the {@code groupCmdReceive}. The callback
-     *                function should not modify this command string.
-     * @param accept If true the user accepted the invitation, if false the user declined the invitation.
-     * @param reason In case the user declined a reason why the user declined the invitation. The
-     *               string maybe empty.
-     * @return {@code OK} if function could send invitation, error code (<0) otherwise
-     */
-    //**ANN** @WorkerThread
-    public static native int answerInvitation(/*!@NonNull!*/ byte[] command, boolean accept, /*!@Nullable!*/ byte[] reason);
-
-    /**
      * Send a message to a group with an optional attachment and attributes.
      *
      * Takes JSON formatted message descriptor and send the message. The function accepts

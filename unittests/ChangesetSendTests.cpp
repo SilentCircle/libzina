@@ -65,7 +65,7 @@ static unsigned char updateIdBin_2[] = {8,7,6,5,4,3,2,1};
 string avatar_1("avatar_1--");
 string avatar_2("avatar_2--");
 
-typedef shared_ptr<GroupChangeset> PtrChangeSet;
+typedef shared_ptr<GroupChangeSet> PtrChangeSet;
 PtrChangeSet getGroupChangeSet(const string &groupId, SQLiteStoreConv &store);
 PtrChangeSet getPendingGroupChangeSet(const string &groupId);
 
@@ -422,9 +422,12 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
 
     appInterface_1->groupUpdateSendDone(groupId);
 
-
     // Get the now pending change set, check if it has the expected data
-    PtrChangeSet pendingChangeSet = getPendingGroupChangeSet(groupId);
+    // Return no change set if no change set for a group id.
+    PtrChangeSet pendingChangeSet = getPendingGroupChangeSet(groupId_1);
+    ASSERT_FALSE((bool)pendingChangeSet);
+
+    pendingChangeSet = getPendingGroupChangeSet(groupId);
     ASSERT_TRUE((bool)pendingChangeSet);
 
     ASSERT_TRUE(pendingChangeSet->has_updatename());
