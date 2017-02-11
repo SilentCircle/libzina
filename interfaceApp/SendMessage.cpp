@@ -215,7 +215,8 @@ shared_ptr<list<shared_ptr<PreparedMessageData> > >
 AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
                                          const string& attachmentDescriptor,
                                          const string& messageAttributes,
-                                         bool toSibling, uint32_t messageType, int32_t* result, const string& grpRecipient)
+                                         bool toSibling, uint32_t messageType, int32_t* result,
+                                         const string& grpRecipient, const string &groupId)
 {
 
     string recipient;
@@ -362,9 +363,9 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         msgInfo->command = SendMessage;
 
         // Specific handling to group messages: each device may have its own update change set, depending on it's ACK status.
-        if (messageType == GROUP_MSG_NORMAL) {
+        if (messageType >= GROUP_MSG_NORMAL) {
             string newAttributes;
-            returnCode = createChangeSetDevice(grpRecipient, deviceId, msgAttributes, &newAttributes);
+            returnCode = createChangeSetDevice(groupId, deviceId, msgAttributes, &newAttributes);
             if (returnCode < 0) {
                 if (result != nullptr) {
                     *result = returnCode;

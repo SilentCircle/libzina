@@ -241,7 +241,8 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     for (; !members->empty(); members->pop_front()) {
         string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
         bool toSibling = recipient == ownUser_;
-        auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes, toSibling, GROUP_MSG_NORMAL, &result, recipient);
+        auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes,
+                                                      toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
         if (result != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Error: ", result);
             return result;
@@ -430,7 +431,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
         }
         LOGGER(INFO, __func__, " <-- unexpected group change set");
         // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
-        return sendGroupMessageToUserDevice(groupId, sender, deviceId, Empty, Empty, GROUP_MSG_CMD);
+        return sendGroupMessageToSingleUserDevice(groupId, sender, deviceId, Empty, Empty, GROUP_MSG_CMD);
     }
     string binDeviceId;
     makeBinaryDeviceId(deviceId, &binDeviceId);
@@ -483,7 +484,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
         }
 #ifndef UNITTESTS
         // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
-        result = sendGroupMessageToUserDevice(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
+        result = sendGroupMessageToSingleUserDevice(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
         if (result != SUCCESS) {
             return result;
         }
@@ -876,7 +877,7 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
     return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::sendGroupMessageToUserDevice(const string &groupId, const string &userId,
+int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &groupId, const string &userId,
                                                        const string &deviceId, const string &attributes,
                                                        const string &msg, int32_t msgType)
 {
@@ -895,6 +896,14 @@ int32_t AppInterfaceImpl::sendGroupMessageToUserDevice(const string &groupId, co
         errorCode_ = result;
         errorInfo_ = "Error preparing group change set";
         LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+        return result;
+    }
+
+    result = createChangeSetDevice(groupId, deviceId, newAttributes, &newAttributes);
+    if (result < 0) {
+        errorCode_ = result;
+        errorInfo_ = "Cannot create and store group update records for a device";
+        LOGGER(ERROR, __func__, " Cannot create and store group update records, error code: ", result);
         return result;
     }
 

@@ -440,7 +440,9 @@ private:
     prepareMessageInternal(const string& messageDescriptor,
                            const string& attachmentDescriptor,
                            const string& messageAttributes,
-                           bool toSibling, uint32_t messageType, int32_t* result, const string& grpRecipient = Empty);
+                           bool toSibling, uint32_t messageType, int32_t* result,
+                           const string& grpRecipient = Empty,
+                           const string &groupId = Empty);
 
     /**
      * @brief Send a message to a user who has a valid ratchet conversation.
@@ -677,7 +679,7 @@ private:
      * ZINA uses this function to prepare and send a change set to a group member's device.
      * Thus ZINA can send ACK or other change sets to the sender' device.
      *
-     * The function adds the group id to the attributes, creates a send message command and
+     * The function adds the group id to the attributes, handles change set, creates a send message command and
      * queues it for normal send message processing.
      *
      * @param groupId The group id to get the change set
@@ -687,7 +689,7 @@ private:
      * @param msg the message to send, maybe empty
      * @return @c SUCCESS or an error code (<0)
      */
-    int32_t sendGroupMessageToUserDevice(const string &groupId, const string &userId, const string &deviceId,
+    int32_t sendGroupMessageToSingleUserDevice(const string &groupId, const string &userId, const string &deviceId,
                                          const string &attributes, const string &msg, int32_t msgType);
 
     void makeBinaryDeviceId(const string &deviceId, string *binaryId);
