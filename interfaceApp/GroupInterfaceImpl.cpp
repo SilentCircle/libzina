@@ -216,10 +216,6 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", result);
         return result;
     }
-    if (!store_->hasGroup(groupId) || ((store_->getGroupAttribute(groupId).first & ACTIVE) != ACTIVE)) {
-        return NO_SUCH_ACTIVE_GROUP;
-    }
-
     cJSON* root = !messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject();
     shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
 
@@ -235,6 +231,9 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         errorInfo_ = "Error preparing group change set";
         LOGGER(ERROR, __func__, " Error preparing group change set, error code: ", result);
         return result;
+    }
+    if (!store_->hasGroup(groupId) || ((store_->getGroupAttribute(groupId).first & ACTIVE) != ACTIVE)) {
+        return NO_SUCH_ACTIVE_GROUP;
     }
 
     auto members = store_->getAllGroupMembers(groupId, &result);

@@ -50,9 +50,6 @@ target_link_libraries(apprepo_test gtest_main ${zinaLibName})
 add_executable(scloud_test scloudTest.cpp)
 target_link_libraries(scloud_test gtest_main ${zinaLibName})
 
-add_executable(group_invite_test groupInvite.cpp)
-target_link_libraries(group_invite_test ${zinaLibName})
-
 add_executable(versioning_test VersioningTests.cpp)
 target_link_libraries(versioning_test gtest_main ${zinaLibName})
 
