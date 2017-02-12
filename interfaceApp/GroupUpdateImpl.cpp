@@ -763,15 +763,9 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
     }
 
-    string currentKey;
-    currentKey.assign(reinterpret_cast<const char*>(updateId), sizeof(updateId)).append(groupId);
-
     auto oldEnd = pendingChangeSets.cend();
     for (auto it = pendingChangeSets.cbegin(); it != oldEnd; ++it) {
-        // skip the current change set, process older sets only
-        if (it->first == currentKey) {
-            continue;
-        }
+
         string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
         if (oldGroupId != groupId) {
             continue;
@@ -847,6 +841,7 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
         }
         pendingChangeSets.erase(it);
     }
+    memset(updateId, 0, sizeof(updateId));
     updateInProgress = false;
 }
 

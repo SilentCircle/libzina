@@ -362,39 +362,6 @@ private:
     int32_t processLeaveGroup(const string &groupId, const string &userId, bool fromSibling);
 
     /**
-     * @brief Checks if the group exists or is active.
-     *
-     * If the client receives a group command message (except commands of the Invite flow)
-     * or a group message but the group does not exist or is inactive on this client then
-     * this function prepares and sends a "not a group member" response to the sender and
-     * returns false.
-     *
-     * @param groupId The group to check
-     * @param sender  The command/message sender
-     * @return @c true if the group exists/is active, @c false otherwise
-     */
-    bool isGroupActive(const string& groupId, const string& sender);
-
-    /**
-     * @brief Process a Hello group command.
-     *
-     * The receiver of the command inserts the member to the group.
-     *
-     * @param root The parsed cJSON data structure of the group command.
-     * @return OK if the message list was processed without error.
-     */
-    int32_t processHelloCommand(const cJSON* root);
-
-     /**
-      * @brief Parse a member list array in JSON and update in database.
-      *
-      * @param root The parsed cJSON data structure of the group command.
-      * @param initialList if @c true the list was sent during invitation processing
-      * @return OK if the message list was processed without error.
-      */
-    int32_t parseMemberList(const cJSON* root, bool initialList, const string& groupId);
-
-    /**
      * @brief Prepare the change set before sending.
      *
      * The function creates a unique update id, blocks update processing, prepares the
