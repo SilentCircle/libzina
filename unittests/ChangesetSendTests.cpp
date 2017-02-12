@@ -66,7 +66,7 @@ string avatar_1("avatar_1--");
 string avatar_2("avatar_2--");
 
 typedef shared_ptr<GroupChangeSet> PtrChangeSet;
-PtrChangeSet getGroupChangeSet(const string &groupId, SQLiteStoreConv &store);
+PtrChangeSet getCurrentGroupChangeSet(const string &groupId, SQLiteStoreConv &store);
 PtrChangeSet getPendingGroupChangeSet(const string &groupId);
 
 class ChangeSetTestsFixtureSimple: public ::testing::Test {
@@ -104,7 +104,7 @@ TEST_F(ChangeSetTestsFixtureSimple, NewGroupTestsEmpty) {
     string groupId = appInterface_1->createNewGroup(Empty, Empty);
     ASSERT_FALSE(groupId.empty());
 
-    PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId, *store);
     ASSERT_TRUE((bool)changeSet);
 
     ASSERT_FALSE(changeSet->has_updatename());
@@ -114,7 +114,7 @@ TEST_F(ChangeSetTestsFixtureSimple, NewGroupTests) {
     string groupId = appInterface_1->createNewGroup(groupName_1, Empty);
     ASSERT_FALSE(groupId.empty());
 
-    PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId, *store);
     ASSERT_TRUE((bool)changeSet);
 
     ASSERT_TRUE(changeSet->has_updatename());
@@ -122,7 +122,7 @@ TEST_F(ChangeSetTestsFixtureSimple, NewGroupTests) {
 
     // cancel and remove the changes
     appInterface_1->cancelGroupChangeSet(groupId);
-    changeSet = getGroupChangeSet(groupId, *store);
+    changeSet = getCurrentGroupChangeSet(groupId, *store);
     ASSERT_FALSE((bool)changeSet);
 
 }
@@ -131,7 +131,7 @@ TEST_F(ChangeSetTestsFixtureSimple, ExistingGroupTests) {
     int32_t result = store->insertGroup(groupId_1, groupName_1, appInterface_1->getOwnUser(), Empty, 0);
     ASSERT_FALSE(SQL_FAIL(result));
 
-    PtrChangeSet changeSet = getGroupChangeSet(groupId_1, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId_1, *store);
     ASSERT_TRUE((bool)changeSet);
 
     ASSERT_EQ(SUCCESS, appInterface_1->setGroupName(groupId_1, &groupName_1));
@@ -216,7 +216,7 @@ TEST_F(ChangeSetTestsFixtureMembers, AddMemberTests) {
     ASSERT_EQ(DATA_MISSING, appInterface_1->addUser(Empty, memberId_1));
 
     // Invite a user (addUser), own user is already in the change set, added while creating the group, has index 0
-    PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId, *store);
     ASSERT_TRUE((bool)changeSet);
 
     ASSERT_EQ(SUCCESS, appInterface_1->addUser(groupId, memberId_1));
@@ -243,7 +243,7 @@ TEST_F(ChangeSetTestsFixtureMembers, AddMemberTests) {
 
 TEST_F(ChangeSetTestsFixtureMembers, RemoveMemberTests) {
 
-    PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId, *store);
     ASSERT_TRUE((bool)changeSet);
     ASSERT_FALSE(changeSet->has_updatermmember());
 
@@ -272,7 +272,7 @@ TEST_F(ChangeSetTestsFixtureMembers, AddRemoveMemberTests) {
 
     // Own user is already in the change set, added while creating the group, has index 0
 
-    PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId, *store);
 
     // Own user is already in the change set, added while creating the group, has index 0
     // At first add a member, check data
@@ -339,7 +339,7 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
     // Own user is already in the change set, added while creating the group,
     // has index 0 in add member update
 
-    PtrChangeSet changeSet = getGroupChangeSet(groupId, *store);
+    PtrChangeSet changeSet = getCurrentGroupChangeSet(groupId, *store);
 
     string binDeviceId;
     makeBinaryDeviceId(appInterface_1->getOwnDeviceId(), &binDeviceId);
@@ -456,7 +456,7 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
     // At first one more member
     appInterface_1->addUser(groupId, otherMemberId_2);
 
-    changeSet = getGroupChangeSet(groupId, *store);
+    changeSet = getCurrentGroupChangeSet(groupId, *store);
     ASSERT_TRUE((bool)changeSet);
     ASSERT_TRUE(changeSet->has_updateaddmember());
     ASSERT_EQ(1, changeSet->updateaddmember().addmember_size());

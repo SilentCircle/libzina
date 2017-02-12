@@ -37,6 +37,7 @@ static mutex currentChangeSetLock;
 static map<string, PtrChangeSet> currentChangeSets;
 
 // The key in this map is: updateId || groupId  (|| means concatenate)
+// This map stores change sets (one per group) which are waiting for ACKs
 static map<string, PtrChangeSet> pendingChangeSets;
 
 // Update-id is just some random data, guarded by "update in progress" flag
@@ -82,11 +83,11 @@ static void removeGroupFromChangeSet(const string &groupId)
 // Function assumes the lock is set
 // make it visible for unittests
 #ifdef UNITTESTS
-PtrChangeSet getGroupChangeSet(const string &groupId, SQLiteStoreConv &store);
+PtrChangeSet getCurrentGroupChangeSet(const string &groupId, SQLiteStoreConv &store);
 #else
 static
 #endif
-PtrChangeSet getGroupChangeSet(const string &groupId, SQLiteStoreConv &store)
+PtrChangeSet getCurrentGroupChangeSet(const string &groupId, SQLiteStoreConv &store)
 {
     auto it = currentChangeSets.find(groupId);
     if (it != currentChangeSets.end()) {
@@ -122,7 +123,7 @@ static bool setGroupNameToChangeSet(const string &groupId, const string &name, S
     unique_lock<mutex> lck(currentChangeSetLock);
 
     // get mutable pointer
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -137,7 +138,7 @@ static bool removeGroupNameFromChangeSet(const string &groupId, SQLiteStoreConv 
     unique_lock<mutex> lck(currentChangeSetLock);
 
     // get mutable pointer
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -153,7 +154,7 @@ static bool setGroupAvatarToChangeSet(const string &groupId, const string &avata
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -167,7 +168,7 @@ static bool removeGroupAvatarFromChangeSet(const string &groupId, SQLiteStoreCon
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -183,7 +184,7 @@ static bool setGroupBurnToChangeSet(const string &groupId, uint64_t burn, GroupU
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -218,14 +219,14 @@ static bool removeRmNameFromChangeSet(PtrChangeSet changeSet, const string &name
 }
 static bool removeRmNameFromChangeSet(const string &groupId, const string &name, SQLiteStoreConv &store)
 {
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
     return removeRmNameFromChangeSet(changeSet, name);
 }
 
-// Function checks for duplicates and ignores them, otherweise adds the name to the group update
+// Function checks for duplicates and ignores them, otherwise adds the name to the group update
 // assumes the change set is locked
 static bool addAddNameToChangeSet(PtrChangeSet changeSet, const string &name)
 {
@@ -253,7 +254,7 @@ static bool addAddNameToChangeSet(const string &groupId, const string &name, SQL
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -289,7 +290,7 @@ static bool removeAddNameFromChangeSet(PtrChangeSet changeSet, const string &nam
 
 static bool removeAddNameFromChangeSet(const string &groupId, const string &name, SQLiteStoreConv &store)
 {
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -298,7 +299,7 @@ static bool removeAddNameFromChangeSet(const string &groupId, const string &name
     return removeAddNameFromChangeSet(changeSet, name);
 }
 
-// Function checks for duplicates and ignores them, otherweise adds the name to the group update
+// Function checks for duplicates and ignores them, otherwise adds the name to the group update
 // assumes the change set is locked
 static bool addRemoveNameToChangeSet(PtrChangeSet changeSet, const string &name)
 {
@@ -323,7 +324,7 @@ static bool addRemoveNameToChangeSet(const string &groupId, const string &name, 
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
-    auto changeSet = getGroupChangeSet(groupId, store);
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
     if (!changeSet) {
         return false;
     }
@@ -375,13 +376,6 @@ static int32_t prepareChangeSet(const string &groupId, const string &binDeviceId
 
 static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId, const string &attributes, string *newAttributes)
 {
-    // Move the prepared to the 'pending' queue.
-    string combinedKey;
-    combinedKey.assign(reinterpret_cast<const char*>(updateId), sizeof(updateId)).append(groupId);
-    pendingChangeSets.insert(pair<string, PtrChangeSet >(combinedKey, changeSet));
-    currentChangeSets.erase(groupId);
-
-
     string serialized;
     if (!changeSet->SerializeToString(&serialized)) {
         return GENERIC_ERROR;
@@ -404,7 +398,6 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
     char* out = cJSON_PrintUnformatted(root);
     newAttributes->assign(out); free(out);
     return SUCCESS;
-
 }
 
 static bool attributesHaveChangeSet(const string &attributes)
@@ -713,9 +706,6 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
 
 int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const string &deviceId, const string &attributes, string *newAttributes)
 {
-
-    // At this point the change set was prepared (SET type updates have vector clocks, etc) and moved to
-    // the 'old' queue
     if (groupId.empty() || deviceId.empty()) {
         return DATA_MISSING;
     }
