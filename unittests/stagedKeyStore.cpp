@@ -75,7 +75,6 @@ TEST_F(StoreTestFixture, Basic)
 
     shared_ptr<list<string> > keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys.get() != NULL);
     ASSERT_EQ(1, keys->size());
     string both = keys->front();
     keys->pop_front();
@@ -86,7 +85,7 @@ TEST_F(StoreTestFixture, Basic)
 
     keys = store->loadStagedMks(bobName, bobDev, aliceName);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();
-    ASSERT_TRUE(keys.get() == NULL);
+    ASSERT_TRUE(keys->empty());
 }
 
 TEST_F(StoreTestFixture, TimeDelete)
