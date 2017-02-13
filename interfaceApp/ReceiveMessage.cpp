@@ -33,7 +33,8 @@ limitations under the License.
 using namespace zina;
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,
-                               const char* other, int32_t errorCode, const string& sentToId, int32_t sqlCode, int32_t msgType)
+                               const char* other, int32_t errorCode, const string& sentToId, int32_t sqlCode,
+                               int32_t msgType, const string &groupId = Empty)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
@@ -43,12 +44,15 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     cJSON_AddItemToObject(root, "details", details = cJSON_CreateObject());
 
     cJSON_AddStringToObject(details, "name", sender.c_str());
-    cJSON_AddStringToObject(details, "scClientDevId", senderScClientDevId.c_str());
+    cJSON_AddStringToObject(details, MSG_DEVICE_ID, senderScClientDevId.c_str());
     cJSON_AddStringToObject(details, "otherInfo", other);
-    cJSON_AddStringToObject(details, "msgId", msgId.c_str());         // May help to diagnose the issue
+    cJSON_AddStringToObject(details, MSG_ID, msgId.c_str());         // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
     cJSON_AddStringToObject(details, "sentToId", sentToId.c_str());
     cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
+    if (!groupId.empty()) {
+        cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    }
     if (errorCode == DATABASE_ERROR)
         cJSON_AddNumberToObject(details, "sqlErrorCode", sqlCode);
 
@@ -58,7 +62,7 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     return retVal;
 }
 
-static string receiveErrorDescriptor(const string& messageDescriptor, int32_t result)
+static string receiveErrorDescriptor(const string& messageDescriptor, int32_t result, const string &groupId = Empty)
 {
     JsonUnique sharedRoot(cJSON_Parse(messageDescriptor.c_str()));
     cJSON* root = sharedRoot.get();
@@ -67,7 +71,7 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
     string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
     string msgId(Utilities::getJsonString(root, MSG_ID, ""));
 
-    return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0, -1);
+    return receiveErrorJson(sender, deviceId, msgId, "Error processing plain text message", result, "", 0, -1, groupId);
 }
 
 bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
@@ -351,8 +355,16 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
 
         error_:
             store_->rollbackTransaction();
-            stateReportCallback_(0, DATABASE_ERROR,
-                                 receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data", DATABASE_ERROR, sentToId, result, msgType));
+            if (msgType >= GROUP_MSG_NORMAL) {
+                groupStateReportCallback_(DATABASE_ERROR,
+                                          receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data",
+                                                           DATABASE_ERROR, sentToId, result, msgType));
+            }
+            else {
+                stateReportCallback_(0, DATABASE_ERROR,
+                                 receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data",
+                                                  DATABASE_ERROR, sentToId, result, msgType));
+            }
             return;
 
         success_:
@@ -393,9 +405,15 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
                                                        string("{\"cmd\":\"failed\"}"), false);
             }
         }
-        stateReportCallback_(0, errorCode_,
-                             receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
-                                              errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
+        if (msgType >= GROUP_MSG_NORMAL) {
+            groupStateReportCallback_(errorCode_,
+                                      receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
+                                                       errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
+        } else {
+            stateReportCallback_(0, errorCode_,
+                                 receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
+                                                  errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
+        }
 
         LOGGER(ERROR, __func__ , " Message processing failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         if (errorCode_ == DATABASE_ERROR) {
@@ -442,7 +460,11 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     if (msgInfo->queueInfo_msgType >= GROUP_MSG_NORMAL) {
         result = processGroupMessage(msgInfo->queueInfo_msgType, msgInfo->queueInfo_message_desc, attachmentDescr, &attributesDescr);
         if (result != SUCCESS) {
-            groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result));
+            JsonUnique sharedRoot(cJSON_Parse(attributesDescr.c_str()));
+            cJSON* root = sharedRoot.get();
+            string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
+
+            groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result, groupId));
             return;
         }
     }
