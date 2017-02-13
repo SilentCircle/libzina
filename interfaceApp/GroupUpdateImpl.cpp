@@ -793,12 +793,6 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_REMOVE_MEMBER);
     }
 
-    // Move the prepared to the 'pending' queue.
-    string combinedKey;
-    combinedKey.assign(reinterpret_cast<const char*>(updateId), sizeof(updateId)).append(groupId);
-    pendingChangeSets.insert(pair<string, PtrChangeSet >(combinedKey, changeSet));
-    currentChangeSets.erase(groupId);
-
     int32_t result = serializeChangeSet(changeSet, groupId, root, newAttributes);
     if (result != SUCCESS) {
         errorCode_ = result;
@@ -816,6 +810,8 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
     string currentKey;
     currentKey.assign(reinterpret_cast<const char*>(updateId), sizeof(updateId)).append(groupId);
 
+    memset(updateId, 0, sizeof(updateId));
+
     // Remove old change sets of the group. This guarantees that we have at most one pending change set per group
     auto oldEnd = pendingChangeSets.end();
     for (auto it = pendingChangeSets.begin(); it != oldEnd; ++it) {
@@ -828,7 +824,14 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
         }
         pendingChangeSets.erase(it);
     }
-    memset(updateId, 0, sizeof(updateId));
+
+    PtrChangeSet changeSet = getGroupChangeSet(groupId);
+    if (!changeSet) {
+        return;
+    }
+    pendingChangeSets.insert(pair<string, PtrChangeSet>(currentKey, changeSet));
+    currentChangeSets.erase(groupId);
+
     updateInProgress = false;
 }
 

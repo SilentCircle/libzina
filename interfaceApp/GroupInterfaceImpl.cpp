@@ -239,6 +239,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
                                                       toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
         if (result != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Error: ", result);
+            groupUpdateSendDone(groupId);
             return result;
         }
         doSendMessages(extractTransportIds(preparedMsgData.get()));
