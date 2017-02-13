@@ -666,7 +666,7 @@ AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo>& sendInfo)
 
 string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const string& msgId, const string& msg)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
     cJSON_AddStringToObject(root, MSG_VERSION, "1");
@@ -675,10 +675,8 @@ string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const 
     cJSON_AddStringToObject(root, MSG_DEVICE_ID, scClientDevId_.c_str());
     cJSON_AddStringToObject(root, MSG_MESSAGE, msg.empty() ? "" : msg.c_str());
 
-    char *out = cJSON_PrintUnformatted(root);
-    string result(out);
-    free(out);
-
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string result(out.get());
     return result;
 }
 

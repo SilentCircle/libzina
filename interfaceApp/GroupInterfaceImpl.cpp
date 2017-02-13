@@ -46,7 +46,7 @@ static void fillMemberArray(cJSON* root, list<string> &members)
 }
 
 static string prepareMemberList(const string &groupId, list<string> &members, const char *command) {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
     cJSON_AddStringToObject(root, GROUP_COMMAND, command);
@@ -54,85 +54,79 @@ static string prepareMemberList(const string &groupId, list<string> &members, co
 
     fillMemberArray(root, members);
 
-    char *out = cJSON_PrintUnformatted(root);
-    string listCommand(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string listCommand(out.get());
 
     return listCommand;
 }
 
 static string leaveCommand(const string& groupId, const string& memberId)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, LEAVE);
     cJSON_AddStringToObject(root, MEMBER_ID, memberId.c_str());
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
 
-    char *out = cJSON_PrintUnformatted(root);
-    string command(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
 
     return command;
 }
 
 static string newGroupCommand(const string& groupId, int32_t maxMembers)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_GROUP);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddNumberToObject(root, GROUP_MAX_MEMBERS, maxMembers);
 
-    char *out = cJSON_PrintUnformatted(root);
-    string command(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
 
     return command;
 }
 
 static string newGroupNameCommand(const string& groupId, const string& groupName)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_NAME);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, GROUP_NAME, groupName.c_str());
 
-    char *out = cJSON_PrintUnformatted(root);
-    string command(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
 
     return command;
 }
 
 static string newGroupAvatarCommand(const string& groupId, const string& groupAvatar)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_AVATAR);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, GROUP_AVATAR, groupAvatar.c_str());
 
-    char *out = cJSON_PrintUnformatted(root);
-    string command(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
 
     return command;
 }
 
 static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32_t burnMode)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_BURN);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddNumberToObject(root, GROUP_BURN_SEC, burnTime);
     cJSON_AddNumberToObject(root, GROUP_BURN_MODE, burnMode);
 
-    char *out = cJSON_PrintUnformatted(root);
-    string command(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
 
     return command;
 }
@@ -150,8 +144,8 @@ static int32_t serializeAckSet(const GroupChangeSet ackSet, string *attributes)
         return GENERIC_ERROR;
     }
 
-    cJSON* root = cJSON_CreateObject();
-    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
 
     string serializedSet;
     serializedSet.assign(b64Buffer.get());
@@ -159,8 +153,8 @@ static int32_t serializeAckSet(const GroupChangeSet ackSet, string *attributes)
     if (!serializedSet.empty()) {
         cJSON_AddStringToObject(root, GROUP_CHANGE_SET, serializedSet.c_str());
     }
-    char* out = cJSON_PrintUnformatted(root);
-    attributes->assign(out); free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    attributes->assign(out.get());
     return SUCCESS;
 }
 
@@ -216,8 +210,8 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", result);
         return result;
     }
-    cJSON* root = !messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject();
-    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+    JsonUnique sharedRoot(!messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
 
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
 
@@ -259,16 +253,15 @@ int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const strin
     if (groupId.empty() || messageId.empty()) {
         return DATA_MISSING;
     }
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
     cJSON_AddStringToObject(root, GROUP_COMMAND, REMOVE_MSG);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, MSG_ID, messageId.c_str());
 
-    char *out = cJSON_PrintUnformatted(root);
-    string command(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
 
     sendGroupCommand(ownUser_, generateMsgIdTime(), command);
     return OK;
@@ -302,7 +295,7 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     if (commandIn->empty()) {
         return GROUP_CMD_MISSING_DATA;
     }
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(commandIn->c_str()), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_Parse(commandIn->c_str()));
     cJSON* root = sharedRoot.get();
 
     if (Utilities::hasJsonKey(root, GROUP_CHANGE_SET)) {
@@ -326,8 +319,7 @@ bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, str
 {
     LOGGER(INFO, __func__, " -->");
 
-    // Get the member list hash computed by sender of message
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageAttributes->c_str()), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_Parse(messageAttributes->c_str()));
     cJSON* root = sharedRoot.get();
     string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
     if (changeSetString.empty()) {
@@ -358,7 +350,7 @@ bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, str
     string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
 
     // Get the message sender info
-    sharedRoot = shared_ptr<cJSON>(cJSON_Parse(msgDescriptor.c_str()), cJSON_deleter);
+    sharedRoot = JsonUnique(cJSON_Parse(msgDescriptor.c_str()));
     root = sharedRoot.get();
     string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
     string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
@@ -488,6 +480,8 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
         if (result != SUCCESS) {
             return result;
         }
+#else
+        groupCmdCallback_(attributes);      // for unit testing only
 #endif
     }
     LOGGER(INFO, __func__, " <-- ");
@@ -883,13 +877,12 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
 {
     LOGGER(INFO, __func__, " -->");
 
-    cJSON* root = !attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject();
-    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
+    JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
 
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
-    char *out = cJSON_PrintUnformatted(root);
-    string newAttributes(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string newAttributes(out.get());
 
     int32_t result = prepareChangeSetSend(groupId);
     if (result < 0) {

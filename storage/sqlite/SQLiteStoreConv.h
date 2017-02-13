@@ -46,6 +46,17 @@ auto cJSON_deleter = [](cJSON* json) {
     cJSON_Delete(json); json = nullptr;
 };
 
+struct cJsonDeleter_ {
+    void operator()(cJSON* json) { cJSON_Delete(json); json = nullptr; }
+};
+
+struct charDeleter_ {
+    void operator()(char* arg) { free(arg); arg = nullptr; }
+};
+
+typedef unique_ptr<cJSON, cJsonDeleter_> JsonUnique;
+typedef unique_ptr<char, charDeleter_> CharUnique;
+
 namespace zina {
 
 typedef struct StoredMsgInfo {

@@ -35,7 +35,7 @@ using namespace zina;
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,
                                const char* other, int32_t errorCode, const string& sentToId, int32_t sqlCode, int32_t msgType)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddNumberToObject(root, "version", 1);
 
@@ -52,16 +52,15 @@ static string receiveErrorJson(const string& sender, const string& senderScClien
     if (errorCode == DATABASE_ERROR)
         cJSON_AddNumberToObject(details, "sqlErrorCode", sqlCode);
 
-    char *out = cJSON_PrintUnformatted(root);
-    string retVal(out);
-    free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string retVal(out.get());
 
     return retVal;
 }
 
 static string receiveErrorDescriptor(const string& messageDescriptor, int32_t result)
 {
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(messageDescriptor.c_str()), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_Parse(messageDescriptor.c_str()));
     cJSON* root = sharedRoot.get();
 
     string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
@@ -106,7 +105,7 @@ bool AppInterfaceImpl::isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
     if (plainMsgInfo->queueInfo_supplement.empty())
         return false;
 
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()));
     cJSON* jsSupplement = sharedRoot.get();
 
     string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
@@ -269,10 +268,10 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     // We don't capture the message itself but only some relevant, public context data
     if (LOGGER_INSTANCE getLogLevel() >= INFO) {
         convJson = axoConv->prepareForCapture(convJson, false);
-        char *out = cJSON_PrintUnformatted(convJson);
-        string convState(out);
+
+        CharUnique out(cJSON_PrintUnformatted(convJson));
+        string convState(out.get());
         cJSON_Delete(convJson);
-        free(out);
         MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
                                                string("{\"cmd\":\"dummy\"}"), false);
     }
@@ -286,7 +285,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
              "message":    <string>              # the actual plain text message, UTF-8 encoded (Java programmers beware!)
         }
         */
-        cJSON *root = cJSON_CreateObject();
+        JsonUnique uniqueRoot(cJSON_CreateObject());
+        cJSON *root = uniqueRoot.get();
         cJSON_AddNumberToObject(root, "version", 1);
         cJSON_AddStringToObject(root, MSG_SENDER, sender.c_str());        // sender is the UUID string
 
@@ -302,10 +302,8 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
         cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
         messagePlain.reset();
 
-        char *msg = cJSON_PrintUnformatted(root);
-        msgDescriptor = msg;
-        cJSON_Delete(root);
-        free(msg);
+        CharUnique msg(cJSON_PrintUnformatted(root));
+        msgDescriptor = msg.get();
     }
 
     plainMsgInfo = make_shared<CmdQueueInfo>();
@@ -386,11 +384,10 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
         // does not reveal any security relevant data. We do this for builds which are able to log
         // INFO and if log level is INFO or higher
         if (LOGGER_INSTANCE getLogLevel() >= INFO) {
-            char *out = cJSON_PrintUnformatted(convJson);
+            CharUnique out(cJSON_PrintUnformatted(convJson));
             if (out) {
-                string convState(out);
+                string convState(out.get());
                 cJSON_Delete(convJson);
-                free(out);
 
                 MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
                                                        string("{\"cmd\":\"failed\"}"), false);
@@ -426,7 +423,7 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
 
     string& supplementsPlain = msgInfo->queueInfo_supplement;
     if (!supplementsPlain.empty()) {
-        shared_ptr<cJSON> sharedRoot(cJSON_Parse(supplementsPlain.c_str()), cJSON_deleter);
+        JsonUnique sharedRoot(cJSON_Parse(supplementsPlain.c_str()));
         cJSON* jsSupplement = sharedRoot.get();
 
         cJSON* cjTemp = cJSON_GetObjectItem(jsSupplement, "a");
@@ -616,7 +613,7 @@ void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo
         LOGGER(INFO, __func__, " <-- no delivery receipt");
         return;
     }
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* attributeJson = sharedRoot.get();
 
     cJSON_AddStringToObject(attributeJson, MSG_COMMAND, DELIVERY_RECEIPT);
@@ -647,15 +644,15 @@ void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo
 void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sender, const string& msgId)
 {
     LOGGER(INFO, __func__, " -->");
-    shared_ptr<cJSON> sharedRoot(cJSON_CreateObject(), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* attributeJson = sharedRoot.get();
 
     cJSON_AddStringToObject(attributeJson, MSG_COMMAND, error.c_str());
     cJSON_AddStringToObject(attributeJson, COMMAND_TIME, Utilities::currentTimeISO8601().c_str());
-    cJSON_AddBoolToObject(attributeJson, ROP, false);
-    cJSON_AddBoolToObject(attributeJson, ROM, false);
-    cJSON_AddBoolToObject(attributeJson, RAP, true);
-    cJSON_AddBoolToObject(attributeJson, RAM, true);
+//    cJSON_AddBoolToObject(attributeJson, ROP, false);
+//    cJSON_AddBoolToObject(attributeJson, ROM, false);
+//    cJSON_AddBoolToObject(attributeJson, RAP, true);
+//    cJSON_AddBoolToObject(attributeJson, RAM, true);
 
     char *out = cJSON_PrintUnformatted(attributeJson);
 

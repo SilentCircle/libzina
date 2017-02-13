@@ -374,7 +374,7 @@ static int32_t prepareChangeSet(const string &groupId, const string &binDeviceId
     return storeLocalVectorClock(store, groupId, type, lvc);
 }
 
-static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId, const string &attributes, string *newAttributes)
+static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId, cJSON *root, string *newAttributes)
 {
     string serialized;
     if (!changeSet->SerializeToString(&serialized)) {
@@ -385,30 +385,15 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
     if (b64Encode(reinterpret_cast<const uint8_t *>(serialized.data()), serialized.size(), b64Buffer.get(), b64Size) == 0) {
         return GENERIC_ERROR;
     }
-
-    cJSON* root = !attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject();
-    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
-
     string serializedSet;
     serializedSet.assign(b64Buffer.get());
 
     if (!serializedSet.empty()) {
         cJSON_AddStringToObject(root, GROUP_CHANGE_SET, serializedSet.c_str());
     }
-    char* out = cJSON_PrintUnformatted(root);
-    newAttributes->assign(out); free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    newAttributes->assign(out.get());
     return SUCCESS;
-}
-
-static bool attributesHaveChangeSet(const string &attributes)
-{
-    if (attributes.empty()) {
-        return false;
-    }
-    cJSON* root = cJSON_Parse(attributes.c_str());
-    shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
-
-    return Utilities::hasJsonKey(root, GROUP_CHANGE_SET);
 }
 
 // ****** Public instance functions
@@ -710,12 +695,14 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         return DATA_MISSING;
     }
 
-    // The attributes string a serialized change set in case ZINA sends ACK change set to a user's device
-    // don't process a current change set
-    if (attributesHaveChangeSet(attributes)) {
+    // The attributes string has a serialized change set in case ZINA responds with an ACK change sets
+    // to a user's device.  Don't process a current change set
+    JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
+
+    if (Utilities::hasJsonKey(sharedRoot.get(), GROUP_CHANGE_SET)) {
         return SUCCESS;
     }
-
     unique_lock<mutex> lck(currentChangeSetLock);
 
     PtrChangeSet changeSet;
@@ -739,7 +726,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         }
     }
     if (!updateInProgress) {
-        return serializeChangeSet(changeSet, groupId, attributes, newAttributes);
+        return serializeChangeSet(changeSet, groupId, root, newAttributes);
     }
 
     string binDeviceId;
@@ -812,7 +799,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     pendingChangeSets.insert(pair<string, PtrChangeSet >(combinedKey, changeSet));
     currentChangeSets.erase(groupId);
 
-    int32_t result = serializeChangeSet(changeSet, groupId, attributes, newAttributes);
+    int32_t result = serializeChangeSet(changeSet, groupId, root, newAttributes);
     if (result != SUCCESS) {
         errorCode_ = result;
     }

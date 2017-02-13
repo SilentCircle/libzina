@@ -218,7 +218,8 @@ void ZinaConversation::deleteStagedMk(string& mkiv)
 void ZinaConversation::deserialize(const std::string& data)
 {
     LOGGER(INFO, __func__, " -->");
-    cJSON* root = cJSON_Parse(data.c_str());
+    JsonUnique uniqueRoot(cJSON_Parse(data.c_str()));
+    cJSON* root = uniqueRoot.get();
 
     cJSON* jsonItem = cJSON_GetObjectItem(root, "partner");
     string alias(cJSON_GetObjectItem(jsonItem, "alias")->valuestring);
@@ -339,7 +340,6 @@ void ZinaConversation::deserialize(const std::string& data)
         identityKeyChanged = false;
     }
 
-    cJSON_Delete(root);
     LOGGER(INFO, __func__, " <--");
 }
 
@@ -348,7 +348,8 @@ const string* ZinaConversation::serialize() const
     LOGGER(INFO, __func__, " -->");
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
-    cJSON *root = cJSON_CreateObject();
+    JsonUnique uniqueJson(cJSON_CreateObject());
+    cJSON *root = uniqueJson.get();
 
     cJSON* jsonItem;
     cJSON_AddItemToObject(root, "partner", jsonItem = cJSON_CreateObject());
@@ -441,9 +442,8 @@ const string* ZinaConversation::serialize() const
     cJSON_AddNumberToObject(root, "versionNumber", versionNumber);
     cJSON_AddBoolToObject(root, "identityKeyChanged", identityKeyChanged);
 
-    char *out = cJSON_PrintUnformatted(root);
-    string* data = new string(out);
-    cJSON_Delete(root); free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string* data = new string(out.get());
 
     LOGGER(INFO, __func__, " <--");
     return data;
