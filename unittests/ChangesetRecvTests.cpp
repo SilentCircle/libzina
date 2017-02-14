@@ -52,14 +52,22 @@ static const string groupId_1("group_id_1");
 
 
     // User 'BGroupMember1' receives and processes the change set for this test
-
-
+EiYKCDh79s7x4I1eEgwKCN7xH+3e8R/tEAIaDGdyb3VwX05hbWVfMRokCgg4e/bO8eCNXhIMCgje8R/t3vEf7RACGgphdmF0YXJfMS0tIh0KCDh79s7x4I1eEgwKCN7xH+3e8R/tEAIYASD0AypNEhYKFERBbk90aGVyR3JvdXBNZW1iZXIyEgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjEyGBIWChRDQW5PdGhlckdyb3VwTWVtYmVyMQ==
  */
+//static const char *attrib_1 = "{\"grpId\":\"group_id_1\", "
+//        "\"grpChg\":\"EiYKCH3pHkEOSgwgEgwKCN7xH+3e8R/tEAEaDGdyb3VwX05hbWVfMRokCgh96R5BDkoMIBIMCgje8R/t3vEf7RABGgphdmF0YXJfMS0tIh0KCH3pHkEOSgwgEgwKCN7xH+3e8R/tEAEYASD0Ayo1EgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjE=\"}\n";
+
 static const char *attrib_1 = "{\"grpId\":\"group_id_1\", "
-        "\"grpChg\":\"EiYKCH3pHkEOSgwgEgwKCN7xH+3e8R/tEAEaDGdyb3VwX05hbWVfMRokCgh96R5BDkoMIBIMCgje8R/t3vEf7RABGgphdmF0YXJfMS0tIh0KCH3pHkEOSgwgEgwKCN7xH+3e8R/tEAEYASD0Ayo1EgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjE=\"}\n";
+        "\"grpChg\":\"EiYKCNsw1sfxKp7vEgwKCN7xH+3e8R/tEAEaDGdyb3VwX05hbWVfMRokCgjbMNbH8Sqe7xIMCgje8R/t3vEf7RABGgphdmF0YXJfMS0tIh0KCNsw1sfxKp7vEgwKCN7xH+3e8R/tEAEYASD0Ayo1EgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjE=\"}\n";
+
+//static const char *attrib_2 = "{\"grpId\":\"group_id_1\", "
+//        "\"grpChg\":\"EiYKCHdGfzGN13lIEgwKCN7xH+3e8R/tEAIaDGdyb3VwX05hbWVfMhokCgh3Rn8xjdd5SBIMCgje8R/t3vEf7RACGgphdmF0YXJfMi0tIh0KCHdGfzGN13lIEgwKCN7xH+3e8R/tEAIYASDYBCpNEhYKFERBbk90aGVyR3JvdXBNZW1iZXIyEgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjEyGBIWChRDQW5PdGhlckdyb3VwTWVtYmVyMQ==\"}";
+
+//static const char *attrib_2 = "{\"grpId\":\"group_id_1\", "
+//        "\"grpChg\":\"Kk0SFgoUREFuT3RoZXJHcm91cE1lbWJlcjISCgoIQU93bk5hbWUSDwoNQkdyb3VwTWVtYmVyMRIWChRDQW5PdGhlckdyb3VwTWVtYmVyMTIYEhYKFENBbk90aGVyR3JvdXBNZW1iZXIx\"}";
 
 static const char *attrib_2 = "{\"grpId\":\"group_id_1\", "
-        "\"grpChg\":\"EiYKCHdGfzGN13lIEgwKCN7xH+3e8R/tEAIaDGdyb3VwX05hbWVfMhokCgh3Rn8xjdd5SBIMCgje8R/t3vEf7RACGgphdmF0YXJfMi0tIh0KCHdGfzGN13lIEgwKCN7xH+3e8R/tEAIYASDYBCpNEhYKFERBbk90aGVyR3JvdXBNZW1iZXIyEgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjEyGBIWChRDQW5PdGhlckdyb3VwTWVtYmVyMQ==\"}";
+        "\"grpChg\":\"EiYKCDh79s7x4I1eEgwKCN7xH+3e8R/tEAIaDGdyb3VwX05hbWVfMRokCgg4e/bO8eCNXhIMCgje8R/t3vEf7RACGgphdmF0YXJfMS0tIh0KCDh79s7x4I1eEgwKCN7xH+3e8R/tEAIYASD0AypNEhYKFERBbk90aGVyR3JvdXBNZW1iZXIyEgoKCEFPd25OYW1lEg8KDUJHcm91cE1lbWJlcjESFgoUQ0FuT3RoZXJHcm91cE1lbWJlcjEyGBIWChRDQW5PdGhlckdyb3VwTWVtYmVyMQ==\"}";
 
 static const string attribute_1(attrib_1);
 static const string attribute_2(attrib_2);
@@ -175,4 +183,9 @@ TEST_F(ChangeSetTestsFixture, ChangeSetAdd) {
     root = members->front().get();
     ASSERT_EQ(groupId_1, string(Utilities::getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(otherMemberId_1, string(Utilities::getJsonString(root, MEMBER_ID, "")));
+
+    string attributeCopy2(attribute_2);
+    ASSERT_TRUE(appInterface_1->checkAndProcessChangeSet(messageDescr, &attributeCopy2));
+    ASSERT_TRUE(attributeCopy2.size() < attribute_1.size()) << "copy2: "<< attributeCopy2;
+
 }

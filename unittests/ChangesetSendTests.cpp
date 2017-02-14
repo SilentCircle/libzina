@@ -471,48 +471,49 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
     // At this point we have a new group with three members: ownName, memberId_1, otherMemberId_1, otherMemberId_2
     // in this order (alphabetically)
 
-    // Set some group meta data
-    ASSERT_EQ(SUCCESS, appInterface_1->setGroupName(groupId, &groupName_2));
-    ASSERT_EQ(SUCCESS, appInterface_1->setGroupBurnTime(groupId, 600, 1));
-    ASSERT_EQ(SUCCESS, appInterface_1->setGroupAvatar(groupId, &avatar_2));
-
-    // Prepare the change set to apply updates and create non-device specific change set, check data
+//    // Set some group meta data - don't set, done automatically by the prepare change set function
+    // in case we have an add member
+//    ASSERT_EQ(SUCCESS, appInterface_1->setGroupName(groupId, &groupName_2));
+//    ASSERT_EQ(SUCCESS, appInterface_1->setGroupBurnTime(groupId, 600, 1));
+//    ASSERT_EQ(SUCCESS, appInterface_1->setGroupAvatar(groupId, &avatar_2));
+//
+//    // Prepare the change set to apply updates and create non-device specific change set, check data
     ASSERT_EQ(SUCCESS, appInterface_1->prepareChangeSetSend(groupId));
-
-    // The vector clock now must have a value of 2
-    ASSERT_TRUE(changeSet->has_updatename());
-    ASSERT_EQ(1, changeSet->updatename().vclock_size());
-    ASSERT_EQ(2, changeSet->updatename().vclock(0).value());
-    ASSERT_EQ(binDeviceId, changeSet->updatename().vclock(0).device_id());
-
-    ASSERT_TRUE(changeSet->has_updateavatar());
-    ASSERT_EQ(1, changeSet->updateavatar().vclock_size());
-    ASSERT_EQ(2, changeSet->updateavatar().vclock(0).value());
-    ASSERT_EQ(binDeviceId, changeSet->updateavatar().vclock(0).device_id());
-
-    ASSERT_TRUE(changeSet->has_updateburn());
-    ASSERT_EQ(1, changeSet->updateburn().vclock_size());
-    ASSERT_EQ(2, changeSet->updateburn().vclock(0).value());
-    ASSERT_EQ(binDeviceId, changeSet->updateburn().vclock(0).device_id());
-
-    ASSERT_TRUE(changeSet->has_updateaddmember());
-    ASSERT_EQ(1, changeSet->updateaddmember().addmember_size());
-
-    ASSERT_TRUE(changeSet->has_updateaddmember());
-    ASSERT_EQ(1, changeSet->updatermmember().rmmember_size());
-
-    // Preparing the change set also updates the database, adding/removing group data and members
-    ASSERT_TRUE(store->hasGroup(groupId, nullptr));
-
-    group = store->listGroup(groupId, &result);
-    ASSERT_FALSE(SQL_FAIL(result)) << store->getLastError();
-    ASSERT_TRUE((bool)group);
-
-    root = group.get();
-    ASSERT_EQ(groupId, string(Utilities::getJsonString(root, GROUP_ID, "")));
-    ASSERT_EQ(avatar_2, string(Utilities::getJsonString(root, GROUP_AVATAR, "")));
-    ASSERT_EQ(600, Utilities::getJsonInt(root, GROUP_BURN_SEC, -1));
-    ASSERT_EQ(1, Utilities::getJsonInt(root, GROUP_BURN_MODE, -1));
+//
+//    // The vector clock now must have a value of 2
+//    ASSERT_TRUE(changeSet->has_updatename());
+//    ASSERT_EQ(1, changeSet->updatename().vclock_size());
+//    ASSERT_EQ(2, changeSet->updatename().vclock(0).value());
+//    ASSERT_EQ(binDeviceId, changeSet->updatename().vclock(0).device_id());
+//
+//    ASSERT_TRUE(changeSet->has_updateavatar());
+//    ASSERT_EQ(1, changeSet->updateavatar().vclock_size());
+//    ASSERT_EQ(2, changeSet->updateavatar().vclock(0).value());
+//    ASSERT_EQ(binDeviceId, changeSet->updateavatar().vclock(0).device_id());
+//
+//    ASSERT_TRUE(changeSet->has_updateburn());
+//    ASSERT_EQ(1, changeSet->updateburn().vclock_size());
+//    ASSERT_EQ(2, changeSet->updateburn().vclock(0).value());
+//    ASSERT_EQ(binDeviceId, changeSet->updateburn().vclock(0).device_id());
+//
+//    ASSERT_TRUE(changeSet->has_updateaddmember());
+//    ASSERT_EQ(1, changeSet->updateaddmember().addmember_size());
+//
+//    ASSERT_TRUE(changeSet->has_updateaddmember());
+//    ASSERT_EQ(1, changeSet->updatermmember().rmmember_size());
+//
+//    // Preparing the change set also updates the database, adding/removing group data and members
+//    ASSERT_TRUE(store->hasGroup(groupId, nullptr));
+//
+//    group = store->listGroup(groupId, &result);
+//    ASSERT_FALSE(SQL_FAIL(result)) << store->getLastError();
+//    ASSERT_TRUE((bool)group);
+//
+//    root = group.get();
+//    ASSERT_EQ(groupId, string(Utilities::getJsonString(root, GROUP_ID, "")));
+//    ASSERT_EQ(avatar_2, string(Utilities::getJsonString(root, GROUP_AVATAR, "")));
+//    ASSERT_EQ(600, Utilities::getJsonInt(root, GROUP_BURN_SEC, -1));
+//    ASSERT_EQ(1, Utilities::getJsonInt(root, GROUP_BURN_MODE, -1));
 
     // List all members of a group, should return a list with size 3 and the correct data
     members = store->getAllGroupMembers(groupId, &result);

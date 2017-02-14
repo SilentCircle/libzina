@@ -612,6 +612,25 @@ int32_t AppInterfaceImpl::applyGroupChangeSet(const string& groupId)
     return result == OK ? SUCCESS : result;
 }
 
+static void addMissingMetaData(PtrChangeSet changeSet, shared_ptr<cJSON> group)
+{
+    if (!changeSet->has_updatename()) {
+        string name = Utilities::getJsonString(group.get(), GROUP_NAME, "");
+        changeSet->mutable_updatename()->set_name(name);
+    }
+
+    if (!changeSet->has_updateavatar()) {
+        string avatar = Utilities::getJsonString(group.get(), GROUP_AVATAR, "");
+        changeSet->mutable_updateavatar()->set_avatar(avatar);
+    }
+    if (!changeSet->has_updateburn()) {
+        uint64_t sec = Utilities::getJsonInt(group.get(), GROUP_BURN_SEC, 0);
+        int32_t mode = Utilities::getJsonInt(group.get(), GROUP_BURN_MODE, 0);
+        changeSet->mutable_updateburn()->set_burn_ttl_sec(sec);
+        changeSet->mutable_updateburn()->set_burn_mode((GroupUpdateSetBurn_BurnMode)mode);
+    }
+}
+
 int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -644,6 +663,12 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
     }
     string binDeviceId;
     makeBinaryDeviceId(getOwnDeviceId(), &binDeviceId);
+
+    if (changeSet->has_updateaddmember()) {
+        int32_t result;
+        shared_ptr<cJSON> group = store_->listGroup(groupId, &result);
+        addMissingMetaData(changeSet, group);
+    }
 
     // Now check each update: add vector clocks, update id, then store the new data in group and member tables
     if (changeSet->has_updatename()) {
@@ -734,22 +759,6 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
 
     string updateIdString(reinterpret_cast<const char*>(updateId), UPDATE_ID_LENGTH);
 
-    // Because we send a new group update we can remove older group updates from wait-for-ack. The
-    // recent update overwrites older updates. ZINA then ignores ACKs for the older updates.
-    // Then store a new wait-for-ack record with the current update id.
-    if (changeSet->has_updatename()) {
-        store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_NAME);
-        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_NAME);
-    }
-    if (changeSet->has_updateavatar()) {
-        store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_AVATAR);
-        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
-    }
-    if (changeSet->has_updateburn()) {
-        store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_BURN);
-        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
-    }
-
     auto oldEnd = pendingChangeSets.cend();
     for (auto it = pendingChangeSets.cbegin(); it != oldEnd; ++it) {
 
@@ -785,7 +794,31 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         }
     }
 
-    // Add wait-for-ack records for these group updates
+    // We may now have an add member update: may have added names from old change set, thus add
+    // meta data if necessary.
+    if (changeSet->has_updateaddmember()) {
+        int32_t result;
+        shared_ptr<cJSON> group = store_->listGroup(groupId, &result);
+        addMissingMetaData(changeSet, group);
+    }
+
+    // Because we send a new group update we can remove older group updates from wait-for-ack. The
+    // recent update overwrites older updates. ZINA then ignores ACKs for the older updates.
+    // Then store a new wait-for-ack record with the current update id.
+    if (changeSet->has_updatename()) {
+        store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_NAME);
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_NAME);
+    }
+    if (changeSet->has_updateavatar()) {
+        store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_AVATAR);
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
+    }
+    if (changeSet->has_updateburn()) {
+        store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_BURN);
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
+    }
+
+    // Add wait-for-ack records for add/remove group updates
     if (changeSet->has_updateaddmember()) {
         store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_ADD_MEMBER);
     }
