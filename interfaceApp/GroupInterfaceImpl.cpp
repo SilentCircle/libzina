@@ -853,7 +853,7 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
             it = rmMembers.erase(it);
             continue;
         }
-        result = store_->insertMember(groupId, *it);
+        result = store_->deleteMember(groupId, *it);
         if (SQL_FAIL(result)) {
             errorCode_ = result;
             errorInfo_ = "Cannot remove group member";
@@ -867,7 +867,7 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
     }
 
     if (!rmMembers.empty()) {
-        groupCmdCallback_(prepareMemberList(groupId, addMembers, RM_MEMBERS));
+        groupCmdCallback_(prepareMemberList(groupId, rmMembers, RM_MEMBERS));
     }
     return SUCCESS;
 }
