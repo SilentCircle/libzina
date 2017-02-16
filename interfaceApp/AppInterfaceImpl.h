@@ -344,7 +344,7 @@ private:
 
     int32_t sendGroupCommand(const string &recipient, const string &msgId, const string &command);
 
-    bool checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes);
+    int32_t checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes);
 
     /**
      * @brief Leave a group.

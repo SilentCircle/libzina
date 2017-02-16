@@ -291,7 +291,7 @@ int32_t AppInterfaceImpl::processGroupMessage(int32_t msgType, const string &msg
 
 int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, string *commandIn)
 {
-    LOGGER(INFO, __func__, " --> ", commandIn);
+    LOGGER(INFO, __func__, " --> ", *commandIn);
 
     if (commandIn->empty()) {
         return GROUP_CMD_MISSING_DATA;
@@ -316,7 +316,7 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     return SUCCESS;
 }
 
-bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes)
+int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -324,7 +324,7 @@ bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, str
     cJSON* root = sharedRoot.get();
     string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
     if (changeSetString.empty()) {
-        return true;
+        return GROUP_CMD_DATA_INCONSISTENT;
     }
     if (changeSetString.size() > tempBufferSize_) {
         delete[] tempBuffer_;
@@ -335,7 +335,7 @@ bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, str
                                  tempBufferSize_);
     if (binLength == 0) {
         LOGGER(ERROR, __func__, "Base64 decoding of group change set failed.");
-        return false;
+        return CORRUPT_DATA;
     }
     // Remove the long change set b64 data
     cJSON_DeleteItemFromObject(root, GROUP_CHANGE_SET);
@@ -357,12 +357,8 @@ bool AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, str
     string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
 
     int32_t result = processReceivedChangeSet(changeSet, groupId, sender, deviceId);
-    if (result != SUCCESS) {
-        // TODO: add state callback to inform user about problem
-        return false;
-    }
     LOGGER(INFO, __func__, " <-- ");
-    return true;
+    return result;
 }
 
 int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, const string &deviceId)
