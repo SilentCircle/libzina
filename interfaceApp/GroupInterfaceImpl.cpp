@@ -282,7 +282,7 @@ int32_t AppInterfaceImpl::processGroupMessage(int32_t msgType, const string &msg
     if (msgType == GROUP_MSG_NORMAL && msgDescriptor.empty()) {
         return GROUP_MSG_DATA_INCONSISTENT;
     }
-    if (checkAndProcessChangeSet(msgDescriptor, attributesDescr)) {
+    if (checkAndProcessChangeSet(msgDescriptor, attributesDescr) == SUCCESS) {
         groupMsgCallback_(msgDescriptor, attachmentDescr, *attributesDescr);
     }
     LOGGER(INFO, __func__, " <--");
@@ -324,7 +324,7 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
     cJSON* root = sharedRoot.get();
     string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
     if (changeSetString.empty()) {
-        return GROUP_CMD_DATA_INCONSISTENT;
+        return SUCCESS;
     }
     if (changeSetString.size() > tempBufferSize_) {
         delete[] tempBuffer_;
@@ -487,6 +487,8 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
 
 int32_t AppInterfaceImpl::processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &binDeviceId)
 {
+    LOGGER(INFO, __func__, " -->");
+
     // Clean old wait-for-ack records before processing ACKs. This enables proper cleanup of pending change sets
     time_t timestamp = time(0) - MK_STORE_TIME;
     store_->cleanWaitAck(timestamp);
@@ -513,9 +515,11 @@ int32_t AppInterfaceImpl::processAcks(const GroupChangeSet &changeSet, const str
         if (!moreChangeSets) {
             string key;
             key.assign(updateId).append(groupId);
-            removeFromPendingChangeSets(key);
+            bool removed = removeFromPendingChangeSets(key);
+            LOGGER(INFO, "remove groupid from pending change set: ", groupId, ": ", removed, ": ", key);
         }
     }
+    LOGGER(INFO, __func__, " <-- ");
     return SUCCESS;
 }
 
@@ -535,6 +539,8 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
                                             const string &binDeviceId, GroupChangeSet *ackSet)
 {
     const string &updateIdRemote = changeSet.update_id();
+
+    LOGGER(INFO, __func__, " --> ", updateIdRemote);
 
     VectorClock<string> remoteVc;
     deserializeVectorClock(changeSet.vclock(), &remoteVc);

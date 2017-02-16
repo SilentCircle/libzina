@@ -661,7 +661,7 @@ private:
 
     void makeBinaryDeviceId(const string &deviceId, string *binaryId);
 
-    void removeFromPendingChangeSets(const string &key);
+    bool removeFromPendingChangeSets(const string &key);
 
     int32_t processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &deviceId);
 

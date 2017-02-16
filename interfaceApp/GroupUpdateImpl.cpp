@@ -696,6 +696,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupBurnTime(groupId, changeSet->updateburn().burn_ttl_sec(), changeSet->updateburn().burn_mode());
     }
     if (changeSet->has_updateaddmember()) {
+        changeSet->mutable_updateaddmember()->set_update_id(updateId, UPDATE_ID_LENGTH);
         const int32_t size = changeSet->updateaddmember().addmember_size();
         for (int i = 0; i < size; i++) {
             const string &userId = changeSet->updateaddmember().addmember(i).user_id();
@@ -705,6 +706,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         }
     }
     if (changeSet->has_updatermmember()) {
+        changeSet->mutable_updatermmember()->set_update_id(updateId, UPDATE_ID_LENGTH);
         const int32_t size = changeSet->updatermmember().rmmember_size();
         for (int i = 0; i < size; i++) {
             const string &userId = changeSet->updatermmember().rmmember(i).user_id();
@@ -835,6 +837,8 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
 
 void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
 {
+    LOGGER(INFO, __func__, " -->");
+
     unique_lock<mutex> lck(currentChangeSetLock);
 
     if (!updateInProgress) {
@@ -866,6 +870,8 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
     currentChangeSets.erase(groupId);
 
     updateInProgress = false;
+
+    LOGGER(INFO, __func__, " <-- ", currentKey);
 }
 
 // The device_id inside then change set and vector clocks consists of the first 8 binary bytes
@@ -878,13 +884,14 @@ void AppInterfaceImpl::makeBinaryDeviceId(const string &deviceId, string *binary
     binaryId->assign(reinterpret_cast<const char*>(binBuffer.get()), VC_ID_LENGTH);
 }
 
-void AppInterfaceImpl::removeFromPendingChangeSets(const string &key) 
+bool AppInterfaceImpl::removeFromPendingChangeSets(const string &key)
 {
     auto oldEnd = pendingChangeSets.end();
     for (auto it = pendingChangeSets.begin(); it != oldEnd; ++it) {
         if (it->first == key) {
-            pendingChangeSets.erase(it);
-            break;
+            auto eraseIt = pendingChangeSets.erase(it);
+            return eraseIt != oldEnd;
         }
     }
+    return false;
 }
