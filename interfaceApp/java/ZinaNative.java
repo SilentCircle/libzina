@@ -16,29 +16,20 @@ limitations under the License.
 
 package zina;
 
-// This file uses annotations. Because we use this file only to create the JNI
-// interface file we use the normal Java compiler (javac) without any additional
-// libraries etc. Thus the annotation statements are commented using special
-// comments. To remove the comments and enable the annotations perform replacements:
-// - replace '//**ANN** ' with an empty string globally
-// - replace '/*!' with an empty string globally
-// - replace '!*/' with an empty string globally
+// This file uses annotations.
 //
-// For Android Studio or other IntelliJ based IDE you can use this inside 'replace':
-// - select 'Regex'
-// - enter '/\*!(@[A-Za-z]*)!\*/' (without quotes) into the find field (top field)
-// - enter ''$1' into the replace field
+// The directory contains a jar file that defines the annoations that are in use in Android  .
 //
 // To create the JNI interface file:
 // - cd to the ZinaNative.java directory
-// - run 'javac -d . ZinaNative.java'
+// - run 'javac -cp android-support-annotations.jar -d . ZinaNative.java'
 // - run 'javah zina.ZinaNative'
 //
 // After this you can remove the created 'zina' directory.
 
-//**ANN** import android.support.annotation.NonNull;
-//**ANN** import android.support.annotation.WorkerThread;
-//**ANN** import android.support.annotation.Nullable;
+import android.support.annotation.NonNull;
+import android.support.annotation.WorkerThread;
+import android.support.annotation.Nullable;
 
 /**
  * Native functions and callbacks for ZINA library.
@@ -60,7 +51,7 @@ package zina;
  * it just works the other way around. This is the reason why the interface uses {@code byte[]}
  * and not {@code String}.
  */
-//**ANN** @SuppressWarnings({"unused", "JniMissingFunction"})
+@SuppressWarnings({"unused", "JniMissingFunction"})
 public abstract class ZinaNative { //  extends Service {  -- depends on the implementation of the real Java class
 
     /**
@@ -149,9 +140,9 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *         devices. In case of error the functions return {@code null} and the {@code getErrorCode} and
      *         {@code getErrorInfo} have the details.
      */
-    //**ANN** @WorkerThread
-    public static native PreparedMessageData[] prepareMessage(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                            /*!@Nullable!*/ byte[] messageAttributes, boolean normalMsg, int[] resultCode);
+    @WorkerThread
+    public static native PreparedMessageData[] prepareMessage(byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
+                                            @Nullable byte[] messageAttributes, boolean normalMsg, int[] resultCode);
 
     /**
      * Send message to sibling devices.
@@ -175,9 +166,9 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return unique message identifiers if the messages were processed for sending, 0 if processing
      *         failed.
      */
-    //**ANN** @WorkerThread
-    public static native PreparedMessageData[] prepareMessageToSiblings(byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                                         /*!@Nullable!*/ byte[] messageAttributes, boolean normalMsg, int[] resultCode);
+    @WorkerThread
+    public static native PreparedMessageData[] prepareMessageToSiblings(byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
+                                                         @Nullable byte[] messageAttributes, boolean normalMsg, int[] resultCode);
 
     /**
      * Encrypt the prepared messages and send them to the receiver.
@@ -191,7 +182,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param transportIds An array of transport id that identify the messages to encrypt and send.
      * @return Number of queued messages, a negative value on failure
      */
-    public static native int doSendMessages(/*!@NonNull!*/ long[] transportIds);
+    public static native int doSendMessages(@NonNull long[] transportIds);
 
     /**
      * Remove prepared messages from its queue.
@@ -206,7 +197,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param transportIds An array of transport id that identify the messages to remove.
      * @return Number of removed messages, a negative value on failure
      */
-    public static native int removePreparedMessages(/*!@NonNull!*/ long[] transportIds);
+    public static native int removePreparedMessages(@NonNull long[] transportIds);
 
     /**
      * Request names of known trusted ZIAN user identities.
@@ -255,8 +246,8 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param user the name of the user
      * @return array of identity keys.
      */
-    //**ANN** @Nullable
-    public static native byte[][] getIdentityKeys(/*!@Nullable!*/ byte[] user);
+    @Nullable
+    public static native byte[][] getIdentityKeys(@Nullable byte[] user);
 
     /**
      * Request a user's ZINA device names.
@@ -266,7 +257,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return JSON formatted information about user's ZINA devices. It returns {@code null}
      *         if no devices known for this user.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native byte[] getZinaDevicesUser(byte[] userName);
 
     /**
@@ -282,7 +273,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *        request result code at index 0
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native byte[] registerZinaDevice(int[] resultCode);
 
     /**
@@ -295,7 +286,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param deviceId the SC device id of the device to remove.
      * @return a JSON string as UTF-8 encoded bytes, contains information in case of failures.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native byte[] removeZinaDevice(byte[] deviceId, int[] resultCode);
 
     /**
@@ -303,7 +294,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * @return Result of the register new pre-key request, usually a HTTP code (200, 404, etc)
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native int newPreKeys(int number);
 
     /**
@@ -314,7 +305,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * @return number of available pre-keys or -1 if request to server failed.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native int getNumPreKeys();
 
     /**
@@ -367,7 +358,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param resultCode an int array with at least a length of one. The functions returns the
      *        request result code at index 0
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native String zinaCommand(String command, byte[] data, int[] resultCode);
 
     /**
@@ -397,7 +388,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *                               An empty string ot {@code null} shows that not attributes are available.
      * @return Either success or an error code (to be defined)
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public abstract int receiveMessage(byte[] messageDescriptor, byte[] attachmentDescriptor, byte[] messageAttributes);
 
     /**
@@ -418,7 +409,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param stateInformation   JSON formatted state information block (string) that contains the
      *                           details about the new state of some error information.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public abstract void messageStateReport(long messageIdentifier, int statusCode, byte[] stateInformation);
 
     /**
@@ -441,7 +432,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param code to return the request result code at index 0 (200, 404 etc)
      * @return the received data
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public abstract byte[] httpHelper(byte[] requestUri, String method, byte[] requestData, int[] code);
 
     /**
@@ -457,7 +448,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param actionInformation  JSON formatted state information block (string) that contains the
      *                           details required for the action.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public abstract void notifyCallback(int notifyActionCode, byte[] actionInformation, byte[] deviceId);
 
 
@@ -500,7 +491,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return {@code} true if new size could be set, {@code false} otherwise, use
      *         {@code AppInterfaceImpl::getErrorInfo()} to get error string.
      */
-    public static native boolean modifyGroupSize(/*!@NonNull!*/ String groupUuid, int newSize);
+    public static native boolean modifyGroupSize(@NonNull String groupUuid, int newSize);
 
     /**
      * Set a group's new name.
@@ -513,7 +504,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *                  update from the change set.
      * @return {@code SUCCESS} if new name could be set, or an error code
      */
-    public static native int setGroupName(/*!@NonNull!*/ String groupUuid, byte[] groupName);
+    public static native int setGroupName(@NonNull String groupUuid, byte[] groupName);
 
     /**
      * Set a group's new burn time and mode.
@@ -532,7 +523,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param mode
      * @return {@code SUCCESS} if new name could be set, or an error code
      */
-    public static native int setGroupBurnTime(/*!@NonNull!*/ String groupUuid, long burnTime, int mode);
+    public static native int setGroupBurnTime(@NonNull String groupUuid, long burnTime, int mode);
 
     /**
      * Set a group's new avatar data.
@@ -545,7 +536,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *               avatar info update from the change set.
      * @return {@code SUCCESS} if new name could be set, or an error code
      */
-    public static native int setGroupAvatar(/*!@NonNull!*/ String groupUuid, byte[] avatar);
+    public static native int setGroupAvatar(@NonNull String groupUuid, byte[] avatar);
 
     /**
      * Get data of all known groups.
@@ -558,7 +549,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
      * @return Byte array of JSON formatted data as byte array.
      */
-    public static native byte[][] listAllGroups(/*!@NonNull!*/ int[] code);
+    public static native byte[][] listAllGroups(@NonNull int[] code);
 
     /**
      * Get data of a single group.
@@ -572,7 +563,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
      * @return Byte array of JSON formatted data
      */
-    public static native byte[] getGroup(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ int[] code);
+    public static native byte[] getGroup(@NonNull String groupUuid, @NonNull int[] code);
 
     /**
      * Get all members of a specified group.
@@ -587,7 +578,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
      * @return Byte array of JSON formatted data as byte array.
      */
-    public static native byte[][]  getAllGroupMembers(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ int[] code);
+    public static native byte[][]  getAllGroupMembers(@NonNull String groupUuid, @NonNull int[] code);
 
     /**
      * Get a member of a specified group.
@@ -602,7 +593,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
      * @return Byte array of JSON formatted data
      */
-    public static native byte[] getGroupMember(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[]memberUuid, /*!@NonNull!*/ int[] code);
+    public static native byte[] getGroupMember(@NonNull String groupUuid, @NonNull byte[]memberUuid, @NonNull int[] code);
 
     /**
      * Add a user to a group (same as invite)
@@ -611,7 +602,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param userId The invited user's unique id
      * @return {@code SUCCESS} or error code (<0)
      */
-    public static native int addUser(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[] userId);
+    public static native int addUser(@NonNull String groupUuid, @NonNull byte[] userId);
 
     /**
      * Remove a user's name from the add member update change set.
@@ -623,7 +614,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param userId The user id to remove from the change set
      * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
      */
-    public static native int removeUserFromAddUpdate(/*!@NonNull!*/ String groupUuid, /*!@NonNull!*/ byte[] userId);
+    public static native int removeUserFromAddUpdate(@NonNull String groupUuid, @NonNull byte[] userId);
 
     /**
      * Cancel group's current change set.
@@ -633,7 +624,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param groupId Cancel current change set for this group
      * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
      */
-    public static native int cancelGroupChangeSet(/*!@NonNull!*/ String groupId);
+    public static native int cancelGroupChangeSet(@NonNull String groupId);
 
     /**
      * Apply group's current change set.
@@ -645,7 +636,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param groupId Apply current change set for this group
      * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
      */
-    public static native int applyGroupChangeSet(/*!@NonNull!*/ String groupId);
+    public static native int applyGroupChangeSet(@NonNull String groupId);
 
     /**
      * Send a message to a group with an optional attachment and attributes.
@@ -669,9 +660,9 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *                               An empty string shows that not attributes are available.
      * @return {@code OK} if function could send the message, error code (<0) otherwise
      */
-    //**ANN** @WorkerThread
-    public static native int sendGroupMessage(/*!@NonNull!*/ byte[] messageDescriptor, /*!@Nullable!*/ byte[] attachmentDescriptor,
-                                              /*!@Nullable!*/ byte[] messageAttributes);
+    @WorkerThread
+    public static native int sendGroupMessage(@NonNull byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
+                                              @Nullable byte[] messageAttributes);
 
     /**
      * Leave a group.
@@ -682,8 +673,8 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param groupId The group to leave
      * @return {@code SUCCESS} if 'leave group' processing was OK, error code (<0) otherwise
      */
-    //**ANN** @WorkerThread
-    public static native int leaveGroup(/*!@NonNull!*/ String groupId);
+    @WorkerThread
+    public static native int leaveGroup(@NonNull String groupId);
 
     /**
      * Remove another member (not myself) from a group.
@@ -699,7 +690,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param userId The user id of the user to remove
      * @return {@code SUCCESS} if 'remove from group' processing was OK, error code (<0) otherwise
      */
-    public static native int removeUser(/*!@NonNull!*/ String groupId, /*!@NonNull!*/ byte[] userId);
+    public static native int removeUser(@NonNull String groupId, @NonNull byte[] userId);
 
     /**
      * @brief Remove a user's name from the remove member update change set.
@@ -711,7 +702,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param userId The user id to remove from the change set
      * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
      */
-    public static native int removeUserFromRemoveUpdate(/*!@NonNull!*/ String groupId, /*!@NonNull!*/ byte[] userId);
+    public static native int removeUserFromRemoveUpdate(@NonNull String groupId, @NonNull byte[] userId);
 
     /**
      * Synchronize sibling devices after group UI removed a group message.
@@ -728,8 +719,8 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param messageId The message id of the removed message
      * @return {@code OK} or an error code
      */
-    //**ANN** @WorkerThread
-    public static native int groupMessageRemoved(/*!@NonNull!*/ String groupId, /*!@NonNull!*/ String messageId);
+    @WorkerThread
+    public static native int groupMessageRemoved(@NonNull String groupId, @NonNull String messageId);
 
     /**
      * Callback to UI to receive a normal group message.
@@ -1339,7 +1330,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *                      #doInit call.
      * @return the UID for the alias or {@code null} if no UID exists for the alias.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native String getUid(String alias, byte[] authorization);
 
     /**
@@ -1381,7 +1372,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @return a JSON formatted string as UTF byte array or {@code null} if no user data exists
      *         for the alias.
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native byte[] getUserInfo(String alias, byte[] authorization, int[] errorCode);
 
     /**
@@ -1397,7 +1388,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * @see getUserInfo(String alias, byte[] authorization)
      */
-    //**ANN** @WorkerThread
+    @WorkerThread
     public static native byte[] refreshUserData(String aliasUuid, byte[] authorization);
 
     /**
