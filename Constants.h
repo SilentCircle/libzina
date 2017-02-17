@@ -39,7 +39,7 @@ namespace zina {
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
     static const int SYMMETRIC_KEY_LENGTH  = 32;      //!< Use 256 bit keys for symmetric crypto
 
-    static const int MAX_ENCODED_MSG_LENGTH = 7*1024;  //!< We silently ignore messages bigger than this (b64 encoded)
+    static const int MAX_ENCODED_MSG_LENGTH = 7*1024; //!< We silently ignore messages bigger than this (b64 encoded)
     static const int MK_STORE_TIME     = 31*86400;    //!< cleanup stored MKs and message hashes after 31 days
 
     static const int NUM_PRE_KEYS          = 100;
@@ -127,15 +127,15 @@ namespace zina {
     // Error codes group chat
     static const int32_t GROUP_ERROR_BASE = -400;       //!< Base error code: -400 generic error, -401 thru -449 are SQL errors
     static const int32_t MAX_MEMBERS_REACHED = -450;    //!< Maximum members for this group reached
-    static const int32_t GROUP_CMD_MISSING_DATA = -451; //<! Message has type group command but no data
-    static const int32_t GROUP_CMD_DATA_INCONSISTENT = -452; //<! Message is group command but has no command
-    static const int32_t GROUP_MSG_DATA_INCONSISTENT = -453; //<! Message is normal group message command but has no data
-    static const int32_t GROUP_MEMBER_NOT_STORED = -454; //<! Cannot store a new member
-    static const int32_t NO_SUCH_ACTIVE_GROUP = -455;   //<! Group does not exist or is not acive
-    static const int32_t WRONG_UPDATE_TYPE = -456;      //<! Update type not known
-    static const int32_t NO_VECTOR_CLOCK = -457;        //<! No vector clock for group/event pair
-    static const int32_t GROUP_UPDATE_RUNNING = -458;   //<! Currently preparing an sending group updates
-    static const int32_t GROUP_UPDATE_INCONSISTENT = -459; //<! A Prepared change set is not available
+    static const int32_t GROUP_CMD_MISSING_DATA = -451; //!< Message has type group command but no data
+    static const int32_t GROUP_CMD_DATA_INCONSISTENT = -452; //!< Message is group command but has no command
+    static const int32_t GROUP_MSG_DATA_INCONSISTENT = -453; //!< Message is normal group message command but has no data
+    static const int32_t GROUP_MEMBER_NOT_STORED =-454; //!< Cannot store a new member
+    static const int32_t NO_SUCH_ACTIVE_GROUP = -455;   //!< Group does not exist or is not acive
+    static const int32_t WRONG_UPDATE_TYPE = -456;      //!< Update type not known
+    static const int32_t NO_VECTOR_CLOCK = -457;        //!< No vector clock for group/event pair
+    static const int32_t GROUP_UPDATE_RUNNING = -458;   //!< Currently preparing an sending group updates
+    static const int32_t GROUP_UPDATE_INCONSISTENT = -459; //!< A Prepared change set is not available
 
 }  // namespace
 
