@@ -46,6 +46,7 @@ namespace zina {
         string alias0;           //!< Primary alias, aka preferred alias, aka alias0
         string contactLookupUri; //!< Set by contacts discovery to the contact's lookup key
         string avatarUrl;        //!< Avatar URL from provisioning server
+        string organization;     //!< User's organization
         string retainForOrg;     //!< This organization defined the retention policy
         bool   drEnabled;        //!< Data Retention enabled flag
         bool   drRrmm;           //!< RRMM: "remote retains message metadata"
