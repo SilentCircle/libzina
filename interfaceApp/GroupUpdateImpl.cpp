@@ -480,12 +480,13 @@ int32_t AppInterfaceImpl::processLeaveGroup(const string &groupId, const string 
 
         // Remove group's pending change set
         auto end = pendingChangeSets.end();
-        for (auto it = pendingChangeSets.begin(); it != end; ++it) {
+        for (auto it = pendingChangeSets.begin(); it != end; ) {
             string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
             if (oldGroupId != groupId) {
+                ++it;
                 continue;
             }
-            pendingChangeSets.erase(it);
+            it = pendingChangeSets.erase(it);
         }
         return deleteGroupAndMembers(groupId);
     }
@@ -851,15 +852,17 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
 
     // Remove old change sets of the group. This guarantees that we have at most one pending change set per group
     auto oldEnd = pendingChangeSets.end();
-    for (auto it = pendingChangeSets.begin(); it != oldEnd; ++it) {
+    for (auto it = pendingChangeSets.begin(); it != oldEnd; ) {
         if (it->first == currentKey) {
+            ++it;
             continue;
         }
         string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
         if (oldGroupId != groupId) {
+            ++it;
             continue;
         }
-        pendingChangeSets.erase(it);
+        it = pendingChangeSets.erase(it);
     }
 
     PtrChangeSet changeSet = getGroupChangeSet(groupId);
