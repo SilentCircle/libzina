@@ -152,7 +152,7 @@ public:
 
 TEST_F(ChangeSetTestsFixture, ChangeSetAdd) {
     string attributeCopy(attribute_1);
-    ASSERT_TRUE(appInterface_1->checkAndProcessChangeSet(messageDescr, &attributeCopy));
+    ASSERT_EQ(SUCCESS, appInterface_1->checkAndProcessChangeSet(messageDescr, &attributeCopy));
     ASSERT_TRUE(attributeCopy.size() < attribute_1.size()) << "copy: "<< attributeCopy;
 
     int32_t result;
@@ -185,7 +185,7 @@ TEST_F(ChangeSetTestsFixture, ChangeSetAdd) {
     ASSERT_EQ(otherMemberId_1, string(Utilities::getJsonString(root, MEMBER_ID, "")));
 
     string attributeCopy2(attribute_2);
-    ASSERT_TRUE(appInterface_1->checkAndProcessChangeSet(messageDescr, &attributeCopy2));
+    ASSERT_EQ(SUCCESS, appInterface_1->checkAndProcessChangeSet(messageDescr, &attributeCopy2));
     ASSERT_TRUE(attributeCopy2.size() < attribute_1.size()) << "copy2: "<< attributeCopy2;
 
 }

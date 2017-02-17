@@ -131,11 +131,11 @@ static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32
     return command;
 }
 
-static int32_t serializeAckSet(const GroupChangeSet ackSet, string *attributes)
+static int32_t serializeChangeSet(const GroupChangeSet changeSet, string *attributes)
 {
 
     string serialized;
-    if (!ackSet.SerializeToString(&serialized)) {
+    if (!changeSet.SerializeToString(&serialized)) {
         return GENERIC_ERROR;
     }
     size_t b64Size = static_cast<size_t>(serialized.size() * 2);
@@ -320,11 +320,48 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
 {
     LOGGER(INFO, __func__, " -->");
 
+    string changeSetString;
+
     JsonUnique sharedRoot(cJSON_Parse(messageAttributes->c_str()));
     cJSON* root = sharedRoot.get();
-    string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
+    if (Utilities::hasJsonKey(root, GROUP_CHANGE_SET)) {
+        changeSetString = Utilities::getJsonString(root, GROUP_CHANGE_SET, "");
+
+        // Remove the change set b64 data
+        cJSON_DeleteItemFromObject(root, GROUP_CHANGE_SET);
+        CharUnique out(cJSON_PrintUnformatted(root));
+        messageAttributes->assign(out.get());
+    }
+    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
+
+    // Get the message sender info
+    sharedRoot = JsonUnique(cJSON_Parse(msgDescriptor.c_str()));
+    root = sharedRoot.get();
+    string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
+    string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
+
+    bool hasGroup = store_->hasGroup(groupId);
+
+    // We have an empty CS here, thus only a message to a group
     if (changeSetString.empty()) {
-        return SUCCESS;
+        if (hasGroup) {
+            return SUCCESS;
+        }
+        else {
+            GroupChangeSet rmSet;
+            GroupUpdateRmMember *updateRmMember = rmSet.mutable_updatermmember();
+            Member *member = updateRmMember->add_rmmember();
+            member->set_user_id(getOwnUser());
+
+            string attributes;
+            int32_t result = serializeChangeSet(rmSet, &attributes);
+            if (result != SUCCESS) {
+                return result;
+            }
+            // message from unknown group, ask sender to remove me
+            // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
+            return sendGroupMessageToSingleUserDevice(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
+        }
     }
     if (changeSetString.size() > tempBufferSize_) {
         delete[] tempBuffer_;
@@ -337,36 +374,24 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
         LOGGER(ERROR, __func__, "Base64 decoding of group change set failed.");
         return CORRUPT_DATA;
     }
-    // Remove the long change set b64 data
-    cJSON_DeleteItemFromObject(root, GROUP_CHANGE_SET);
-    char *out = cJSON_PrintUnformatted(root);
-    messageAttributes->assign(out);
-    free(out);
 
     GroupChangeSet changeSet;
     if (!changeSet.ParseFromArray(tempBuffer_, static_cast<int32_t>(binLength))) {
         LOGGER(ERROR, __func__, "ProtoBuffer decoding of group change set failed.");
         return false;
     }
-    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
 
-    // Get the message sender info
-    sharedRoot = JsonUnique(cJSON_Parse(msgDescriptor.c_str()));
-    root = sharedRoot.get();
-    string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
-    string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
-
-    int32_t result = processReceivedChangeSet(changeSet, groupId, sender, deviceId);
+    int32_t result = processReceivedChangeSet(changeSet, groupId, sender, deviceId, hasGroup);
     LOGGER(INFO, __func__, " <-- ");
     return result;
 }
 
-int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, const string &deviceId)
+int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId,
+                                                   const string &sender, const string &deviceId, bool hasGroup)
 {
     LOGGER(INFO, __func__, " -->");
 
     bool fromSibling = sender == getOwnUser();
-    bool hasGroup = store_->hasGroup(groupId);
 
     // If all this is true then our user left the group, triggered it on a sibling device
     if (fromSibling && hasGroup &&
@@ -396,78 +421,76 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
             LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
             return result;
         }
-        hasGroup = true;
+        hasGroup = true;                // Now we have a group :-)
         groupCmdCallback_(callbackCmd);
     }
 
+    GroupChangeSet ackRmSet;              // Gathers all ACKs and a remove on unexpected group change sets
+
     // No such group but some group related update for it? Inform sender that we don't have
-    // this group and ask to remove me. No ACK processing
-    if (!hasGroup && (changeSet.has_updateavatar() || changeSet.has_updateburn() || changeSet.has_updatename()
-                      || changeSet.has_updatermmember() || changeSet.acks_size() > 0)) {
+    // this group and ask to remove me. To send a "remove" when receiving an ACK for an unknown
+    // group, leads to message loops
+    if (!hasGroup ) {
+        if (changeSet.has_updateavatar() || changeSet.has_updateburn() || changeSet.has_updatename()
+            || changeSet.has_updatermmember()) {
 
-        // If we don't know this group and asked to remove ourselves from it, just ignore it. It's
-        // a loop breaker in case of unusual race conditions.
-        if (changeSet.updatermmember().rmmember_size() == 1 &&
+            // If we don't know this group and asked to remove ourselves from it, just ignore it. It's
+            // a loop breaker in case of unusual race conditions.
+            if (changeSet.updatermmember().rmmember_size() == 1 &&
                 changeSet.updatermmember().rmmember(0).user_id() == getOwnUser()) {
-            return SUCCESS;
+                return SUCCESS;
+            }
+            GroupUpdateRmMember *updateRmMember = ackRmSet.mutable_updatermmember();
+            Member *member = updateRmMember->add_rmmember();
+            member->set_user_id(getOwnUser());
+            LOGGER(INFO, __func__, " <-- unexpected group change set");
         }
-        const int32_t result = removeUser(groupId, getOwnUser(), true /*allowOwnUser*/);
-        if (result != SUCCESS) {
-            errorCode_ = result;
-            errorInfo_ = "Cannot remove own user on unexpected group change set.";
-            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-            return result;
-        }
-        LOGGER(INFO, __func__, " <-- unexpected group change set");
-        // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
-        return sendGroupMessageToSingleUserDevice(groupId, sender, deviceId, Empty, Empty, GROUP_MSG_CMD);
     }
-    string binDeviceId;
-    makeBinaryDeviceId(deviceId, &binDeviceId);
+    else {
+        string binDeviceId;
+        makeBinaryDeviceId(deviceId, &binDeviceId);
 
-    if (changeSet.acks_size() > 0) {
-        // Process ACKs from partners and siblings
-        const int32_t result = processAcks(changeSet, groupId, binDeviceId);
-        if (result != SUCCESS) {
-            return result;
+        if (changeSet.acks_size() > 0) {
+            // Process ACKs from partners and siblings
+            const int32_t result = processAcks(changeSet, groupId, binDeviceId);
+            if (result != SUCCESS) {
+                return result;
+            }
         }
-    }
 
-    GroupChangeSet ackSet;              // Gathers all ACKs
+        if (changeSet.has_updatename()) {
+            // Update the group's name
+            const int32_t result = processUpdateName(changeSet.updatename(), groupId, binDeviceId, &ackRmSet);
+            if (result != SUCCESS) {
+                return result;
+            }
+        }
+        if (changeSet.has_updateavatar()) {
+            // Update the group's avatar info
+            const int32_t result = processUpdateAvatar(changeSet.updateavatar(), groupId, binDeviceId, &ackRmSet);
+            if (result != SUCCESS) {
+                return result;
+            }
+        }
+        if (changeSet.has_updateburn()) {
+            // Update the group's burn timer info
+            const int32_t result = processUpdateBurn(changeSet.updateburn(), groupId, binDeviceId, &ackRmSet);
+            if (result != SUCCESS) {
+                return result;
+            }
+        }
+        if ((changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) ||
+            (changeSet.has_updatermmember() && changeSet.updatermmember().rmmember_size() > 0)) {
 
-    if (changeSet.has_updatename()) {
-        // Update the group's name
-        const int32_t result = processUpdateName(changeSet.updatename(), groupId, binDeviceId, &ackSet);
-        if (result != SUCCESS) {
-            return result;
+            const int32_t result = processUpdateMembers(changeSet, groupId, &ackRmSet);
+            if (result != SUCCESS) {
+                return result;
+            }
         }
     }
-    if (changeSet.has_updateavatar()) {
-        // Update the group's avatar info
-        const int32_t result = processUpdateAvatar(changeSet.updateavatar(), groupId, binDeviceId, &ackSet);
-        if (result != SUCCESS) {
-            return result;
-        }
-    }
-    if (changeSet.has_updateburn()) {
-        // Update the group's burn timer info
-        const int32_t result = processUpdateBurn(changeSet.updateburn(), groupId, binDeviceId, &ackSet);
-        if (result != SUCCESS) {
-            return result;
-        }
-    }
-    if ((changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) ||
-        (changeSet.has_updatermmember() && changeSet.updatermmember().rmmember_size() > 0)) {
-
-        const int32_t result = processUpdateMembers(changeSet, groupId, &ackSet);
-        if (result != SUCCESS) {
-            return result;
-        }
-    }
-
-    if (ackSet.acks_size() > 0) {
+    if (ackRmSet.acks_size() > 0 || ackRmSet.has_updatermmember()) {
         string attributes;
-        int32_t result = serializeAckSet(ackSet, &attributes);
+        int32_t result = serializeChangeSet(ackRmSet, &attributes);
         if (result != SUCCESS) {
             return result;
         }

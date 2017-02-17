@@ -329,7 +329,8 @@ private:
     int32_t processGroupMessage(int32_t msgType, const string &msgDescriptor,
                                 const string &attachmentDescr, string *attributesDescr);
 
-    int32_t processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, const string &deviceId);
+    int32_t processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, 
+                                     const string &deviceId, bool hasGroup);
 
     /**
      *
