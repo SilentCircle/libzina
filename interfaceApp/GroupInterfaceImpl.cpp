@@ -791,8 +791,8 @@ int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet,
 int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId,
                                                GroupChangeSet *ackSet) {
 
-    // The function first processes the add member update, then remove member. It removes member
-    // from the add member list if the member is also in the remove member update.
+    // The function first processes the add member update, then remove member. It removes members
+    // from the add member list if a member is also in the remove member update.
     list<string> addMembers;
     if (changeSet.has_updateaddmember()) {
         // We always send back an ACK
@@ -846,7 +846,7 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
             LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
             return result;
         }
-        // already a member, remove from list
+        // already a member, remove from list that's being prepared for UI callback
         if (isMember) {
             it = addMembers.erase(it);
             continue;
@@ -873,7 +873,8 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
             LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
             return result;
         }
-        // Unknown member, no need to remove it
+        // Unknown member, no need to remove it from member table, also remove from list that's
+        // being prepared for UI callback
         if (!isMember) {
             it = rmMembers.erase(it);
             continue;

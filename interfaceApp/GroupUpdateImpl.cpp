@@ -632,6 +632,19 @@ static void addMissingMetaData(PtrChangeSet changeSet, shared_ptr<cJSON> group)
     }
 }
 
+static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId, SQLiteStoreConv &store)
+{
+    int32_t result;
+    auto members = store.getAllGroupMembers(groupId, &result);
+    if (SQL_FAIL(result)) {
+        return result;
+    }
+    for (; !members->empty(); members->pop_front()) {
+        string name(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
+        addAddNameToChangeSet(changeSet, name);
+    }
+    return SUCCESS;
+}
 int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -705,6 +718,8 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
                 store_->insertMember(groupId, userId);
             }
         }
+        // a new member also needs knowledge of existing members. The function adds these, filters duplicates.
+        addExistingMembers(changeSet, groupId, *store_);
     }
     if (changeSet->has_updatermmember()) {
         changeSet->mutable_updatermmember()->set_update_id(updateId, UPDATE_ID_LENGTH);
