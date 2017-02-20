@@ -59,6 +59,7 @@ const string NameLookup::getUid(const string &alias, const string& authorization
  * Structure of the user info JSON that the provisioning server returns:
 
 {"display_alias": <string>,
+ "display_organization": <string>,
  "avatar_url": <string>,
  "display_name": <string>,
  "dr_enabled": <bool>,          // Will be removed?
@@ -117,6 +118,11 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
         userInfo->avatarUrl.assign(tmpData->valuestring);
     }
     userInfo->drEnabled = Utilities::getJsonBool(tmpData, "dr_enabled", false);
+
+    tmpData = cJSON_GetObjectItem(root, "display_organization");
+    if (tmpData != NULL && tmpData->valuestring != NULL) {
+        userInfo->organization.assign(tmpData->valuestring);
+    }
 
     tmpData = cJSON_GetObjectItem(root, "data_retention");
 
@@ -266,6 +272,7 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
     it->second->displayName.assign(userInfo->displayName);
     it->second->alias0.assign(userInfo->alias0);
     it->second->avatarUrl.assign(userInfo->avatarUrl);
+    it->second->organization.assign(userInfo->organization);
     it->second->drEnabled = userInfo->drEnabled;
 
     it->second->drRrmm = userInfo->drRrmm;
