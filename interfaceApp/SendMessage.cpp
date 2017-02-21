@@ -151,17 +151,17 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
 }
 
 static mutex preparedMessagesLock;
-static map<uint64_t, shared_ptr<CmdQueueInfo> > preparedMessages;
+static map<uint64_t, unique_ptr<CmdQueueInfo> > preparedMessages;
 
 #ifdef SC_ENABLE_DR_SEND
 static mutex retainInfoLock;
 static map<uint64_t, uint32_t > retainInfoMap;
 #endif
 
-void AppInterfaceImpl::queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo)
+void AppInterfaceImpl::queuePreparedMessage(unique_ptr<CmdQueueInfo> msgInfo)
 {
     unique_lock<mutex> listLock(preparedMessagesLock);
-    preparedMessages.insert(pair<uint64_t, shared_ptr<CmdQueueInfo> >(msgInfo->queueInfo_transportMsgId, msgInfo));
+    preparedMessages.insert(pair<uint64_t, unique_ptr<CmdQueueInfo> >(msgInfo->queueInfo_transportMsgId, move(msgInfo)));
 }
 
 // Check if we have a retain info entry for this id.
@@ -359,7 +359,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         }
 
         // Setup and queue the prepared message info data
-        auto msgInfo = make_shared<CmdQueueInfo>();
+        auto msgInfo = new CmdQueueInfo;
         msgInfo->command = SendMessage;
 
         // Specific handling to group messages: each device may have its own update change set, depending on it's ACK status.
@@ -391,13 +391,14 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         msgInfo->queueInfo_toSibling = toSibling;
         msgInfo->queueInfo_newUserDevice = newUser;
         counter++;
-        queuePreparedMessage(msgInfo);
 
         // Prepare the return data structure and fill into list
         auto resultData = make_shared<PreparedMessageData>();
         resultData->transportId = msgInfo->queueInfo_transportMsgId;
         resultData->receiverInfo = idDevInfo;
         messageData->push_back(resultData);
+
+        queuePreparedMessage(unique_ptr<CmdQueueInfo>(msgInfo));
     }
 
 #ifdef SC_ENABLE_DR_SEND
@@ -415,7 +416,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     return messageData;
 }
 
-string  AppInterfaceImpl::createSendErrorJson(const shared_ptr<CmdQueueInfo>& info, int32_t errorCode)
+string  AppInterfaceImpl::createSendErrorJson(const CmdQueueInfo& info, int32_t errorCode)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -423,9 +424,9 @@ string  AppInterfaceImpl::createSendErrorJson(const shared_ptr<CmdQueueInfo>& in
     cJSON* details;
     cJSON_AddItemToObject(root, "details", details = cJSON_CreateObject());
 
-    cJSON_AddStringToObject(details, "name", info->queueInfo_recipient.c_str());
-    cJSON_AddStringToObject(details, "scClientDevId", info->queueInfo_deviceId.c_str());
-    cJSON_AddStringToObject(details, "msgId", info->queueInfo_msgId.c_str());   // May help to diagnose the issue
+    cJSON_AddStringToObject(details, "name", info.queueInfo_recipient.c_str());
+    cJSON_AddStringToObject(details, "scClientDevId", info.queueInfo_deviceId.c_str());
+    cJSON_AddStringToObject(details, "msgId", info.queueInfo_msgId.c_str());   // May help to diagnose the issue
     cJSON_AddNumberToObject(details, "errorCode", errorCode);
 
     char *out = cJSON_PrintUnformatted(root);
@@ -451,7 +452,7 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
     if (numOfIds == 0)
         return 0;
 
-    list<shared_ptr<CmdQueueInfo> > messagesToProcess;
+    list<unique_ptr<CmdQueueInfo> > messagesToProcess;
     int32_t counter = 0;
 
     unique_lock<mutex> prepareLock(preparedMessagesLock);
@@ -460,7 +461,7 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
         auto it = preparedMessages.find(id);
         if (it != preparedMessages.end()) {
             // Found a prepared message
-            messagesToProcess.push_back(it->second);
+            messagesToProcess.push_back(move(it->second));
             preparedMessages.erase(it);
             counter++;
         }
@@ -498,36 +499,29 @@ int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > t
 }
 
 int32_t
-AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation)
+AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<ZinaConversation> zinaConversation)
 {
     LOGGER(INFO, __func__, " -->");
 
     errorCode_ = SUCCESS;
 
     // Don't send this to sender device when sending to my sibling devices
-    if (sendInfo->queueInfo_toSibling && sendInfo->queueInfo_deviceId == scClientDevId_) {
+    if (sendInfo.queueInfo_toSibling && sendInfo.queueInfo_deviceId == scClientDevId_) {
         return SUCCESS;
     }
 
-    string supplements = createSupplementString(sendInfo->queueInfo_attachment, sendInfo->queueInfo_attributes);
-
-    // This append is necessary: the GCC C++ string implementation uses shared strings, reference counted. Thus
-    // if we set the data buffer to 0 then all other references are also cleared. Appending a blank forces the string
-    // implementation to really copy the string and we can set the contents to 0. string.clear() does not clear the
-    // contents, just sets the length to 0 which is not good enough.
-    sendInfo->queueInfo_attachment.append(" ");
-    sendInfo->queueInfo_attributes.append(" ");
+    string supplements = createSupplementString(sendInfo.queueInfo_attachment, sendInfo.queueInfo_attributes);
 
     if (zinaConversation == nullptr) {
-        zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+        zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId);
         if (!zinaConversation->isValid()) {
-            LOGGER(ERROR, "ZINA conversation is not valid. Owner: ", ownUser_, ", recipient: ", sendInfo->queueInfo_recipient,
-                   ", recipientDeviceId: ", sendInfo->queueInfo_deviceId);
+            LOGGER(ERROR, "ZINA conversation is not valid. Owner: ", ownUser_, ", recipient: ", sendInfo.queueInfo_recipient,
+                   ", recipientDeviceId: ", sendInfo.queueInfo_deviceId);
             errorCode_ = zinaConversation->getErrorCode();
-            errorInfo_ = sendInfo->queueInfo_deviceId;
-            getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
-            Utilities::wipeString(sendInfo->queueInfo_attachment);
-            Utilities::wipeString(sendInfo->queueInfo_attributes);
+            errorInfo_ = sendInfo.queueInfo_deviceId;
+            getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
+            Utilities::wipeString(sendInfo.queueInfo_attachment);
+            Utilities::wipeString(sendInfo.queueInfo_attributes);
             return errorCode_;
         }
     }
@@ -536,10 +530,9 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
 
     // Encrypt the user's message and the supplementary data if necessary
     MessageEnvelope envelope;
-    int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo->queueInfo_message, envelope, supplements);
+    int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo.queueInfo_message, envelope, supplements);
 
-    sendInfo->queueInfo_message.append(" ");
-    Utilities::wipeString(sendInfo->queueInfo_message);
+    Utilities::wipeString(sendInfo.queueInfo_message);
     Utilities::wipeString(supplements);
 
     convJson = zinaConversation->prepareForCapture(convJson, false);
@@ -548,17 +541,17 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     string convState(out);
     cJSON_Delete(convJson); free(out);
 
-    MessageCapture::captureSendMessage(sendInfo->queueInfo_recipient, sendInfo->queueInfo_msgId, sendInfo->queueInfo_deviceId, convState,
-                                       sendInfo->queueInfo_attributes, !sendInfo->queueInfo_attachment.empty());
+    MessageCapture::captureSendMessage(sendInfo.queueInfo_recipient, sendInfo.queueInfo_msgId, sendInfo.queueInfo_deviceId, convState,
+                                       sendInfo.queueInfo_attributes, !sendInfo.queueInfo_attachment.empty());
 
-    Utilities::wipeString(sendInfo->queueInfo_attachment);
-    Utilities::wipeString(sendInfo->queueInfo_attributes);
+    Utilities::wipeString(sendInfo.queueInfo_attachment);
+    Utilities::wipeString(sendInfo.queueInfo_attributes);
 
     // If encrypt does not return encrypted data then report an error, code was set by the encrypt function
     if (result != SUCCESS) {
-        LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo->queueInfo_deviceId);
+        LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo.queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
+        getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
         return zinaConversation->getErrorCode();
     }
     zinaConversation->storeConversation();
@@ -574,11 +567,11 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
 
     envelope.set_name(ownUser_);
     envelope.set_scclientdevid(scClientDevId_);
-    envelope.set_msgid(sendInfo->queueInfo_msgId);
-    envelope.set_msgtype(static_cast<uint32_t>(sendInfo->queueInfo_transportMsgId & MSG_TYPE_MASK));
+    envelope.set_msgid(sendInfo.queueInfo_msgId);
+    envelope.set_msgtype(static_cast<uint32_t>(sendInfo.queueInfo_transportMsgId & MSG_TYPE_MASK));
 
     uint8_t binDevId[20];
-    size_t res = hex2bin(sendInfo->queueInfo_deviceId.c_str(), binDevId);
+    size_t res = hex2bin(sendInfo.queueInfo_deviceId.c_str(), binDevId);
     if (res == 0)
         envelope.set_recvdevidbin(binDevId, 4);
 
@@ -597,7 +590,7 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
     serialized.assign(tempBuffer_, b64Len);
 
 #ifdef SC_ENABLE_DR_SEND
-    uint32_t retainInfo = getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, true);
+    uint32_t retainInfo = getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, true);
     if (retainInfo != 0) {
         doSendDataRetention(retainInfo, sendInfo);
     }
@@ -610,55 +603,55 @@ AppInterfaceImpl::sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_
 }
 
 int32_t
-AppInterfaceImpl::sendMessageNewUser(shared_ptr<CmdQueueInfo>& sendInfo)
+AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
     errorCode_ = SUCCESS;
 
     // Don't send this to sender device, even when sending to my sibling devices
-    if (sendInfo->queueInfo_toSibling && sendInfo->queueInfo_deviceId == scClientDevId_) {
+    if (sendInfo.queueInfo_toSibling && sendInfo.queueInfo_deviceId == scClientDevId_) {
         return SUCCESS;
     }
 
     // Check if conversation/user really not known. On new users the 'reScan' triggered by
     // SIP NOTIFY may have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
-    auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+    auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId);
     if (zinaConversation->isValid() && !zinaConversation->getRK().empty()) {
         return sendMessageExisting(sendInfo, zinaConversation);
     }
 
     pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
-    int32_t preKeyId = Provisioning::getPreKeyBundle(sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId, authorization_, &preIdKeys);
+    int32_t preKeyId = Provisioning::getPreKeyBundle(sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, authorization_, &preIdKeys);
     if (preKeyId == 0) {
-        LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo->queueInfo_recipient, ", device id: ", sendInfo->queueInfo_deviceId);
+        LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo.queueInfo_recipient, ", device id: ", sendInfo.queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- No pre-key bundle");
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
+        getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
         return NO_PRE_KEY_FOUND;
     }
 
-    int32_t buildResult = ZinaPreKeyConnector::setupConversationAlice(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId, preKeyId, preIdKeys);
+    int32_t buildResult = ZinaPreKeyConnector::setupConversationAlice(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, preKeyId, preIdKeys);
 
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult != SUCCESS) {
         delete preIdKeys.first;
         delete preIdKeys.second;
         errorCode_ = buildResult;
-        errorInfo_ = sendInfo->queueInfo_deviceId;
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
+        errorInfo_ = sendInfo.queueInfo_deviceId;
+        getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
         return errorCode_;
     }
     // Read the conversation again and store the device name of the new user's device. Now the user/device
     // is known and we can handle it as an existing user.
-    zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo->queueInfo_recipient, sendInfo->queueInfo_deviceId);
+    zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId);
     if (!zinaConversation->isValid()) {
         errorCode_ = zinaConversation->getErrorCode();
-        errorInfo_ = sendInfo->queueInfo_deviceId;
-        getAndMaintainRetainInfo(sendInfo->queueInfo_transportMsgId  & ~0xff, false);
+        errorInfo_ = sendInfo.queueInfo_deviceId;
+        getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
         return errorCode_;
     }
-    zinaConversation->setDeviceName(sendInfo->queueInfo_deviceName);
+    zinaConversation->setDeviceName(sendInfo.queueInfo_deviceName);
     LOGGER(INFO, __func__, " <--");
 
     return sendMessageExisting(sendInfo, zinaConversation);

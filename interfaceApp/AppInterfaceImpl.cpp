@@ -220,10 +220,10 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(INFO, __func__, " -->");
 
-    auto msgInfo = make_shared<CmdQueueInfo>();
+    auto msgInfo = new CmdQueueInfo;
     msgInfo->command = ReScanUserDevices;
     msgInfo->queueInfo_recipient = userName;
-    addMsgInfoToRunQueue(msgInfo);
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
     LOGGER(INFO, __func__, " <--");
     return;
@@ -266,12 +266,12 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     if (toSibling && deviceId == scClientDevId_) {
         return;
     }
-    auto msgInfo = make_shared<CmdQueueInfo>();
+    auto msgInfo = new CmdQueueInfo;
     msgInfo->command = ReSyncDeviceConversation;
     msgInfo->queueInfo_recipient = userName;
     msgInfo->queueInfo_deviceId = deviceId;
     msgInfo->boolData1 = toSibling;
-    addMsgInfoToRunQueue(msgInfo);
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
     LOGGER(INFO, __func__, " <--");
     return;
@@ -397,7 +397,7 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
 }
 
 
-void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> command) {
+void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
     LOGGER(INFO, __func__, " -->");
 
     if (!store_->isReady()) {
@@ -405,7 +405,7 @@ void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> comman
         return;
     }
     // clear data and store the nearly empty conversation
-    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command->queueInfo_recipient, command->queueInfo_deviceId);
+    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command.queueInfo_recipient, command.queueInfo_deviceId);
     if (!conv->isValid()) {
         return;
     }
@@ -417,15 +417,15 @@ void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> comman
 
     // Check if server still knows this device.
     // If no device at all for his user -> remove all conversations (ratchet contexts) of this user.
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(command->queueInfo_recipient, authorization_);
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(command.queueInfo_recipient, authorization_);
     if (!devices || devices->empty()) {
-        store_->deleteConversationsName(command->queueInfo_recipient, ownUser_);
+        store_->deleteConversationsName(command.queueInfo_recipient, ownUser_);
         return;
     }
     bool deviceFound = false;
     string deviceName;
     for (auto it = devices->cbegin(); it != devices->cend(); ++it) {
-        if (command->queueInfo_deviceId == (*it).first) {
+        if (command.queueInfo_deviceId == (*it).first) {
             deviceName = (*it).second;
             deviceFound = true;
             break;
@@ -434,7 +434,7 @@ void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> comman
 
     // The server does not know this device anymore. In this case remove the conversation (ratchet context), done.
     if (!deviceFound) {
-        store_->deleteConversation(command->queueInfo_recipient, command->queueInfo_deviceId, ownUser_);
+        store_->deleteConversation(command.queueInfo_recipient, command.queueInfo_deviceId, ownUser_);
         return;
     }
 
@@ -444,20 +444,19 @@ void AppInterfaceImpl::reSyncConversationCommand(shared_ptr<CmdQueueInfo> comman
     // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
-    auto msgInfo = make_shared<CmdQueueInfo>();
+    auto msgInfo = new CmdQueueInfo;
     msgInfo->command = SendMessage;
-    msgInfo->queueInfo_recipient = command->queueInfo_recipient;
+    msgInfo->queueInfo_recipient = command.queueInfo_recipient;
     msgInfo->queueInfo_deviceName = deviceName;
-    msgInfo->queueInfo_deviceId = command->queueInfo_deviceId;
+    msgInfo->queueInfo_deviceId = command.queueInfo_deviceId;
     msgInfo->queueInfo_msgId = generateMsgIdTime();
     msgInfo->queueInfo_message = Empty;
     msgInfo->queueInfo_attachment = Empty;
     msgInfo->queueInfo_attributes = ping;
     msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(MSG_NORMAL);
-    msgInfo->queueInfo_toSibling = command->boolData1;
+    msgInfo->queueInfo_toSibling = command.boolData1;
     msgInfo->queueInfo_newUserDevice = true;
-    queuePreparedMessage(msgInfo);
-    doSendSingleMessage(msgInfo->queueInfo_transportMsgId);
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
     LOGGER(INFO, __func__, " <--");
     return;
@@ -475,12 +474,12 @@ void AppInterfaceImpl::setIdKeyVerified(const string &userName, const string& de
     if (toSibling && deviceId == scClientDevId_)
         return;
 
-    auto msgInfo = make_shared<CmdQueueInfo>();
+    auto msgInfo = new CmdQueueInfo;
     msgInfo->command = SetIdKeyChangeFlag;
     msgInfo->queueInfo_recipient = userName;
     msgInfo->queueInfo_deviceId = deviceId;
     msgInfo->boolData1 = flag;
-    addMsgInfoToRunQueue(msgInfo);
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
     LOGGER(INFO, __func__, " <--");
     return;
@@ -510,20 +509,20 @@ int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
     return SUCCESS;
 }
 
-void AppInterfaceImpl::checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command)
+void AppInterfaceImpl::checkRemoteIdKeyCommand(const CmdQueueInfo &command)
 {
     /*
      * Command data usage:
-    command->command = CkeckRemoteIdKey;
-    command->stringData1 = remoteName;
-    command->stringData2 = deviceId;
-    command->stringData3 = pubKey;
-    command->int32Data = verifyState;
+    command.command = CkeckRemoteIdKey;
+    command.stringData1 = remoteName;
+    command.stringData2 = deviceId;
+    command.stringData3 = pubKey;
+    command.int32Data = verifyState;
      */
-    auto remote = ZinaConversation::loadConversation(getOwnUser(), command->stringData1, command->stringData2);
+    auto remote = ZinaConversation::loadConversation(getOwnUser(), command.stringData1, command.stringData2);
 
     if (!remote->isValid()) {
-        LOGGER(ERROR, "<-- No conversation, user: '", command->stringData1, "', device: ", command->stringData2);
+        LOGGER(ERROR, "<-- No conversation, user: '", command.stringData1, "', device: ", command.stringData2);
         return;
     }
     const DhPublicKey* remoteId = remote->getDHIr();
@@ -531,43 +530,43 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command)
 
 //     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
 //     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
-    if (command->stringData3.compare(remoteIdKey) != 0) {
-        LOGGER(ERROR, "<-- Messaging keys do not match, user: '", command->stringData1, "', device: ", command->stringData2);
+    if (command.stringData3.compare(remoteIdKey) != 0) {
+        LOGGER(ERROR, "<-- Messaging keys do not match, user: '", command.stringData1, "', device: ", command.stringData2);
         return;
     }
     // if verifyState is 1 then both users verified their SAS and thus set the Axolotl conversation
     // to fully verified, otherwise at least the identity keys are equal and we proved that via
     // a ZRTP session.
-    int32_t verify = (command->int32Data == 1) ? 2 : 1;
+    int32_t verify = (command.int32Data == 1) ? 2 : 1;
     remote->setZrtpVerifyState(verify);
     remote->setIdentityKeyChanged(false);
     remote->storeConversation();
 }
 
-void AppInterfaceImpl::setIdKeyVerifiedCommand(shared_ptr<CmdQueueInfo> command)
+void AppInterfaceImpl::setIdKeyVerifiedCommand(const CmdQueueInfo &command)
 {
     /*
      * Command data usage:
-    command->command = SetIdKeyChangeFlag;
-    command->queueInfo_recipient = remoteName;
-    command->queueInfo_deviceId = deviceId;
-    command->boolData1 = flag;
+    command.command = SetIdKeyChangeFlag;
+    command.queueInfo_recipient = remoteName;
+    command.queueInfo_deviceId = deviceId;
+    command.boolData1 = flag;
      */
-    auto remote = ZinaConversation::loadConversation(getOwnUser(), command->queueInfo_recipient, command->queueInfo_deviceId);
+    auto remote = ZinaConversation::loadConversation(getOwnUser(), command.queueInfo_recipient, command.queueInfo_deviceId);
 
     if (!remote->isValid()) {
-        LOGGER(ERROR, "<-- No conversation, user: '", command->queueInfo_recipient, "', device: ", command->queueInfo_deviceId);
+        LOGGER(ERROR, "<-- No conversation, user: '", command.queueInfo_recipient, "', device: ", command.queueInfo_deviceId);
         return;
     }
-    remote->setIdentityKeyChanged(command->boolData1);
+    remote->setIdentityKeyChanged(command.boolData1);
     remote->storeConversation();
 }
 
-void AppInterfaceImpl::rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command)
+void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
 {
     LOGGER(INFO, __func__, " -->");
 
-    const string &userName = command->queueInfo_recipient;
+    const string &userName = command.queueInfo_recipient;
 
     shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
     if (!devices|| devices->empty()) {
@@ -649,7 +648,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command
         }
 
         LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
-        auto msgInfo = make_shared<CmdQueueInfo>();
+        auto msgInfo = new CmdQueueInfo;
         msgInfo->command = SendMessage;
         msgInfo->queueInfo_recipient = userName;
         msgInfo->queueInfo_deviceName = deviceName;
@@ -662,8 +661,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command
         msgInfo->queueInfo_toSibling = toSibling;
         msgInfo->queueInfo_newUserDevice = true;
         counter++;
-        queuePreparedMessage(msgInfo);
-        doSendSingleMessage(msgInfo->queueInfo_transportMsgId);  // Process it immediately, usually only one new device at a time
+        addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
         LOGGER(DEBUGGING, "Queued message to ping a new device.");
     }
     LOGGER(INFO, __func__, " <--");

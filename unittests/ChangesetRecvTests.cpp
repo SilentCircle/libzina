@@ -167,20 +167,21 @@ TEST_F(ChangeSetTestsFixture, ChangeSetAdd) {
     ASSERT_EQ(1, Utilities::getJsonInt(root, GROUP_BURN_MODE, -1));
 
     // List all members of a group, should return a list with size 3 and the correct data
-    shared_ptr<list<shared_ptr<cJSON> > >members = store->getAllGroupMembers(groupId_1, &result);
+    list<JsonUnique> members;
+    result = store->getAllGroupMembers(groupId_1, &members);
     ASSERT_FALSE(SQL_FAIL(result)) << store->getLastError();
-    ASSERT_EQ(3, members->size());
-    root = members->front().get();
+    ASSERT_EQ(3, members.size());
+    root = members.front().get();
     ASSERT_EQ(groupId_1, string(Utilities::getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(ownName, string(Utilities::getJsonString(root, MEMBER_ID, "")));
 
-    members->pop_front();
-    root = members->front().get();
+    members.pop_front();
+    root = members.front().get();
     ASSERT_EQ(groupId_1, string(Utilities::getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(memberId_1, string(Utilities::getJsonString(root, MEMBER_ID, "")));
 
-    members->pop_front();
-    root = members->front().get();
+    members.pop_front();
+    root = members.front().get();
     ASSERT_EQ(groupId_1, string(Utilities::getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(otherMemberId_1, string(Utilities::getJsonString(root, MEMBER_ID, "")));
 

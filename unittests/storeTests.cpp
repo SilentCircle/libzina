@@ -208,7 +208,7 @@ TEST_F(StoreTestFixture, MsgTraceStore)
 TEST_F(StoreTestFixture, ReceivedRawData)
 {
     // Fresh DB, no received raw records
-    list<shared_ptr<StoredMsgInfo> >  rawMessageData;
+    list<unique_ptr<StoredMsgInfo> >  rawMessageData;
     int32_t result = pks->loadReceivedRawData(&rawMessageData);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(rawMessageData.empty());
@@ -224,7 +224,7 @@ TEST_F(StoreTestFixture, ReceivedRawData)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, rawMessageData.size());
 
-    shared_ptr<StoredMsgInfo> &msgInfo = rawMessageData.front();
+    unique_ptr<StoredMsgInfo> &msgInfo = rawMessageData.front();
     ASSERT_EQ(rawData, msgInfo->info_rawMsgData);
     ASSERT_EQ(name, msgInfo->info_uid);
     ASSERT_EQ(displayName, msgInfo->info_displayName);
@@ -270,7 +270,7 @@ TEST_F(StoreTestFixture, ReceivedRawData)
 TEST_F(StoreTestFixture, TempMsg)
 {
     // Fresh DB, no received raw records
-    list<shared_ptr<StoredMsgInfo> > tempMsg;
+    list<unique_ptr<StoredMsgInfo> > tempMsg;
     int32_t result = pks->loadTempMsg(&tempMsg);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(tempMsg.empty());
@@ -286,7 +286,7 @@ TEST_F(StoreTestFixture, TempMsg)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, tempMsg.size());
 
-    shared_ptr<StoredMsgInfo> &msgInfo = tempMsg.front();
+    unique_ptr<StoredMsgInfo> &msgInfo = tempMsg.front();
     ASSERT_EQ(rawData, msgInfo->info_msgDescriptor);
     ASSERT_EQ(name, msgInfo->info_supplementary);
     ASSERT_EQ(sequence, msgInfo->sequence);
@@ -373,15 +373,17 @@ TEST_F(StoreTestFixture, GroupChatStore)
     closeSha256Context(ctx, hash_2);
 
     // Fresh DB, groups must be empty
-    shared_ptr<list<shared_ptr<cJSON> > > groups = pks->listAllGroups();
-    ASSERT_TRUE(groups->empty());
+    list<JsonUnique> groups;
+    int32_t result = pks->listAllGroups(&groups);
+    ASSERT_TRUE(groups.empty());
 
     shared_ptr<cJSON> group = pks->listGroup(groupId_1);
     ASSERT_FALSE((bool)group);
 
     // Fresh DB, members must be empty
-    shared_ptr<list<shared_ptr<cJSON> > > members = pks->getAllGroupMembers(groupId_1);
-    ASSERT_TRUE(members->empty());
+    list<JsonUnique> members;
+    result = pks->getAllGroupMembers(groupId_1, &members);
+    ASSERT_TRUE(members.empty());
 
     shared_ptr<cJSON> member = pks->getGroupMember(groupId_1, memberId_1);
     ASSERT_FALSE((bool)member);
@@ -390,7 +392,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(has);
 
     // Test with empty group name and group decsription
-    int32_t result = pks->insertGroup(groupId_1, Empty, groupOwner, Empty, 10);
+    result = pks->insertGroup(groupId_1, Empty, groupOwner, Empty, 10);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     has = pks->hasGroup(groupId_1);
@@ -433,10 +435,11 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(2, attrTime.first);
 
-    groups = pks->listAllGroups(&result);
+    groups.clear();
+    result = pks->listAllGroups(&groups);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(1, groups->size());
-    root = groups->front().get();
+    ASSERT_EQ(1, groups.size());
+    root = groups.front().get();
     ASSERT_EQ(10, getJsonInt(root, GROUP_MAX_MEMBERS, -1));
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
 
@@ -526,10 +529,11 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(1, getJsonInt(root, GROUP_MEMBER_COUNT, -1));
 
     // List all members of a group, should return a list with size 1 and the correct data
-    members = pks->getAllGroupMembers(groupId_1, &result);
+    members.clear();
+    result = pks->getAllGroupMembers(groupId_1, &members);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
-    ASSERT_EQ(1, members->size());
-    root = members->front().get();
+    ASSERT_EQ(1, members.size());
+    root = members.front().get();
     ASSERT_EQ(groupId_1, string(getJsonString(root, GROUP_ID, "")));
     ASSERT_EQ(memberId_1, string(getJsonString(root, MEMBER_ID, "")));
 
@@ -581,9 +585,10 @@ TEST_F(StoreTestFixture, GroupChatStore)
     result = pks->deleteMember(groupId_1, memberId_1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    // The member list operations must not return empty list or data
-    members = pks->getAllGroupMembers(groupId_1);
-    ASSERT_FALSE(members->empty());
+    // The member list operations must not return an empty list
+    members.clear();
+    result = pks->getAllGroupMembers(groupId_1, &members);
+    ASSERT_FALSE(members.empty());
 
     member = pks->getGroupMember(groupId_1, memberId_1);
     ASSERT_FALSE((bool)member);
@@ -593,8 +598,9 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // The member list operations must return empty list or data now
-    members = pks->getAllGroupMembers(groupId_1);
-    ASSERT_TRUE(members->empty());
+    members.clear();
+    result = pks->getAllGroupMembers(groupId_1, &members);
+    ASSERT_TRUE(members.empty());
 
     member = pks->getGroupMember(groupId_1, memberId_2);
     ASSERT_FALSE((bool)member);
@@ -611,8 +617,9 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE(SQL_FAIL(result));
 
     // The group list operations must return empty list or data
-    groups = pks->listAllGroups();
-    ASSERT_TRUE(groups->empty());
+    groups.clear();
+    result = pks->listAllGroups(&groups);
+    ASSERT_TRUE(groups.empty());
 
     group = pks->listGroup(groupId_1);
     ASSERT_FALSE((bool)group);

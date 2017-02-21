@@ -44,6 +44,10 @@ static map<string, PtrChangeSet> pendingChangeSets;
 static uint8_t updateId[UPDATE_ID_LENGTH];
 static bool updateInProgress = false;
 
+/* ***************************************************************************
+ * Static helper functions to manipulate change set, etc
+ *
+ *************************************************************************** */
 static bool addNewGroupToChangeSet(const string &groupId)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
@@ -396,8 +400,43 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
     return SUCCESS;
 }
 
-// ****** Public instance functions
-// *******************************************************
+static void addMissingMetaData(PtrChangeSet changeSet, cJSON *group)
+{
+    if (!changeSet->has_updatename()) {
+        string name = Utilities::getJsonString(group, GROUP_NAME, "");
+        changeSet->mutable_updatename()->set_name(name);
+    }
+
+    if (!changeSet->has_updateavatar()) {
+        string avatar = Utilities::getJsonString(group, GROUP_AVATAR, "");
+        changeSet->mutable_updateavatar()->set_avatar(avatar);
+    }
+    if (!changeSet->has_updateburn()) {
+        uint64_t sec = static_cast<uint64_t>(Utilities::getJsonInt(group, GROUP_BURN_SEC, 0));
+        int32_t mode = Utilities::getJsonInt(group, GROUP_BURN_MODE, 0);
+        changeSet->mutable_updateburn()->set_burn_ttl_sec(sec);
+        changeSet->mutable_updateburn()->set_burn_mode((GroupUpdateSetBurn_BurnMode)mode);
+    }
+}
+
+static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId, SQLiteStoreConv &store)
+{
+    list<JsonUnique> members;
+    int32_t result = store.getAllGroupMembers(groupId, &members);
+    if (SQL_FAIL(result)) {
+        return result;
+    }
+    for (auto& member: members) {
+        string name(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
+        addAddNameToChangeSet(changeSet, name);
+    }
+    return SUCCESS;
+}
+
+/* ***************************************************************************
+ * Public Instance functions
+ *
+ *************************************************************************** */
 
 string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription) {
     LOGGER(INFO, __func__, " -->");
@@ -613,38 +652,12 @@ int32_t AppInterfaceImpl::applyGroupChangeSet(const string& groupId)
     return result == OK ? SUCCESS : result;
 }
 
-static void addMissingMetaData(PtrChangeSet changeSet, shared_ptr<cJSON> group)
-{
-    if (!changeSet->has_updatename()) {
-        string name = Utilities::getJsonString(group.get(), GROUP_NAME, "");
-        changeSet->mutable_updatename()->set_name(name);
-    }
 
-    if (!changeSet->has_updateavatar()) {
-        string avatar = Utilities::getJsonString(group.get(), GROUP_AVATAR, "");
-        changeSet->mutable_updateavatar()->set_avatar(avatar);
-    }
-    if (!changeSet->has_updateburn()) {
-        uint64_t sec = Utilities::getJsonInt(group.get(), GROUP_BURN_SEC, 0);
-        int32_t mode = Utilities::getJsonInt(group.get(), GROUP_BURN_MODE, 0);
-        changeSet->mutable_updateburn()->set_burn_ttl_sec(sec);
-        changeSet->mutable_updateburn()->set_burn_mode((GroupUpdateSetBurn_BurnMode)mode);
-    }
-}
+/* ***************************************************************************
+ * Private instance functions, visible for unit tests
+ *
+ *************************************************************************** */
 
-static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId, SQLiteStoreConv &store)
-{
-    int32_t result;
-    auto members = store.getAllGroupMembers(groupId, &result);
-    if (SQL_FAIL(result)) {
-        return result;
-    }
-    for (; !members->empty(); members->pop_front()) {
-        string name(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
-        addAddNameToChangeSet(changeSet, name);
-    }
-    return SUCCESS;
-}
 int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -680,8 +693,8 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
 
     if (changeSet->has_updateaddmember()) {
         int32_t result;
-        shared_ptr<cJSON> group = store_->listGroup(groupId, &result);
-        addMissingMetaData(changeSet, group);
+        auto group = store_->listGroup(groupId, &result);
+        addMissingMetaData(changeSet, group.get());
     }
 
     // Now check each update: add vector clocks, update id, then store the new data in group and member tables
@@ -816,8 +829,8 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     // meta data if necessary.
     if (changeSet->has_updateaddmember()) {
         int32_t result;
-        shared_ptr<cJSON> group = store_->listGroup(groupId, &result);
-        addMissingMetaData(changeSet, group);
+        auto group = store_->listGroup(groupId, &result);
+        addMissingMetaData(changeSet, group.get());
     }
 
     // Because we send a new group update we can remove older group updates from wait-for-ack. The

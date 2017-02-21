@@ -302,7 +302,34 @@ cleanup:
     return groups;
 }
 
-shared_ptr<cJSON>SQLiteStoreConv::listGroup(const string &groupUuid, int32_t *sqlCode)
+int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> *groups)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(INFO, __func__, " -->");
+
+    // char* selectAllGroups = "SELECT groupId, name, ownerId, description, maxMembers, memberCount, attributes, lastModified, burnTime, burnMode, avatarInfo FROM groups;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectAllGroups, -1, &stmt, NULL));
+
+    sqlResult= sqlite3_step(stmt);
+    ERRMSG;
+
+    while (sqlResult == SQLITE_ROW) {
+        // Get group records and create a JSON object, wrap it in a unique_ptr with a custom delete
+        groups->push_back(JsonUnique(createGroupJson(stmt)));
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+
+    return sqlResult;
+}
+
+shared_ptr<cJSON> SQLiteStoreConv::listGroup(const string &groupUuid, int32_t *sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -673,7 +700,33 @@ cleanup:
     return members;
 }
 
-shared_ptr<cJSON>SQLiteStoreConv::getGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode)
+int32_t SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, list<JsonUnique> *members)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // char* selectGroupMembers = "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectGroupMembers, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
+
+    sqlResult= sqlite3_step(stmt);
+    ERRMSG;
+
+    while (sqlResult == SQLITE_ROW) {
+        // Get member records and create a JSON object, wrap it in a unique_ptr with a custom delete
+        members->push_back(JsonUnique(createMemberJson(stmt)));
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+
+    return sqlResult;
+}
+
+shared_ptr<cJSON> SQLiteStoreConv::getGroupMember(const string &groupUuid, const string &memberUuid, int32_t *sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -691,7 +744,7 @@ shared_ptr<cJSON>SQLiteStoreConv::getGroupMember(const string &groupUuid, const 
         sharedJson = shared_ptr<cJSON>(createMemberJson(stmt), cJSON_deleter);
     }
 
-cleanup:
+    cleanup:
     sqlite3_finalize(stmt);
     if (sqlCode != NULL)
         *sqlCode = sqlResult;

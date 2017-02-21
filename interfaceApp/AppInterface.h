@@ -277,7 +277,7 @@ public:
      *
      * @param messageToProcess message info structure
      */
-    virtual void addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess) = 0;
+    virtual void addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToProcess) = 0;
 
     // *************************************************************
     // Device handling functions

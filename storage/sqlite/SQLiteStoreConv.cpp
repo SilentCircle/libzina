@@ -1422,7 +1422,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::loadReceivedRawData(list<shared_ptr<StoredMsgInfo> >* rawMessageData)
+int32_t SQLiteStoreConv::loadReceivedRawData(list<unique_ptr<StoredMsgInfo> >* rawMessageData)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -1435,7 +1435,7 @@ int32_t SQLiteStoreConv::loadReceivedRawData(list<shared_ptr<StoredMsgInfo> >* r
 
     sqlResult= sqlite3_step(stmt);
     while (sqlResult == SQLITE_ROW) {
-        auto msgInfo = make_shared<StoredMsgInfo>();
+        auto msgInfo = new StoredMsgInfo;
         msgInfo->sequence = sqlite3_column_int64(stmt, 0);
 
         // Get raw message data
@@ -1443,7 +1443,7 @@ int32_t SQLiteStoreConv::loadReceivedRawData(list<shared_ptr<StoredMsgInfo> >* r
         msgInfo->info_rawMsgData = string((const char*)sqlite3_column_blob(stmt, 1), static_cast<size_t>(len));
         msgInfo->info_uid = (const char*)sqlite3_column_text(stmt, 2);
         msgInfo->info_displayName = (const char*)sqlite3_column_text(stmt, 3);
-        rawMessageData->push_back(msgInfo);
+        rawMessageData->push_back(unique_ptr<StoredMsgInfo>(msgInfo));
 
         sqlResult = sqlite3_step(stmt);
     }
@@ -1531,7 +1531,7 @@ cleanup:
     return sqlResult;
 }
 
-int32_t SQLiteStoreConv::loadTempMsg(list<shared_ptr<StoredMsgInfo> >* tempMessageData)
+int32_t SQLiteStoreConv::loadTempMsg(list<unique_ptr<StoredMsgInfo> >* tempMessageData)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -1543,12 +1543,12 @@ int32_t SQLiteStoreConv::loadTempMsg(list<shared_ptr<StoredMsgInfo> >* tempMessa
 
     sqlResult= sqlite3_step(stmt);
     while (sqlResult == SQLITE_ROW) {
-        auto msgInfo = make_shared<StoredMsgInfo>();
+        auto msgInfo = new StoredMsgInfo;
         msgInfo->sequence = sqlite3_column_int64(stmt, 0);
         msgInfo->info_msgDescriptor = (const char*)sqlite3_column_text(stmt, 1);
         msgInfo->info_supplementary = (const char*)sqlite3_column_text(stmt, 2);
         msgInfo->info_msgType = sqlite3_column_int(stmt, 3);
-        tempMessageData->push_back(msgInfo);
+        tempMessageData->push_back(unique_ptr<StoredMsgInfo>(msgInfo));
 
         sqlResult = sqlite3_step(stmt);
     }

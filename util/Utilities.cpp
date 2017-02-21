@@ -156,6 +156,11 @@ static void *(*volatile memset_volatile)(void*, int, size_t) = memset;
 
 void Utilities::wipeString(string toWipe)
 {
+    // This append is necessary: the GCC C++ string implementation uses shared strings, reference counted. Thus
+    // if we set the data buffer to 0 then all other references are also cleared. Appending a blank forces the string
+    // implementation to really copy the string and we can set the contents to 0. string.clear() does not clear the
+    // contents, just sets the length to 0 which is not good enough.
+    toWipe.append(" ");
     memset_volatile((void*)toWipe.data(), 0, toWipe.size());
 }
 

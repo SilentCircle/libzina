@@ -1413,11 +1413,11 @@ JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
     if (code == NULL || env->GetArrayLength(code) < 1)
         return NULL;
 
-    int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > groups = zinaAppInterface->getStore()->listAllGroups( &result);
+    list<JsonUnique> groups;
+    int32_t result = zinaAppInterface->getStore()->listAllGroups(&groups);
     setReturnCode(env, code, result);
 
-    size_t size = groups->size();
+    size_t size = groups.size();
     if (size == 0)
         return NULL;
 
@@ -1425,10 +1425,9 @@ JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
 
     int32_t index = 0;
-    for (auto it = groups->begin(); it != groups->end(); ++it) {
-        char *out = cJSON_PrintUnformatted(it->get());
-        jbyteArray retData = stringToArray(env, out);
-        free(out);
+    for (auto& group : groups) {
+        CharUnique out(cJSON_PrintUnformatted(group.get()));
+        jbyteArray retData = stringToArray(env, out.get());
 
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);
@@ -1498,11 +1497,11 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
     group = temp;
     env->ReleaseStringUTFChars(groupUuid, temp);
 
-    int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > members = zinaAppInterface->getStore()->getAllGroupMembers(group, &result);
+    list<JsonUnique> members;
+    int32_t result = zinaAppInterface->getStore()->getAllGroupMembers(group, &members);
     setReturnCode(env, code, result);
 
-    size_t size = members->size();
+    size_t size = members.size();
     if (size == 0)
         return NULL;
 
@@ -1510,10 +1509,9 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
     jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
 
     int32_t index = 0;
-    for (auto it = members->begin(); it != members->end(); ++it) {
-        char *out = cJSON_PrintUnformatted(it->get());
-        jbyteArray retData = stringToArray(env, out);
-        free(out);
+    for (auto& it : members) {
+        CharUnique out(cJSON_PrintUnformatted(it.get()));
+        jbyteArray retData = stringToArray(env, out.get());
 
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);

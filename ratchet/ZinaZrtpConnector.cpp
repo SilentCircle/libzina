@@ -287,14 +287,14 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
         remoteName = localUser;
     }
 
-    auto checkRemoteIdKeyCmd = make_shared<CmdQueueInfo>();
+    auto checkRemoteIdKeyCmd = new CmdQueueInfo;
 
     checkRemoteIdKeyCmd->command = CheckRemoteIdKey;
     checkRemoteIdKeyCmd->stringData1 = remoteName;
     checkRemoteIdKeyCmd->stringData2 = deviceId;
     checkRemoteIdKeyCmd->stringData3 = pubKey;
     checkRemoteIdKeyCmd->int32Data = verifyState;
-    appIf->addMsgInfoToRunQueue(checkRemoteIdKeyCmd);
+    appIf->addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(checkRemoteIdKeyCmd));
 
     LOGGER(INFO, __func__, " <--");
 }

@@ -138,7 +138,7 @@ public:
 
     int32_t newPreKeys(int32_t number);
 
-    void addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess);
+    void addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToProcess);
 
     int32_t getNumPreKeys() const;
 
@@ -311,6 +311,7 @@ public:
 
 #endif
 
+    // Make the private functions visible for unit tests
 #ifndef UNITTESTS
 private:
 #endif
@@ -401,7 +402,7 @@ private:
      *
      * @param msgInfo The message information structure of the message to send
      */
-    void queuePreparedMessage(shared_ptr<CmdQueueInfo> &msgInfo);
+    void queuePreparedMessage(unique_ptr<CmdQueueInfo> msgInfo);
 
 
     shared_ptr<list<shared_ptr<PreparedMessageData> > >
@@ -426,7 +427,7 @@ private:
      * @param zinaConversation an optional valid ratchet conversation
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageExisting(shared_ptr<CmdQueueInfo> sendInfo, shared_ptr<ZinaConversation> zinaConversation = nullptr);
+    int32_t sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<ZinaConversation> zinaConversation = nullptr);
 
     /**
      * @brief Send a message to a use who does not have a valid ratchet conversation.
@@ -440,7 +441,7 @@ private:
      * @param sendInfo The message information structure of the message to send
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageNewUser(shared_ptr<CmdQueueInfo>& sendInfo);
+    int32_t sendMessageNewUser(const CmdQueueInfo &sendInfo);
 
     /**
      * @brief Move a single prepared message info to the processing queue.
@@ -461,7 +462,7 @@ private:
      *
      * @param messagesToProcess The list of message info structures
      */
-    void addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> >& messagesToProcess);
+    void addMsgInfosToRunQueue(list<unique_ptr<CmdQueueInfo> >& messagesToProcess);
 
     /**
      * @brief Setup a retry command message info structure and add it to the run-Q.
@@ -501,7 +502,7 @@ private:
      *
      * @param msgInfo The received message information structure
      */
-    void processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo);
+    void processMessageRaw(const CmdQueueInfo &msgInfo);
 
     /**
      * @brief Decrypt received message.
@@ -517,7 +518,7 @@ private:
      *
      * @param msgInfo The received message information structure
      */
-    void processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo);
+    void processMessagePlain(const CmdQueueInfo &msgInfo);
 
     /**
      * @brief Send delivery receipt after successful decryption of the message
@@ -526,7 +527,7 @@ private:
      *
      * @param plainMsgInfo The message command data
      */
-    void sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo);
+    void sendDeliveryReceipt(const CmdQueueInfo &plainMsgInfo);
 
     /**
      * @brief Get sibling devices from provisioning server and add missing devices to id key list.
@@ -603,7 +604,7 @@ private:
      * @param plainMsgInfo information about the message
      * @return @c true if it's a command message
      */
-    bool isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo);
+    bool isCommand(const CmdQueueInfo& plainMsgInfo);
 
     /**
      * @brief Send an error response to the sender of the message.
@@ -629,13 +630,13 @@ private:
      */
 //    int32_t doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo);
 
-    void checkRemoteIdKeyCommand(shared_ptr<CmdQueueInfo> command);
+    void checkRemoteIdKeyCommand(const CmdQueueInfo &command);
 
-    void setIdKeyVerifiedCommand(shared_ptr<CmdQueueInfo> command);
+    void setIdKeyVerifiedCommand(const CmdQueueInfo &command);
 
-    void reSyncConversationCommand(shared_ptr<CmdQueueInfo> command);
+    void reSyncConversationCommand(const CmdQueueInfo &command);
 
-    void rescanUserDevicesCommand(shared_ptr<CmdQueueInfo> command);
+    void rescanUserDevicesCommand(const CmdQueueInfo &command);
 
     int32_t deleteGroupAndMembers(string const& groupId);
 
@@ -690,7 +691,7 @@ private:
      * @param errorCode The error code, failure reason
      * @return JSON formatted string
      */
-    static string createSendErrorJson(const shared_ptr<CmdQueueInfo>& info, int32_t errorCode);
+    static string createSendErrorJson(const CmdQueueInfo& info, int32_t errorCode);
 
     /**
      * @brief Helper function to extract transport ids from prepage message data.

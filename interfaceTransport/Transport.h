@@ -68,7 +68,7 @@ public:
      * @param info The meta-data of the message ot send
      * @param envelope The message envelope, serialized as string and B64 encoded
      */
-    virtual void sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope) = 0;
+    virtual void sendAxoMessage(const CmdQueueInfo& info, const string& envelope) = 0;
 
     /**
      * @brief Receive data from network transport - callback function for network layer.

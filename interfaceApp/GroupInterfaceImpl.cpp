@@ -230,10 +230,11 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         return NO_SUCH_ACTIVE_GROUP;
     }
 
-    auto members = store_->getAllGroupMembers(groupId, &result);
-    size_t membersFound = members->size();
-    for (; !members->empty(); members->pop_front()) {
-        string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
+    list<JsonUnique> members;
+    result = store_->getAllGroupMembers(groupId, &members);
+    size_t membersFound = members.size();
+    for (auto& member: members) {
+        string recipient(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
         bool toSibling = recipient == ownUser_;
         auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes,
                                                       toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
@@ -935,7 +936,7 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
     // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
-    auto msgInfo = make_shared<CmdQueueInfo>();
+    auto msgInfo = new CmdQueueInfo;
     msgInfo->command = SendMessage;
     msgInfo->queueInfo_recipient = userId;
     msgInfo->queueInfo_deviceName = Empty;                      // Not relevant in this case, we send to a known user
@@ -947,8 +948,7 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
     msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(msgType);
     msgInfo->queueInfo_toSibling = userId == getOwnUser();
     msgInfo->queueInfo_newUserDevice = false;                   // known user, known device
-    queuePreparedMessage(msgInfo);
-    doSendSingleMessage(msgInfo->queueInfo_transportMsgId);
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
     LOGGER(INFO, __func__, " <-- ");
     return SUCCESS;
@@ -958,15 +958,15 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
 int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command) {
     LOGGER(INFO, __func__, " --> ");
 
-    int32_t result;
-    shared_ptr<list<shared_ptr<cJSON> > > members = store_->getAllGroupMembers(groupId, &result);
-    for (; !members->empty(); members->pop_front()) {
-        string recipient(Utilities::getJsonString(members->front().get(), MEMBER_ID, ""));
+    list<JsonUnique> members;
+    int32_t result= store_->getAllGroupMembers(groupId, &members);
+    if (result != SUCCESS) {
+        LOGGER(ERROR, __func__, " <-- Error: ", result);
+        return result;
+    }
+    for (auto& member : members) {
+        string recipient(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
         sendGroupCommand(recipient, msgId, command);
-        if (result != SUCCESS) {
-            LOGGER(ERROR, __func__, " <-- Error: ", result);
-            return result;
-        }
     }
     LOGGER(INFO, __func__, " <--");
     return OK;
@@ -992,10 +992,10 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
 void AppInterfaceImpl::clearGroupData()
 {
     LOGGER(INFO, __func__, " --> ");
-    shared_ptr<list<shared_ptr<cJSON> > > groups = store_->listAllGroups();
+    list<JsonUnique> groups;
+    store_->listAllGroups(&groups);
 
-    for (; groups && !groups->empty(); groups->pop_front()) {
-        shared_ptr<cJSON>& group = groups->front();
+    for (auto& group : groups) {
         string groupId(Utilities::getJsonString(group.get(), GROUP_ID, ""));
         store_->deleteAllMembers(groupId);
         store_->deleteGroup(groupId);

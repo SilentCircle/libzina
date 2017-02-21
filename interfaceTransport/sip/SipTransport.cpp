@@ -99,7 +99,7 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
     }
 }
 
-void SipTransport::sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& envelope)
+void SipTransport::sendAxoMessage(const CmdQueueInfo &info, const string& envelope)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -116,11 +116,11 @@ void SipTransport::sendAxoMessage(shared_ptr<CmdQueueInfo> info, const string& e
     // Store all relevant data to send a message in a structure, queue the message
     // info structure.
     shared_ptr<SendMsgInfo> msgInfo = make_shared<SendMsgInfo>();
-    msgInfo->recipient = info->queueInfo_recipient;
-    msgInfo->deviceId = info->queueInfo_deviceId;
+    msgInfo->recipient = info.queueInfo_recipient;
+    msgInfo->deviceId = info.queueInfo_deviceId;
     msgInfo->envelope = envelope;
-    uint64_t typeMask = (info->queueInfo_transportMsgId & MSG_TYPE_MASK) >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
-    msgInfo->transportMsgId = info->queueInfo_transportMsgId | typeMask;
+    uint64_t typeMask = (info.queueInfo_transportMsgId & MSG_TYPE_MASK) >= GROUP_MSG_NORMAL ? GROUP_TRANSPORT : 0;
+    msgInfo->transportMsgId = info.queueInfo_transportMsgId | typeMask;
     sendMessageList.push_back(msgInfo);
 
     runSend = true;

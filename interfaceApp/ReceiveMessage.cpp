@@ -102,19 +102,19 @@ bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
     return !possibleCmd.empty();
 }
 
-bool AppInterfaceImpl::isCommand(shared_ptr<CmdQueueInfo> plainMsgInfo)
+bool AppInterfaceImpl::isCommand(const CmdQueueInfo& plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
-    if (plainMsgInfo->queueInfo_supplement.empty())
+    if (plainMsgInfo.queueInfo_supplement.empty())
         return false;
 
-    JsonUnique sharedRoot(cJSON_Parse(plainMsgInfo->queueInfo_supplement.c_str()));
+    JsonUnique sharedRoot(cJSON_Parse(plainMsgInfo.queueInfo_supplement.c_str()));
     cJSON* jsSupplement = sharedRoot.get();
 
     string attributes =  Utilities::getJsonString(jsSupplement, "m", "");
 
-    return isCommand(plainMsgInfo->queueInfo_msgType, attributes);
+    return isCommand(plainMsgInfo.queueInfo_msgType, attributes);
 }
 
 int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& uidString, const string& displayName)
@@ -126,14 +126,14 @@ int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& u
         return DATABASE_ERROR;
     }
 
-    shared_ptr<CmdQueueInfo> msgInfo = make_shared<CmdQueueInfo>();
+    auto msgInfo = new CmdQueueInfo;
     msgInfo->command = ReceivedRawData;
     msgInfo->queueInfo_envelope = envelope;
     msgInfo->queueInfo_uid = uidString;
     msgInfo->queueInfo_displayName = displayName;
     msgInfo->queueInfo_sequence = sequence;
 
-    addMsgInfoToRunQueue(msgInfo);
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
     return OK;
 }
 
@@ -141,12 +141,12 @@ int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& u
 // forward the data to the UI layer.
 static int32_t duplicates = 0;
 
-void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
+void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
     LOGGER(INFO, __func__, " -->");
 
-    string &messageEnvelope = msgInfo->queueInfo_envelope;
-    string &uid = msgInfo->queueInfo_uid;
-    string &displayName = msgInfo->queueInfo_displayName;
+    const string &messageEnvelope = msgInfo.queueInfo_envelope;
+    const string &uid = msgInfo.queueInfo_uid;
+    const string &displayName = msgInfo.queueInfo_displayName;
 
     uint8_t hash[SHA256_DIGEST_LENGTH];
     sha256((uint8_t *) messageEnvelope.data(), (uint32_t) messageEnvelope.size(), hash);
@@ -159,7 +159,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     // If we found a duplicate, log and silently ignore it. Remove from DB queue if it is still available
     if (sqlResult == SQLITE_ROW) {
         LOGGER(WARNING, __func__, " Duplicate messages detected so far: ", ++duplicates);
-        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+        store_->deleteReceivedRawData(msgInfo.queueInfo_sequence);
         return;
     }
 
@@ -176,14 +176,14 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
                                  tempBufferSize_);
     if (binLength == 0) {
         LOGGER(ERROR, __func__, "Base64 decoding of received message failed.");
-        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+        store_->deleteReceivedRawData(msgInfo.queueInfo_sequence);
         return;
     }
 
     MessageEnvelope envelope;
     if (!envelope.ParseFromArray(tempBuffer_, static_cast<int32_t>(binLength))) {
         LOGGER(ERROR, __func__, "ProtoBuffer decoding of received message failed.");
-        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+        store_->deleteReceivedRawData(msgInfo.queueInfo_sequence);
         return;
     }
 
@@ -207,7 +207,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     string supplementsPlain;
     shared_ptr<const string> messagePlain;
     cJSON *convJson = nullptr;
-    shared_ptr<CmdQueueInfo> plainMsgInfo;
+    unique_ptr<CmdQueueInfo> plainMsgInfo;
     shared_ptr<ZinaConversation> axoConv;
     string msgDescriptor;
 
@@ -310,7 +310,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
         msgDescriptor = msg.get();
     }
 
-    plainMsgInfo = make_shared<CmdQueueInfo>();
+    plainMsgInfo = unique_ptr<CmdQueueInfo>(new CmdQueueInfo);
     plainMsgInfo->command = ReceivedTempMsg;
     plainMsgInfo->queueInfo_message_desc = msgDescriptor;
     plainMsgInfo->queueInfo_supplement = supplementsPlain;
@@ -368,7 +368,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
             return;
 
         success_:
-           store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+           store_->deleteReceivedRawData(msgInfo.queueInfo_sequence);
            store_->commitTransaction();
     }
 //    if (!processPlaintext) {
@@ -378,10 +378,10 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     plainMsgInfo->queueInfo_sequence = sequence;
 
 #ifndef UNITTESTS
-    sendDeliveryReceipt(plainMsgInfo);
+    sendDeliveryReceipt(*plainMsgInfo);
 #endif
 
-    processMessagePlain(plainMsgInfo);
+    processMessagePlain(*plainMsgInfo);
     LOGGER(INFO, __func__, " <--");
     return;
 
@@ -390,7 +390,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
   errorMessage_:
     {
         // Remove raw message data, we can't process it anyway
-        store_->deleteReceivedRawData(msgInfo->queueInfo_sequence);
+        store_->deleteReceivedRawData(msgInfo.queueInfo_sequence);
 
         // In case of error we capture some additional data, prepared above. This additional data
         // does not reveal any security relevant data. We do this for builds which are able to log
@@ -430,7 +430,7 @@ void AppInterfaceImpl::processMessageRaw(shared_ptr<CmdQueueInfo> msgInfo) {
     }
 }
 
-void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
+void AppInterfaceImpl::processMessagePlain(const CmdQueueInfo &msgInfo)
 {
     LOGGER(INFO, __func__, " -->");
 
@@ -439,7 +439,7 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
     string attachmentDescr;
     string attributesDescr;
 
-    string& supplementsPlain = msgInfo->queueInfo_supplement;
+    const string& supplementsPlain = msgInfo.queueInfo_supplement;
     if (!supplementsPlain.empty()) {
         JsonUnique sharedRoot(cJSON_Parse(supplementsPlain.c_str()));
         cJSON* jsSupplement = sharedRoot.get();
@@ -457,25 +457,25 @@ void AppInterfaceImpl::processMessagePlain(shared_ptr<CmdQueueInfo> msgInfo)
         }
     }
 
-    if (msgInfo->queueInfo_msgType >= GROUP_MSG_NORMAL) {
-        result = processGroupMessage(msgInfo->queueInfo_msgType, msgInfo->queueInfo_message_desc, attachmentDescr, &attributesDescr);
+    if (msgInfo.queueInfo_msgType >= GROUP_MSG_NORMAL) {
+        result = processGroupMessage(msgInfo.queueInfo_msgType, msgInfo.queueInfo_message_desc, attachmentDescr, &attributesDescr);
         if (result != SUCCESS) {
             JsonUnique sharedRoot(cJSON_Parse(attributesDescr.c_str()));
             cJSON* root = sharedRoot.get();
             string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
 
-            groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result, groupId));
+            groupStateReportCallback_(result, receiveErrorDescriptor(msgInfo.queueInfo_message_desc, result, groupId));
             return;
         }
     }
     else {
-        result = receiveCallback_(msgInfo->queueInfo_message_desc, attachmentDescr, attributesDescr);
+        result = receiveCallback_(msgInfo.queueInfo_message_desc, attachmentDescr, attributesDescr);
         if (result != OK) {
-            stateReportCallback_(0, result, receiveErrorDescriptor(msgInfo->queueInfo_message_desc, result));
+            stateReportCallback_(0, result, receiveErrorDescriptor(msgInfo.queueInfo_message_desc, result));
             return;
         }
     }
-    store_->deleteTempMsg(msgInfo->queueInfo_sequence);
+    store_->deleteTempMsg(msgInfo.queueInfo_sequence);
     LOGGER(INFO, __func__, " <--");
 }
 
@@ -627,11 +627,11 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
 }
 #endif // SC_ENABLE_DR_RECV
 
-void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo)
+void AppInterfaceImpl::sendDeliveryReceipt(const CmdQueueInfo &plainMsgInfo)
 {
     LOGGER(INFO, __func__, " -->");
     // don't send delivery receipt group messages, group commands, normal commands, only for real messages
-    if (plainMsgInfo->queueInfo_msgType > GROUP_MSG_NORMAL || isCommand(plainMsgInfo)) {
+    if (plainMsgInfo.queueInfo_msgType > GROUP_MSG_NORMAL || isCommand(plainMsgInfo)) {
         LOGGER(INFO, __func__, " <-- no delivery receipt");
         return;
     }
@@ -649,7 +649,7 @@ void AppInterfaceImpl::sendDeliveryReceipt(shared_ptr<CmdQueueInfo> plainMsgInfo
     string msgId;
     string message;
     // Parse a msg descriptor that's always correct because it was constructed above :-)
-    parseMsgDescriptor(plainMsgInfo->queueInfo_message, &sender, &msgId, &message, true);
+    parseMsgDescriptor(plainMsgInfo.queueInfo_message, &sender, &msgId, &message, true);
     Utilities::wipeString(message);
 
     int32_t result;

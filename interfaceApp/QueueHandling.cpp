@@ -27,7 +27,7 @@ limitations under the License.
 using namespace zina;
 
 static mutex commandQueueLock;
-static list<shared_ptr<CmdQueueInfo> > commandQueue;
+static list<unique_ptr<CmdQueueInfo> > commandQueue;
 
 static mutex threadLock;
 static condition_variable commandQueueCv;
@@ -52,18 +52,18 @@ void AppInterfaceImpl::checkStartRunThread()
     }
 }
 
-void AppInterfaceImpl::addMsgInfoToRunQueue(shared_ptr<CmdQueueInfo> messageToProcess)
+void AppInterfaceImpl::addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToProcess)
 {
     checkStartRunThread();
 
     unique_lock<mutex> listLock(commandQueueLock);
-    commandQueue.push_back(messageToProcess);
+    commandQueue.push_back(move(messageToProcess));
     commandQueueCv.notify_one();
 
     listLock.unlock();
 }
 
-void AppInterfaceImpl::addMsgInfosToRunQueue(list<shared_ptr<CmdQueueInfo> >& messagesToProcess)
+void AppInterfaceImpl::addMsgInfosToRunQueue(list<unique_ptr<CmdQueueInfo> >& messagesToProcess)
 {
     checkStartRunThread();
 
@@ -92,20 +92,20 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
             switch (cmdInfo->command) {
                 case SendMessage: {
 #ifndef UNITTESTS
-                    result = cmdInfo->queueInfo_newUserDevice ? obj->sendMessageNewUser(cmdInfo) : obj->sendMessageExisting(cmdInfo);
+                    result = cmdInfo->queueInfo_newUserDevice ? obj->sendMessageNewUser(*cmdInfo) : obj->sendMessageExisting(*cmdInfo);
                     if (result != SUCCESS) {
                         if (obj->stateReportCallback_ != nullptr) {
-                            obj->stateReportCallback_(cmdInfo->queueInfo_transportMsgId, result, createSendErrorJson(cmdInfo, result));
+                            obj->stateReportCallback_(cmdInfo->queueInfo_transportMsgId, result, createSendErrorJson(*cmdInfo, result));
                         }
                         LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
                     }
 #else
-                    result = cmdInfo->queueInfo_newUserDevice ? testIf_->sendMessageNewUser(cmdInfo)
-                                                              : testIf_->sendMessageExisting(cmdInfo);
+                    result = cmdInfo->queueInfo_newUserDevice ? testIf_->sendMessageNewUser(*cmdInfo)
+                                                              : testIf_->sendMessageExisting(*cmdInfo);
                     if (result != SUCCESS) {
                         if (testIf_->stateReportCallback_ != nullptr) {
                             testIf_->stateReportCallback_(cmdInfo->queueInfo_transportMsgId, result,
-                                                          createSendErrorJson(cmdInfo, result));
+                                                          createSendErrorJson(*cmdInfo, result));
                         }
                         LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
                     }
@@ -114,30 +114,30 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
                 break;
                 case ReceivedRawData:
 #ifndef UNITTESTS
-                    obj->processMessageRaw(cmdInfo);
+                    obj->processMessageRaw(*cmdInfo);
 #else
-                    testIf_->processMessageRaw(cmdInfo);
+                    testIf_->processMessageRaw(*cmdInfo);
 #endif
                     break;
 
                 case ReceivedTempMsg:
-                    obj->processMessagePlain(cmdInfo);
+                    obj->processMessagePlain(*cmdInfo);
                     break;
 
                 case CheckRemoteIdKey:
-                    obj->checkRemoteIdKeyCommand(cmdInfo);
+                    obj->checkRemoteIdKeyCommand(*cmdInfo);
                     break;
 
                 case SetIdKeyChangeFlag:
-                    obj->setIdKeyVerifiedCommand(cmdInfo);
+                    obj->setIdKeyVerifiedCommand(*cmdInfo);
                     break;
 
                 case ReSyncDeviceConversation:
-                    obj->reSyncConversationCommand(cmdInfo);
+                    obj->reSyncConversationCommand(*cmdInfo);
                     break;
 
                 case ReScanUserDevices:
-                    obj->rescanUserDevicesCommand(cmdInfo);
+                    obj->rescanUserDevicesCommand(*cmdInfo);
                     break;
 
                 case CheckForRetry:
@@ -163,25 +163,25 @@ AppInterfaceImpl::extractTransportIds(list<shared_ptr<PreparedMessageData> >* da
 
 void AppInterfaceImpl::insertRetryCommand()
 {
-    auto retryCommand = make_shared<CmdQueueInfo>();
+    auto retryCommand = unique_ptr<CmdQueueInfo>(new CmdQueueInfo);
     retryCommand->command = CheckForRetry;
-    addMsgInfoToRunQueue(retryCommand);
+    addMsgInfoToRunQueue(move(retryCommand));
 }
 
 void AppInterfaceImpl::retryReceivedMessages()
 {
     LOGGER(INFO, __func__, " -->");
-    list<shared_ptr<CmdQueueInfo> > messagesToProcess;
+    list<unique_ptr<CmdQueueInfo> > messagesToProcess;
     int32_t plainCounter = 0;
     int32_t rawCounter = 0;
 
-    list<shared_ptr<StoredMsgInfo> > storedMsgInfos;
+    list<unique_ptr<StoredMsgInfo> > storedMsgInfos;
     int32_t result = store_->loadTempMsg(&storedMsgInfos);
 
     if (!SQL_FAIL(result)) {
         for (; !storedMsgInfos.empty(); storedMsgInfos.pop_front()) {
             auto& storedInfo = storedMsgInfos.front();
-            auto plainMsgInfo = make_shared<CmdQueueInfo>();
+            auto plainMsgInfo = new CmdQueueInfo;
 
             plainMsgInfo->command = ReceivedTempMsg;
             plainMsgInfo->queueInfo_sequence = storedInfo->sequence;
@@ -189,8 +189,8 @@ void AppInterfaceImpl::retryReceivedMessages()
             plainMsgInfo->queueInfo_supplement = storedInfo->info_supplementary;
             plainMsgInfo->queueInfo_msgType = storedInfo->info_msgType;
 
-            messagesToProcess.push_back(plainMsgInfo);
-            sendDeliveryReceipt(plainMsgInfo);
+            sendDeliveryReceipt(*plainMsgInfo);
+            messagesToProcess.push_back(unique_ptr<CmdQueueInfo>(plainMsgInfo));
             plainCounter++;
         }
     }
@@ -198,7 +198,7 @@ void AppInterfaceImpl::retryReceivedMessages()
     if (!SQL_FAIL(result)) {
         for (; !storedMsgInfos.empty(); storedMsgInfos.pop_front()) {
             auto& storedInfo = storedMsgInfos.front();
-            auto rawMsgInfo = make_shared<CmdQueueInfo>();
+            auto rawMsgInfo = new CmdQueueInfo;
 
             rawMsgInfo->command = ReceivedRawData;
             rawMsgInfo->queueInfo_sequence = storedInfo->sequence;
@@ -206,7 +206,7 @@ void AppInterfaceImpl::retryReceivedMessages()
             rawMsgInfo->queueInfo_uid = storedInfo->info_uid;
             rawMsgInfo->queueInfo_displayName = storedInfo->info_displayName;
 
-            messagesToProcess.push_back(rawMsgInfo);
+            messagesToProcess.push_back(unique_ptr<CmdQueueInfo>(rawMsgInfo));
             rawCounter++;
         }
     }

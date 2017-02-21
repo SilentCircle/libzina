@@ -40,6 +40,17 @@ limitations under the License.
 
 #define SQL_FAIL(code) ((code) > SQLITE_OK && (code) < SQLITE_ROW)
 
+#ifndef DEPRECATED_ZINA
+#ifdef __GNUC__
+#define DEPRECATED_ZINA __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define DEPRECATED_ZINA __declspec(deprecated)
+#else
+#pragma message("WARNING: You need to implement DEPRECATED_ZINA for this compiler")
+#define DEPRECATED_ZINA
+#endif
+#endif      // DEPRECATED_ZINA
+
 using namespace std;
 
 auto cJSON_deleter = [](cJSON* json) {
@@ -81,17 +92,17 @@ class SQLiteStoreConv
 {
 public:
     /**
-     * @brief Get the Axolotl store instance.
+     * @brief Get the ZINA store instance.
      * 
-     * The Axolotl store is a singleton and this call returns the instance.
+     * The ZINA store is a singleton and this call returns the instance.
      * Use @c isReady to check if this store is ready for use.
      * 
-     * @return Either a new or an already open Axolotl store.
+     * @return Either a new or an already open ZINA store.
      */
     static SQLiteStoreConv* getStore();
 
     /**
-     * @brief Close the Axolotl store instance.
+     * @brief Close the ZINA store instance.
      */
     static void closeStore() { delete instance_; instance_ = NULL;}
 
@@ -101,7 +112,7 @@ public:
     bool isReady() { return isReady_; }
 
     /**
-     * @brief Open Axolotl store.
+     * @brief Open ZINA store.
      * 
      * @param filename Filename of the database, including path.
      * @return an SQLite code
@@ -286,7 +297,7 @@ public:
      * @param rawMessageData Shared pointer to a list of shared pointer where the function returns the StoredMsgInfo.
      * @return SQLite code
      */
-    int32_t loadReceivedRawData(list<shared_ptr<StoredMsgInfo> >* rawMessageData);
+    int32_t loadReceivedRawData(list<unique_ptr<StoredMsgInfo> >* rawMessageData);
 
     /**
      * @brief Delete a message raw data record.
@@ -320,7 +331,7 @@ public:
      * @param rawMessageData Pointer to a list of shared pointer where the function returns the StoredMsgInfo.
      * @return SQLite code
      */
-    int32_t loadTempMsg(list<shared_ptr<StoredMsgInfo> >* tempMessageData);
+    int32_t loadTempMsg(list<unique_ptr<StoredMsgInfo> >* tempMessageData);
 
     /**
      * @brief Delete a message raw data record.
@@ -380,10 +391,25 @@ public:
      * the groups' data. The shared pointers have a special deleter that calls @c cJSON_delete
      * to free the data structure.
      *
+     * @deprecated Use listAllGroups(list<JsonUnique> *groups) instead.
+     *
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
      */
-    shared_ptr<list<shared_ptr<cJSON> > >listAllGroups(int32_t* sqlCode = NULL);
+    DEPRECATED_ZINA shared_ptr<list<shared_ptr<cJSON> > >listAllGroups(int32_t* sqlCode = NULL);
+
+    /**
+     * @brief List data of all known groups.
+     *
+     * Creates and returns a list of shared pointers to cJSON data structures that contain
+     * the groups' data. The shared pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @param groups pointer to list which get thew unique JSON data pointers
+     * @return SQLite code
+     */
+    int32_t listAllGroups(list<JsonUnique> *groups);
 
     /**
      * @brief Get data of a group.
@@ -508,11 +534,26 @@ public:
      * members data. The shared pointers have a special deleter that calls @c cJSON_delete
      * to free the data structure.
      *
+     * @deprecated use getAllGroupMembers(const string &groupUuid, list<JsonUnique> *members) instead.
+     *
      * @param groupUuid The group's UUID (RFC4122 time based UUID)
      * @param sqlCode If not @c NULL returns the SQLite return/error code
      * @return list of cJSON pointers to cJSON data structure, maybe empty, never @c NULL
      */
-    shared_ptr<list<shared_ptr<cJSON> > >getAllGroupMembers(const string &groupUuid, int32_t *sqlCode = NULL);
+    DEPRECATED_ZINA shared_ptr<list<shared_ptr<cJSON> > >getAllGroupMembers(const string &groupUuid, int32_t *sqlCode = NULL);
+
+    /**
+     * @brief Get all members of a specified group.
+     *
+     * Creates and returns a list of unique pointers to cJSON data structures that contain the group's
+     * members data. The unique pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param members pointer to a list of unique pointer to JSON
+     * @return SQLite code
+     */
+    int32_t getAllGroupMembers(const string &groupUuid, list<JsonUnique> *members);
 
     /**
      * @brief Get a member of a specified group.
@@ -746,10 +787,10 @@ private:
     bool operator==(const SQLiteStoreConv& other) const = delete;
 
     /**
-     * Create Axolotl tables in database.
+     * Create ZINA tables in database.
      *
      * openCache calls this function if it cannot find the table zrtpId_own. This indicates
-     * that Axolotl tables are available in the database.
+     * that ZINA tables are available in the database.
      */
     int createTables();
     int createVectorClockTables();
