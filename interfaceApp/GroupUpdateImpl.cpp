@@ -440,6 +440,7 @@ static int32_t addMissingMetaData(PtrChangeSet changeSet, const string& groupId,
             return result;
         }
     }
+    return SUCCESS;
 }
 
 static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId, SQLiteStoreConv &store)
@@ -776,7 +777,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
-    if (Utilities::hasJsonKey(sharedRoot.get(), GROUP_CHANGE_SET)) {
+    if (Utilities::hasJsonKey(root, GROUP_CHANGE_SET)) {
         return SUCCESS;
     }
     unique_lock<mutex> lck(currentChangeSetLock);
@@ -802,7 +803,9 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         }
     }
     if (!updateInProgress) {
-        return serializeChangeSet(changeSet, groupId, root, newAttributes);
+        // Resend a change set only if a device has pending ACKs for this group.
+        return store_->hasWaitAckGroupDevice(groupId, deviceId, nullptr) ?
+               serializeChangeSet(changeSet, groupId, root, newAttributes) : SUCCESS;
     }
 
     string binDeviceId;

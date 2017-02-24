@@ -37,6 +37,9 @@ static const char *hasWaitForAck = "SELECT NULL, CASE EXISTS (SELECT 0 FROM wait
 static const char *hasWaitForAckGroupUpdate = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND updateId=?2)"
         " WHEN 1 THEN 1 ELSE 0 END;";
 
+static const char *hasWaitForAckGroupDevice = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND deviceId=?2)"
+        " WHEN 1 THEN 1 ELSE 0 END;";
+
 static const char *removeWaitForAck = "DELETE FROM waitForAck WHERE groupId=?1 AND deviceId=?2 AND updateId=?3 AND updateType=?4;";
 
 // Remove all records of a device with a specific update type
@@ -241,6 +244,35 @@ bool SQLiteStoreConv::hasWaitAckGroupUpdate(const string &groupId, const string 
     SQLITE_CHK(SQLITE_PREPARE(db, hasWaitForAckGroupUpdate, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupId.data(), static_cast<int32_t>(groupId.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 2, updateId.data(), static_cast<int32_t>(updateId.size()), SQLITE_STATIC));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_ROW) {
+        ERRMSG;
+    }
+    exists = sqlite3_column_int(stmt, 1);
+
+    cleanup:
+    sqlite3_finalize(stmt);
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    LOGGER(INFO, __func__, " <-- ", sqlResult);
+
+    return exists == 1;
+}
+
+bool SQLiteStoreConv::hasWaitAckGroupDevice(const string &groupId, const string &deviceId, int32_t *sqlCode) {
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    int32_t exists = 0;
+
+    LOGGER(INFO, __func__, " --> ");
+
+    // char *hasWaitForAckGroupDevice = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND deviceId=?2)"
+    // " WHEN 1 THEN 1 ELSE 0 END;";
+    SQLITE_CHK(SQLITE_PREPARE(db, hasWaitForAckGroupUpdate, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupId.data(), static_cast<int32_t>(groupId.size()), SQLITE_STATIC));
+    SQLITE_CHK(sqlite3_bind_blob(stmt, 2, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
 
     sqlResult = sqlite3_step(stmt);
     if (sqlResult != SQLITE_ROW) {

@@ -900,8 +900,8 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
 }
 
 int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &groupId, const string &userId,
-                                                       const string &deviceId, const string &attributes,
-                                                       const string &msg, int32_t msgType)
+                                                             const string &deviceId, const string &attributes,
+                                                             const string &msg, int32_t msgType)
 {
     LOGGER(INFO, __func__, " -->");
 

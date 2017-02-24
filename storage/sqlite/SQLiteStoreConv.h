@@ -735,6 +735,16 @@ public:
     bool hasWaitAckGroupUpdate(const string &groupId, const string &updateId, int32_t *sqlCode);
 
     /**
+     * @brief Check if a device has pending ACKs for a group
+     *
+     * @param groupId The group id
+     * @param deviceId The device to check
+     * @param sqlCode sqlCode Receives SQL return code if not `nullptr`
+     * @return `true` if a record exists
+     */
+    bool hasWaitAckGroupDevice(const string &groupId, const string &deviceId, int32_t *sqlCode);
+
+    /**
      * @brief Remove a specific wait-for-ack record.
      *
      * @param groupId The group id
