@@ -548,19 +548,20 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
     pendingChangeSet = getPendingGroupChangeSet(groupId);
     ASSERT_TRUE((bool)pendingChangeSet);
 
+    // Because we haven't changed the group's metadata the clocks still have value 1
     ASSERT_TRUE(pendingChangeSet->has_updatename());
     ASSERT_EQ(1, pendingChangeSet->updatename().vclock_size());
-    ASSERT_EQ(2, pendingChangeSet->updatename().vclock(0).value());
+    ASSERT_EQ(1, pendingChangeSet->updatename().vclock(0).value());
     ASSERT_EQ(binDeviceId, pendingChangeSet->updatename().vclock(0).device_id());
 
     ASSERT_TRUE(pendingChangeSet->has_updateavatar());
     ASSERT_EQ(1, pendingChangeSet->updateavatar().vclock_size());
-    ASSERT_EQ(2, pendingChangeSet->updateavatar().vclock(0).value());
+    ASSERT_EQ(1, pendingChangeSet->updateavatar().vclock(0).value());
     ASSERT_EQ(binDeviceId, pendingChangeSet->updateavatar().vclock(0).device_id());
 
     ASSERT_TRUE(pendingChangeSet->has_updateburn());
     ASSERT_EQ(1, pendingChangeSet->updateburn().vclock_size());
-    ASSERT_EQ(2, pendingChangeSet->updateburn().vclock(0).value());
+    ASSERT_EQ(1, pendingChangeSet->updateburn().vclock(0).value());
     ASSERT_EQ(binDeviceId, pendingChangeSet->updateburn().vclock(0).device_id());
 
     ASSERT_TRUE(pendingChangeSet->has_updateaddmember());

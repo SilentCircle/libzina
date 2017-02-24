@@ -336,7 +336,9 @@ static bool addRemoveNameToChangeSet(const string &groupId, const string &name, 
     return addRemoveNameToChangeSet(changeSet, name);
 }
 
-static int32_t prepareChangeSet(const string &groupId, const string &binDeviceId, PtrChangeSet changeSet, GroupUpdateType type, const uint8_t *updateId, SQLiteStoreConv &store)
+static int32_t prepareChangeSetClocks(const string &groupId, const string &binDeviceId, PtrChangeSet changeSet,
+                                      GroupUpdateType type, const uint8_t *updateId, SQLiteStoreConv &store,
+                                      bool updateClocks = true)
 {
     LocalVClock lvc;
     VectorClock<string> vc;
@@ -350,7 +352,9 @@ static int32_t prepareChangeSet(const string &groupId, const string &binDeviceId
     // increment the clock for our device.
     //
     // In the second step set this new clock to the appropriate update change set.
-    vc.incrementNodeClock(binDeviceId);
+    if (updateClocks) {
+        vc.incrementNodeClock(binDeviceId);
+    }
 
     switch (type) {
         case GROUP_SET_NAME:
@@ -372,10 +376,13 @@ static int32_t prepareChangeSet(const string &groupId, const string &binDeviceId
             return ILLEGAL_ARGUMENT;
 
     }
-    // Now update and persist the local vector clock
-    lvc.set_update_id(updateId, UPDATE_ID_LENGTH);
-    serializeVectorClock(vc, lvc.mutable_vclock());
-    return storeLocalVectorClock(store, groupId, type, lvc);
+    if (updateClocks) {
+        // Now update and persist the local vector clock
+        lvc.set_update_id(updateId, UPDATE_ID_LENGTH);
+        serializeVectorClock(vc, lvc.mutable_vclock());
+        return storeLocalVectorClock(store, groupId, type, lvc);
+    }
+    return SUCCESS;
 }
 
 static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId, cJSON *root, string *newAttributes)
@@ -400,22 +407,38 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
     return SUCCESS;
 }
 
-static void addMissingMetaData(PtrChangeSet changeSet, cJSON *group)
+static int32_t addMissingMetaData(PtrChangeSet changeSet, const string& groupId, const string& binDeviceId, SQLiteStoreConv &store)
 {
+    int32_t result;
+    auto groupShared = store.listGroup(groupId, &result);
+    auto group = groupShared.get();
+
     if (!changeSet->has_updatename()) {
         string name = Utilities::getJsonString(group, GROUP_NAME, "");
         changeSet->mutable_updatename()->set_name(name);
+        result = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateId, store, false);
+        if (result < 0) {
+            return result;
+        }
     }
 
     if (!changeSet->has_updateavatar()) {
         string avatar = Utilities::getJsonString(group, GROUP_AVATAR, "");
         changeSet->mutable_updateavatar()->set_avatar(avatar);
+        result = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateId, store, false);
+        if (result < 0) {
+            return result;
+        }
     }
     if (!changeSet->has_updateburn()) {
         uint64_t sec = static_cast<uint64_t>(Utilities::getJsonInt(group, GROUP_BURN_SEC, 0));
         int32_t mode = Utilities::getJsonInt(group, GROUP_BURN_MODE, 0);
         changeSet->mutable_updateburn()->set_burn_ttl_sec(sec);
         changeSet->mutable_updateburn()->set_burn_mode((GroupUpdateSetBurn_BurnMode)mode);
+        result = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateId, store, false);
+        if (result < 0) {
+            return result;
+        }
     }
 }
 
@@ -691,15 +714,9 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
     string binDeviceId;
     makeBinaryDeviceId(getOwnDeviceId(), &binDeviceId);
 
-    if (changeSet->has_updateaddmember()) {
-        int32_t result;
-        auto group = store_->listGroup(groupId, &result);
-        addMissingMetaData(changeSet, group.get());
-    }
-
     // Now check each update: add vector clocks, update id, then store the new data in group and member tables
     if (changeSet->has_updatename()) {
-        returnCode = prepareChangeSet(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateId, *store_);
+        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateId, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -707,7 +724,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupName(groupId, changeSet->updatename().name());
     }
     if (changeSet->has_updateavatar()) {
-        returnCode = prepareChangeSet(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateId, *store_);
+        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateId, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -715,7 +732,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupAvatarInfo(groupId, changeSet->updateavatar().avatar());
     }
     if (changeSet->has_updateburn()) {
-        returnCode = prepareChangeSet(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateId, *store_);
+        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateId, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -731,7 +748,10 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
                 store_->insertMember(groupId, userId);
             }
         }
-        // a new member also needs knowledge of existing members. The function adds these, filters duplicates.
+        // A new member needs to know the group metadata
+        addMissingMetaData(changeSet, groupId, binDeviceId, *store_);
+
+        // A new member also needs knowledge of existing members. The function adds these, filters duplicates.
         addExistingMembers(changeSet, groupId, *store_);
     }
     if (changeSet->has_updatermmember()) {
@@ -828,9 +848,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     // We may now have an add member update: may have added names from old change set, thus add
     // meta data if necessary.
     if (changeSet->has_updateaddmember()) {
-        int32_t result;
-        auto group = store_->listGroup(groupId, &result);
-        addMissingMetaData(changeSet, group.get());
+        addMissingMetaData(changeSet, groupId, binDeviceId, *store_);
     }
 
     // Because we send a new group update we can remove older group updates from wait-for-ack. The

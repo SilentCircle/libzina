@@ -87,11 +87,14 @@ TEST_F(VectorClocksTestsFixture, InsertTests) {
 TEST_F(VectorClocksTestsFixture, MergeTests) {
     VectorClock<string> vc_1;
 
+    auto vc_merged = vc_1.merge(vc_1);
+    ASSERT_EQ(0, vc_merged->size());
+
     ASSERT_TRUE(vc_1.insertNodeWithValue(node_1, 4711));
     ASSERT_TRUE(vc_1.insertNodeWithValue(node_2, 4712));
 
     // Merged is the same as vc_1, same length
-    auto vc_merged = vc_1.merge(vc_1);
+    vc_merged = vc_1.merge(vc_1);
     ASSERT_EQ(2, vc_merged->size());
     ASSERT_EQ(4711, vc_merged->getNodeClock(node_1));
     ASSERT_EQ(4712, vc_merged->getNodeClock(node_2));
@@ -131,6 +134,9 @@ TEST_F(VectorClocksTestsFixture, MergeTests) {
 
 TEST_F(VectorClocksTestsFixture, CompareTests) {
     VectorClock<string> vc_1;
+
+    // Compare empty clock with itself
+    ASSERT_EQ(Equal, vc_1.compare(vc_1));
 
     ASSERT_TRUE(vc_1.insertNodeWithValue(node_1, 4711));
     ASSERT_TRUE(vc_1.insertNodeWithValue(node_2, 4712));
