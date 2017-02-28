@@ -305,3 +305,30 @@ TEST_F(VectorClocksTestsFixture, HelperLocalTests) {
     ASSERT_EQ(node_2, read_lvc.vclock(1).device_id());
     ASSERT_EQ(2, read_lvc.vclock(1).value());
 }
+
+TEST_F(VectorClocksTestsFixture, CopyTests) {
+
+    LocalVClock lvc;
+
+    lvc.set_update_id(updateId_1);
+
+    VClock *vc = lvc.add_vclock();
+    vc->set_device_id(node_1);
+    vc->set_value(1);
+
+    vc = lvc.add_vclock();
+    vc->set_device_id(node_2);
+    vc->set_value(2);
+
+    LocalVClock copied_lvc;
+
+    copied_lvc.mutable_vclock()->CopyFrom(lvc.vclock());
+
+    ASSERT_EQ(2, copied_lvc.vclock_size());
+
+    ASSERT_EQ(node_1, copied_lvc.vclock(0).device_id());
+    ASSERT_EQ(1, copied_lvc.vclock(0).value());
+
+    ASSERT_EQ(node_2, copied_lvc.vclock(1).device_id());
+    ASSERT_EQ(2, copied_lvc.vclock(1).value());
+}

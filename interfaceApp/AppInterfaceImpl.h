@@ -331,7 +331,7 @@ private:
                                 const string &attachmentDescr, string *attributesDescr);
 
     int32_t processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, 
-                                     const string &deviceId, bool hasGroup);
+                                     const string &deviceId, bool hasGroup, GroupChangeSet *ackRmSet);
 
     /**
      *
@@ -646,7 +646,8 @@ private:
      * @brief Send a message to a specific device of a group member.
      *
      * ZINA uses this function to prepare and send a change set to a group member's device.
-     * Thus ZINA can send ACK or other change sets to the sender' device.
+     * Thus ZINA can send ACK or other change sets to the sender' device. Thie function does not
+     * support sending of attachment descriptor.
      *
      * The function adds the group id to the attributes, handles change set, creates a send message command and
      * queues it for normal send message processing.
@@ -667,15 +668,15 @@ private:
 
     int32_t processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &deviceId);
 
-    int32_t processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId, const string &binDeviceId, GroupChangeSet *ackSet);
+    int32_t processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId, GroupChangeSet *ackSet);
 
-    int32_t processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, const string &binDeviceId, GroupChangeSet *ackSet);
+    int32_t processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, GroupChangeSet *ackSet);
 
-    int32_t processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, const string &binDeviceId, GroupChangeSet *ackSet);
+    int32_t processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, GroupChangeSet *ackSet);
 
     int32_t processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId, GroupChangeSet *ackSet);
 
-        /**
+    /**
      * @brief Helper function to create the JSON formatted supplementary message data.
      *
      * @param attachmentDesc The attachment descriptor of the message, may be empty
@@ -703,6 +704,54 @@ private:
      * @return Vector with the transport ids
      */
     static shared_ptr<vector<uint64_t> > extractTransportIds(list<shared_ptr<PreparedMessageData> >* data);
+
+    /**
+     * @brief Create and send group sync data to a sibling device.
+     *
+     * A new sibling device may request group synchronization data. Checks if groups
+     * are available and loops over the set over available groups and calls
+     * groupSyncSibling(const string &groupId, const string &deviceId) to create and
+     * send the sync data
+     *
+     * @param deviceId The requestor's (sibling's) device id
+     * @return {@code SUCCESS} or an error code.
+     */
+    int32_t groupsSyncSibling(const string &deviceId);
+
+    /**
+     * @brief Create and send a group's sync data to a sibling device.
+     *
+     * A new sibling device may request group synchronization data. This function
+     * creates and sends the data to the requesting sibling.
+     *
+     * @param groupId To which group this data belongs
+     * @param deviceId The requestor's (sibling's) device id
+     * @return {@code SUCCESS} or an error code.
+     */
+    int32_t groupSyncSibling(const string &groupId, const string &deviceId);
+
+    void queueGroupMessageToSingleUserDevice(const string &userId, const string &groupId, const string &msgId, const string &deviceId,
+                                             const string &command, const string &msg, int32_t msgType);
+
+    void queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
+                                        const string &deviceName, const string &attributes, const string &msg,
+                                        int32_t msgType, int64_t counter, bool newDevice);
+
+
+    int32_t requestGroupsSync();
+
+    /**
+     * @brief Process group sync data change set.
+     *
+     * @param root Pointer to parsed JSON data that contains the change set, group id
+     * @return {@code SUCCESS} or an error code.
+     */
+    int32_t processSiblingGroupSyncData(cJSON* root);
+
+    int32_t syncGroupName(const GroupUpdateSetName &changeSet, const string &groupId);
+    int32_t syncGroupAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId);
+    int32_t syncGroupBurn(const GroupUpdateSetBurn &changeSet, const string &groupId);
+    int32_t syncGroupMembers(const GroupChangeSet &changeSet, const string &groupId);
 
     static string generateMsgIdTime() {
         uuid_t uuid = {0};

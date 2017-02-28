@@ -77,6 +77,8 @@ namespace zina {
     static const char* NEW_NAME = "nnm";        //!< New group name
     static const char* NEW_AVATAR = "navtr";    //!< New group avatar information
     static const char* NEW_BURN = "nbrn";       //!< New group burn information
+    static const char* SYNC_SIBLING = "sync";   //!< Sync group data (meta data, member data) with a sibling device
+    static const char* REQUEST_GROUPS_SYNC = "rgs";  //!< Request group synchronisation
 
 
     static const char* INVITE_SYNC = "s_inv";   //!< Sync accepted Group Invitation

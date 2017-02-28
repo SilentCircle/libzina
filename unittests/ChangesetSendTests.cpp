@@ -69,6 +69,8 @@ typedef shared_ptr<GroupChangeSet> PtrChangeSet;
 PtrChangeSet getCurrentGroupChangeSet(const string &groupId, SQLiteStoreConv &store);
 PtrChangeSet getPendingGroupChangeSet(const string &groupId);
 
+extern void setTestIfObj_(AppInterfaceImpl* obj);
+
 class ChangeSetTestsFixtureSimple: public ::testing::Test {
 public:
     ChangeSetTestsFixtureSimple( ) {

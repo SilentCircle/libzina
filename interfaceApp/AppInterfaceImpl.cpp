@@ -31,6 +31,19 @@ limitations under the License.
 
 using namespace zina;
 
+static string requestGroupSyncCommand(const string& deviceId)
+{
+    JsonUnique sharedRoot(cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
+    cJSON_AddStringToObject(root, GROUP_COMMAND, REQUEST_GROUPS_SYNC);
+    cJSON_AddStringToObject(root, MSG_DEVICE_ID, deviceId.c_str());
+
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
+
+    return command;
+}
+
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
                                    GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
@@ -188,6 +201,9 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
 
     int32_t code = Provisioning::registerZinaDevice(registerRequest, authorization_, scClientDevId_, result);
 
+    if (code == 200) {
+        requestGroupsSync();
+    }
     LOGGER(INFO, __func__, " <-- ", code);
     return code;
 }
@@ -438,25 +454,8 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
         return;
     }
 
-    int64_t transportMsgId;
-    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
-
-    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
-    transportMsgId &= ~0xff;
-
-    auto msgInfo = new CmdQueueInfo;
-    msgInfo->command = SendMessage;
-    msgInfo->queueInfo_recipient = command.queueInfo_recipient;
-    msgInfo->queueInfo_deviceName = deviceName;
-    msgInfo->queueInfo_deviceId = command.queueInfo_deviceId;
-    msgInfo->queueInfo_msgId = generateMsgIdTime();
-    msgInfo->queueInfo_message = Empty;
-    msgInfo->queueInfo_attachment = Empty;
-    msgInfo->queueInfo_attributes = ping;
-    msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(MSG_NORMAL);
-    msgInfo->queueInfo_toSibling = command.boolData1;
-    msgInfo->queueInfo_newUserDevice = true;
-    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
+    queueMessageToSingleUserDevice(command.queueInfo_recipient, generateMsgIdTime(), command.queueInfo_deviceId,
+                                   deviceName, ping, Empty, MSG_NORMAL, 0, true);
 
     LOGGER(INFO, __func__, " <--");
     return;
@@ -648,24 +647,60 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         }
 
         LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
-        auto msgInfo = new CmdQueueInfo;
-        msgInfo->command = SendMessage;
-        msgInfo->queueInfo_recipient = userName;
-        msgInfo->queueInfo_deviceName = deviceName;
-        msgInfo->queueInfo_deviceId = deviceId;
-        msgInfo->queueInfo_msgId = generateMsgIdTime();
-        msgInfo->queueInfo_message = Empty;
-        msgInfo->queueInfo_attachment = Empty;
-        msgInfo->queueInfo_attributes = ping;
-        msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | MSG_NORMAL;
-        msgInfo->queueInfo_toSibling = toSibling;
-        msgInfo->queueInfo_newUserDevice = true;
+        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_NORMAL, counter, true);
         counter++;
-        addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
+
         LOGGER(DEBUGGING, "Queued message to ping a new device.");
     }
     LOGGER(INFO, __func__, " <--");
     return;
 }
 
+void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
+                                                      const string &deviceName, const string &attributes,
+                                                      const string &msg, int32_t msgType, int64_t counter, bool newDevice)
+{
+    LOGGER(INFO, __func__, " --> ");
+
+    int64_t transportMsgId;
+    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
+
+    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
+    transportMsgId &= ~0xff;
+
+    auto msgInfo = new CmdQueueInfo;
+    msgInfo->command = SendMessage;
+    msgInfo->queueInfo_recipient = userId;
+    msgInfo->queueInfo_deviceName = deviceName;
+    msgInfo->queueInfo_deviceId = deviceId;                     // to this user device
+    msgInfo->queueInfo_msgId = msgId;
+    msgInfo->queueInfo_message = createMessageDescriptor(userId, msgId, msg);
+    msgInfo->queueInfo_attachment = Empty;                      // No attachments
+    msgInfo->queueInfo_attributes = attributes;                 // message attributes
+    msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | static_cast<uint64_t>(msgType);
+    msgInfo->queueInfo_toSibling = userId == getOwnUser();
+    msgInfo->queueInfo_newUserDevice = newDevice;
+    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
+
+    LOGGER(INFO, __func__, " <-- ");
+}
+
+int32_t AppInterfaceImpl::requestGroupsSync()
+{
+    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(getOwnUser(), authorization_);
+
+    // Provisioning server knows only one device, must be this device.
+    if (!devices || devices->size() <= 1) {
+        return SUCCESS;
+    }
+
+    const string requestCmd = requestGroupSyncCommand(getOwnDeviceId());
+    for (auto &device : *devices) {
+        if (device.first == getOwnDeviceId()) {
+            continue;
+        }
+        queueMessageToSingleUserDevice(getOwnUser(), generateMsgIdTime(), device.first, Empty, requestCmd, Empty, GROUP_MSG_CMD, 0, false);
+    }
+    return SUCCESS;
+}
 #pragma clang diagnostic pop

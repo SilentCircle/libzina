@@ -51,7 +51,7 @@ private:
     /**
      * @brief functions pointer to the HTTP helper function
      * 
-     * This is a blocking funtion and returns after the server answered the HTTP request.
+     * This is a blocking function and returns after the server answered the HTTP request.
      * The @c requestURL does not include the protocol specifier, e.g. HTTP or HTTPS, and 
      * not the domain name. The helper function adds these to form a valid address.
      * 

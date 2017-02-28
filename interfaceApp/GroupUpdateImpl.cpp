@@ -385,7 +385,7 @@ static int32_t prepareChangeSetClocks(const string &groupId, const string &binDe
     return SUCCESS;
 }
 
-static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId, cJSON *root, string *newAttributes)
+static int32_t serializeChangeSet(PtrChangeSet changeSet, cJSON *root, string *newAttributes)
 {
     string serialized;
     if (!changeSet->SerializeToString(&serialized)) {
@@ -396,12 +396,7 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, const string &groupId,
     if (b64Encode(reinterpret_cast<const uint8_t *>(serialized.data()), serialized.size(), b64Buffer.get(), b64Size) == 0) {
         return GENERIC_ERROR;
     }
-    string serializedSet;
-    serializedSet.assign(b64Buffer.get());
-
-    if (!serializedSet.empty()) {
-        cJSON_AddStringToObject(root, GROUP_CHANGE_SET, serializedSet.c_str());
-    }
+    cJSON_AddStringToObject(root, GROUP_CHANGE_SET, b64Buffer.get());
     CharUnique out(cJSON_PrintUnformatted(root));
     newAttributes->assign(out.get());
     return SUCCESS;
@@ -772,8 +767,8 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         return DATA_MISSING;
     }
 
-    // The attributes string has a serialized change set in case ZINA responds with an ACK change sets
-    // to a user's device.  Don't process a current change set
+    // The attributes string has a serialized change set already, don't process and add the current change set
+    // This may happen if ZINA sends an ACK set back to a device
     JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
@@ -805,7 +800,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     if (!updateInProgress) {
         // Resend a change set only if a device has pending ACKs for this group.
         return store_->hasWaitAckGroupDevice(groupId, deviceId, nullptr) ?
-               serializeChangeSet(changeSet, groupId, root, newAttributes) : SUCCESS;
+               serializeChangeSet(changeSet, root, newAttributes) : SUCCESS;
     }
 
     string binDeviceId;
@@ -878,7 +873,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_REMOVE_MEMBER);
     }
 
-    int32_t result = serializeChangeSet(changeSet, groupId, root, newAttributes);
+    int32_t result = serializeChangeSet(changeSet, root, newAttributes);
     if (result != SUCCESS) {
         errorCode_ = result;
     }
@@ -932,7 +927,6 @@ void AppInterfaceImpl::makeBinaryDeviceId(const string &deviceId, string *binary
 {
     unique_ptr<uint8_t[]> binBuffer(new uint8_t[deviceId.size()]);
     hex2bin(deviceId.c_str(), binBuffer.get());
-    string vecDeviceId;
     binaryId->assign(reinterpret_cast<const char*>(binBuffer.get()), VC_ID_LENGTH);
 }
 
@@ -946,4 +940,71 @@ bool AppInterfaceImpl::removeFromPendingChangeSets(const string &key)
         }
     }
     return false;
+}
+
+int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
+{
+    LOGGER(INFO, __func__, " --> ");
+
+    if (deviceId.empty()) {
+        return ILLEGAL_ARGUMENT;
+    }
+    list<JsonUnique>groups;
+
+    int32_t result = store_->listAllGroups(&groups);
+    if (SQL_FAIL(result)) {
+        return GROUP_ERROR_BASE + result;
+    }
+
+    // If no groups to sync, just do nothing
+    if (groups.empty()) {
+        return SUCCESS;
+    }
+
+    for (auto& group : groups) {
+        const string groupId = Utilities::getJsonString(group.get(), GROUP_ID, "");
+        result = groupSyncSibling(groupId, deviceId);
+        if (result != SUCCESS) {
+            return result;
+        }
+    }
+    LOGGER(INFO, __func__, " <-- ");
+    return SUCCESS;
+}
+
+int32_t AppInterfaceImpl::groupSyncSibling(const string &groupId, const string &deviceId)
+{
+    LOGGER(INFO, __func__, " --> ");
+
+    string binDeviceId;
+    makeBinaryDeviceId(deviceId, &binDeviceId);
+
+    // Get an empty change set and add the group's current data (meta data, members)
+    auto changeSet = make_shared<GroupChangeSet>();
+    int32_t result = addMissingMetaData(changeSet, groupId, binDeviceId, *store_);
+    if (result != SUCCESS) {
+        return result;
+    }
+    result = addExistingMembers(changeSet,groupId, *store_);
+    if (result != SUCCESS) {
+        return result;
+    }
+
+    JsonUnique jsonUnique(cJSON_CreateObject());
+    cJSON* root = jsonUnique.get();
+    cJSON_AddStringToObject(root, GROUP_COMMAND, SYNC_SIBLING);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(root, MSG_DEVICE_ID, getOwnDeviceId().c_str());
+
+    string attributes;
+    result = serializeChangeSet(changeSet, root, &attributes);
+    if (result != SUCCESS) {
+        return result;
+    }
+    const string msgId = generateMsgIdTime();
+
+    queueGroupMessageToSingleUserDevice(getOwnUser(), groupId, msgId, deviceId, attributes, Empty, GROUP_MSG_CMD);
+
+    LOGGER(INFO, __func__, " <-- ");
+    return SUCCESS;
 }
