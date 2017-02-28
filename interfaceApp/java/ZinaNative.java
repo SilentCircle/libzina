@@ -723,6 +723,51 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int groupMessageRemoved(@NonNull String groupId, @NonNull String messageId);
 
     /**
+     * Create and send group sync data to a sibling device.
+     *
+     * The function checks if groups are available and loops over the set over available
+     * groups and calls {@link #groupSyncSibling(String, deviceId)} to create and
+     * send the sync data
+     *
+     * The UI should call this function from a device that has group data and likes
+     * to sync (push) the data to another sibling device.
+     *
+     * @param deviceId The sibling's device id
+     * @return {@code SUCCESS} or an error code.
+     */
+    @WorkerThread
+    public static native int groupsSyncSibling(@NonNull String deviceId);
+
+    /**
+     * Create and send a group's sync data to a sibling device.
+     *
+     * This function creates and sends a group's synchronization data to a sibling device.
+     *
+     * The UI should call this function from a device that has group data and likes
+     * to sync (push) the data to another sibling device.
+     *
+     * @param groupId To which group this data belongs
+     * @param deviceId The sibling's device id
+     * @return {@code SUCCESS} or an error code.
+     */
+    public static native int groupSyncSibling(@NonNull String groupId, @NonNull String deviceId);
+
+    /**
+     * @brief Request group synchronization data from sibling devices.
+     *
+     * A device, usually a new sibling device on an account, may need information of groups
+     * known to other sibling devices. The UI may call this function to get this data.
+     *
+     * ZINA calls this function automatically when it registers a new messaging device, thus
+     * the UI code may call this only if this implicit request failed, for example all
+     * other sibling devices were offline.
+     *
+     * @return {@code SUCCESS} or an error code.
+     */
+    @WorkerThread
+    public static native int requestGroupsSync();
+
+    /**
      * Callback to UI to receive a normal group message.
      *
      * JSON format TBD

@@ -303,6 +303,51 @@ public:
      */
     int32_t setDataRetentionFlags(const string& jsonFlags);
 
+    /**
+     * @brief Create and send group sync data to a sibling device.
+     *
+     * A new sibling device may request group synchronization data. Checks if groups
+     * are available and loops over the set over available groups and calls
+     * groupSyncSibling(const string &groupId, const string &deviceId) to create and
+     * send the sync data.
+     *
+     * The UI should call this function from a device that has group data and likes
+     * to sync (push) the data to another sibling device.
+     *
+     * @param deviceId The requestor's (sibling's) device id
+     * @return {@code SUCCESS} or an error code.
+     */
+    int32_t groupsSyncSibling(const string &deviceId);
+
+    /**
+     * @brief Create and send a group's sync data to a sibling device.
+     *
+     * A new sibling device may request group synchronization data. This function
+     * creates and sends the data to the requesting sibling.
+     *
+     * The UI should call this function from a device that has group data and likes
+     * to sync (push) the data to another sibling device.
+     *
+     * @param groupId To which group this data belongs
+     * @param deviceId The requestor's (sibling's) device id
+     * @return {@code SUCCESS} or an error code.
+     */
+    int32_t groupSyncSibling(const string &groupId, const string &deviceId);
+
+    /**
+     * @brief Request group synchronization data from sibling devices.
+     *
+     * A device, usually a new sibling device on an account, needs information of groups
+     * known to other sibling devices. The UI may call this function to get this data.
+     *
+     * Usually ZINA calls this function when it registers a new messaging device, thus
+     * the UI code may call this only if this implicit request failed, for example all
+     * other sibling devices were offline.
+     *
+     * @return {@code SUCCESS} or an error code.
+     */
+    int32_t requestGroupsSync();
+
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
         void setGroupCmdCallback(GROUP_CMD_RECV_FUNC callback) { groupCmdCallback_ = callback; }
@@ -705,31 +750,6 @@ private:
      */
     static shared_ptr<vector<uint64_t> > extractTransportIds(list<shared_ptr<PreparedMessageData> >* data);
 
-    /**
-     * @brief Create and send group sync data to a sibling device.
-     *
-     * A new sibling device may request group synchronization data. Checks if groups
-     * are available and loops over the set over available groups and calls
-     * groupSyncSibling(const string &groupId, const string &deviceId) to create and
-     * send the sync data
-     *
-     * @param deviceId The requestor's (sibling's) device id
-     * @return {@code SUCCESS} or an error code.
-     */
-    int32_t groupsSyncSibling(const string &deviceId);
-
-    /**
-     * @brief Create and send a group's sync data to a sibling device.
-     *
-     * A new sibling device may request group synchronization data. This function
-     * creates and sends the data to the requesting sibling.
-     *
-     * @param groupId To which group this data belongs
-     * @param deviceId The requestor's (sibling's) device id
-     * @return {@code SUCCESS} or an error code.
-     */
-    int32_t groupSyncSibling(const string &groupId, const string &deviceId);
-
     void queueGroupMessageToSingleUserDevice(const string &userId, const string &groupId, const string &msgId, const string &deviceId,
                                              const string &command, const string &msg, int32_t msgType);
 
@@ -737,8 +757,6 @@ private:
                                         const string &deviceName, const string &attributes, const string &msg,
                                         int32_t msgType, int64_t counter, bool newDevice);
 
-
-    int32_t requestGroupsSync();
 
     /**
      * @brief Process group sync data change set.
