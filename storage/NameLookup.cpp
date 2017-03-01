@@ -49,9 +49,9 @@ static const char* nullData =
 
 const string NameLookup::getUid(const string &alias, const string& authorization) {
 
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     shared_ptr<UserInfo> userInfo = getUserInfo(alias, authorization);
-    LOGGER(INFO, __func__ , " <--");
+    LOGGER(DEBUGGING, __func__ , " <--");
     return (userInfo) ? userInfo->uniqueId : Empty;
 }
 
@@ -79,7 +79,7 @@ const string NameLookup::getUid(const string &alias, const string& authorization
  */
 int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
 {
-    LOGGER(INFO, __func__ , " --> ", userInfo);
+    LOGGER(DEBUGGING, __func__ , " --> ", userInfo);
     cJSON* root = cJSON_Parse(json.c_str());
     if (root == NULL) {
         LOGGER(ERROR, __func__ , " JSON data not parseable: ", json);
@@ -139,7 +139,7 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
     }
 
     cJSON_Delete(root);
-    LOGGER(INFO, __func__ , " <--");
+    LOGGER(DEBUGGING, __func__ , " <--");
     return OK;
 }
 
@@ -158,7 +158,7 @@ NameLookup::insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> use
 
 const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly, int32_t* errorCode) {
 
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     if (alias.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty alias name");
         if (errorCode != NULL)
@@ -171,7 +171,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     map<string, shared_ptr<UserInfo> >::iterator it;
     it = nameMap_.find(alias);
     if (it != nameMap_.end()) {
-        LOGGER(INFO, __func__ , " <-- cached data");
+        LOGGER(DEBUGGING, __func__ , " <-- cached data");
         if (it->second->displayName == USER_NULL_NAME) {
             return shared_ptr<UserInfo>();
         }
@@ -231,16 +231,16 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     }
     lck.unlock();
     if (userInfo->displayName == USER_NULL_NAME) {
-        LOGGER(INFO, __func__ , " <-- return null name");
+        LOGGER(DEBUGGING, __func__ , " <-- return null name");
         return shared_ptr<UserInfo>();
     }
-    LOGGER(INFO, __func__ , " <-- ", userInfo->displayName);
+    LOGGER(DEBUGGING, __func__ , " <-- ", userInfo->displayName);
     return userInfo;
 }
 
 shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const string& authorization)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     if (aliasUuid.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty alias name");
         return shared_ptr<UserInfo>();
@@ -253,7 +253,6 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
     if (it == nameMap_.end()) {
         lck.unlock();
         return getUserInfo(aliasUuid, authorization, false);
-        LOGGER(INFO, __func__ , " <-- No cached data, just load");
     }
     string result;
     int32_t code = Provisioning::getUserInfo(aliasUuid, authorization, &result);
@@ -287,7 +286,7 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
 
 const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     shared_ptr<list<string> > aliasList = make_shared<list<string> >();
     if (uuid.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty uuid");
@@ -296,7 +295,7 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
     unique_lock<mutex> lck(nameLock);
 
     if (nameMap_.size() == 0) {
-        LOGGER(INFO, __func__ , " <-- empty name map");
+        LOGGER(DEBUGGING, __func__ , " <-- empty name map");
         return shared_ptr<list<string> >();
     }
     for (map<string, shared_ptr<UserInfo> >::iterator it=nameMap_.begin(); it != nameMap_.end(); ++it) {
@@ -313,13 +312,13 @@ const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
         }
     }
     lck.unlock();
-    LOGGER(INFO, __func__ , " <--");
+    LOGGER(DEBUGGING, __func__ , " <--");
     return aliasList;
 }
 
 NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const string& uuid, const string& userData)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
 
     unique_lock<mutex> lck(nameLock);
 
@@ -343,7 +342,7 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
         it->second->contactLookupUri.assign(userInfo->contactLookupUri);
         it->second->avatarUrl.assign(userInfo->avatarUrl);
 
-        LOGGER(INFO, __func__ , " <-- alias already exists");
+        LOGGER(DEBUGGING, __func__ , " <-- alias already exists");
         return AliasExisted;
     }
 
@@ -364,14 +363,14 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
         ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(alias, it->second));
         retValue = AliasAdded;
     }
-    LOGGER(INFO, __func__ , " <--");
+    LOGGER(DEBUGGING, __func__ , " <--");
     lck.unlock();
     return retValue;
 }
 
 const shared_ptr<string> NameLookup::getDisplayName(const string& uuid)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     shared_ptr<string> displayName = make_shared<string>();
 
     if (uuid.empty()) {
@@ -381,7 +380,7 @@ const shared_ptr<string> NameLookup::getDisplayName(const string& uuid)
     unique_lock<mutex> lck(nameLock);
 
     if (nameMap_.size() == 0) {
-        LOGGER(INFO, __func__ , " <-- empty name map");
+        LOGGER(DEBUGGING, __func__ , " <-- empty name map");
         return shared_ptr<string>();
     }
     map<string, shared_ptr<UserInfo> >::iterator it;
@@ -390,7 +389,7 @@ const shared_ptr<string> NameLookup::getDisplayName(const string& uuid)
         *displayName = (*it).second->displayName;
     }
     lck.unlock();
-    LOGGER(INFO, __func__ , " <--");
+    LOGGER(DEBUGGING, __func__ , " <--");
     return displayName;
 }
 

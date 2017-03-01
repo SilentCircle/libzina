@@ -54,7 +54,7 @@ using namespace zina;
 
 int32_t SQLiteStoreConv::createWaitForAckTables()
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     sqlite3_stmt* stmt;
     int32_t sqlResult;
 
@@ -70,7 +70,7 @@ int32_t SQLiteStoreConv::createWaitForAckTables()
     }
     sqlite3_finalize(stmt);
 
-    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__ , " <-- ", sqlResult);
     return SQLITE_OK;
 
 cleanup:
@@ -83,7 +83,7 @@ int32_t SQLiteStoreConv::updateWaitForAckDb(int32_t oldVersion)
 {
     sqlite3_stmt *stmt;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (oldVersion == 6) {
         SQLITE_PREPARE(db, createWaitForAck, -1, &stmt, NULL);
@@ -103,7 +103,7 @@ int32_t SQLiteStoreConv::insertWaitAck(const string &groupId, const string &devi
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char *insertWaitForAck = "INSERT INTO waitForAck (groupId, deviceId, updateId, updateType) VALUES (?1, ?2, ?3, ?4);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertWaitForAck, -1, &stmt, NULL));
@@ -121,7 +121,7 @@ int32_t SQLiteStoreConv::insertWaitAck(const string &groupId, const string &devi
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -130,7 +130,7 @@ int32_t SQLiteStoreConv::removeWaitAck(const string &groupId, const string &devi
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeWaitForAck = "DELETE FROM waitForAck WHERE groupId=?1 AND deviceId=?2 AND updateId=?3 AND updateType=?4;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeWaitForAck, -1, &stmt, NULL));
@@ -147,7 +147,7 @@ int32_t SQLiteStoreConv::removeWaitAck(const string &groupId, const string &devi
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -156,7 +156,7 @@ int32_t SQLiteStoreConv::removeWaitAckWithType(const string &groupId, const stri
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeWaitForAckType = "DELETE FROM waitForAck WHERE groupId=?1 AND deviceId=?2 AND updateType=?3;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeWaitForAckType, -1, &stmt, NULL));
@@ -172,7 +172,7 @@ int32_t SQLiteStoreConv::removeWaitAckWithType(const string &groupId, const stri
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -182,7 +182,7 @@ int32_t SQLiteStoreConv::removeWaitAckWithGroup(const string &groupId)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeWaitForAckGroup = "DELETE FROM waitForAck WHERE groupId=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeWaitForAckGroup, -1, &stmt, NULL));
@@ -196,7 +196,7 @@ int32_t SQLiteStoreConv::removeWaitAckWithGroup(const string &groupId)
     cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -206,7 +206,7 @@ bool SQLiteStoreConv::hasWaitAck(const string &groupId, const string &deviceId, 
     int32_t sqlResult;
     int32_t exists = 0;
 
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char *hasWaitForAck = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND deviceId=?2 AND updateId=?3 AND updateType=?4)"
     // " WHEN 1 THEN 1 ELSE 0 END;";
@@ -227,7 +227,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return exists == 1;
 }
@@ -237,7 +237,7 @@ bool SQLiteStoreConv::hasWaitAckGroupUpdate(const string &groupId, const string 
     int32_t sqlResult;
     int32_t exists = 0;
 
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char *hasWaitForAckGroupUpdate = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND updateId=?2)"
     // " WHEN 1 THEN 1 ELSE 0 END;";
@@ -256,7 +256,7 @@ bool SQLiteStoreConv::hasWaitAckGroupUpdate(const string &groupId, const string 
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return exists == 1;
 }
@@ -266,7 +266,7 @@ bool SQLiteStoreConv::hasWaitAckGroupDevice(const string &groupId, const string 
     int32_t sqlResult;
     int32_t exists = 0;
 
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char *hasWaitForAckGroupDevice = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND deviceId=?2)"
     // " WHEN 1 THEN 1 ELSE 0 END;";
@@ -285,7 +285,7 @@ bool SQLiteStoreConv::hasWaitAckGroupDevice(const string &groupId, const string 
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return exists == 1;
 }
@@ -295,7 +295,7 @@ int32_t SQLiteStoreConv::cleanWaitAck(time_t timestamp)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* cleanWaitForAck = "DELETE FROM waitForAck WHERE since < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, cleanWaitForAck, -1, &stmt, NULL));
@@ -307,6 +307,6 @@ int32_t SQLiteStoreConv::cleanWaitAck(time_t timestamp)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }

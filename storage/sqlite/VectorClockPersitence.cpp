@@ -49,7 +49,7 @@ using namespace zina;
 
 int SQLiteStoreConv::createVectorClockTables()
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     sqlite3_stmt* stmt;
     int32_t sqlResult;
 
@@ -65,7 +65,7 @@ int SQLiteStoreConv::createVectorClockTables()
     }
     sqlite3_finalize(stmt);
 
-    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__ , " <-- ", sqlResult);
     return SQLITE_OK;
 
 cleanup:
@@ -78,7 +78,7 @@ int32_t SQLiteStoreConv::updateVectorClocksDb(int32_t oldVersion)
 {
     sqlite3_stmt *stmt;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (oldVersion == 6) {
         SQLITE_PREPARE(db, createVectorClocks, -1, &stmt, NULL);
@@ -97,7 +97,7 @@ int32_t SQLiteStoreConv::insertReplaceVectorClock(const string &id, int32_t type
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char* insertVectorClocksSql = "INSERT OR REPLACE INTO VectorClocks (id, type, data) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertVectorClocksSql, -1, &stmt, NULL));
@@ -113,7 +113,7 @@ int32_t SQLiteStoreConv::insertReplaceVectorClock(const string &id, int32_t type
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 
 }
@@ -122,7 +122,7 @@ int32_t SQLiteStoreConv::loadVectorClock(const string& id, int32_t type, string 
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char* selectVectorClocks = "SELECT data FROM VectorClocks WHERE id=?1 AND type=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectVectorClocks, -1, &stmt, NULL));
@@ -142,7 +142,7 @@ int32_t SQLiteStoreConv::loadVectorClock(const string& id, int32_t type, string 
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -150,7 +150,7 @@ int32_t SQLiteStoreConv::deleteVectorClock(const string& id, int32_t type)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char* removeVectorClock = "DELETE FROM VectorClocks WHERE id=?1 AND type=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeVectorClock, -1, &stmt, NULL));
@@ -165,7 +165,7 @@ int32_t SQLiteStoreConv::deleteVectorClock(const string& id, int32_t type)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -173,7 +173,7 @@ int32_t SQLiteStoreConv::deleteVectorClocks(const string& id)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char* removeVectorClocks = "DELETE FROM VectorClocks WHERE id=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeVectorClocks, -1, &stmt, NULL));
@@ -187,6 +187,6 @@ int32_t SQLiteStoreConv::deleteVectorClocks(const string& id)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }

@@ -76,7 +76,7 @@ static string receiveErrorDescriptor(const string& messageDescriptor, int32_t re
 
 bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (msgType == GROUP_MSG_CMD || msgType >= MSG_CMD)
         return true;
@@ -104,7 +104,7 @@ bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
 
 bool AppInterfaceImpl::isCommand(const CmdQueueInfo& plainMsgInfo)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (plainMsgInfo.queueInfo_supplement.empty())
         return false;
@@ -142,7 +142,7 @@ int32_t AppInterfaceImpl::receiveMessage(const string& envelope, const string& u
 static int32_t duplicates = 0;
 
 void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     const string &messageEnvelope = msgInfo.queueInfo_envelope;
     const string &uid = msgInfo.queueInfo_uid;
@@ -372,7 +372,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
            store_->commitTransaction();
     }
 //    if (!processPlaintext) {
-//        LOGGER(INFO, __func__, " <-- don't process plaintext, DR policy");
+//        LOGGER(DEBUGGING, __func__, " <-- don't process plaintext, DR policy");
 //        return;
 //    }
     plainMsgInfo->queueInfo_sequence = sequence;
@@ -382,7 +382,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
 #endif
 
     processMessagePlain(*plainMsgInfo);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 
     // Come here if something went wrong after parsing of the input data (proto buffer parsing)
@@ -432,7 +432,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
 
 void AppInterfaceImpl::processMessagePlain(const CmdQueueInfo &msgInfo)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t result;
 
@@ -476,13 +476,13 @@ void AppInterfaceImpl::processMessagePlain(const CmdQueueInfo &msgInfo)
         }
     }
     store_->deleteTempMsg(msgInfo.queueInfo_sequence);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 #ifdef SC_ENABLE_DR_RECV
 bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInfo)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     string sender;
     string msgId;
     string message;
@@ -622,17 +622,17 @@ bool AppInterfaceImpl::dataRetentionReceive(shared_ptr<CmdQueueInfo> plainMsgInf
     free(out);
 
     plainMsgInfo->queueInfo_supplement = createSupplementString(attachmentDescr, messageAttrib);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return true;
 }
 #endif // SC_ENABLE_DR_RECV
 
 void AppInterfaceImpl::sendDeliveryReceipt(const CmdQueueInfo &plainMsgInfo)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     // don't send delivery receipt group messages, group commands, normal commands, only for real messages
     if (plainMsgInfo.queueInfo_msgType > GROUP_MSG_NORMAL || isCommand(plainMsgInfo)) {
-        LOGGER(INFO, __func__, " <-- no delivery receipt");
+        LOGGER(DEBUGGING, __func__, " <-- no delivery receipt");
         return;
     }
     JsonUnique sharedRoot(cJSON_CreateObject());
@@ -660,12 +660,12 @@ void AppInterfaceImpl::sendDeliveryReceipt(const CmdQueueInfo &plainMsgInfo)
         return;
     }
     doSendMessages(extractTransportIds(preparedMsgData.get()));
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sender, const string& msgId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* attributeJson = sharedRoot.get();
 
@@ -689,5 +689,5 @@ void AppInterfaceImpl::sendErrorCommand(const string& error, const string& sende
         return;
     }
     doSendMessages(extractTransportIds(preparedMsgData.get()));
-    LOGGER(INFO, __func__, " <-- ", command);
+    LOGGER(DEBUGGING, __func__, " <-- ", command);
 }

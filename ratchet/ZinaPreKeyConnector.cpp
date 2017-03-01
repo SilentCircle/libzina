@@ -62,7 +62,7 @@ static void hexdump(const char* title, const string& in)
 int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
                                                    int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     int32_t retVal;
 
     auto conv = ZinaConversation::loadConversation(localUser, user, deviceId);
@@ -142,7 +142,7 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     conv->storeConversation();
     retVal = conv->getErrorCode();
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return retVal;
 }
 
@@ -157,7 +157,7 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
 */
 int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 //    store->dumpPreKeys();
 
@@ -236,6 +236,6 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     conv->setCKs(chain);
     conv->setRatchetFlag(false);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }

@@ -82,7 +82,7 @@ using namespace zina;
 
 int32_t SQLiteStoreConv::createGroupTables()
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     sqlite3_stmt* stmt;
     int32_t sqlResult;
 
@@ -120,7 +120,7 @@ int32_t SQLiteStoreConv::updateGroupDataDb(int32_t oldVersion)
 {
     sqlite3_stmt *stmt;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (oldVersion == 4) {
         SQLITE_PREPARE(db, createGroups, -1, &stmt, NULL);
@@ -174,7 +174,7 @@ int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* insertGroupsSql = "INSERT INTO groups (groupId, name, ownerId, description, maxMembers, memberCount, attribute) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertGroupsSql, -1, &stmt, NULL));
@@ -194,7 +194,7 @@ int32_t SQLiteStoreConv::insertGroup(const string &groupUuid, const string &name
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -203,7 +203,7 @@ int32_t SQLiteStoreConv::deleteGroup(const string &groupUuid)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeGroup = "DELETE FROM groups WHERE groupId=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeGroup, -1, &stmt, NULL));
@@ -217,7 +217,7 @@ int32_t SQLiteStoreConv::deleteGroup(const string &groupUuid)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -227,7 +227,7 @@ bool SQLiteStoreConv::hasGroup(const string &groupUuid, int32_t *sqlCode) {
     int32_t sqlResult;
     int32_t exists = 0;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* hasGroupSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM groups WHERE groupId=?1) WHEN 1 THEN 1 ELSE 0 END;";
     SQLITE_CHK(SQLITE_PREPARE(db, hasGroupSql, -1, &stmt, NULL));
@@ -245,7 +245,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return exists == 1;
 }
 
@@ -276,7 +276,7 @@ shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroups(int32_t *sq
     int32_t sqlResult;
     shared_ptr<list<shared_ptr<cJSON> > > groups = make_shared<list<shared_ptr<cJSON> > >();
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* selectAllGroups = "SELECT groupId, name, ownerId, description, maxMembers, memberCount, attributes, lastModified, burnTime, burnMode, avatarInfo FROM groups;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectAllGroups, -1, &stmt, NULL));
@@ -297,7 +297,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return groups;
 }
@@ -307,7 +307,7 @@ int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> *groups)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* selectAllGroups = "SELECT groupId, name, ownerId, description, maxMembers, memberCount, attributes, lastModified, burnTime, burnMode, avatarInfo FROM groups;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectAllGroups, -1, &stmt, NULL));
@@ -324,7 +324,7 @@ int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> *groups)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return sqlResult;
 }
@@ -351,7 +351,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return sharedJson;
 }
@@ -374,7 +374,7 @@ int32_t SQLiteStoreConv::modifyGroupMaxMembers(const string &groupUuid, int32_t 
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -406,7 +406,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return result;
 }
 
@@ -429,7 +429,7 @@ int32_t SQLiteStoreConv::setGroupAttribute(const string& groupUuid, int32_t attr
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -451,7 +451,7 @@ int32_t SQLiteStoreConv::clearGroupAttribute(const string& groupUuid, int32_t at
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 int32_t SQLiteStoreConv::setGroupName(const string& groupUuid, const string& name)
@@ -470,7 +470,7 @@ int32_t SQLiteStoreConv::setGroupName(const string& groupUuid, const string& nam
 
 cleanup:
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -491,7 +491,7 @@ int32_t SQLiteStoreConv::setGroupBurnTime(const string& groupUuid, int64_t timeI
 
 cleanup:
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -510,7 +510,7 @@ int32_t SQLiteStoreConv::setGroupAvatarInfo(const string& groupUuid, const strin
 
 cleanup:
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -528,7 +528,7 @@ static int32_t incrementMemberCount(sqlite3* db, const string& groupUuid) {
 
 cleanup:
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -546,7 +546,7 @@ static int32_t decrementMemberCount(sqlite3* db, const string& groupUuid) {
 
 cleanup:
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -565,7 +565,7 @@ static int32_t setMemberCount(sqlite3* db, const string& groupUuid, int32_t coun
 
 cleanup:
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -595,7 +595,7 @@ int32_t SQLiteStoreConv::insertMember(const string &groupUuid, const string &mem
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -624,7 +624,7 @@ int32_t SQLiteStoreConv::deleteMember(const string &groupUuid, const string &mem
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -652,7 +652,7 @@ int32_t SQLiteStoreConv::deleteAllMembers(const string &groupUuid) {
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -695,7 +695,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return members;
 }
@@ -721,7 +721,7 @@ int32_t SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, list<JsonUn
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return sqlResult;
 }
@@ -749,7 +749,7 @@ shared_ptr<cJSON> SQLiteStoreConv::getGroupMember(const string &groupUuid, const
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return sharedJson;
 }
@@ -783,7 +783,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return result;
 }
 
@@ -807,7 +807,7 @@ int32_t SQLiteStoreConv::setMemberAttribute(const string &groupUuid, const strin
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -831,7 +831,7 @@ int32_t SQLiteStoreConv::clearMemberAttribute(const string &groupUuid, const str
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -862,7 +862,7 @@ int32_t SQLiteStoreConv::memberListHash(const string &groupUuid, uint8_t *hash)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -889,7 +889,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return exists == 1;
 }
@@ -900,7 +900,7 @@ bool SQLiteStoreConv::isGroupMember(const string &memberUuid, int32_t *sqlCode) 
     int32_t sqlResult;
     int32_t exists = 0;
 
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // char* isGroupMember = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE memberId=?1) WHEN 1 THEN 1 ELSE 0 END;";
     SQLITE_CHK(SQLITE_PREPARE(db, isGroupMemberSql, -1, &stmt, NULL));
@@ -917,7 +917,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return exists == 1;
 }

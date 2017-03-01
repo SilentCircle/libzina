@@ -54,7 +54,7 @@ void Log(const char* format, ...);
 
 const string getAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
     auto conv = ZinaConversation::loadConversation(localUser, user, deviceId);
@@ -89,13 +89,13 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     combinedKeys.append(&keyLength, 1).append(rkey);
     lck.unlock();
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return combinedKeys;
 }
 
 void setAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId, const string& pubKeyData)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
     std::map<string, ZinaZrtpConnector*>::iterator it;
@@ -128,13 +128,13 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
     staging->setRemoteRatchetKey(remoteRatchetKey);
 
     lck.unlock();
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 // Also used by AxoPreKeyConnector.
 void createDerivedKeys(const string& masterSecret, string* root, string* chain, size_t requested)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     uint8_t derivedSecretBytes[256];     // we support up to 128 byte symmetric keys.
 
     // Use HKDF with 2 input parameters: ikm, info. The salt is SAH256 hash length 0 bytes.
@@ -142,7 +142,7 @@ void createDerivedKeys(const string& masterSecret, string* root, string* chain, 
                         (uint8_t*)SILENT_MESSAGE.data(), SILENT_MESSAGE.size(), derivedSecretBytes, requested*2);
     root->assign((const char*)derivedSecretBytes, requested);
     chain->assign((const char*)derivedSecretBytes+requested, requested);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 /*
@@ -165,7 +165,7 @@ Bob:
  */
 void setAxoExportedKey(const string& localUser, const string& user, const string& deviceId, const string& exportedKey)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
     std::map<string, ZinaZrtpConnector*>::iterator it;
@@ -207,7 +207,7 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
 
     delete staging;
     lck.unlock();
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 typedef AppInterface* (*GET_APP_IF)();
@@ -239,7 +239,7 @@ static string extractNameFromUri(const string& sipUri)
 
 const string getOwnAxoIdKey() 
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (getAppIf == NULL)
         return string();
     AppInterface* appIf = getAppIf();
@@ -260,7 +260,7 @@ const string getOwnAxoIdKey()
     string key((const char*)pubKey.getPublicKeyPointer(), pubKey.getSize());
 
 //    hexdump("+++ own key", key); Log("%s", hexBuffer);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return key;
 }
 
@@ -268,7 +268,7 @@ const string getOwnAxoIdKey()
 // This must run via the command queue because it modifies the conversation (ratchet context)
 void checkRemoteAxoIdKey(const string user, const string deviceId, const string pubKey, int32_t verifyState)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (getAppIf == NULL)
         return;
     AppInterface* appIf = getAppIf();
@@ -296,6 +296,6 @@ void checkRemoteAxoIdKey(const string user, const string deviceId, const string 
     checkRemoteIdKeyCmd->int32Data = verifyState;
     appIf->addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(checkRemoteIdKeyCmd));
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 

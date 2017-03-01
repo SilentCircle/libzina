@@ -24,7 +24,7 @@ using namespace zina;
 
 static void ecGenerateRandomNumber25519(uint8_t* outBuffer)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     unsigned char random[Ec255PrivateKey::KEY_LENGTH];
     ZrtpRandom::getRandomData(random, Ec255PrivateKey::KEY_LENGTH);
 
@@ -34,13 +34,13 @@ static void ecGenerateRandomNumber25519(uint8_t* outBuffer)
     random[31] |= 64;
 
     memcpy(outBuffer, random, Ec255PrivateKey::KEY_LENGTH);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
 
 const DhKeyPair* EcCurve::generateKeyPair(int32_t curveType)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (curveType == EcCurveTypes::Curve25519) {
         uint8_t privateKeyData[Ec255PrivateKey::KEY_LENGTH];
         ecGenerateRandomNumber25519(privateKeyData);    // get some random data for private key
@@ -56,17 +56,17 @@ const DhKeyPair* EcCurve::generateKeyPair(int32_t curveType)
         memset(privateKeyData, 0, Ec255PrivateKey::KEY_LENGTH);  // clear temporary buffer
 
         DhKeyPair* ecPair = new DhKeyPair(ecPublic, ecPrivate);
-        LOGGER(INFO, __func__, " <--");
+        LOGGER(DEBUGGING, __func__, " <--");
         return ecPair;
     }
-    LOGGER(INFO, __func__, " <-- unsupported curve type");
+    LOGGER(WARNING, __func__, " <-- unsupported curve type");
     return NULL;
 }
 
 
 int32_t EcCurve::calculateAgreement(const DhPublicKey& publicKey, const DhPrivateKey& privateKey, uint8_t* agreement, size_t length )
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (publicKey.getType() != privateKey.getType()) {
         LOGGER(ERROR, __func__, " <-- key types don't match");
         return KEY_TYPE_MISMATCH;
@@ -83,7 +83,7 @@ int32_t EcCurve::calculateAgreement(const DhPublicKey& publicKey, const DhPrivat
         curve25519_donna(agreement, privateKey.privateData(), publicKey.getPublicKeyPointer());
         return Ec255PublicKey::KEY_LENGTH;
     }
-    LOGGER(INFO, __func__, " <-- unsupported curve type");
+    LOGGER(DEBUGGING, __func__, " <-- unsupported curve type");
     return NO_SUCH_CURVE;
 }
 
@@ -118,11 +118,11 @@ int32_t EcCurve::calculateAgreement(const DhPublicKey& publicKey, const DhPrivat
 // 
 const DhPublicKey* EcCurve::decodePoint(const uint8_t* bytes) 
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     int32_t type = *bytes & 0xFF;
 
     if (type == EcCurveTypes::Curve25519) {
-        LOGGER(INFO, __func__, " <--");
+        LOGGER(DEBUGGING, __func__, " <--");
         return new Ec255PublicKey(bytes+1);
     }
     LOGGER(WARNING, __func__, " <-- unsupported curve type");

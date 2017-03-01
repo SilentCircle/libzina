@@ -23,7 +23,7 @@ using namespace zina;
 
 DhKeyPair::DhKeyPair(const DhPublicKey& publicKey, const DhPrivateKey& privateKey)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (publicKey.getType() == EcCurveTypes::Curve25519)
         publicKey_  = new Ec255PublicKey(publicKey.getPublicKeyPointer());
     else {
@@ -38,12 +38,12 @@ DhKeyPair::DhKeyPair(const DhPublicKey& publicKey, const DhPrivateKey& privateKe
         LOGGER(ERROR, "Unsuported private key type.")
     }
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 DhKeyPair::DhKeyPair(const DhKeyPair& otherPair)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (otherPair.publicKey_->getType() == EcCurveTypes::Curve25519)
         publicKey_  = new Ec255PublicKey(otherPair.publicKey_->getPublicKeyPointer());
     else {
@@ -58,7 +58,7 @@ DhKeyPair::DhKeyPair(const DhKeyPair& otherPair)
         LOGGER(ERROR, "Unsuported private key type.")
     }
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 DhKeyPair::~DhKeyPair()
@@ -69,7 +69,7 @@ DhKeyPair::~DhKeyPair()
 
 DhKeyPair& DhKeyPair::operator=(const DhKeyPair& otherPair) {
     if (this == &otherPair) {
-        LOGGER(INFO, __func__, " <--");
+        LOGGER(DEBUGGING, __func__, " <--");
         return *this;
     }
 
@@ -88,6 +88,6 @@ DhKeyPair& DhKeyPair::operator=(const DhKeyPair& otherPair) {
         privateKey_ = NULL;
         LOGGER(ERROR, "Unsuported private key type.")
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return *this;
 }

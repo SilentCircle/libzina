@@ -458,7 +458,7 @@ static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId,
  *************************************************************************** */
 
 string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     uuid_t groupUuid = {0};
     uuid_string_t uuidString = {0};
@@ -472,13 +472,13 @@ string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescript
     if (!groupName.empty()) {
         setGroupNameToChangeSet(groupId, groupName, *store_);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return groupId;
 }
 
 int32_t AppInterfaceImpl::addUser(const string& groupUuid, const string& userId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupUuid.empty() || userId.empty()) {
         return DATA_MISSING;
@@ -489,13 +489,13 @@ int32_t AppInterfaceImpl::addUser(const string& groupUuid, const string& userId)
     if (!addAddNameToChangeSet(groupUuid, userId, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::removeUserFromAddUpdate(const string& groupUuid, const string& userId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupUuid.empty() || userId.empty()) {
         return DATA_MISSING;
@@ -505,12 +505,12 @@ int32_t AppInterfaceImpl::removeUserFromAddUpdate(const string& groupUuid, const
     if (!removeAddNameFromChangeSet(groupUuid, userId, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -523,13 +523,13 @@ int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
 
     processLeaveGroup(groupId, getOwnUser(), true);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::processLeaveGroup(const string &groupId, const string &userId, bool fromSibling) {
 
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     // The leave/not user command from a sibling, thus remove group completely
     if (fromSibling) {
@@ -556,12 +556,13 @@ int32_t AppInterfaceImpl::processLeaveGroup(const string &groupId, const string 
         store_->setMemberAttribute(groupId, userId, INACTIVE);
         return GROUP_ERROR_BASE + result;
     }
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::removeUser(const string& groupId, const string& userId, bool allowOwnUser)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupId.empty() || userId.empty()) {
         return DATA_MISSING;
@@ -573,13 +574,13 @@ int32_t AppInterfaceImpl::removeUser(const string& groupId, const string& userId
     if (!addRemoveNameToChangeSet(groupId, userId, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::removeUserFromRemoveUpdate(const string& groupUuid, const string& userId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupUuid.empty() || userId.empty()) {
         return DATA_MISSING;
@@ -589,14 +590,14 @@ int32_t AppInterfaceImpl::removeUserFromRemoveUpdate(const string& groupUuid, co
     if (!removeRmNameFromChangeSet(groupUuid, userId, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 
 }
 
 int32_t AppInterfaceImpl::setGroupName(const string& groupId, const string* groupName)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -610,13 +611,13 @@ int32_t AppInterfaceImpl::setGroupName(const string& groupId, const string* grou
     else if (!setGroupNameToChangeSet(groupId, *groupName, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::setGroupBurnTime(const string& groupId, uint64_t burnTime, int32_t mode)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -628,13 +629,13 @@ int32_t AppInterfaceImpl::setGroupBurnTime(const string& groupId, uint64_t burnT
     if (!setGroupBurnToChangeSet(groupId, burnTime, (GroupUpdateSetBurn_BurnMode) mode, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::setGroupAvatar(const string& groupId, const string* avatar)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupId.empty()) {
         return DATA_MISSING;
@@ -648,19 +649,19 @@ int32_t AppInterfaceImpl::setGroupAvatar(const string& groupId, const string* av
     else if (!setGroupAvatarToChangeSet(groupId, *avatar, *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::cancelGroupChangeSet(const string& groupId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (groupId.empty()) {
         return DATA_MISSING;
     }
     removeGroupFromChangeSet(groupId);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
@@ -678,6 +679,8 @@ int32_t AppInterfaceImpl::applyGroupChangeSet(const string& groupId)
  *************************************************************************** */
 
 int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
+    LOGGER(DEBUGGING, __func__, " -->");
+
     if (groupId.empty()) {
         return DATA_MISSING;
     }
@@ -758,11 +761,14 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
             store_->deleteMember(groupId, userId);
         }
     }
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const string &deviceId, const string &attributes, string *newAttributes)
 {
+    LOGGER(DEBUGGING, __func__, " -->");
+
     if (groupId.empty() || deviceId.empty()) {
         return DATA_MISSING;
     }
@@ -877,12 +883,13 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     if (result != SUCCESS) {
         errorCode_ = result;
     }
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return result;
 }
 
 void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     unique_lock<mutex> lck(currentChangeSetLock);
 
@@ -918,7 +925,7 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
 
     updateInProgress = false;
 
-    LOGGER(INFO, __func__, " <-- ", currentKey);
+    LOGGER(DEBUGGING, __func__, " <-- ", currentKey);
 }
 
 // The device_id inside then change set and vector clocks consists of the first 8 binary bytes
@@ -944,7 +951,7 @@ bool AppInterfaceImpl::removeFromPendingChangeSets(const string &key)
 
 int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     if (deviceId.empty()) {
         return ILLEGAL_ARGUMENT;
@@ -968,13 +975,13 @@ int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
             return result;
         }
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::groupSyncSibling(const string &groupId, const string &deviceId)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     string binDeviceId;
     makeBinaryDeviceId(deviceId, &binDeviceId);
@@ -1005,6 +1012,6 @@ int32_t AppInterfaceImpl::groupSyncSibling(const string &groupId, const string &
 
     queueGroupMessageToSingleUserDevice(getOwnUser(), groupId, msgId, deviceId, attributes, Empty, GROUP_MSG_CMD);
 
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }

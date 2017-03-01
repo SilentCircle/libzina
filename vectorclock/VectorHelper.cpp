@@ -25,7 +25,7 @@ using namespace std;
 
 int32_t zina::readLocalVectorClock(SQLiteStoreConv &store, const string& groupId, GroupUpdateType type, LocalVClock *vectorClock)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (type == TYPE_NONE || !GroupUpdateType_IsValid(type)) {
         return WRONG_UPDATE_TYPE;
@@ -42,7 +42,7 @@ int32_t zina::readLocalVectorClock(SQLiteStoreConv &store, const string& groupId
     if (!vectorClock->ParseFromArray(serializedData.data(), static_cast<int32_t>(serializedData.size()))) {
         return NO_VECTOR_CLOCK;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
@@ -58,7 +58,7 @@ void zina::deserializeVectorClock(const google::protobuf::RepeatedPtrField<VCloc
 
 int32_t zina::storeLocalVectorClock(SQLiteStoreConv &store, const string& groupId, GroupUpdateType type, const LocalVClock &vectorClock)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (type == TYPE_NONE || !GroupUpdateType_IsValid(type)) {
         return WRONG_UPDATE_TYPE;
@@ -73,7 +73,7 @@ int32_t zina::storeLocalVectorClock(SQLiteStoreConv &store, const string& groupI
     if (SQL_FAIL(result)) {
         return GROUP_ERROR_BASE + result;   // Error return is -400 + sql code
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 

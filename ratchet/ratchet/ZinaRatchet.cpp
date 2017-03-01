@@ -80,7 +80,7 @@ typedef struct parsedMessage_ {
 
 static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     uint8_t agreement[MAX_KEY_BYTES];
 
     // Compute a DH agreement from the current Ratchet keys: use receiver's (remote party's) public key and sender's
@@ -112,13 +112,13 @@ static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
 //     hexdump("deriveRkCk RK", *newRK);  LOGGER(VERBOSE, hexBuffer);
 //     hexdump("deriveRkCk CK", *newCK);  LOGGER(VERBOSE, hexBuffer);
     memset_volatile((void*)derivedSecretBytes, 0, MAX_KEY_BYTES*2);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return OK;
 }
 
 static void deriveMk(const string& chainKey, string* MK, string* iv, string* macKey)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     uint8_t ckMac[SHA256_DIGEST_LENGTH];
     uint32_t ckMacLen;
 
@@ -142,7 +142,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
     macKey->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE, SYMMETRIC_KEY_LENGTH);
 
     memset_volatile((void*)keyMaterialBytes, 0, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 
@@ -151,7 +151,7 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
 
 static void createWireMessageV1(ZinaConversation &conv, string &message, string &mac, string* wire)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     // Determine the wire message type:
     // 1: Normal message with new Ratchet key
     // 2: Message with new Ratchet Key and pre-key information
@@ -229,7 +229,7 @@ static void createWireMessageV1(ZinaConversation &conv, string &message, string 
 
     wire->assign((const char*)wireMessage, msgLength);
 //    hexdump("create wire", *wire); Log("%s", hexBuffer);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 // Set up the message (enevlope) for protocol version 2 or better. If the version number changes this
@@ -274,7 +274,7 @@ static int32_t parseWireMsgV1(const string &wire, ParsedMessage *msgStruct)
 {
 //    hexdump("parse wire", wire); LOGGER(VERBOSE, hexBuffer);
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     const uint8_t* data = (const uint8_t*)wire.data();
     const uint32_t* dPi = (uint32_t*)data;
     size_t byteIndex = 0;
@@ -321,10 +321,10 @@ static int32_t parseWireMsgV1(const string &wire, ParsedMessage *msgStruct)
     }
     expectedLength += msgStruct->encryptedMsgLen;
     if (expectedLength != wire.size()) {
-        LOGGER(INFO, __func__, " <-- data length mismatch.");
+        LOGGER(ERROR, __func__, " <-- data length mismatch.");
         return RECV_DATA_LENGTH;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
@@ -372,7 +372,7 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
                                const string& mac, string* decrypted, string* supplementsPlain, bool expectFail=false)
 {
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     uint32_t macLen;
     uint8_t computedMac[SHA256_DIGEST_LENGTH];
@@ -415,20 +415,20 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
             return SUP_PADDING_FAILED;
         }
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encrypted, const string& supplements, const string& mac,
                                      string* plaintext, string* supplementsPlain)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t retVal = MAC_CHECK_FAILED;              // Initialize to an expected error return, see decryptAndCheck(...)
     shared_ptr<list<string> > mks = conv->loadStagedMks();
     if (!mks || mks->empty()) {
         if (conv->getErrorCode() != SUCCESS) {
-            LOGGER(INFO, __func__, " <-- Error reading MK: ", conv->getErrorCode(), ", DB code: ", conv->getSqlErrorCode());
+            LOGGER(ERROR, __func__, " <-- Error reading MK: ", conv->getErrorCode(), ", DB code: ", conv->getSqlErrorCode());
         }
         conv->clearStagedMks(mks);
         LOGGER(INFO, __func__, " <-- No staged keys.");
@@ -456,14 +456,14 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
     }
     // Clear staged keys really clears memory of list data and resets the list to null
     conv->clearStagedMks(mks);
-    LOGGER(INFO, __func__, " <-- ", (retVal != SUCCESS) ? "no matching MK found." : "matching MK found");
+    LOGGER(DEBUGGING, __func__, " <-- ", (retVal != SUCCESS) ? "no matching MK found." : "matching MK found");
     return retVal;
 }
 
 static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
                                     pair<string, string>* MKp, string* macKey)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     string MK;
     string iv;
@@ -512,23 +512,23 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     Utilities::wipeString(mKey); mKey.clear();
     memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 static void computeIdHash(const string& id, string* idHash)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     uint8_t hash[SHA256_DIGEST_LENGTH];
 
     sha256((uint8_t*)id.data(), static_cast<uint>(id.size()), hash);
     idHash->assign((const char*)hash, SHA256_DIGEST_LENGTH);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 static int32_t compareHashes(pair<string, string>* idHashes, string& recvIdHash, string& senderIdHash)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     string id = idHashes->first;
     if (id.compare(0, id.size(), recvIdHash, 0, id.size()) != 0) {
         LOGGER(ERROR, __func__, " <-- Receive ID wrong");
@@ -540,7 +540,7 @@ static int32_t compareHashes(pair<string, string>* idHashes, string& recvIdHash,
         LOGGER(ERROR, __func__, " <-- Sender ID wrong");
         return SENDER_ID_WRONG;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 /*
@@ -578,6 +578,7 @@ return read()
 static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& supplements,
     string* supplementsPlain, pair<string, string>* idHashes)
 {
+    LOGGER(DEBUGGING, __func__, " -->");
     // The partner shows that it supports a proto version > 1, save this in the context data
     // When creating a message to this partner we use this info to create a message with the
     // best available version number we support.
@@ -743,13 +744,13 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
 
     Utilities::wipeString(macKey); macKey.clear();
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return decrypted;
 }
 
 shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnvelope& envelope, string* supplementsPlain)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t useVersion = 1;
     int32_t result = 0;
@@ -828,7 +829,7 @@ return msg
 int32_t
 ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (conv.getRK().empty()) {
         conv.setErrorCode(SESSION_NOT_INITED);
         return SESSION_NOT_INITED;
@@ -954,6 +955,6 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     string newCKs((const char*)mac, macLen);
     conv.setCKs(newCKs);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }

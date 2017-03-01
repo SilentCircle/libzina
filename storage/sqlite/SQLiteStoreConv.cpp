@@ -308,7 +308,7 @@ static int32_t enableForeignKeys(sqlite3* db)
  */
 int SQLiteStoreConv::openStore(const std::string& name)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     if (keyData_ == NULL) {
         LOGGER(ERROR, __func__ , " No password defined.");
         return -1;
@@ -358,14 +358,14 @@ int SQLiteStoreConv::openStore(const std::string& name)
 
     isReady_ = true;
     lck.unlock();
-    LOGGER(INFO, __func__ , " <-- ");
+    LOGGER(DEBUGGING, __func__ , " <-- ");
     return SQLITE_OK;
 }
 
 
 int SQLiteStoreConv::createTables()
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
     sqlite3_stmt* stmt;
     int32_t sqlResult;
 
@@ -474,7 +474,7 @@ int SQLiteStoreConv::createTables()
         goto cleanup1;
     }
 
-    LOGGER(INFO, __func__ , " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__ , " <-- ", sqlResult);
     return SQLITE_OK;
 
 cleanup:
@@ -494,7 +494,7 @@ static const char *lookupTables = "SELECT name FROM sqlite_master WHERE type='ta
 int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
     sqlite3_stmt *stmt;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // Version 2 adds the message hash table
     if (oldVersion == 1) {
@@ -594,7 +594,7 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
         LOGGER(ERROR, __func__, ", Version numbers mismatch");
         return SQLITE_ERROR;
     }
-    LOGGER(INFO, __func__ , " <-- ", sqlCode_);
+    LOGGER(DEBUGGING, __func__ , " <-- ", sqlCode_);
     return SQLITE_OK;
 }
 
@@ -609,7 +609,7 @@ shared_ptr<list<string> > SQLiteStoreConv::getKnownConversations(const string& o
     int32_t nameLen;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     shared_ptr<list<string> > names = make_shared<list<string> >();
 
     // selectConvNames = "SELECT name FROM Conversations WHERE ownName=?1 ORDER BY name;";
@@ -627,7 +627,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return names;
 
 }
@@ -638,7 +638,7 @@ shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, 
     int32_t idLen;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     shared_ptr<list<string> > devIds = make_shared<list<string> >();
 
     // selectConvDevices = "SELECT longDevId FROM Conversations WHERE name=?1 AND ownName=?2;";
@@ -659,7 +659,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return devIds;
 }
 
@@ -675,7 +675,7 @@ string* SQLiteStoreConv::loadConversation(const string& name, const string& long
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -705,7 +705,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return data;
 }
 
@@ -717,7 +717,7 @@ void SQLiteStoreConv::storeConversation(const string& name, const string& longDe
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -768,7 +768,7 @@ cleanup:
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     lck.unlock();
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 bool SQLiteStoreConv::hasConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const 
@@ -780,7 +780,7 @@ bool SQLiteStoreConv::hasConversation(const string& name, const string& longDevI
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -805,7 +805,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return retVal;
 }
 
@@ -817,7 +817,7 @@ void SQLiteStoreConv::deleteConversation(const string& name, const string& longD
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -841,7 +841,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 void SQLiteStoreConv::deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode)
@@ -849,7 +849,7 @@ void SQLiteStoreConv::deleteConversationsName(const string& name, const string& 
     sqlite3_stmt *stmt = nullptr;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (isGroupMember(name)) {
         sqlResult = SQLITE_CONSTRAINT;
         goto cleanup;
@@ -867,7 +867,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const
@@ -880,7 +880,7 @@ shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, con
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -913,7 +913,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return keys;
 }
 
@@ -940,7 +940,7 @@ static bool hasStagedMk(sqlite3* db, const string& name, const string& longDevId
 
 
     sqlite3_finalize(stmt);
-    LOGGER(INFO, __func__, " <-- ", exists);
+    LOGGER(DEBUGGING, __func__, " <-- ", exists);
     return exists == 1;
 }
 
@@ -952,7 +952,7 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -966,7 +966,7 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
         if (sqlCode != NULL)
             *sqlCode = sqlResult;
         sqlCode_ = sqlResult;
-        LOGGER(INFO, __func__, " <-- MK exists in DB, skip");
+        LOGGER(DEBUGGING, __func__, " <-- MK exists in DB, skip");
         return;
     }
 
@@ -990,7 +990,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode)
@@ -1001,7 +1001,7 @@ void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId
     const char* devId;
     int32_t devIdLen;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (longDevId.size() > 0) {
         devId = longDevId.c_str();
         devIdLen = static_cast<int32_t>(longDevId.size());
@@ -1025,7 +1025,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)
@@ -1034,7 +1034,7 @@ void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)
 //    int32_t cleaned;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     // removeStagedMkTime = "DELETE FROM stagedMk WHERE since < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeStagedMkTime, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int64(stmt, 1, timestamp));
@@ -1049,7 +1049,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 // ******** PreKey store
@@ -1063,7 +1063,7 @@ string* SQLiteStoreConv::loadPreKey(int32_t preKeyId, int32_t* sqlCode) const
     // selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
 
     // SELECT iv, preKeyData FROM PreKeys WHERE keyid=?1 ;
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
 
@@ -1080,7 +1080,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return preKeyData;
 }
 
@@ -1090,7 +1090,7 @@ void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, in
     int32_t sqlResult;
 
     // insertPreKey = "INSERT INTO PreKeys (keyId, preKeyData) VALUES (?1, ?2);";
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     SQLITE_CHK(SQLITE_PREPARE(db, insertPreKey, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_int(stmt, 1, preKeyId));
@@ -1105,7 +1105,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
 bool SQLiteStoreConv::containsPreKey(int32_t preKeyId, int32_t* sqlCode) const
@@ -1114,7 +1114,7 @@ bool SQLiteStoreConv::containsPreKey(int32_t preKeyId, int32_t* sqlCode) const
     int32_t sqlResult;
     bool retVal = false;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // SELECT preKeyData FROM PreKeys WHERE keyid=?1 ;
     SQLITE_CHK(SQLITE_PREPARE(db, selectPreKey, -1, &stmt, NULL));
@@ -1130,7 +1130,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return retVal;
 }
 
@@ -1139,7 +1139,7 @@ void SQLiteStoreConv::removePreKey(int32_t preKeyId, int32_t* sqlCode)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // DELETE FROM PreKeys WHERE keyId=?1
     SQLITE_CHK(SQLITE_PREPARE(db, deletePreKey, -1, &stmt, NULL));
@@ -1153,7 +1153,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <--", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <--", sqlResult);
 }
 
 void SQLiteStoreConv::dumpPreKeys() const
@@ -1180,7 +1180,7 @@ int32_t SQLiteStoreConv::insertMsgHash(const string& msgHash)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* insertMsgHashSql = "INSERT INTO MsgHash (msgHash, since) VALUES (?1, strftime('%s', ?2, 'unixepoch'));";
     SQLITE_CHK(SQLITE_PREPARE(db, insertMsgHashSql, -1, &stmt, NULL));
@@ -1194,7 +1194,7 @@ int32_t SQLiteStoreConv::insertMsgHash(const string& msgHash)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1203,7 +1203,7 @@ int32_t SQLiteStoreConv::hasMsgHash(const string& msgHash)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* selectMsgHash = "SELECT msgHash FROM MsgHash WHERE msgHash=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectMsgHash, -1, &stmt, NULL));
@@ -1214,7 +1214,7 @@ int32_t SQLiteStoreConv::hasMsgHash(const string& msgHash)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1223,7 +1223,7 @@ int32_t SQLiteStoreConv::deleteMsgHashes(time_t timestamp)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeMsgHash = "DELETE FROM MsgHash WHERE since < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeMsgHash, -1, &stmt, NULL));
@@ -1236,7 +1236,7 @@ int32_t SQLiteStoreConv::deleteMsgHashes(time_t timestamp)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1246,7 +1246,7 @@ int32_t SQLiteStoreConv::insertMsgTrace(const string &name, const string &messag
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t flag = attachment ? ATTACHMENT : 0;
     flag = received ? flag | RECEIVED : flag;
@@ -1267,7 +1267,7 @@ int32_t SQLiteStoreConv::insertMsgTrace(const string &name, const string &messag
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1277,7 +1277,7 @@ shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, cons
     int32_t sqlResult;
     shared_ptr<list<string> > traceRecords = make_shared<list<string> >();
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t selection = 0;
     if (!messageId.empty() && !deviceId.empty())
@@ -1355,7 +1355,7 @@ cleanup:
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
     return traceRecords;
 }
@@ -1366,7 +1366,7 @@ int32_t SQLiteStoreConv::deleteMsgTrace(time_t timestamp)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // Bind with two strftime functions and compare them with < doesn't seem to work. Thus
     // we use the trick and compile the full SQL statement as string and then prepare it.
@@ -1392,7 +1392,7 @@ int32_t SQLiteStoreConv::deleteMsgTrace(time_t timestamp)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1401,7 +1401,7 @@ int32_t SQLiteStoreConv::insertReceivedRawData(const string& rawData, const stri
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* insertReceivedRawSql = "INSERT INTO receivedRaw (rawData, uid, displayName) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertReceivedRawSql, -1, &stmt, NULL));
@@ -1418,7 +1418,7 @@ int32_t SQLiteStoreConv::insertReceivedRawData(const string& rawData, const stri
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1428,7 +1428,7 @@ int32_t SQLiteStoreConv::loadReceivedRawData(list<unique_ptr<StoredMsgInfo> >* r
     int32_t sqlResult;
     int32_t len;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* selectReceivedRaw = "SELECT sequence, rawData, uid, displayName FROM receivedRaw ORDER BY sequence ASC;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectReceivedRaw, -1, &stmt, NULL));
@@ -1451,7 +1451,7 @@ int32_t SQLiteStoreConv::loadReceivedRawData(list<unique_ptr<StoredMsgInfo> >* r
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1460,7 +1460,7 @@ int32_t SQLiteStoreConv::deleteReceivedRawData(int64_t sequence)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeReceivedRaw = "DELETE FROM receivedRaw WHERE sequence=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeReceivedRaw, -1, &stmt, NULL));
@@ -1474,7 +1474,7 @@ int32_t SQLiteStoreConv::deleteReceivedRawData(int64_t sequence)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <--", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <--", sqlResult);
     return sqlResult;
 }
 
@@ -1483,7 +1483,7 @@ int32_t SQLiteStoreConv::cleanReceivedRawData(time_t timestamp)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* cleanReceivedRaw = "DELETE FROM receivedRaw WHERE inserted < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, cleanReceivedRaw, -1, &stmt, NULL));
@@ -1497,7 +1497,7 @@ int32_t SQLiteStoreConv::cleanReceivedRawData(time_t timestamp)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1510,7 +1510,7 @@ int32_t SQLiteStoreConv::insertTempMsg(const string& messageData, const string& 
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* insertTempMsgSql = "INSERT INTO TempMsg (messageData, supplementData, msgType) VALUES (?1, ?2, ?3);";
     SQLITE_CHK(SQLITE_PREPARE(db, insertTempMsgSql, -1, &stmt, NULL));
@@ -1527,7 +1527,7 @@ int32_t SQLiteStoreConv::insertTempMsg(const string& messageData, const string& 
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1536,7 +1536,7 @@ int32_t SQLiteStoreConv::loadTempMsg(list<unique_ptr<StoredMsgInfo> >* tempMessa
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* selectTempMsg = "SELECT sequence, messageData, supplementData, msgType FROM TempMsg ORDER BY sequence ASC;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectTempMsg, -1, &stmt, NULL));
@@ -1556,7 +1556,7 @@ int32_t SQLiteStoreConv::loadTempMsg(list<unique_ptr<StoredMsgInfo> >* tempMessa
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 
@@ -1565,7 +1565,7 @@ int32_t SQLiteStoreConv::deleteTempMsg(int64_t sequence)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* removeTempMsg = "DELETE FROM TempMsg WHERE sequence=?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, removeTempMsg, -1, &stmt, NULL));
@@ -1579,7 +1579,7 @@ int32_t SQLiteStoreConv::deleteTempMsg(int64_t sequence)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <--", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <--", sqlResult);
     return sqlResult;
 }
 
@@ -1588,7 +1588,7 @@ int32_t SQLiteStoreConv::cleanTempMsg(time_t timestamp)
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* cleanTempMsgSql = "DELETE FROM TempMsg WHERE inserted < ?1;";
     SQLITE_CHK(SQLITE_PREPARE(db, cleanTempMsgSql, -1, &stmt, NULL));
@@ -1602,7 +1602,7 @@ int32_t SQLiteStoreConv::cleanTempMsg(time_t timestamp)
 cleanup:
     sqlite3_finalize(stmt);
     sqlCode_ = sqlResult;
-    LOGGER(INFO, __func__, " <-- ", sqlResult);
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
 

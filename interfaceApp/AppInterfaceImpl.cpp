@@ -58,26 +58,26 @@ AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authoriz
 
 AppInterfaceImpl::~AppInterfaceImpl()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     tempBufferSize_ = 0; delete tempBuffer_; tempBuffer_ = NULL;
     delete transport_; transport_ = NULL;
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 string AppInterfaceImpl::createSupplementString(const string& attachmentDesc, const string& messageAttrib)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     string supplement;
     if (!attachmentDesc.empty() || !messageAttrib.empty()) {
         cJSON* msgSupplement = cJSON_CreateObject();
 
         if (!attachmentDesc.empty()) {
-            LOGGER(DEBUGGING, "Adding an attachment descriptor supplement");
+            LOGGER(VERBOSE, "Adding an attachment descriptor supplement");
             cJSON_AddStringToObject(msgSupplement, "a", attachmentDesc.c_str());
         }
 
         if (!messageAttrib.empty()) {
-            LOGGER(DEBUGGING, "Adding an message attribute supplement");
+            LOGGER(VERBOSE, "Adding an message attribute supplement");
             cJSON_AddStringToObject(msgSupplement, "m", messageAttrib.c_str());
         }
         char *out = cJSON_PrintUnformatted(msgSupplement);
@@ -85,7 +85,7 @@ string AppInterfaceImpl::createSupplementString(const string& attachmentDesc, co
         supplement = out;
         cJSON_Delete(msgSupplement); free(out);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return supplement;
 }
 
@@ -94,7 +94,7 @@ string* AppInterfaceImpl::getKnownUsers()
 {
     int32_t sqlCode;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
         return NULL;
@@ -124,7 +124,7 @@ string* AppInterfaceImpl::getKnownUsers()
     string* retVal = new string(out);
     cJSON_Delete(root); free(out);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return retVal;
 }
 
@@ -149,7 +149,7 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     cJSON *root;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "version", 1);
@@ -204,19 +204,19 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     if (code == 200) {
         requestGroupsSync();
     }
-    LOGGER(INFO, __func__, " <-- ", code);
+    LOGGER(DEBUGGING, __func__, " <-- ", code);
     return code;
 }
 
 int32_t AppInterfaceImpl::removeZinaDevice(string& devId, string* result)
 {
-    LOGGER(INFO, __func__, " <-->");
+    LOGGER(DEBUGGING, __func__, " <-->");
     return ScProvisioning::removeZinaDevice(devId, authorization_, result);
 }
 
 int32_t AppInterfaceImpl::newPreKeys(int32_t number)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     string result;
     return ScProvisioning::newPreKeys(store, scClientDevId_, authorization_, number, &result);
@@ -224,7 +224,7 @@ int32_t AppInterfaceImpl::newPreKeys(int32_t number)
 
 int32_t AppInterfaceImpl::getNumPreKeys() const
 {
-    LOGGER(INFO, __func__, " <-->");
+    LOGGER(DEBUGGING, __func__, " <-->");
     return Provisioning::getNumPreKeys(scClientDevId_, authorization_);
 }
 
@@ -234,14 +234,14 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
 
 void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     auto msgInfo = new CmdQueueInfo;
     msgInfo->command = ReScanUserDevices;
     msgInfo->queueInfo_recipient = userName;
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
 
@@ -271,7 +271,7 @@ void AppInterfaceImpl::reKeyAllDevices(string &userName) {
 }
 
 void AppInterfaceImpl::reSyncConversation(const string &userName, const string& deviceId) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
@@ -289,7 +289,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     msgInfo->boolData1 = toSibling;
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
 
@@ -298,7 +298,7 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
 
 int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message, bool receivedMsg)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     cJSON* cjTemp;
     char* jsString;
 
@@ -338,13 +338,13 @@ int32_t AppInterfaceImpl::parseMsgDescriptor(const string& messageDescriptor, st
     }
     message->assign(jsString);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return OK;
 }
 
 string AppInterfaceImpl::getOwnIdentityKey()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     shared_ptr<ZinaConversation> axoConv = ZinaConversation::loadLocalConversation(ownUser_);
@@ -367,13 +367,13 @@ string AppInterfaceImpl::getOwnIdentityKey()
         idKey.append(axoConv->getDeviceName());
     }
     idKey.append(":").append(scClientDevId_).append(":0");
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return idKey;
 }
 
 shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     shared_ptr<list<string> > idKeys = make_shared<list<string> >();
@@ -408,13 +408,13 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
 
         idKeys->push_back(id);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return idKeys;
 }
 
 
 void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " ZINA conversation DB not ready.");
@@ -457,12 +457,12 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
     queueMessageToSingleUserDevice(command.queueInfo_recipient, generateMsgIdTime(), command.queueInfo_deviceId,
                                    deviceName, ping, Empty, MSG_NORMAL, 0, true);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
 
 void AppInterfaceImpl::setIdKeyVerified(const string &userName, const string& deviceId, bool flag) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
@@ -480,13 +480,13 @@ void AppInterfaceImpl::setIdKeyVerified(const string &userName, const string& de
     msgInfo->boolData1 = flag;
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
 
 int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
 {
-    LOGGER(INFO, __func__, " --> ", jsonFlags);
+    LOGGER(DEBUGGING, __func__, " --> ", jsonFlags);
     if (jsonFlags.empty()) {
         return DATA_MISSING;
     }
@@ -504,7 +504,7 @@ int32_t AppInterfaceImpl::setDataRetentionFlags(const string& jsonFlags)
     drBrdr_ = Utilities::getJsonBool(root, BRDR, false);
     drBrmr_ = Utilities::getJsonBool(root, BRMR, false);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
@@ -527,8 +527,6 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(const CmdQueueInfo &command)
     const DhPublicKey* remoteId = remote->getDHIr();
     const string remoteIdKey = remoteId->getPublicKey();
 
-//     hexdump("remote key", remoteIdKey); Log("%s", hexBuffer);
-//     hexdump("zrtp key", pubKey); Log("%s", hexBuffer);
     if (command.stringData3.compare(remoteIdKey) != 0) {
         LOGGER(ERROR, "<-- Messaging keys do not match, user: '", command.stringData1, "', device: ", command.stringData2);
         return;
@@ -563,7 +561,7 @@ void AppInterfaceImpl::setIdKeyVerifiedCommand(const CmdQueueInfo &command)
 
 void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     const string &userName = command.queueInfo_recipient;
 
@@ -594,7 +592,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
             }
             if (!found) {
                 store->deleteConversation(userName, devIdDb, ownUser_);
-                LOGGER(DEBUGGING, "Remove device from database: ", devIdDb);
+                LOGGER(INFO, __func__, "Remove device from database: ", devIdDb);
             }
         }
     }
@@ -646,13 +644,13 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
             continue;
         }
 
-        LOGGER(DEBUGGING, "Send Ping to new found device: ", deviceId);
+        LOGGER(INFO, __func__, "Send Ping to new found device: ", deviceId);
         queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_NORMAL, counter, true);
         counter++;
 
         LOGGER(DEBUGGING, "Queued message to ping a new device.");
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
 
@@ -660,7 +658,7 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
                                                       const string &deviceName, const string &attributes,
                                                       const string &msg, int32_t msgType, int64_t counter, bool newDevice)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     int64_t transportMsgId;
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
@@ -682,7 +680,7 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
     msgInfo->queueInfo_newUserDevice = newDevice;
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
 }
 
 int32_t AppInterfaceImpl::requestGroupsSync()

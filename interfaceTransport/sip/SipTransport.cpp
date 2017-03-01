@@ -101,7 +101,7 @@ static void runSendQueue(SEND_DATA_FUNC sendAxoData, SipTransport* transport)
 
 void SipTransport::sendAxoMessage(const CmdQueueInfo &info, const string& envelope)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (!sendThread.joinable()) {
         unique_lock<mutex> lck(threadLock);
@@ -127,21 +127,21 @@ void SipTransport::sendAxoMessage(const CmdQueueInfo &info, const string& envelo
     sendCv.notify_one();
     listLock.unlock();
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     int32_t result = receiveAxoMessage(data, length, nullptr, 0, nullptr, 0);
-    LOGGER(INFO, __func__, " <--", result);
+    LOGGER(DEBUGGING, __func__, " <--", result);
 
     return result;
 }
 
 int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* uid,  size_t uidLen,
                                         uint8_t* displayName, size_t dpNameLen) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (length > MAX_ENCODED_MSG_LENGTH) {
         LOGGER(ERROR, __func__, " Ignore a too long message: ", length);
@@ -167,13 +167,13 @@ int32_t SipTransport::receiveAxoMessage(uint8_t* data, size_t length, uint8_t* u
             displayNameString = displayNameString.substr(0, found);
         }
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return appInterface_->receiveMessage(envelope, uidString, displayNameString);
 }
 
 void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, uint8_t* data, size_t length)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     std::string info;
     if (data != NULL) {
         info.assign((const char*)data, length);
@@ -182,7 +182,7 @@ void SipTransport::stateReportAxo(int64_t messageIdentifier, int32_t stateCode, 
         appInterface_->groupStateReportCallback_(stateCode, info);
     else
         appInterface_->stateReportCallback_(messageIdentifier, stateCode, info);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 static string Zeros("00000000000000000000000000000000");
@@ -190,7 +190,7 @@ static map<string, string> seenIdStringsForName;
 
 void SipTransport::notifyAxo(uint8_t* data, size_t length)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     string info((const char*)data, length);
     /*
      * notify call back from SIP:
@@ -264,6 +264,6 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     if (newDevice || numKnownDevices != numReportedDevices) {
         appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 

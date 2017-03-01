@@ -40,12 +40,12 @@ static const char* registerRequest = "/v1/me/device/%s/axolotl/keys/?api_key=%s"
 
 int32_t Provisioning::registerZinaDevice(const std::string& request, const std::string& authorization, const std::string& scClientDevId, std::string* result)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     char temp[1000];
     snprintf(temp, 990, registerRequest, scClientDevId.c_str(), authorization.c_str());
 
     std::string requestUri(temp);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 
     return ScProvisioning::httpHelper_(requestUri, PUT, request, result);
 }
@@ -56,11 +56,11 @@ int32_t Provisioning::registerZinaDevice(const std::string& request, const std::
 
 int32_t Provisioning::removeZinaDevice(const string& scClientDevId, const string& authorization, std::string* result)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     char temp[1000];
     snprintf(temp, 990, registerRequest, scClientDevId.c_str(), authorization.c_str());
     std::string requestUri(temp);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 
     return ScProvisioning::httpHelper_(requestUri, DELETE, Empty, result);
 
@@ -86,7 +86,7 @@ static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevId, const string& authorization,
                                       pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     string encoded = Utilities::urlEncode(name);
 
@@ -139,7 +139,7 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     preIdKeys->first = identityKey;
     preIdKeys->second = prePublic;
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return pkyId;
 }
 
@@ -185,7 +185,7 @@ static const char* getNumberPreKeys = "/v1/me/device/%s/?api_key=%s";
 
 int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& authorization)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     char temp[1000];
     snprintf(temp, 990, getNumberPreKeys, longDevId.c_str(), authorization.c_str());
@@ -219,7 +219,7 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
     // Clear JSON buffer and context
     cJSON_Delete(root);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return numIds;
 }
 
@@ -237,7 +237,7 @@ static const char* getUserDevicesRequest = "/v1/user/%s/device/?filter=axolotl&a
 
 shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     string encoded = Utilities::urlEncode(name);
 
@@ -288,7 +288,7 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
     // Clear JSON buffer and context
     cJSON_Delete(root);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return deviceIds;
 }
 
@@ -311,7 +311,7 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
 */
 int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, int32_t number, string* result )
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     char temp[1000];
     snprintf(temp, 990, registerRequest, longDevId.c_str(), authorization.c_str());
@@ -346,7 +346,7 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     std::string registerRequest(out);
     cJSON_Delete(root); free(out);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 
     return ScProvisioning::httpHelper_(requestUri, PUT, registerRequest, result);
 }
@@ -358,7 +358,7 @@ static const char* getUserInfoRequest = "/v1/user/%s/?api_key=%s";
 
 int32_t Provisioning::getUserInfo(const string& alias,  const string& authorization, string* result)
 {
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 
     string encoded = Utilities::urlEncode(alias);
     char temp[1000];
@@ -367,7 +367,7 @@ int32_t Provisioning::getUserInfo(const string& alias,  const string& authorizat
 
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, result);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return code;
 }
 

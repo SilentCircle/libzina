@@ -20,7 +20,7 @@ using namespace zina;
 
 static int32_t filterAttributes(const string& attributes, string *filteredAttributes)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     cJSON* root = cJSON_Parse(attributes.c_str());
     if (root == NULL) {
@@ -37,7 +37,7 @@ static int32_t filterAttributes(const string& attributes, string *filteredAttrib
 
     filteredAttributes->append(out);
     free(out);
-    LOGGER(INFO, __func__ , " <-- ");
+    LOGGER(DEBUGGING, __func__ , " <-- ");
     return OK;
 }
 
@@ -51,7 +51,7 @@ static void cleanupTrace(SQLiteStoreConv* store )
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
                                                const string &convState, const string &attributes, bool attachments, bool force)
 {
-    LOGGER(INFO, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
@@ -69,13 +69,13 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
         }
     }
     cleanupTrace(store);
-    LOGGER(INFO, __func__ , " <-- ");
+    LOGGER(DEBUGGING, __func__ , " <-- ");
     return OK;
 }
 
 int32_t MessageCapture::captureSendMessage(const string &receiver, const string &messageId,const string &deviceId,
                                            const string &convState, const string &attributes, bool attachments, bool force) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
@@ -93,7 +93,7 @@ int32_t MessageCapture::captureSendMessage(const string &receiver, const string 
         }
     }
     cleanupTrace(store);
-    LOGGER(INFO, __func__ , " <-- ");
+    LOGGER(DEBUGGING, __func__ , " <-- ");
     return OK;
 }
 

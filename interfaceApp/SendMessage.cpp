@@ -64,7 +64,6 @@ getDevicesNewUser(string& recipient, string& authorization, int32_t* errorCode)
 
     if (devices->empty()) {
         *errorCode = NO_DEVS_FOUND;
-        LOGGER(INFO, __func__, " <-- No device.");
         return shared_ptr<list<pair<string, string> > >();
     }
     *errorCode = SUCCESS;
@@ -132,7 +131,7 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
             continue;
 
         bool found = false;
-        for (auto idDevInfo : *idDevInfos) {
+        for (auto &idDevInfo : *idDevInfos) {
             auto idParts = Utilities::splitString(idDevInfo, ":");
 
             // idDevInfo has the format:
@@ -185,7 +184,7 @@ void AppInterfaceImpl::queuePreparedMessage(unique_ptr<CmdQueueInfo> msgInfo)
 static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
 {
 #ifdef SC_ENABLE_DR_SEND
-    LOGGER(INFO, __func__, " --> ", id);
+    LOGGER(DEBUGGING, __func__, " --> ", id);
 
     unique_lock<mutex> listLock(retainInfoLock);
     auto it = retainInfoMap.find(id);
@@ -204,7 +203,7 @@ static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
     else {
         it ->second = processedMsgs << 8 | retainFlags;
     }
-    LOGGER(INFO, __func__, " <-- ", retainFlags);
+    LOGGER(DEBUGGING, __func__, " <-- ", retainFlags);
     return retainFlags;
 #else
     return 0;
@@ -223,7 +222,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     string msgId;
     string message;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     auto messageData = make_shared<list<shared_ptr<PreparedMessageData> > >();
 
@@ -290,7 +289,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
             }
             errorCode_ = errorCode;
             errorInfo_ = "Cannot get device info for new user";
-            return messageData;
+            return messageData;     // Still an empty list
         }
         idKeys = createIdDevInfo(devicesNewUser);
         newUser = true;
@@ -412,7 +411,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     }
 #endif
 
-    LOGGER(INFO, __func__, " <-- ", messageData->size());
+    LOGGER(DEBUGGING, __func__, " <-- ", messageData->size());
     return messageData;
 }
 
@@ -445,7 +444,7 @@ int32_t AppInterfaceImpl::doSendSingleMessage(uint64_t transportId)
 
 int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transportIds)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     size_t numOfIds = transportIds->size();
 
@@ -470,13 +469,13 @@ int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transport
 
     addMsgInfosToRunQueue(messagesToProcess);
 
-    LOGGER(INFO, __func__, " <--, ", counter);
+    LOGGER(DEBUGGING, __func__, " <--, ", counter);
     return counter;
 }
 
 int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     size_t numOfIds = transportIds->size();
     int32_t counter = 0;
@@ -494,14 +493,14 @@ int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > t
     }
     prepareLock.unlock();
 
-    LOGGER(INFO, __func__, " <--, ", counter);
+    LOGGER(DEBUGGING, __func__, " <--, ", counter);
     return counter;
 }
 
 int32_t
 AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<ZinaConversation> zinaConversation)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     errorCode_ = SUCCESS;
 
@@ -596,16 +595,15 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
     }
 #endif
     transport_->sendAxoMessage(sendInfo, serialized);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 
     return SUCCESS;
-
 }
 
 int32_t
 AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     errorCode_ = SUCCESS;
 
@@ -652,7 +650,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
         return errorCode_;
     }
     zinaConversation->setDeviceName(sendInfo.queueInfo_deviceName);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 
     return sendMessageExisting(sendInfo, zinaConversation);
 }
@@ -677,7 +675,7 @@ string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const 
 int32_t
 AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &msgAttributes,
                                          shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     cJSON *root = !msgAttributes.empty() ? cJSON_Parse(msgAttributes.c_str()) : cJSON_CreateObject();
     shared_ptr<cJSON> sharedRoot(root, cJSON_deleter);
@@ -738,13 +736,13 @@ AppInterfaceImpl::checkDataRetentionSend(const string &recipient, const string &
     newMsgAttributes->assign(out);
     free(out);
 
-    LOGGER(INFO, __func__, " <-- ", *newMsgAttributes);
+    LOGGER(DEBUGGING, __func__, " <-- ", *newMsgAttributes);
     return OK;
 }
 
 int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<CmdQueueInfo> sendInfo)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     uuid_t uu = {0};
     uuid_parse(sendInfo->queueInfo_msgId.c_str(), uu);
     time_t composeTime = uuid_time(uu, NULL);
@@ -767,7 +765,7 @@ int32_t AppInterfaceImpl::doSendDataRetention(uint32_t retainInfo, shared_ptr<Cm
     else if ((retainInfo & RETAIN_LOCAL_META) == RETAIN_LOCAL_META) {
         ScDataRetention::sendMessageMetadata("", "sent", location, attachment, sendInfo->queueInfo_recipient, composeTime, currentTime);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 #endif // SC_ENABLE_DR_SEND

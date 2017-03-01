@@ -78,7 +78,7 @@ void AppInterfaceImpl::addMsgInfosToRunQueue(list<unique_ptr<CmdQueueInfo> >& me
 // process prepared send messages, one at a time
 void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     unique_lock<mutex> listLock(commandQueueLock);
     while (commandQueueThread.joinable()) {
@@ -170,7 +170,7 @@ void AppInterfaceImpl::insertRetryCommand()
 
 void AppInterfaceImpl::retryReceivedMessages()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     list<unique_ptr<CmdQueueInfo> > messagesToProcess;
     int32_t plainCounter = 0;
     int32_t rawCounter = 0;
@@ -214,5 +214,5 @@ void AppInterfaceImpl::retryReceivedMessages()
         addMsgInfosToRunQueue(messagesToProcess);
         LOGGER(WARNING, __func__, " Queued messages for retry, plain: ", plainCounter, ", raw: ", rawCounter);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }

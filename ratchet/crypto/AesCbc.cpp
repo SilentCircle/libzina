@@ -23,7 +23,7 @@ using namespace zina;
 
 int32_t zina::aesCbcEncrypt(const string& key, const string& IV, const string& plainText, string* cryptText)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (IV.size() != AES_BLOCK_SIZE) {
         LOGGER(ERROR, __func__, " <-- IV wrong block size.");
         return WRONG_BLK_SIZE;
@@ -55,14 +55,14 @@ int32_t zina::aesCbcEncrypt(const string& key, const string& IV, const string& p
     cryptText->assign((const char*)outBuffer, plainText.size() + padlen);
 
     delete[] outBuffer;
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 
 int32_t zina::aesCbcDecrypt(const string& key, const string& IV, const string& cryptText, string* plainText)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     if (IV.size() != AES_BLOCK_SIZE) {
         LOGGER(ERROR, __func__, " <-- IV wrong block size.");
         return WRONG_BLK_SIZE;
@@ -89,13 +89,13 @@ int32_t zina::aesCbcDecrypt(const string& key, const string& IV, const string& c
     plainText->assign((const char*)outBuffer, cryptText.size());
 
     delete[] outBuffer;
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 bool zina::checkAndRemovePadding(string* data)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     size_t length = data->size();
     size_t padCount = (*data)[length-1] & 0xffU;
 
@@ -111,7 +111,7 @@ bool zina::checkAndRemovePadding(string* data)
         }
     }
     data->erase(length - padCount);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return true;
 }
 

@@ -35,14 +35,12 @@ using namespace vectorclock;
 
 static void fillMemberArray(cJSON* root, const list<string> &members)
 {
-    LOGGER(INFO, __func__, " --> ");
     cJSON* memberArray;
     cJSON_AddItemToObject(root, MEMBERS, memberArray = cJSON_CreateArray());
 
     for (auto it = members.begin(); it != members.end(); ++it) {
         cJSON_AddItemToArray(memberArray, cJSON_CreateString(it->c_str()));
     }
-    LOGGER(INFO, __func__, " <-- ");
 }
 
 static string prepareMemberList(const string &groupId, const list<string> &members, const char *command) {
@@ -163,7 +161,7 @@ static int32_t serializeChangeSet(const GroupChangeSet changeSet, string *attrib
 
 bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     if (!store->isReady()) {
         errorInfo_ = " Conversation store not ready.";
@@ -193,7 +191,7 @@ bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
         return false;
 
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return true;
 }
 
@@ -203,7 +201,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     string msgId;
     string message;
 
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     int32_t result = parseMsgDescriptor(messageDescriptor, &groupId, &msgId, &message);
     if (result < 0) {
         errorCode_ = result;
@@ -246,7 +244,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
         doSendMessages(extractTransportIds(preparedMsgData.get()));
     }
     groupUpdateSendDone(groupId);
-    LOGGER(INFO, __func__, " <--, ", membersFound);
+    LOGGER(DEBUGGING, __func__, " <--, ", membersFound);
     return OK;
 }
 
@@ -275,7 +273,7 @@ int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const strin
 int32_t AppInterfaceImpl::processGroupMessage(int32_t msgType, const string &msgDescriptor,
                                               const string &attachmentDescr, string *attributesDescr)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (msgType == GROUP_MSG_CMD) {
         return processGroupCommand(msgDescriptor, attributesDescr);
@@ -286,13 +284,13 @@ int32_t AppInterfaceImpl::processGroupMessage(int32_t msgType, const string &msg
     if (checkAndProcessChangeSet(msgDescriptor, attributesDescr) == SUCCESS) {
         groupMsgCallback_(msgDescriptor, attachmentDescr, *attributesDescr);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, string *commandIn)
 {
-    LOGGER(INFO, __func__, " --> ", *commandIn);
+    LOGGER(DEBUGGING, __func__, " --> ", *commandIn);
 
     if (commandIn->empty()) {
         return GROUP_CMD_MISSING_DATA;
@@ -330,13 +328,13 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     else {
         LOGGER(WARNING, __func__, "Unknown group command: ", groupCommand);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     string changeSetString;
 
@@ -420,7 +418,7 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
         groupCmdCallback_(attributes);      // for unit testing only
 #endif
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return result;
 }
 
@@ -428,7 +426,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
                                                    const string &sender, const string &deviceId, bool hasGroup,
                                                    GroupChangeSet *ackRmSet)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     bool fromSibling = sender == getOwnUser();
 
@@ -525,13 +523,13 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
             }
         }
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &binDeviceId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     // Clean old wait-for-ack records before processing ACKs. This enables proper cleanup of pending change sets
     time_t timestamp = time(0) - MK_STORE_TIME;
@@ -560,10 +558,10 @@ int32_t AppInterfaceImpl::processAcks(const GroupChangeSet &changeSet, const str
             string key;
             key.assign(updateId).append(groupId);
             bool removed = removeFromPendingChangeSets(key);
-            LOGGER(INFO, "remove groupid from pending change set: ", groupId, ": ", removed, ": ", key);
+            LOGGER(INFO, __func__, "Remove groupid from pending change set: ", groupId, ": ", removed, ": ", key);
         }
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
@@ -583,7 +581,7 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
 {
     const string &updateIdRemote = changeSet.update_id();
 
-    LOGGER(INFO, __func__, " --> ", updateIdRemote);
+    LOGGER(DEBUGGING, __func__, " --> ", updateIdRemote);
 
     VectorClock<string> remoteVc;
     deserializeVectorClock(changeSet.vclock(), &remoteVc);
@@ -920,7 +918,7 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
                                                              const string &deviceId, const string &attributes,
                                                              const string &msg, int32_t msgType)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
@@ -949,13 +947,13 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
 
     queueGroupMessageToSingleUserDevice(userId, groupId, msgId, deviceId, newAttributes, msg, msgType);
 
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
 
 int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command) {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     list<JsonUnique> members;
     int32_t result= store_->getAllGroupMembers(groupId, &members);
@@ -967,12 +965,12 @@ int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const str
         string recipient(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
         sendGroupCommand(recipient, msgId, command);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return OK;
 }
 
 int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string &msgId, const string &command) {
-    LOGGER(INFO, __func__, " --> ", recipient, ", ", ownUser_);
+    LOGGER(DEBUGGING, __func__, " --> ", recipient, ", ", ownUser_);
 
     bool toSibling = recipient == ownUser_;
     int32_t result;
@@ -983,7 +981,7 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
     }
     doSendMessages(extractTransportIds(preparedMsgData.get()));
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return OK;
 }
 
@@ -991,7 +989,7 @@ void AppInterfaceImpl::queueGroupMessageToSingleUserDevice(const string &userId,
                                                            const string &msgId, const string &deviceId,
                                                            const string &attributes, const string &msg, int32_t msgType)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     int64_t transportMsgId;
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
@@ -1013,12 +1011,12 @@ void AppInterfaceImpl::queueGroupMessageToSingleUserDevice(const string &userId,
     msgInfo->queueInfo_newUserDevice = false;                   // known user, known device
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
 }
 
 void AppInterfaceImpl::clearGroupData()
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
     list<JsonUnique> groups;
     store_->listAllGroups(&groups);
 
@@ -1027,13 +1025,13 @@ void AppInterfaceImpl::clearGroupData()
         store_->deleteAllMembers(groupId);
         store_->deleteGroup(groupId);
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
 }
 
 
 int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     int32_t result = store_->deleteAllMembers(groupId);
     if (SQL_FAIL(result)) {
@@ -1051,7 +1049,7 @@ int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
         store_->setGroupAttribute(groupId, INACTIVE);
         return GROUP_ERROR_BASE + result;
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
@@ -1059,7 +1057,7 @@ int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
 // new group.
 int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChangeSet &changeSet, string *callbackCmd)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
     const string &groupName = changeSet.has_updatename() ? changeSet.updatename().name() : Empty;
 
     int32_t sqlResult = store_->insertGroup(groupId, groupName, getOwnUser(), Empty, MAXIMUM_GROUP_SIZE);
@@ -1076,7 +1074,7 @@ int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChang
         callbackCmd->assign(newGroupCommand(groupId, MAXIMUM_GROUP_SIZE));
     }
 
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
@@ -1084,7 +1082,7 @@ int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChang
 
 int32_t AppInterfaceImpl::processSiblingGroupSyncData(cJSON* root)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
     string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
     string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
 
@@ -1130,14 +1128,14 @@ int32_t AppInterfaceImpl::processSiblingGroupSyncData(cJSON* root)
     }
 
     result = syncGroupMembers(changeSet, groupId);
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return result;
 }
 
 int32_t static updateAndStoreClock(const google::protobuf::RepeatedPtrField<VClock> &vclock, const string &updateId, const string &groupId,
                                    GroupUpdateType type, SQLiteStoreConv &store)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     LocalVClock lvc;                    // the serialized proto-buffer representation for the local clock data
 
@@ -1150,7 +1148,7 @@ int32_t static updateAndStoreClock(const google::protobuf::RepeatedPtrField<VClo
 }
 
 int32_t AppInterfaceImpl::syncGroupName(const GroupUpdateSetName &changeSet, const string &groupId) {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     const string &groupName = changeSet.name();
     int32_t result = store_->setGroupName(groupId, groupName);
@@ -1169,12 +1167,12 @@ int32_t AppInterfaceImpl::syncGroupName(const GroupUpdateSetName &changeSet, con
         return result;
     }
     groupCmdCallback_(newGroupNameCommand(groupId, groupName));
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::syncGroupAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId) {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     const string &groupAvatar = changeSet.avatar();
     int32_t result = store_->setGroupAvatarInfo(groupId, groupAvatar);
@@ -1193,12 +1191,12 @@ int32_t AppInterfaceImpl::syncGroupAvatar(const GroupUpdateSetAvatar &changeSet,
         return result;
     }
     groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar));
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::syncGroupBurn(const GroupUpdateSetBurn &changeSet, const string &groupId) {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
 
     const int64_t burnTime = changeSet.burn_ttl_sec();
     const int32_t burnMode = changeSet.burn_mode();
@@ -1219,13 +1217,13 @@ int32_t AppInterfaceImpl::syncGroupBurn(const GroupUpdateSetBurn &changeSet, con
         return result;
     }
     groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode));
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::syncGroupMembers(const GroupChangeSet &changeSet, const string &groupId)
 {
-    LOGGER(INFO, __func__, " --> ");
+    LOGGER(DEBUGGING, __func__, " --> ");
     if (!changeSet.has_updateaddmember()) {
         return SUCCESS;
     }
@@ -1259,6 +1257,6 @@ int32_t AppInterfaceImpl::syncGroupMembers(const GroupChangeSet &changeSet, cons
     if (!addMembers.empty()) {
         groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS));
     }
-    LOGGER(INFO, __func__, " <-- ");
+    LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }

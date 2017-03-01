@@ -42,13 +42,13 @@ static string* preKeyJson(const DhKeyPair &preKeyPair)
     string* data = new string(out);
     cJSON_Delete(root); free(out);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return data;
 }
 
 pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t keyId = 0;
     for (bool ok = false; !ok; ) {
@@ -65,13 +65,13 @@ pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
 
     pair <int32_t, const DhKeyPair*> prePair(keyId, preKeyPair);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return prePair;
 }
 
 list<pair<int32_t, const DhKeyPair*> >* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     std::list<pair<int32_t, const DhKeyPair*> >* pkrList = new std::list<pair<int32_t, const DhKeyPair*> >;
 
@@ -79,13 +79,13 @@ list<pair<int32_t, const DhKeyPair*> >* PreKeys::generatePreKeys(SQLiteStoreConv
         pair<int32_t, const DhKeyPair*> pkPair = generatePreKey(store);
         pkrList->push_back(pkPair);
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return pkrList;
 }
 
 DhKeyPair* PreKeys::parsePreKeyData(const string& data)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     uint8_t binBuffer[MAX_KEY_BYTES_ENCODED];
@@ -109,6 +109,6 @@ DhKeyPair* PreKeys::parsePreKeyData(const string& data)
     delete pubKey;
     delete privKey;
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return keyPair;
 }

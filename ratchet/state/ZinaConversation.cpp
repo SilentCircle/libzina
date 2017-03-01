@@ -26,7 +26,7 @@ void Log(const char* format, ...);
 
 shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     int32_t result;
 
     // Create new conversation object
@@ -60,13 +60,13 @@ shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& lo
     conv->deserialize(*data);
     delete data;
     conv->valid_ = true;
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return conv;
 }
 
 int32_t ZinaConversation::storeConversation()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
     const string* data = serialize();
@@ -83,7 +83,7 @@ int32_t ZinaConversation::storeConversation()
         LOGGER(ERROR, __func__, " <--, error: ");
         return result;
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
@@ -122,7 +122,7 @@ int32_t ZinaConversation::renameConversation(const string& localUserOld, const s
 #endif
 
 int32_t ZinaConversation::storeStagedMks() {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     errorCode_ = SUCCESS;
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
@@ -142,13 +142,13 @@ int32_t ZinaConversation::storeStagedMks() {
         }
     }
     clearStagedMks(stagedMk);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
 void ZinaConversation::clearStagedMks(shared_ptr<list<string> > keys)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     if (keys) {
         for (; !keys->empty(); keys->pop_front()) {
@@ -163,12 +163,12 @@ void ZinaConversation::clearStagedMks(shared_ptr<list<string> > keys)
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     time_t timestamp = time(0) - MK_STORE_TIME;
     store->deleteStagedMk(timestamp);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 shared_ptr<list<string> > ZinaConversation::loadStagedMks()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     int32_t result = SQLITE_OK;
 
     errorCode_ = SUCCESS;
@@ -181,13 +181,13 @@ shared_ptr<list<string> > ZinaConversation::loadStagedMks()
         sqlErrorCode_ = result;
         keys.reset();
     }
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return keys;
 }
 
 shared_ptr<list<string> > ZinaConversation::getEmptyStagedMks()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     errorCode_ = SUCCESS;
     if (stagedMk && !stagedMk->empty()) {
@@ -197,16 +197,16 @@ shared_ptr<list<string> > ZinaConversation::getEmptyStagedMks()
         }
     }
     stagedMk = make_shared<list<string> >();
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return stagedMk;
 }
 
 void ZinaConversation::deleteStagedMk(string& mkiv)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkiv);
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 /* *****************************************************************************
@@ -217,7 +217,7 @@ void ZinaConversation::deleteStagedMk(string& mkiv)
 // with constructor.
 void ZinaConversation::deserialize(const std::string& data)
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     JsonUnique uniqueRoot(cJSON_Parse(data.c_str()));
     cJSON* root = uniqueRoot.get();
 
@@ -340,12 +340,12 @@ void ZinaConversation::deserialize(const std::string& data)
         identityKeyChanged = false;
     }
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 const string* ZinaConversation::serialize() const
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
     JsonUnique uniqueJson(cJSON_CreateObject());
@@ -445,13 +445,13 @@ const string* ZinaConversation::serialize() const
     CharUnique out(cJSON_PrintUnformatted(root));
     string* data = new string(out.get());
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return data;
 }
 
 void ZinaConversation::reset()
 {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     delete DHRs; DHRs = NULL;
     delete DHRr; DHRr = NULL;
     delete DHIs; DHIs = NULL;
@@ -473,12 +473,12 @@ void ZinaConversation::reset()
     ratchetFlag = false;
 
     // Don't reset the context id, we use its sequence number part to count re-syncs
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 
 cJSON *ZinaConversation::prepareForCapture(cJSON *existingRoot, bool beforeAction) {
-    LOGGER(INFO, __func__, " -->");
+    LOGGER(DEBUGGING, __func__, " -->");
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
     cJSON* root = (existingRoot == nullptr) ? cJSON_CreateObject() : existingRoot;
@@ -546,6 +546,6 @@ cJSON *ZinaConversation::prepareForCapture(cJSON *existingRoot, bool beforeActio
     cJSON_AddNumberToObject(jsonItem, "ratchet", (ratchetFlag) ? 1 : 0);
     cJSON_AddNumberToObject(jsonItem, "zrtpState", zrtpVerifyState);
 
-    LOGGER(INFO, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " <--");
     return root;
 }
