@@ -102,7 +102,8 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
 
     uint8_t pubKeyBuffer[MAX_KEY_BYTES_ENCODED];
 
-    cJSON* root = cJSON_Parse(response.c_str());
+    JsonUnique uniqueJson(cJSON_Parse(response.c_str()));
+    cJSON* root = uniqueJson.get();
 
     if (root == NULL) {
         LOGGER(ERROR, "Wrong pre-key bundle JSON data, ignoring.");
@@ -118,7 +119,6 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     cJSON* cjTemp = cJSON_GetObjectItem(cjKey, "identity_key");
     char* jsString = (cjTemp != NULL) ? cjTemp->valuestring : NULL;
     if (jsString == NULL) {
-        cJSON_Delete(root);
         LOGGER(ERROR, "Missing identity key in pre-key bundle, ignoring.");
         return 0;
     }
@@ -134,8 +134,6 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     b64Decode(identity.data(), identity.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
     const DhPublicKey *identityKey = EcCurve::decodePoint(pubKeyBuffer);
 
-    // Clear JSON buffer and context
-    cJSON_Delete(root);
     preIdKeys->first = identityKey;
     preIdKeys->second = prePublic;
 
@@ -196,7 +194,8 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
     if (code >= 400 || response.empty())
         return -1;
 
-    cJSON* root = cJSON_Parse(response.c_str());
+    JsonUnique uniqueJson(cJSON_Parse(response.c_str()));
+    cJSON* root = uniqueJson.get();
     if (root == NULL) {
         LOGGER(ERROR, "Wrong pre-key bundle JSON data, ignoring.");
         return -1;
@@ -204,20 +203,16 @@ int32_t Provisioning::getNumPreKeys(const string& longDevId,  const string& auth
 
     cJSON* axolotl = cJSON_GetObjectItem(root, "axolotl");
     if (axolotl == NULL) {
-        cJSON_Delete(root);
         LOGGER(ERROR, "Not a valid pre-key bundle, ignoring.");
         return -1;
     }
 
     cJSON* keyIds = cJSON_GetObjectItem(axolotl, "prekeys");
     if (keyIds == NULL || keyIds->type != cJSON_Array) {
-        cJSON_Delete(root);
         LOGGER(ERROR, "No pre-keys array, ignoring.");
         return -1;
     }
     int32_t numIds = cJSON_GetArraySize(keyIds);
-    // Clear JSON buffer and context
-    cJSON_Delete(root);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return numIds;
@@ -239,6 +234,26 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
+    shared_ptr<list<pair<string, string> > > deviceIds = make_shared<list<pair<string, string> > >();
+    int32_t code = getZinaDeviceIds(name, authorization, *deviceIds);
+
+    if (code >= 400) {
+        if (errorCode != NULL)
+            *errorCode = code;
+        return shared_ptr<list<pair<string, string> > >();
+    }
+    return deviceIds;
+}
+
+int32_t Provisioning::getZinaDeviceIds(const std::string& name, const std::string& authorization, list<pair<string, string> > &deviceIds)
+{
+    LOGGER(DEBUGGING, __func__, " -->");
+
+    if (ScProvisioning::httpHelper_ == nullptr) {
+        LOGGER(ERROR, __func__,  "ZINA library not correctly initailized");
+        return 500;
+    }
+
     string encoded = Utilities::urlEncode(name);
 
     char temp[1000];
@@ -250,31 +265,27 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
     if (code >= 400) {
-        if (errorCode != NULL)
-            *errorCode = code;
-        return shared_ptr<list<pair<string, string> > >();
+        return code;
     }
 
-    shared_ptr<list<pair<string, string> > > deviceIds = make_shared<list<pair<string, string> > >();
-
-    cJSON* root = cJSON_Parse(response.c_str());
+    JsonUnique uniqueJson(cJSON_Parse(response.c_str()));
+    cJSON* root = uniqueJson.get();
     if (root == NULL) {
-        LOGGER(ERROR, "Wrong device response JSON data, ignoring.");
-        return deviceIds;
+        LOGGER(ERROR, __func__,  "Wrong device response JSON data, ignoring.");
+        return 500;
     }
 
     cJSON* devIds = cJSON_GetObjectItem(root, "devices");
     if (devIds == NULL || devIds->type != cJSON_Array) {
-        cJSON_Delete(root);
-        LOGGER(ERROR, "No devices array in response, ignoring.");
-        return deviceIds;
+        LOGGER(ERROR, __func__,  "No devices array in response, ignoring.");
+        return 500;
     }
     int32_t numIds = cJSON_GetArraySize(devIds);
     for (int32_t i = 0; i < numIds; i++) {
         cJSON* arrayItem = cJSON_GetArrayItem(devIds, i);
         cJSON* devId = cJSON_GetObjectItem(arrayItem, "id");
         if (devId == NULL) {
-            LOGGER(ERROR, "Missing device id, ignoring.");
+            LOGGER(ERROR, __func__,  "Missing device id, ignoring.");
             continue;
         }
         string id(devId->valuestring);
@@ -283,13 +294,11 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
         if (devName != NULL)
             nameString.assign(devName->valuestring);
         pair<string, string> idName(id, nameString);
-        deviceIds->push_back(idName);
+        deviceIds.push_back(idName);
     }
-    // Clear JSON buffer and context
-    cJSON_Delete(root);
 
     LOGGER(DEBUGGING, __func__, " <--");
-    return deviceIds;
+    return SUCCESS;
 }
 
 
@@ -319,7 +328,8 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
-    cJSON *root = cJSON_CreateObject();
+    JsonUnique uniqueJson(cJSON_CreateObject());
+    cJSON* root = uniqueJson.get();
 
     cJSON* jsonPkrArray;
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
@@ -342,9 +352,8 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     }
     delete preList;
 
-    char *out = cJSON_PrintUnformatted(root);
-    std::string registerRequest(out);
-    cJSON_Delete(root); free(out);
+    CharUnique out(cJSON_PrintUnformatted(root));
+    std::string registerRequest(out.get());
 
     LOGGER(DEBUGGING, __func__, " <--");
 

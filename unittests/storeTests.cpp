@@ -26,7 +26,6 @@ limitations under the License.
 #include "gtest/gtest.h"
 #include "../provisioning/ScProvisioning.h"
 #include "../storage/NameLookup.h"
-#include "../logging/ZinaLogging.h"
 #include "../interfaceApp/JsonStrings.h"
 #include "../Constants.h"
 
@@ -200,6 +199,7 @@ TEST_F(StoreTestFixture, MsgTraceStore)
     nowMinus1 = time(NULL) - 1;
     // clear old records
     result = pks->deleteMsgTrace(nowMinus1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     records = pks->loadMsgTrace(name, empty, empty);
     ASSERT_TRUE(records->empty());
@@ -374,7 +374,8 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // Fresh DB, groups must be empty
     list<JsonUnique> groups;
-    int32_t result = pks->listAllGroups(&groups);
+    int32_t result = pks->listAllGroups(groups);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(groups.empty());
 
     shared_ptr<cJSON> group = pks->listGroup(groupId_1);
@@ -382,7 +383,8 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // Fresh DB, members must be empty
     list<JsonUnique> members;
-    result = pks->getAllGroupMembers(groupId_1, &members);
+    result = pks->getAllGroupMembers(groupId_1, members);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(members.empty());
 
     shared_ptr<cJSON> member = pks->getGroupMember(groupId_1, memberId_1);
@@ -436,7 +438,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_EQ(2, attrTime.first);
 
     groups.clear();
-    result = pks->listAllGroups(&groups);
+    result = pks->listAllGroups(groups);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, groups.size());
     root = groups.front().get();
@@ -530,7 +532,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // List all members of a group, should return a list with size 1 and the correct data
     members.clear();
-    result = pks->getAllGroupMembers(groupId_1, &members);
+    result = pks->getAllGroupMembers(groupId_1, members);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_EQ(1, members.size());
     root = members.front().get();
@@ -587,7 +589,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // The member list operations must not return an empty list
     members.clear();
-    result = pks->getAllGroupMembers(groupId_1, &members);
+    result = pks->getAllGroupMembers(groupId_1, members);
     ASSERT_FALSE(members.empty());
 
     member = pks->getGroupMember(groupId_1, memberId_1);
@@ -599,7 +601,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // The member list operations must return empty list or data now
     members.clear();
-    result = pks->getAllGroupMembers(groupId_1, &members);
+    result = pks->getAllGroupMembers(groupId_1, members);
     ASSERT_TRUE(members.empty());
 
     member = pks->getGroupMember(groupId_1, memberId_2);
@@ -618,7 +620,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // The group list operations must return empty list or data
     groups.clear();
-    result = pks->listAllGroups(&groups);
+    result = pks->listAllGroups(groups);
     ASSERT_TRUE(groups.empty());
 
     group = pks->listGroup(groupId_1);
@@ -656,6 +658,7 @@ TEST_F(StoreTestFixture, WaitForAck)
 
     // Remove every group/device record with give type, check
     result = pks->removeWaitAckWithType(groupId_1, deviceId_1, 1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_FALSE(pks->hasWaitAck(groupId_1, deviceId_1, updateId_1, 1, nullptr));
     ASSERT_FALSE(pks->hasWaitAckGroupUpdate(groupId_1, updateId_1, nullptr));
 
@@ -780,13 +783,11 @@ TEST_F(NameLookTestFixture, NameLookUpBasic)
     size_t size = aliases->size();
     ASSERT_EQ(3, size);
 
-    string aliasFound = aliases->front();
+    EXPECT_EQ(alias, aliases->front());
     aliases->pop_front();
-    EXPECT_EQ(alias, aliasFound);
 
-    aliasFound = aliases->front();
+    EXPECT_EQ(alias2, aliases->front());
     aliases->pop_front();
-    EXPECT_EQ(alias2, aliasFound);
 }
 
 TEST_F(NameLookTestFixture, NameLookupBasicInfo)
@@ -925,11 +926,9 @@ TEST_F(NameLookTestFixture, NameLookupAddAlias)
     size_t size = aliases->size();
     ASSERT_EQ(3, size);
 
-    string aliasFound = aliases->front();
+    EXPECT_EQ(alias, aliases->front());
     aliases->pop_front();
-    EXPECT_EQ(alias, aliasFound);
 
-    aliasFound = aliases->front();
+    EXPECT_EQ(alias1, aliases->front());
     aliases->pop_front();
-    EXPECT_EQ(alias1, aliasFound);
 }

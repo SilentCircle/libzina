@@ -47,27 +47,21 @@ AppInterfaceImpl::prepareMessageToSiblings(const string &messageDescriptor,
     return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true, normalMsg ? MSG_NORMAL : MSG_CMD, result);
 }
 
-static shared_ptr<list<pair<string, string> > >
-getDevicesNewUser(string& recipient, string& authorization, int32_t* errorCode)
+static int32_t
+getDevicesNewUser(string& recipient, string& authorization, list<pair<string, string> > &devices)
 {
-    auto devices = Provisioning::getZinaDeviceIds(recipient, authorization, errorCode);
 
-    if (!devices) {
-        char tmpBuff[20];
-        snprintf(tmpBuff, 10, "%d", *errorCode);
-        string errorString(tmpBuff);
+    int32_t result = Provisioning::getZinaDeviceIds(recipient, authorization, devices);
 
-        *errorCode = NETWORK_ERROR;
-        LOGGER(ERROR, __func__, " <-- Network error: ", errorString);
-        return shared_ptr<list<pair<string, string> > >();
+    if (result >= 400) {
+        LOGGER(ERROR, __func__, " <-- Network error: ", result);
+        return NETWORK_ERROR;
     }
 
-    if (devices->empty()) {
-        *errorCode = NO_DEVS_FOUND;
-        return shared_ptr<list<pair<string, string> > >();
+    if (devices.empty()) {
+        return NO_DEVS_FOUND;
     }
-    *errorCode = SUCCESS;
-    return devices;
+    return SUCCESS;
 }
 
 static string
@@ -88,12 +82,11 @@ createIdDevInfo(const pair<string, string>& newDev)
  * @return List of key id, device info string
  */
 static shared_ptr<list<string> >
-createIdDevInfo(shared_ptr<list<pair<string, string> > > newDevList) {
+createIdDevInfo(list<pair<string, string> > &newDevList) {
 
     auto devInfoList = make_shared<list<string> >();
 
-    for (; !newDevList->empty(); newDevList->pop_front()) {
-        const pair<string, string>& devInfo = newDevList->front();
+    for (auto &devInfo : newDevList) {
         devInfoList->push_back(createIdDevInfo(devInfo));
     }
     return devInfoList;
@@ -104,16 +97,16 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
 {
     auto newSiblingDevices = make_shared<list<string> >();
 
-    int32_t errorCode;
-    auto siblingDevices = Provisioning::getZinaDeviceIds(ownUser_, authorization_, &errorCode);
+    list<pair<string, string> > siblingDevices;
+    int32_t errorCode = Provisioning::getZinaDeviceIds(ownUser_, authorization_, siblingDevices);
 
     // The provisioning server reported an error or both lists are empty: no new siblings known yet
-    if (!siblingDevices || (idDevInfos->empty() && siblingDevices->empty()))
+    if (errorCode > 400 || (idDevInfos->empty() && siblingDevices.empty()))
         return newSiblingDevices;
 
     if (idDevInfos->empty()) {
         // Add all devices known to server to id key list
-        for (auto siblingDevice : *siblingDevices) {
+        for (auto siblingDevice : siblingDevices) {
             // Don't add own device to unknown siblings
             if (siblingDevice.first == scClientDevId_)
                 continue;
@@ -125,7 +118,7 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
     // This is a nested loop. We could optimize the inner loop an remove
     // found devices. However, we are talking about max 5 entries in each
     // list, thus this optimization is not really necessary.
-    for (auto siblingDevice : *siblingDevices) {
+    for (auto siblingDevice : siblingDevices) {
         // Don't add own device to unknown siblings
         if (siblingDevice.first == scClientDevId_)
             continue;
@@ -281,8 +274,8 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     bool nextNewUser = false;
 
     if (!toSibling && idKeys->empty()) {
-        int32_t errorCode;
-        auto devicesNewUser = getDevicesNewUser(recipient, authorization_, &errorCode);
+        list<pair<string, string> > devicesNewUser;
+        int32_t errorCode = getDevicesNewUser(recipient, authorization_, devicesNewUser);
         if (errorCode != SUCCESS) {
             if (result != nullptr) {
                 *result = errorCode;

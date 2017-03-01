@@ -77,9 +77,9 @@ const string NameLookup::getUid(const string &alias, const string& authorization
 }
  *
  */
-int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo)
+int32_t NameLookup::parseUserInfo(const string& json, UserInfo &userInfo)
 {
-    LOGGER(DEBUGGING, __func__ , " --> ", userInfo);
+    LOGGER(DEBUGGING, __func__ , " --> ");
     cJSON* root = cJSON_Parse(json.c_str());
     if (root == NULL) {
         LOGGER(ERROR, __func__ , " JSON data not parseable: ", json);
@@ -92,7 +92,7 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
         LOGGER(ERROR, __func__ , " Missing 'uuid' field.");
         return JS_FIELD_MISSING;
     }
-    userInfo->uniqueId.assign(tmpData->valuestring);
+    userInfo.uniqueId.assign(tmpData->valuestring);
 
     tmpData = cJSON_GetObjectItem(root, "default_alias");
     if (tmpData == NULL || tmpData->valuestring == NULL) {
@@ -103,38 +103,38 @@ int32_t NameLookup::parseUserInfo(const string& json, shared_ptr<UserInfo> userI
             return JS_FIELD_MISSING;
         }
     }
-    userInfo->alias0.assign(tmpData->valuestring);
+    userInfo.alias0.assign(tmpData->valuestring);
 
     tmpData = cJSON_GetObjectItem(root, "display_name");
     if (tmpData != NULL && tmpData->valuestring != NULL) {
-        userInfo->displayName.assign(tmpData->valuestring);
+        userInfo.displayName.assign(tmpData->valuestring);
     }
     tmpData = cJSON_GetObjectItem(root, "lookup_uri");
     if (tmpData != NULL && tmpData->valuestring != NULL) {
-        userInfo->contactLookupUri.assign(tmpData->valuestring);
+        userInfo.contactLookupUri.assign(tmpData->valuestring);
     }
     tmpData = cJSON_GetObjectItem(root, "avatar_url");
     if (tmpData != NULL && tmpData->valuestring != NULL) {
-        userInfo->avatarUrl.assign(tmpData->valuestring);
+        userInfo.avatarUrl.assign(tmpData->valuestring);
     }
-    userInfo->drEnabled = Utilities::getJsonBool(tmpData, "dr_enabled", false);
+    userInfo.drEnabled = Utilities::getJsonBool(tmpData, "dr_enabled", false);
 
     tmpData = cJSON_GetObjectItem(root, "display_organization");
     if (tmpData != NULL && tmpData->valuestring != NULL) {
-        userInfo->organization.assign(tmpData->valuestring);
+        userInfo.organization.assign(tmpData->valuestring);
     }
 
     tmpData = cJSON_GetObjectItem(root, "data_retention");
 
     if (tmpData != NULL) {
-        userInfo->retainForOrg = Utilities::getJsonString(tmpData, "for_org_name", "");
+        userInfo.retainForOrg = Utilities::getJsonString(tmpData, "for_org_name", "");
         tmpData = cJSON_GetObjectItem(tmpData, "retained_data");
         if (tmpData != NULL) {
-            userInfo->drRrmm = Utilities::getJsonBool(tmpData, "message_metadata", false);
-            userInfo->drRrmp = Utilities::getJsonBool(tmpData, "message_plaintext", false);
-            userInfo->drRrcm = Utilities::getJsonBool(tmpData, "call_metadata", false);
-            userInfo->drRrcp = Utilities::getJsonBool(tmpData, "call_plaintext", false);
-            userInfo->drRrap = Utilities::getJsonBool(tmpData, "attachment_plaintext", false);
+            userInfo.drRrmm = Utilities::getJsonBool(tmpData, "message_metadata", false);
+            userInfo.drRrmp = Utilities::getJsonBool(tmpData, "message_plaintext", false);
+            userInfo.drRrcm = Utilities::getJsonBool(tmpData, "call_metadata", false);
+            userInfo.drRrcp = Utilities::getJsonBool(tmpData, "call_plaintext", false);
+            userInfo.drRrap = Utilities::getJsonBool(tmpData, "attachment_plaintext", false);
         }
     }
 
@@ -211,7 +211,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
     }
 
     shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
-    code = parseUserInfo(result, userInfo);
+    code = parseUserInfo(result, *userInfo);
     if (code != OK) {
         LOGGER(ERROR, __func__ , " Error return from parsing.");
         return shared_ptr<UserInfo>();
@@ -260,7 +260,7 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
         LOGGER(ERROR, __func__ , " <-- no refresh for unknown user");
         return shared_ptr<UserInfo>();
     }
-    shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
+    UserInfo userInfo;
     code = parseUserInfo(result, userInfo);
     if (code != OK) {
         LOGGER(ERROR, __func__ , " Error return from parsing.");
@@ -268,18 +268,18 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
     }
     // Replace existing data, don't touch the lookup_uri because the server _never_ sends
     // it. Only the application may delete it.
-    it->second->displayName.assign(userInfo->displayName);
-    it->second->alias0.assign(userInfo->alias0);
-    it->second->avatarUrl.assign(userInfo->avatarUrl);
-    it->second->organization.assign(userInfo->organization);
-    it->second->drEnabled = userInfo->drEnabled;
+    it->second->displayName.assign(userInfo.displayName);
+    it->second->alias0.assign(userInfo.alias0);
+    it->second->avatarUrl.assign(userInfo.avatarUrl);
+    it->second->organization.assign(userInfo.organization);
+    it->second->drEnabled = userInfo.drEnabled;
 
-    it->second->drRrmm = userInfo->drRrmm;
-    it->second->drRrmp = userInfo->drRrmp;
-    it->second->drRrcm = userInfo->drRrcm;
-    it->second->drRrcp = userInfo->drRrcp;
-    it->second->drRrap = userInfo->drRrap;
-    it->second->retainForOrg = userInfo->retainForOrg;
+    it->second->drRrmm = userInfo.drRrmm;
+    it->second->drRrmp = userInfo.drRrmp;
+    it->second->drRrcm = userInfo.drRrcm;
+    it->second->drRrcp = userInfo.drRrcp;
+    it->second->drRrap = userInfo.drRrap;
+    it->second->retainForOrg = userInfo.retainForOrg;
 
     return it->second;
 }
@@ -328,7 +328,7 @@ NameLookup::AliasAdd NameLookup::addAliasToUuid(const string& alias, const strin
     }
 
     shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
-    int32_t code = parseUserInfo(userData, userInfo);
+    int32_t code = parseUserInfo(userData, *userInfo);
     if (code != OK) {
         LOGGER(ERROR, __func__ , " Error return from parsing.");
         return UserDataError;

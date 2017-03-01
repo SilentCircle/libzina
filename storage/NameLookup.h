@@ -187,7 +187,7 @@ namespace zina {
         shared_ptr<UserInfo> refreshUserData(const string& aliasUuid, const string& authorization);
 
     private:
-        int32_t parseUserInfo(const string& json, shared_ptr<UserInfo> userInfo);
+        int32_t parseUserInfo(const string& json, UserInfo &userInfo);
         NameLookup::AliasAdd insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> userInfo);
 
         map<string, shared_ptr<UserInfo> > nameMap_;

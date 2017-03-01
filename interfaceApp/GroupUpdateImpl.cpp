@@ -441,7 +441,7 @@ static int32_t addMissingMetaData(PtrChangeSet changeSet, const string& groupId,
 static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId, SQLiteStoreConv &store)
 {
     list<JsonUnique> members;
-    int32_t result = store.getAllGroupMembers(groupId, &members);
+    int32_t result = store.getAllGroupMembers(groupId, members);
     if (SQL_FAIL(result)) {
         return result;
     }
@@ -958,7 +958,7 @@ int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
     }
     list<JsonUnique>groups;
 
-    int32_t result = store_->listAllGroups(&groups);
+    int32_t result = store_->listAllGroups(groups);
     if (SQL_FAIL(result)) {
         return GROUP_ERROR_BASE + result;
     }

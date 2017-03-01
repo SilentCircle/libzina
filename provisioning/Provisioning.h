@@ -61,7 +61,6 @@ public:
      */
     static int32_t removeZinaDevice(const string& scClientDevId, const string& authorization, std::string* result);
 
-
     /**
      * @brief Get a pre-key bundle for the user/device id
      * 
@@ -93,12 +92,29 @@ public:
      * A user may register severval devices for ZINA usage. A sender (Alice) should send messages to
      * all available devices of the other user (Bob). This keeps Bob's message display on his devices in
      * sync.
-     * 
+     *
+     * @deprecated Use int32_t getZinaDeviceIds(const std::string&, const std::string&, list<pair<string, string> > *) instead.
+     *
      * @param name username of the other user
      * @param authorization authorization data, may be needed for some servers
+     * @param errorCode If not null then it's set to the return code
      * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
      */
-    static shared_ptr<list<pair<string, string> > > getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
+    DEPRECATED_ZINA static shared_ptr<list<pair<string, string> > > getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
+
+    /**
+     * @brief Get the availabe registered ZINA device of a user
+     *
+     * A user may register severval devices for ZINA usage. A sender (Alice) should send messages to
+     * all available devices of the other user (Bob). This keeps Bob's message display on his devices in
+     * sync.
+     *
+     * @param name username of the other user
+     * @param authorization authorization data, may be needed for some servers
+     * @param deviceIds List of device ids, output
+     * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
+     */
+    static int32_t getZinaDeviceIds(const std::string& name, const std::string& authorization, list<pair<string, string> > &deviceIds);
 
     /**
      * @brief Set new pre-keys.

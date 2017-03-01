@@ -229,7 +229,7 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     }
 
     list<JsonUnique> members;
-    result = store_->getAllGroupMembers(groupId, &members);
+    result = store_->getAllGroupMembers(groupId, members);
     size_t membersFound = members.size();
     for (auto& member: members) {
         string recipient(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
@@ -956,7 +956,7 @@ int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const str
     LOGGER(DEBUGGING, __func__, " --> ");
 
     list<JsonUnique> members;
-    int32_t result= store_->getAllGroupMembers(groupId, &members);
+    int32_t result= store_->getAllGroupMembers(groupId, members);
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return result;
@@ -1018,7 +1018,7 @@ void AppInterfaceImpl::clearGroupData()
 {
     LOGGER(DEBUGGING, __func__, " --> ");
     list<JsonUnique> groups;
-    store_->listAllGroups(&groups);
+    store_->listAllGroups(groups);
 
     for (auto& group : groups) {
         string groupId(Utilities::getJsonString(group.get(), GROUP_ID, ""));

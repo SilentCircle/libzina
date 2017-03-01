@@ -273,23 +273,25 @@ TEST(GetDeviceIds, Basic)
         store->openStore(std::string());
     }
     ScProvisioning::setHttpHelper(helper3);
-    shared_ptr<list<pair<string, string> > > devIds = Provisioning::getZinaDeviceIds(bob, bobAuth);
 
-    ASSERT_TRUE((bool)devIds);
+    list<pair<string, string> > devIds;
+    int32_t errorCode = Provisioning::getZinaDeviceIds(bob, bobAuth, devIds);
 
-    ASSERT_EQ(3, devIds->size());
-    string id = devIds->front().first;
-    devIds->pop_front();
+    ASSERT_EQ(SUCCESS, errorCode);
+
+    ASSERT_EQ(3, devIds.size());
+    string id = devIds.front().first;
+    devIds.pop_front();
     string id1("longDevId_1");
     ASSERT_EQ(id1, id);
 
-    id = devIds->front().first;
-    devIds->pop_front();
+    id = devIds.front().first;
+    devIds.pop_front();
     std::string id2("longDevId_2");
     ASSERT_EQ(id2, id);
 
-    id = devIds->front().first;
-    devIds->pop_front();
+    id = devIds.front().first;
+    devIds.pop_front();
     std::string id3("longDevId_3");
     ASSERT_EQ(id3, id);
 }

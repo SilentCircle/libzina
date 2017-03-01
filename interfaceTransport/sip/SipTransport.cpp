@@ -256,8 +256,9 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
             break;
         }
     }
-    shared_ptr<list<string> > devicesDb = store->getLongDeviceIds(name, appInterface_->getOwnUser());
-    size_t numKnownDevices = devicesDb->size();
+    list<string> devicesDb;
+    store->getLongDeviceIds(name, appInterface_->getOwnUser(), devicesDb);
+    size_t numKnownDevices = devicesDb.size();
 
     // If we saw a new device or the number of reported and known devices differs the user
     // added or removed a device, re-scan devices

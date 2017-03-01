@@ -634,12 +634,24 @@ cleanup:
 
 shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownName, int32_t* sqlCode)
 {
+    LOGGER(DEBUGGING, __func__, " -->");
+    shared_ptr<list<string> > devIds = make_shared<list<string> >();
+    int32_t sqlResult = getLongDeviceIds(name, ownName, *devIds);
+
+    if (sqlCode != NULL)
+        *sqlCode = sqlResult;
+    sqlCode_ = sqlResult;
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return devIds;
+}
+
+int32_t SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownName, list<string> &devIds)
+{
     sqlite3_stmt *stmt;
     int32_t idLen;
     int32_t sqlResult;
 
     LOGGER(DEBUGGING, __func__, " -->");
-    shared_ptr<list<string> > devIds = make_shared<list<string> >();
 
     // selectConvDevices = "SELECT longDevId FROM Conversations WHERE name=?1 AND ownName=?2;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectConvDevices, -1, &stmt, NULL));
@@ -651,16 +663,14 @@ shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, 
         string id((const char*)sqlite3_column_text(stmt, 0), static_cast<size_t>(idLen));
         if (id.compare(0, id.size(), dummyId, id.size()) == 0)
             continue;
-        devIds->push_back(id);
+        devIds.push_back(id);
     }
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
-    return devIds;
+    return sqlResult;
 }
 
 

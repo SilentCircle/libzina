@@ -964,9 +964,10 @@ JNI_FUNCTION(getZinaDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName
     if (!arrayToString(env, userName, &name) || zinaAppInterface == NULL)
         return NULL;
 
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(name, zinaAppInterface->getOwnAuthrization());
+    list<pair<string, string> > devices;
+    Provisioning::getZinaDeviceIds(name, zinaAppInterface->getOwnAuthrization(), devices);
 
-    if (!devices || devices->empty()) {
+    if (devices.empty()) {
         return NULL;
     }
 
@@ -975,8 +976,7 @@ JNI_FUNCTION(getZinaDevicesUser) (JNIEnv* env, jclass clazz, jbyteArray userName
     cJSON_AddItemToObject(root, "version", cJSON_CreateNumber(1));
     cJSON_AddItemToObject(root, "devices", devArray = cJSON_CreateArray());
 
-    for (; !devices->empty(); devices->pop_front()) {
-        const pair<string, string>& idName = devices->front();
+    for (auto &idName : devices) {
         devInfo = cJSON_CreateObject();
         cJSON_AddStringToObject(devInfo, "id", idName.first.c_str());
         cJSON_AddStringToObject(devInfo, "device_name", idName.second.c_str());
@@ -1414,7 +1414,7 @@ JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
         return NULL;
 
     list<JsonUnique> groups;
-    int32_t result = zinaAppInterface->getStore()->listAllGroups(&groups);
+    int32_t result = zinaAppInterface->getStore()->listAllGroups(groups);
     setReturnCode(env, code, result);
 
     size_t size = groups.size();
@@ -1498,7 +1498,7 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
     env->ReleaseStringUTFChars(groupUuid, temp);
 
     list<JsonUnique> members;
-    int32_t result = zinaAppInterface->getStore()->getAllGroupMembers(group, &members);
+    int32_t result = zinaAppInterface->getStore()->getAllGroupMembers(group, members);
     setReturnCode(env, code, result);
 
     size_t size = members.size();

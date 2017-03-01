@@ -168,7 +168,7 @@ TEST_F(ChangeSetTestsFixture, ChangeSetAdd) {
 
     // List all members of a group, should return a list with size 3 and the correct data
     list<JsonUnique> members;
-    result = store->getAllGroupMembers(groupId_1, &members);
+    result = store->getAllGroupMembers(groupId_1, members);
     ASSERT_FALSE(SQL_FAIL(result)) << store->getLastError();
     ASSERT_EQ(3, members.size());
     root = members.front().get();

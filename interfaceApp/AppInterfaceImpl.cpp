@@ -258,14 +258,14 @@ void AppInterfaceImpl::setS3Helper(S3_FUNC s3Helper)
 }
 
 void AppInterfaceImpl::reKeyAllDevices(string &userName) {
-    shared_ptr<list<string> > devices = store_->getLongDeviceIds(userName, ownUser_);
+    list<string> devices;
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
         return;
     }
-    for (; !devices->empty(); devices->pop_front()) {
-        const string &recipientDeviceId = devices->front();
+    store_->getLongDeviceIds(userName, ownUser_, devices);
+    for (auto &recipientDeviceId : devices) {
         reSyncConversation(userName, recipientDeviceId);
     }
 }
@@ -378,10 +378,10 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     shared_ptr<list<string> > idKeys = make_shared<list<string> >();
 
-    shared_ptr<list<string> > devices = store_->getLongDeviceIds(user, ownUser_);
+    list<string> devices;
+    int32_t result = store_->getLongDeviceIds(user, ownUser_, devices);
 
-    for (; !devices->empty(); devices->pop_front()) {
-        const string& recipientDeviceId = devices->front();
+    for (auto &recipientDeviceId : devices) {
         auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId);
         errorCode_ = axoConv->getErrorCode();
         if (errorCode_ != SUCCESS || !axoConv->isValid()) { // A database problem when loading the conversation
@@ -433,16 +433,18 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
 
     // Check if server still knows this device.
     // If no device at all for his user -> remove all conversations (ratchet contexts) of this user.
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(command.queueInfo_recipient, authorization_);
-    if (!devices || devices->empty()) {
+    list<pair<string, string> > devices;
+    int32_t errorCode = Provisioning::getZinaDeviceIds(command.queueInfo_recipient, authorization_, devices);
+
+    if (errorCode > 400 || devices.empty()) {
         store_->deleteConversationsName(command.queueInfo_recipient, ownUser_);
         return;
     }
     bool deviceFound = false;
     string deviceName;
-    for (auto it = devices->cbegin(); it != devices->cend(); ++it) {
-        if (command.queueInfo_deviceId == (*it).first) {
-            deviceName = (*it).second;
+    for (const auto &device : devices) {
+        if (command.queueInfo_deviceId == device.first) {
+            deviceName = device.second;
             deviceFound = true;
             break;
         }
@@ -565,8 +567,10 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
 
     const string &userName = command.queueInfo_recipient;
 
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(userName, authorization_);
-    if (!devices|| devices->empty()) {
+    list<pair<string, string> > devices;
+    int32_t errorCode = Provisioning::getZinaDeviceIds(userName, authorization_, devices);
+
+    if (errorCode >= 400 || devices.empty()) {
         return;
     }
 
@@ -574,26 +578,22 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // and remove old devices in DB, i.e. devices not longer known to provisioning server
     //
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+    list<string> devicesDb;
 
-    shared_ptr<list<string> > devicesDb = store_->getLongDeviceIds(userName, ownUser_);
+    store_->getLongDeviceIds(userName, ownUser_, devicesDb);
 
-    if (devicesDb) {
-        for (; !devicesDb->empty(); devicesDb->pop_front()) {
-            const string& devIdDb = devicesDb->front();
-            bool found = false;
+    for (const auto &devIdDb : devicesDb) {
+        bool found = false;
 
-            for (list<pair<string, string> >::iterator devIterator = devices->begin();
-                 devIterator != devices->end(); ++devIterator) {
-                string devId = (*devIterator).first;
-                if (devIdDb == devId) {
-                    found = true;
-                    break;
-                }
+        for (const auto &device : devices) {
+            if (devIdDb == device.first) {
+                found = true;
+                break;
             }
-            if (!found) {
-                store->deleteConversation(userName, devIdDb, ownUser_);
-                LOGGER(INFO, __func__, "Remove device from database: ", devIdDb);
-            }
+        }
+        if (!found) {
+            store->deleteConversation(userName, devIdDb, ownUser_);
+            LOGGER(INFO, __func__, "Remove device from database: ", devIdDb);
         }
     }
 
@@ -611,9 +611,9 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
-    for (; !devices->empty(); devices->pop_front()) {
-        const string& deviceId = devices->front().first;
-        const string& deviceName = devices->front().second;
+    for (const auto &device : devices) {
+        const string& deviceId = device.first;
+        const string& deviceName = device.second;
 
         // Don't re-scan own device, just check if name changed
         bool toSibling = userName == ownUser_;
@@ -685,15 +685,16 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
 
 int32_t AppInterfaceImpl::requestGroupsSync()
 {
-    shared_ptr<list<pair<string, string> > > devices = Provisioning::getZinaDeviceIds(getOwnUser(), authorization_);
+    list<pair<string, string> > devices;
+    int32_t errorCode = Provisioning::getZinaDeviceIds(getOwnUser(), authorization_, devices);
 
     // Provisioning server knows only one device, must be this device.
-    if (!devices || devices->size() <= 1) {
+    if (errorCode >= 400 || devices.size() <= 1) {
         return SUCCESS;
     }
 
     const string requestCmd = requestGroupSyncCommand(getOwnDeviceId());
-    for (auto &device : *devices) {
+    for (auto &device : devices) {
         if (device.first == getOwnDeviceId()) {
             continue;
         }

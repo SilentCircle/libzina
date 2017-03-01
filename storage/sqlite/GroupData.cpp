@@ -272,11 +272,10 @@ static cJSON* createGroupJson(sqlite3_stmt *stmt)
 
 shared_ptr<list<shared_ptr<cJSON> > > SQLiteStoreConv::listAllGroups(int32_t *sqlCode)
 {
+    LOGGER(DEBUGGING, __func__, " -->");
     sqlite3_stmt *stmt;
     int32_t sqlResult;
     shared_ptr<list<shared_ptr<cJSON> > > groups = make_shared<list<shared_ptr<cJSON> > >();
-
-    LOGGER(DEBUGGING, __func__, " -->");
 
     // char* selectAllGroups = "SELECT groupId, name, ownerId, description, maxMembers, memberCount, attributes, lastModified, burnTime, burnMode, avatarInfo FROM groups;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectAllGroups, -1, &stmt, NULL));
@@ -302,7 +301,7 @@ cleanup:
     return groups;
 }
 
-int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> *groups)
+int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> &groups)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -317,7 +316,7 @@ int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> *groups)
 
     while (sqlResult == SQLITE_ROW) {
         // Get group records and create a JSON object, wrap it in a unique_ptr with a custom delete
-        groups->push_back(JsonUnique(createGroupJson(stmt)));
+        groups.push_back(JsonUnique(createGroupJson(stmt)));
         sqlResult = sqlite3_step(stmt);
     }
 
@@ -700,7 +699,7 @@ cleanup:
     return members;
 }
 
-int32_t SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, list<JsonUnique> *members)
+int32_t SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, list<JsonUnique> &members)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -714,7 +713,7 @@ int32_t SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, list<JsonUn
 
     while (sqlResult == SQLITE_ROW) {
         // Get member records and create a JSON object, wrap it in a unique_ptr with a custom delete
-        members->push_back(JsonUnique(createMemberJson(stmt)));
+        members.push_back(JsonUnique(createMemberJson(stmt)));
         sqlResult = sqlite3_step(stmt);
     }
 
