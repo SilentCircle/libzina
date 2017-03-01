@@ -49,12 +49,12 @@ static void cleanupTrace(SQLiteStoreConv* store )
 }
 
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
-                                               const string &convState, const string &attributes, bool attachments, bool force)
+                                               const string &convState, const string &attributes, bool attachments)
 {
     LOGGER(DEBUGGING, __func__ , " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
+    LOGGER_BEGIN(INFO)
         string filteredAttributes;
         int32_t result = filterAttributes(attributes, &filteredAttributes);
         if (result < 0) {
@@ -67,18 +67,19 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
             LOGGER(ERROR, __func__, " <-- Cannot store received message trace data.", result);
             return result;
         }
-    }
+    LOGGER_END
     cleanupTrace(store);
     LOGGER(DEBUGGING, __func__ , " <-- ");
     return OK;
 }
 
 int32_t MessageCapture::captureSendMessage(const string &receiver, const string &messageId,const string &deviceId,
-                                           const string &convState, const string &attributes, bool attachments, bool force) {
+                                           const string &convState, const string &attributes, bool attachments)
+{
     LOGGER(DEBUGGING, __func__, " -->");
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    if (force || LOGGER_INSTANCE getLogLevel() >= INFO) {
+    LOGGER_BEGIN(INFO)
         string filteredAttributes;
         int32_t result = filterAttributes(attributes, &filteredAttributes);
         if (result < 0) {
@@ -91,7 +92,7 @@ int32_t MessageCapture::captureSendMessage(const string &receiver, const string 
             LOGGER(ERROR, __func__, " <-- Cannot store sent message trace data.", result);
             return result;
         }
-    }
+    LOGGER_END
     cleanupTrace(store);
     LOGGER(DEBUGGING, __func__ , " <-- ");
     return OK;

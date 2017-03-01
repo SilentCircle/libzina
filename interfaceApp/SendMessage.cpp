@@ -525,7 +525,10 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
         }
     }
 
-    cJSON* convJson = zinaConversation->prepareForCapture(nullptr, true);
+    cJSON* convJson = nullptr;
+    LOGGER_BEGIN(INFO)
+        convJson = zinaConversation->prepareForCapture(nullptr, true);
+    LOGGER_END
 
     // Encrypt the user's message and the supplementary data if necessary
     MessageEnvelope envelope;
@@ -534,14 +537,16 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
     Utilities::wipeString(sendInfo.queueInfo_message);
     Utilities::wipeString(supplements);
 
-    convJson = zinaConversation->prepareForCapture(convJson, false);
+    LOGGER_BEGIN(INFO)
+        convJson = zinaConversation->prepareForCapture(convJson, false);
 
-    char* out = cJSON_PrintUnformatted(convJson);
-    string convState(out);
-    cJSON_Delete(convJson); free(out);
+        char* out = cJSON_PrintUnformatted(convJson);
+        string convState(out);
+        cJSON_Delete(convJson); free(out);
 
-    MessageCapture::captureSendMessage(sendInfo.queueInfo_recipient, sendInfo.queueInfo_msgId, sendInfo.queueInfo_deviceId, convState,
-                                       sendInfo.queueInfo_attributes, !sendInfo.queueInfo_attachment.empty());
+        MessageCapture::captureSendMessage(sendInfo.queueInfo_recipient, sendInfo.queueInfo_msgId, sendInfo.queueInfo_deviceId, convState,
+                                           sendInfo.queueInfo_attributes, !sendInfo.queueInfo_attachment.empty());
+    LOGGER_END
 
     Utilities::wipeString(sendInfo.queueInfo_attachment);
     Utilities::wipeString(sendInfo.queueInfo_attributes);

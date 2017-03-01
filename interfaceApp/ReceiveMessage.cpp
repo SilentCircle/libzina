@@ -255,9 +255,9 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         goto errorMessage_;
     }
     // Prepare some data for debugging if we have a develop build and debugging is enabled
-    if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+    LOGGER_BEGIN(INFO)
         convJson = axoConv->prepareForCapture(nullptr, true);
-    }
+    LOGGER_END
 
     // OK, do the real decryption here
     messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, &supplementsPlain);
@@ -270,7 +270,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
 
     // Prepare some data for debugging if we have a develop build and debugging is enabled
     // We don't capture the message itself but only some relevant, public context data
-    if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+    LOGGER_BEGIN(INFO)
         convJson = axoConv->prepareForCapture(convJson, false);
 
         CharUnique out(cJSON_PrintUnformatted(convJson));
@@ -278,7 +278,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         cJSON_Delete(convJson);
         MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
                                                string("{\"cmd\":\"dummy\"}"), false);
-    }
+    LOGGER_END
     {
         /*
          * Message descriptor for received message:
@@ -395,7 +395,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         // In case of error we capture some additional data, prepared above. This additional data
         // does not reveal any security relevant data. We do this for builds which are able to log
         // INFO and if log level is INFO or higher
-        if (LOGGER_INSTANCE getLogLevel() >= INFO) {
+        LOGGER_BEGIN(INFO)
             CharUnique out(cJSON_PrintUnformatted(convJson));
             if (out) {
                 string convState(out.get());
@@ -404,7 +404,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
                 MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
                                                        string("{\"cmd\":\"failed\"}"), false);
             }
-        }
+        LOGGER_END
         if (msgType >= GROUP_MSG_NORMAL) {
             groupStateReportCallback_(errorCode_,
                                       receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",

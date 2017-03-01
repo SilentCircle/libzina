@@ -66,11 +66,14 @@ else()
     message(FATAL_ERROR "Cannot locate ZRTP_BASE_DIR: ${ZRTP_BASE_DIR}. Please set correct path.")
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLOG_MAX_LEVEL=VERBOSE")
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" build_type)
 if ("debug" STREQUAL build_type)
     set (LOG_MAX_LEVEL "-DLOG_MAX_LEVEL=VERBOSE")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLOG_MAX_LEVEL=VERBOSE")
+else()
+    set (LOG_MAX_LEVEL "-DLOG_MAX_LEVEL=WARNING")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DLOG_MAX_LEVEL=WARNING")
 endif()
 
 

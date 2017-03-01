@@ -57,7 +57,7 @@ public:
      * @param force store the data even in case the debug level is less than INFO to log error condition
      */
     static int32_t captureReceivedMessage(const string& sender, const string& messageId, const string& deviceId,
-                                          const string &convState, const string& attributes, bool attachments, bool force = false);
+                                          const string &convState, const string& attributes, bool attachments);
 
     /**
      * @brief Capture send message trace data.
@@ -71,7 +71,7 @@ public:
      * @param force store the data even in case the debug level is less than INFO to log error condition
      */
     static int32_t captureSendMessage(const string& receiver, const string& messageId, const string& deviceId,
-                                      const string &convState, const string& attributes, bool attachments, bool force = false);
+                                      const string &convState, const string& attributes, bool attachments);
 
     /**
      * @brief Return a list of message trace records.
