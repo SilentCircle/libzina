@@ -42,8 +42,9 @@ limitations under the License.
  * - an integer (int) variable with name "sqlResult" that stores return codes from sqlite
  * - ERRMSG
  */
-#define ERRMSG  {snprintf(lastError_, (size_t)DB_CACHE_ERR_BUFF_SIZE, \
-                          "SQLite3 error: %s, line: %d, error message: %s\n", __FILE__, __LINE__, sqlite3_errmsg(db));}
+#define ERRMSG  {if (SQL_FAIL(sqlResult)) {snprintf(lastError_, (size_t)DB_CACHE_ERR_BUFF_SIZE, \
+                          "SQLite3 error: %s, line: %d, error message: %s\n", __FILE__, __LINE__, sqlite3_errmsg(db)); \
+                    extendedErrorCode_ = sqlite3_extended_errcode(db); } }
 
 #define SQLITE_CHK(func) {          \
         sqlResult = (func);          \

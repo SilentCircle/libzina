@@ -802,6 +802,8 @@ public:
     int commitTransaction();
     int rollbackTransaction();
 
+    int32_t getExtendedErrorCode() const { return extendedErrorCode_; }
+
 private:
     SQLiteStoreConv();
     ~SQLiteStoreConv();
@@ -843,6 +845,7 @@ private:
     bool isReady_;
 
     mutable int32_t sqlCode_;
+    mutable int32_t extendedErrorCode_;
     mutable char lastError_[DB_CACHE_ERR_BUFF_SIZE];
 };
 } // namespace zina

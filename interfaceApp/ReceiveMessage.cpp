@@ -358,12 +358,12 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
             if (msgType >= GROUP_MSG_NORMAL) {
                 groupStateReportCallback_(DATABASE_ERROR,
                                           receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data",
-                                                           DATABASE_ERROR, sentToId, result, msgType));
+                                                           DATABASE_ERROR, sentToId, store_->getExtendedErrorCode(), msgType));
             }
             else {
                 stateReportCallback_(0, DATABASE_ERROR,
                                  receiveErrorJson(sender, senderScClientDevId, msgId, "Error while storing state data",
-                                                  DATABASE_ERROR, sentToId, result, msgType));
+                                                  DATABASE_ERROR, sentToId, store_->getExtendedErrorCode(), msgType));
             }
             return;
 

@@ -379,7 +379,7 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
     shared_ptr<list<string> > idKeys = make_shared<list<string> >();
 
     list<string> devices;
-    int32_t result = store_->getLongDeviceIds(user, ownUser_, devices);
+    store_->getLongDeviceIds(user, ownUser_, devices);
 
     for (auto &recipientDeviceId : devices) {
         auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId);
