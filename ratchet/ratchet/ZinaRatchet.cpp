@@ -83,6 +83,10 @@ static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
     LOGGER(DEBUGGING, __func__, " -->");
     uint8_t agreement[MAX_KEY_BYTES];
 
+    if (conv.getDHRr() == nullptr || conv.getDHRs() == nullptr || conv.getRK().empty()) {
+        return SESSION_NOT_INITED;
+    }
+
     // Compute a DH agreement from the current Ratchet keys: use receiver's (remote party's) public key and sender's
     // (local party's) private key
     int32_t agreementLength = EcCurve::calculateAgreement(*conv.getDHRr(), conv.getDHRs()->getPrivateKey(),
