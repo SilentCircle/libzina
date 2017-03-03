@@ -24,13 +24,12 @@ limitations under the License.
 
 using namespace zina;
 
-static string* preKeyJson(const DhKeyPair &preKeyPair)
+static unique_ptr<string> preKeyJson(const DhKeyPair &preKeyPair)
 {
     LOGGER(INFO, __func__, " -->");
-    cJSON *root;
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
 
-    root = cJSON_CreateObject();
+    cJSON *root = cJSON_CreateObject();
 
     b64Encode(preKeyPair.getPrivateKey().privateData(), preKeyPair.getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "private", b64Buffer);
@@ -38,9 +37,9 @@ static string* preKeyJson(const DhKeyPair &preKeyPair)
     b64Encode((const uint8_t*)preKeyPair.getPublicKey().serialize().data(), preKeyPair.getPublicKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "public", b64Buffer);
 
-    char *out = cJSON_Print(root);
-    string* data = new string(out);
-    cJSON_Delete(root); free(out);
+    CharUnique out(cJSON_Print(root));
+    unique_ptr<string> data(new string(out.get()));
+    cJSON_Delete(root);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return data;
@@ -59,9 +58,8 @@ pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
     const DhKeyPair* preKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
     // Create storage format (JSON) of pre-key and store it. Storage encrypts the JSON data
-    const string* pk = preKeyJson(*preKeyPair);
-    store->storePreKey(keyId, *pk);
-    delete pk;
+    const auto pk = preKeyJson(*preKeyPair);
+    store->storePreKey(keyId, pk->c_str());
 
     pair <int32_t, const DhKeyPair*> prePair(keyId, preKeyPair);
 

@@ -593,14 +593,17 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         const Ec255PublicKey *aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
         const Ec255PublicKey *alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
         conv->setContextId(msgStruct.contextId);
+
+        // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
         result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
-        if (result != SUCCESS) {
+        if (result < SUCCESS ) {
             delete aliceId;
             delete alicePreKey;
             return shared_ptr<string>();
         }
 
-        if (msgStruct.preKeyHash != nullptr) {
+        // Check the pre-key hash only if we created a new ratchet context
+        if (result == SUCCESS && msgStruct.preKeyHash != nullptr) {
             // Right after initialization of the ratchet Bob's DHRs contains his copy of Bob's pre-key that
             // Alice used to setup the ratchet context. Compute and check hashes.
             uint8_t hash[SHA256_DIGEST_LENGTH];

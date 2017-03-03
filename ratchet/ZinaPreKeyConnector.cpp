@@ -175,7 +175,7 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
         }
         else {
             LOGGER(INFO, __func__, " <-- OK - multiple type 2 message");
-            return SUCCESS;
+            return OK;      // return this code to show that this was a multiple type 2 message
         }
     }
     const DhPublicKey *existingIdKey = conv->getDHIr();     // get a possible existing long term id key

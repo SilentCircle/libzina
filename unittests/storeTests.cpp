@@ -28,6 +28,7 @@ limitations under the License.
 #include "../storage/NameLookup.h"
 #include "../interfaceApp/JsonStrings.h"
 #include "../Constants.h"
+#include "../keymanagment/PreKeys.h"
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
@@ -112,6 +113,15 @@ TEST_F(StoreTestFixture, PreKeyStore)
     pks->removePreKey(3);
     ASSERT_FALSE(pks->containsPreKey(3));
 
+}
+
+TEST_F(StoreTestFixture, PreKeyGenerate)
+{
+    // generate and store a key pair
+    pair<int32_t, const DhKeyPair*> preKeyBundle = PreKeys::generatePreKey(pks);
+
+    string* pk_1 = pks->loadPreKey(preKeyBundle.first);
+    ASSERT_NE(nullptr, pk_1) <<  "Generated key not found, " << *pk_1 << endl;
 }
 
 TEST_F(StoreTestFixture, MsgHashStore)
