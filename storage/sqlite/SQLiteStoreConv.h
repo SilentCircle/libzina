@@ -822,6 +822,7 @@ private:
     int createVectorClockTables();
     int32_t createGroupTables();
     int32_t createWaitForAckTables();
+    int32_t createMessageQueuesTables();
 
     /**
      * @brief Update database version.
@@ -837,6 +838,7 @@ private:
     int32_t updateVectorClocksDb(int32_t oldVersion);
     int32_t updateGroupDataDb(int32_t oldVersion);
     int32_t updateWaitForAckDb(int32_t oldVersion);
+    int32_t updateMessageQueues(int32_t oldVersion);
 
     static SQLiteStoreConv* instance_;
     sqlite3* db;

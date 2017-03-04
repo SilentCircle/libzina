@@ -108,6 +108,9 @@ int32_t SQLiteStoreConv::createGroupTables()
         ERRMSG;
         goto cleanup;
     }
+    sqlite3_finalize(stmt);
+
+    LOGGER(DEBUGGING, __func__ , " <-- ", sqlResult);
     return SQLITE_OK;
 
 cleanup:

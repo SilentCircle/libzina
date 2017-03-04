@@ -156,7 +156,10 @@ set (storage_src
     storage/sqlite/SQLiteStoreConv.cpp
     storage/MessageCapture.cpp
     storage/NameLookup.cpp
-        storage/sqlite/VectorClockPersitence.cpp storage/sqlite/GroupData.cpp storage/sqlite/GroupWaitForAck.cpp)
+    storage/sqlite/VectorClockPersitence.cpp
+    storage/sqlite/GroupData.cpp
+    storage/sqlite/GroupWaitForAck.cpp
+    storage/sqlite/InternalMessageQueues.cpp)
 
 set (key_mngmnt_src
     keymanagment/PreKeys.cpp
