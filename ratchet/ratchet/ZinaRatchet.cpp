@@ -429,18 +429,19 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
     LOGGER(DEBUGGING, __func__, " -->");
 
     int32_t retVal = MAC_CHECK_FAILED;              // Initialize to an expected error return, see decryptAndCheck(...)
-    shared_ptr<list<string> > mks = conv->loadStagedMks();
-    if (!mks || mks->empty()) {
+    list<string> mks;
+    conv->loadStagedMks(mks);
+    if (mks.empty()) {
         if (conv->getErrorCode() != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Error reading MK: ", conv->getErrorCode(), ", DB code: ", conv->getSqlErrorCode());
         }
-        conv->clearStagedMks(mks);
+        ZinaConversation::clearStagedMks(mks);
         LOGGER(INFO, __func__, " <-- No staged keys.");
         return NO_STAGED_KEYS;
     }
 
     // During the loop we expect that decryptAndCheck fails
-    for (auto it = mks->begin(); it != mks->end(); ++it) {
+    for (auto it = mks.begin(); it != mks.end(); ++it) {
         string& MKiv = *it;
         if (MKiv.size() < SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE + SHORT_MAC_LENGTH)
             continue;
@@ -459,7 +460,7 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
         }
     }
     // Clear staged keys really clears memory of list data and resets the list to null
-    conv->clearStagedMks(mks);
+    ZinaConversation::clearStagedMks(mks);
     LOGGER(DEBUGGING, __func__, " <-- ", (retVal != SUCCESS) ? "no matching MK found." : "matching MK found");
     return retVal;
 }
@@ -477,7 +478,7 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     uint32_t ckMacLen;
     *CKp = CKr;
 
-    shared_ptr<list<string> > mks = conv->getEmptyStagedMks();
+    list<string> &mks = conv->getEmptyStagedMks();
     if (conv->getErrorCode() != SUCCESS)
         return conv->getErrorCode();
 
@@ -487,7 +488,7 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
         // Use append here to work around GCC's Copy-On-Write behaviour (COW) for strings.
         string mkivmac;
         mkivmac.append(MK).append(iv).append(mKey);
-        mks->push_back(mkivmac);
+        mks.push_back(mkivmac);
 
         // Hash CK with "1"
         hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, ckMac, &ckMacLen);
@@ -496,9 +497,6 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
         Utilities::wipeString(MK);
         Utilities::wipeString(iv);
         Utilities::wipeString(mKey);
-
-        mkivmac.append(" ");    // COW workaround
-        Utilities::wipeString(mkivmac);
     }
     deriveMk(*CKp, &MK, &iv, &mKey);
 
@@ -515,6 +513,7 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     Utilities::wipeString(iv);
     Utilities::wipeString(mKey);
     memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
+    LOGGER(INFO, __func__, " Number of staged keys: ", mks.size());
 
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
@@ -667,7 +666,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     string CKp;
     string macKey;
     pair <string, string> MK;
-//    LOGGER(ERROR, "++++ Decrypt message from: ", conv->getPartner().getName(), " Nr: ", conv->getNr(), " Np: ", msgStruct.Np, " PNp: ", msgStruct.PNp, " newR: ", newRatchet);
+    LOGGER(INFO, "Decrypt message from: ", conv->getPartner().getName(), " Nr: ", conv->getNr(), " Np: ", msgStruct.Np, " PNp: ", msgStruct.PNp, " newR: ", newRatchet);
 
     if (!newRatchet) {
         delete(DHRp);
@@ -737,7 +736,6 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         conv->setRatchetFlag(true);
     }
     conv->setCKr(CKp);
-    CKp.append(" ");                // Use append here to work around GCC's COW for strings.
     Utilities::wipeString(CKp);
 
     conv->setNr(msgStruct.Np + 1);  // Receiver: expected next message number

@@ -204,7 +204,7 @@ public:
     void deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode = NULL);
 
     // ***** staged message keys store
-    shared_ptr<list<string> > loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
+    int32_t loadStagedMks(const string& name, const string& longDevId, const string& ownName, list<string> &keys) const;
 
     void insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode = NULL);
 

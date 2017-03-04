@@ -65,7 +65,7 @@ public:
             deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0),
             Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0),
             versionNumber(0), identityKeyChanged(false), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS), valid_(false)
-    { stagedMk = make_shared<list<string> >(); }
+    { }
 
 
    ~ZinaConversation() { reset(); }
@@ -110,13 +110,13 @@ public:
 
     int32_t storeStagedMks();
 
-    static void clearStagedMks(shared_ptr<list<string> > keys);
+    static void clearStagedMks(list<string> &keys);
 
-    shared_ptr<list<string> > loadStagedMks();
+    int32_t loadStagedMks(list<string> &keys);
 
     void deleteStagedMk(string& mkiv);
 
-    shared_ptr<list<string> > getEmptyStagedMks();
+    list<string>& getEmptyStagedMks();
 
     const ZinaContact& getPartner()  { return partner_; }
 
@@ -188,8 +188,6 @@ public:
 
     void setVersionNumber(int32_t version) { versionNumber = version; }
 
-    shared_ptr<list<string> > stagedMk;
-
     void reset();
 
     /**
@@ -214,6 +212,9 @@ public:
 private:
     void deserialize(const std::string& data);
     const std::string* serialize() const;
+
+    list<string> stagedMk;
+
 
     // The following data goes to persistent store
     ZinaContact partner_;

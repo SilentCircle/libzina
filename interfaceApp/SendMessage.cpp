@@ -512,8 +512,8 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
             errorCode_ = zinaConversation->getErrorCode();
             errorInfo_ = sendInfo.queueInfo_deviceId;
             getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
-            Utilities::wipeString(sendInfo.queueInfo_attachment);
-            Utilities::wipeString(sendInfo.queueInfo_attributes);
+            Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_attachment));
+            Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_attributes));
             return errorCode_;
         }
     }
@@ -527,7 +527,7 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
     MessageEnvelope envelope;
     int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo.queueInfo_message, envelope, supplements);
 
-    Utilities::wipeString(sendInfo.queueInfo_message);
+    Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_message));
     Utilities::wipeString(supplements);
 
     LOGGER_BEGIN(INFO)
@@ -541,8 +541,8 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
                                            sendInfo.queueInfo_attributes, !sendInfo.queueInfo_attachment.empty());
     LOGGER_END
 
-    Utilities::wipeString(sendInfo.queueInfo_attachment);
-    Utilities::wipeString(sendInfo.queueInfo_attributes);
+    Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_attachment));
+    Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_attributes));
 
     // If encrypt does not return encrypted data then report an error, code was set by the encrypt function
     if (result != SUCCESS) {

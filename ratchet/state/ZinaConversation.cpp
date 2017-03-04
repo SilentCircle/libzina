@@ -127,8 +127,8 @@ int32_t ZinaConversation::storeStagedMks() {
     errorCode_ = SUCCESS;
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
 
-    for (; stagedMk && !stagedMk->empty(); stagedMk->pop_front()) {
-        string& mkIvMac = stagedMk->front();
+    for (; !stagedMk.empty(); stagedMk.pop_front()) {
+        string& mkIvMac = stagedMk.front();
         if (!mkIvMac.empty()) {
             int32_t result;
             store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac, &result);
@@ -138,7 +138,7 @@ int32_t ZinaConversation::storeStagedMks() {
                 LOGGER(ERROR, __func__, " <--, error: ");
                 return result;
             }
-            memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size()); mkIvMac.clear();
+            Utilities::wipeString(mkIvMac);
         }
     }
     clearStagedMks(stagedMk);
@@ -146,17 +146,14 @@ int32_t ZinaConversation::storeStagedMks() {
     return SUCCESS;
 }
 
-void ZinaConversation::clearStagedMks(shared_ptr<list<string> > keys)
+void ZinaConversation::clearStagedMks(list<string> &keys)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    if (keys) {
-        for (; !keys->empty(); keys->pop_front()) {
-            string& mkIvMac = keys->front();
-            // This actually clears the memory of the string inside the list
-            memset_volatile((void*)mkIvMac.data(), 0, mkIvMac.size()); mkIvMac.clear();
-        }
-        keys.reset();
+    for (; !keys.empty(); keys.pop_front()) {
+        string& mkIvMac = keys.front();
+        // This actually clears the memory of the string inside the list
+        Utilities::wipeString(mkIvMac);
     }
 
     // Cleanup old MKs, no harm if this DB function fails due to DB problems
@@ -166,37 +163,32 @@ void ZinaConversation::clearStagedMks(shared_ptr<list<string> > keys)
     LOGGER(DEBUGGING, __func__, " <--");
 }
 
-shared_ptr<list<string> > ZinaConversation::loadStagedMks()
+int32_t ZinaConversation::loadStagedMks(list<string> &keys)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    int32_t result = SQLITE_OK;
-
     errorCode_ = SUCCESS;
 
     SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    shared_ptr<list<string> > keys = store->loadStagedMks(partner_.getName(), deviceId_, localUser_, &result);
+    int32_t result = store->loadStagedMks(partner_.getName(), deviceId_, localUser_, keys);
 
     if (SQL_FAIL(result)) {
         errorCode_ = DATABASE_ERROR;
         sqlErrorCode_ = result;
-        keys.reset();
+        keys.clear();
     }
+    LOGGER(INFO, __func__, " Number of loaded pre-keys: ", keys.size());
     LOGGER(DEBUGGING, __func__, " <--");
-    return keys;
+    return result;
 }
 
-shared_ptr<list<string> > ZinaConversation::getEmptyStagedMks()
+list<string>& ZinaConversation::getEmptyStagedMks()
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
     errorCode_ = SUCCESS;
-    if (stagedMk && !stagedMk->empty()) {
-        storeStagedMks();               // in case the list was not saved yet, also resets stagedMk shared pointer
-        if (errorCode_ != SUCCESS) {
-            return shared_ptr<list<string> >();
-        }
+    if (!stagedMk.empty()) {
+        storeStagedMks();               // in case the list was not saved yet
     }
-    stagedMk = make_shared<list<string> >();
     LOGGER(DEBUGGING, __func__, " <--");
     return stagedMk;
 }

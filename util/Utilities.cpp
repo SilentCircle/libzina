@@ -154,7 +154,7 @@ uint64_t Utilities::currentTimeMillis()
 
 static void *(*volatile memset_volatile)(void*, int, size_t) = memset;
 
-void Utilities::wipeString(string toWipe)
+void Utilities::wipeString(string &toWipe)
 {
     // This append is necessary: the GCC C++ string implementation uses shared strings, reference counted. Thus
     // if we set the data buffer to 0 then all other references are also cleared. Appending a blank forces the string

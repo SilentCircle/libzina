@@ -817,12 +817,11 @@ cleanup:
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 }
 
-shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const
+int32_t SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName, list<string> &keys) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
     int32_t sqlResult;
-    shared_ptr<list<string> > keys = make_shared<list<string> >();
 
     const char* devId;
     int32_t devIdLen;
@@ -850,18 +849,16 @@ shared_ptr<list<string> > SQLiteStoreConv::loadStagedMks(const string& name, con
         len = sqlite3_column_bytes(stmt, 0);
         if (len > 0) {
             string mkivenc((const char *) sqlite3_column_blob(stmt, 0), static_cast<size_t>(len));
-            keys->push_back(mkivenc);
+            keys.push_back(mkivenc);
         }
         sqlResult = sqlite3_step(stmt);
     }
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
-    return keys;
+    return sqlResult;
 }
 
 static bool hasStagedMk(sqlite3* db, const string& name, const string& longDevId, const string& ownName, const string& MKiv)

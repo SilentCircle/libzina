@@ -133,7 +133,7 @@ namespace zina {
          *
          * @param toWipe The string to wipe.
          */
-        static void wipeString(string toWipe);
+        static void wipeString(string &toWipe);
 
         /**
          * @brief URL-encode the input string and return the encoded string

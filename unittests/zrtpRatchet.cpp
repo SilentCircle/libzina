@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Silent Circle, LLC
+ * Copyright 2016 Silent Circle, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ public:
 
     void SetUp() {
         // code here will execute just before the test ensues
-        LOGGER_INSTANCE setLogLevel(ERROR);
+        LOGGER_INSTANCE setLogLevel(WARNING);
         store = SQLiteStoreConv::getStore();
         if (store->isReady())
             return;
@@ -161,6 +161,9 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //    hexdump("p2p1Plain", *p2p1Plain);
 //    cerr << *p2p1Plain << endl;
     ASSERT_EQ(p2toP1, *p2p1Plain);
+    p1p2Conv->storeStagedMks();
+
+    LOGGER(INFO, __func__, " 1st loop");
 
     const std::string baseMsg("This is round: ");
     for (int32_t i = 0; i < 4; i++) {
@@ -175,8 +178,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 2nd loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -189,10 +194,12 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
+        p1p2Conv->storeStagedMks();
     }
 
     list<pair<string, shared_ptr<MessageEnvelope> >* > outOfOrder;
 
+    LOGGER(INFO, __func__, " 3rd loop - setup out-of-order 1st time");
     for (int32_t i = 0; i < 10; i++) {
         auto envOutOfOder = make_shared<MessageEnvelope>();
         std::string loop = baseMsg;
@@ -207,6 +214,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
             outOfOrder.push_front(dataPair);
     }
 
+    LOGGER(INFO, __func__, " 4th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -219,8 +227,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 5th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -233,8 +243,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
+        p1p2Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 6th loop");
     for(auto it = outOfOrder.begin(); it != outOfOrder.end();) {
         auto pair = *it;
 //        cerr << pair->first << endl;
@@ -242,10 +254,12 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL) << "Expected: " << pair->first;
         ASSERT_EQ(pair->first, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
         delete pair;
         outOfOrder.erase(it++);
     }
 
+    LOGGER(INFO, __func__, " 7th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -258,8 +272,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 8th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -272,8 +288,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
+        p1p2Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 9th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -286,6 +304,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
     }
 
     // Out-of-order Test again.
@@ -293,6 +312,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
     // the PNp counters, also checks if P2 correctly stages the messages keys of previous ratchet
     outOfOrder.clear();
 
+    LOGGER(INFO, __func__, " 10th loop");
     for (int32_t i = 0; i < 10; i++) {
         auto envOutOfOder = make_shared<MessageEnvelope>();
         std::string loop = baseMsg;
@@ -307,6 +327,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
             outOfOrder.push_front(dataPair);
     }
 
+    LOGGER(INFO, __func__, " 11th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -319,8 +340,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
+        p1p2Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 12th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -333,9 +356,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
     }
 
-
+    LOGGER(INFO, __func__, " 13th loop");
     for(auto it = outOfOrder.begin(); it != outOfOrder.end();) {
         auto pair = *it;
 //        cerr << pair->first << endl;
@@ -345,8 +369,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
         ASSERT_EQ(pair->first, *p1p2Plain);
         delete pair;
         outOfOrder.erase(it++);
+        p2p1Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 14th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -359,8 +385,10 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
+        p1p2Conv->storeStagedMks();
     }
 
+    LOGGER(INFO, __func__, " 15th loop");
     for (int32_t i = 0; i < 4; i++) {
         envelope.Clear();
         std::string loop = baseMsg;
@@ -373,6 +401,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
+        p2p1Conv->storeStagedMks();
     }
 }
 
