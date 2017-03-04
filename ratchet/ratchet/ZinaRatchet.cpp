@@ -451,9 +451,9 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
             conv->deleteStagedMk(MKiv);
         }
         // First really clear the memory, the set size to 0.
-        Utilities::wipeString(MK); MK.clear();
-        Utilities::wipeString(iv); iv.clear();
-        Utilities::wipeString(macKey); macKey.clear();
+        Utilities::wipeString(MK);
+        Utilities::wipeString(iv);
+        Utilities::wipeString(macKey);
         if (retVal == SUCCESS) {
             break;
         }
@@ -493,12 +493,12 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
         hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, ckMac, &ckMacLen);
         CKp->assign((const char*)ckMac, ckMacLen);
 
-        Utilities::wipeString(MK); MK.clear();
-        Utilities::wipeString(iv); iv.clear();
-        Utilities::wipeString(mKey); mKey.clear();
+        Utilities::wipeString(MK);
+        Utilities::wipeString(iv);
+        Utilities::wipeString(mKey);
 
         mkivmac.append(" ");    // COW workaround
-        Utilities::wipeString(mkivmac); mkivmac.clear();
+        Utilities::wipeString(mkivmac);
     }
     deriveMk(*CKp, &MK, &iv, &mKey);
 
@@ -511,9 +511,9 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     hmac_sha256((uint8_t*)CKp->data(), SYMMETRIC_KEY_LENGTH, (uint8_t*)"1", 1, ckMac, &ckMacLen);
     CKp->assign((const char*)ckMac, ckMacLen);
 
-    Utilities::wipeString(MK); MK.clear();
-    Utilities::wipeString(iv); iv.clear();
-    Utilities::wipeString(mKey); mKey.clear();
+    Utilities::wipeString(MK);
+    Utilities::wipeString(iv);
+    Utilities::wipeString(mKey);
     memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
 
     LOGGER(DEBUGGING, __func__, " <--");
@@ -599,10 +599,9 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         conv->setContextId(msgStruct.contextId);
 
         // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
+        // Called function get ownership of the two key pointers aliceId, alicePreKey
         result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
         if (result < SUCCESS ) {
-            delete aliceId;
-            delete alicePreKey;
             return shared_ptr<string>();
         }
 
@@ -733,14 +732,13 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
             return shared_ptr<string>();
         }
         conv->setRK(RKp);
-        RKp.append(" ");            // Use append here to work around GCC's COW for strings.
-        Utilities::wipeString(RKp); RKp.clear();
+        Utilities::wipeString(RKp);
         delete saveDHRr;
         conv->setRatchetFlag(true);
     }
     conv->setCKr(CKp);
     CKp.append(" ");                // Use append here to work around GCC's COW for strings.
-    Utilities::wipeString(CKp); CKp.clear();
+    Utilities::wipeString(CKp);
 
     conv->setNr(msgStruct.Np + 1);  // Receiver: expected next message number
 
@@ -749,7 +747,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     delete(conv->getA0());
     conv->setA0(nullptr);
 
-    Utilities::wipeString(macKey); macKey.clear();
+    Utilities::wipeString(macKey);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return decrypted;
@@ -862,9 +860,7 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     idHashes.first = recvIdHash;
     idHashes.second = senderIdHash;
 
-    bool ratchetSave = conv.getRatchetFlag();
-
-    if (ratchetSave) {
+    if (conv.getRatchetFlag()) {
         const DhKeyPair *oldDHRs = conv.getDHRs();
         const DhKeyPair *newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         conv.setDHRs(newDHRs);
@@ -899,15 +895,15 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
             return ret;
         }
     }
-    Utilities::wipeString(MK); MK.clear();
-    Utilities::wipeString(iv); iv.clear();
+    Utilities::wipeString(MK);
+    Utilities::wipeString(iv);
 
     uint8_t mac[SHA256_DIGEST_LENGTH];
     uint32_t macLen;
     hmac_sha256((uint8_t *) macKey.data(), (uint32_t) macKey.size(), (uint8_t *) encryptedData.data(),
                 static_cast<int32_t>(encryptedData.size()), mac, &macLen);
 
-    Utilities::wipeString(macKey); macKey.clear();
+    Utilities::wipeString(macKey);
     string computedMac((const char *) mac, SHA256_DIGEST_LENGTH);
 
     // if partner supports a better version than we: use our supported version, else the version of out partner

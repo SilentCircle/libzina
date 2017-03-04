@@ -162,6 +162,7 @@ void Utilities::wipeString(string toWipe)
     // contents, just sets the length to 0 which is not good enough.
     toWipe.append(" ");
     memset_volatile((void*)toWipe.data(), 0, toWipe.size());
+    toWipe.clear();
 }
 
 static const char decimal2hex[] = "0123456789ABCDEF";

@@ -168,15 +168,15 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     // if yes -> OK, Alice sent the key more then one time because Bob didn't answer her
     // yet. Otherwise Bob got an illegal pre-key.
     if (preKeyData == NULL) {
+        delete aliceId;
+        delete alicePreKey;
         if (conv->getRK().empty()) {
             conv->setErrorCode(NO_PRE_KEY_FOUND);
             LOGGER(ERROR, __func__, " <-- Pre-key not found.");
             return -1;
         }
-        else {
-            LOGGER(INFO, __func__, " <-- OK - multiple type 2 message");
-            return OK;      // return this code to show that this was a multiple type 2 message
-        }
+        LOGGER(INFO, __func__, " <-- OK - multiple type 2 message");
+        return OK;      // return this code to show that this was a multiple type 2 message
     }
     const DhPublicKey *existingIdKey = conv->getDHIr();     // get a possible existing long term id key
 
@@ -200,6 +200,8 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
 
     auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser());
     if (!localConv->isValid()) {
+        delete aliceId;
+        delete alicePreKey;
         LOGGER(ERROR, __func__, " <-- Local conversation not valid, code: ", localConv->getErrorCode());
         return -1;
     }
