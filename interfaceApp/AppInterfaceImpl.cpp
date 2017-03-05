@@ -155,7 +155,7 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     cJSON_AddNumberToObject(root, "version", 1);
 //    cJSON_AddStringToObject(root, "scClientDevId", scClientDevId_.c_str());
 
-    shared_ptr<ZinaConversation> ownConv = ZinaConversation::loadLocalConversation(ownUser_);
+    shared_ptr<ZinaConversation> ownConv = ZinaConversation::loadLocalConversation(ownUser_, *store_);
     if (!ownConv->isValid()) {
         cJSON_Delete(root);
         LOGGER(ERROR, __func__, " No own conversation in database.");
@@ -217,9 +217,8 @@ int32_t AppInterfaceImpl::removeZinaDevice(string& devId, string* result)
 int32_t AppInterfaceImpl::newPreKeys(int32_t number)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     string result;
-    return ScProvisioning::newPreKeys(store, scClientDevId_, authorization_, number, &result);
+    return ScProvisioning::newPreKeys(store_, scClientDevId_, authorization_, number, &result);
 }
 
 int32_t AppInterfaceImpl::getNumPreKeys() const
@@ -347,7 +346,7 @@ string AppInterfaceImpl::getOwnIdentityKey()
     LOGGER(DEBUGGING, __func__, " -->");
 
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
-    shared_ptr<ZinaConversation> axoConv = ZinaConversation::loadLocalConversation(ownUser_);
+    shared_ptr<ZinaConversation> axoConv = ZinaConversation::loadLocalConversation(ownUser_, *store_);
     if (!axoConv->isValid()) {
         LOGGER(ERROR, "No own conversation, ignore.")
         LOGGER(INFO, __func__, " <-- No own conversation.");
@@ -382,7 +381,7 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
     store_->getLongDeviceIds(user, ownUser_, devices);
 
     for (auto &recipientDeviceId : devices) {
-        auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId);
+        auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId, *store_);
         errorCode_ = axoConv->getErrorCode();
         if (errorCode_ != SUCCESS || !axoConv->isValid()) { // A database problem when loading the conversation
             errorInfo_ = "Failed to read remote conversation from database";
@@ -421,12 +420,12 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
         return;
     }
     // clear data and store the nearly empty conversation
-    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command.queueInfo_recipient, command.queueInfo_deviceId);
+    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command.queueInfo_recipient, command.queueInfo_deviceId, *store_);
     if (!conv->isValid()) {
         return;
     }
     conv->reset();
-    conv->storeConversation();
+    conv->storeConversation(*store_);
     if (conv->getErrorCode() != SUCCESS) {
         return;
     }
@@ -520,7 +519,7 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(const CmdQueueInfo &command)
     command.stringData3 = pubKey;
     command.int32Data = verifyState;
      */
-    auto remote = ZinaConversation::loadConversation(getOwnUser(), command.stringData1, command.stringData2);
+    auto remote = ZinaConversation::loadConversation(getOwnUser(), command.stringData1, command.stringData2, *store_);
 
     if (!remote->isValid()) {
         LOGGER(ERROR, "<-- No conversation, user: '", command.stringData1, "', device: ", command.stringData2);
@@ -539,7 +538,7 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(const CmdQueueInfo &command)
     int32_t verify = (command.int32Data == 1) ? 2 : 1;
     remote->setZrtpVerifyState(verify);
     remote->setIdentityKeyChanged(false);
-    remote->storeConversation();
+    remote->storeConversation(*store_);
 }
 
 void AppInterfaceImpl::setIdKeyVerifiedCommand(const CmdQueueInfo &command)
@@ -551,14 +550,14 @@ void AppInterfaceImpl::setIdKeyVerifiedCommand(const CmdQueueInfo &command)
     command.queueInfo_deviceId = deviceId;
     command.boolData1 = flag;
      */
-    auto remote = ZinaConversation::loadConversation(getOwnUser(), command.queueInfo_recipient, command.queueInfo_deviceId);
+    auto remote = ZinaConversation::loadConversation(getOwnUser(), command.queueInfo_recipient, command.queueInfo_deviceId, *store_);
 
     if (!remote->isValid()) {
         LOGGER(ERROR, "<-- No conversation, user: '", command.queueInfo_recipient, "', device: ", command.queueInfo_deviceId);
         return;
     }
     remote->setIdentityKeyChanged(command.boolData1);
-    remote->storeConversation();
+    remote->storeConversation(*store_);
 }
 
 void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
@@ -577,7 +576,6 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // Get known devices from DB, compare with devices from provisioning server
     // and remove old devices in DB, i.e. devices not longer known to provisioning server
     //
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     list<string> devicesDb;
 
     store_->getLongDeviceIds(userName, ownUser_, devicesDb);
@@ -592,7 +590,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
             }
         }
         if (!found) {
-            store->deleteConversation(userName, devIdDb, ownUser_);
+            store_->deleteConversation(userName, devIdDb, ownUser_);
             LOGGER(INFO, __func__, "Remove device from database: ", devIdDb);
         }
     }
@@ -618,12 +616,12 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         // Don't re-scan own device, just check if name changed
         bool toSibling = userName == ownUser_;
         if (toSibling && scClientDevId_ == deviceId) {
-            shared_ptr<ZinaConversation> conv = ZinaConversation::loadLocalConversation(ownUser_);
+            shared_ptr<ZinaConversation> conv = ZinaConversation::loadLocalConversation(ownUser_, *store_);
             if (conv->isValid()) {
                 const string &convDevName = conv->getDeviceName();
                 if (deviceName.compare(convDevName) != 0) {
                     conv->setDeviceName(deviceName);
-                    conv->storeConversation();
+                    conv->storeConversation(*store_);
                 }
             }
             continue;
@@ -632,13 +630,13 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         // If we already have a conversation for this device skip further processing
         // after storing a user defined device name. The user may change a device's name
         // using the Web interface of the provisioning server
-        if (store->hasConversation(userName, deviceId, ownUser_)) {
-            shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId);
+        if (store_->hasConversation(userName, deviceId, ownUser_)) {
+            shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId, *store_);
             if (conv->isValid()) {
                 const string &convDevName = conv->getDeviceName();
                 if (deviceName.compare(convDevName) != 0) {
                     conv->setDeviceName(deviceName);
-                    conv->storeConversation();
+                    conv->storeConversation(*store_);
                 }
             }
             continue;

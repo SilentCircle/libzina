@@ -162,14 +162,13 @@ static int32_t serializeChangeSet(const GroupChangeSet changeSet, string *attrib
 bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    if (!store->isReady()) {
+    if (!store_->isReady()) {
         errorInfo_ = " Conversation store not ready.";
         LOGGER(ERROR, __func__, errorInfo_);
         return false;
     }
     int32_t result;
-    shared_ptr<cJSON> group = store->listGroup(groupId, &result);
+    shared_ptr<cJSON> group = store_->listGroup(groupId, &result);
     if (!group || SQL_FAIL(result)) {
         errorInfo_ = " Cannot get group data: ";
         errorInfo_.append(groupId);

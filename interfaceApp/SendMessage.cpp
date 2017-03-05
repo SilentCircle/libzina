@@ -505,7 +505,7 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
     string supplements = createSupplementString(sendInfo.queueInfo_attachment, sendInfo.queueInfo_attributes);
 
     if (zinaConversation == nullptr) {
-        zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId);
+        zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, *store_);
         if (!zinaConversation->isValid()) {
             LOGGER(ERROR, "ZINA conversation is not valid. Owner: ", ownUser_, ", recipient: ", sendInfo.queueInfo_recipient,
                    ", recipientDeviceId: ", sendInfo.queueInfo_deviceId);
@@ -525,7 +525,7 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
 
     // Encrypt the user's message and the supplementary data if necessary
     MessageEnvelope envelope;
-    int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo.queueInfo_message, envelope, supplements);
+    int32_t result = ZinaRatchet::encrypt(*zinaConversation, sendInfo.queueInfo_message, envelope, supplements, *store_);
 
     Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_message));
     Utilities::wipeString(supplements);
@@ -549,9 +549,9 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
         LOGGER(ERROR, "Encryption failed, no wire message created, device id: ", sendInfo.queueInfo_deviceId);
         LOGGER(INFO, __func__, " <-- Encryption failed.");
         getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
-        return zinaConversation->getErrorCode();
+        return result;
     }
-    zinaConversation->storeConversation();
+    zinaConversation->storeConversation(*store_);
     /*
      * Create the message envelope:
      {
@@ -613,7 +613,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
     // Check if conversation/user really not known. On new users the 'reScan' triggered by
     // SIP NOTIFY may have already created the conversation. In this case skip further
     // processing and just handle it as an existing user.
-    auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId);
+    auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, *store_);
     if (zinaConversation->isValid() && !zinaConversation->getRK().empty()) {
         return sendMessageExisting(sendInfo, zinaConversation);
     }
@@ -627,7 +627,8 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
         return NO_PRE_KEY_FOUND;
     }
 
-    int32_t buildResult = ZinaPreKeyConnector::setupConversationAlice(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, preKeyId, preIdKeys);
+    int32_t buildResult = ZinaPreKeyConnector::setupConversationAlice(ownUser_, sendInfo.queueInfo_recipient,
+                                                                      sendInfo.queueInfo_deviceId, preKeyId, preIdKeys, *store_);
 
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult != SUCCESS) {
@@ -640,7 +641,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
     }
     // Read the conversation again and store the device name of the new user's device. Now the user/device
     // is known and we can handle it as an existing user.
-    zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId);
+    zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, *store_);
     if (!zinaConversation->isValid()) {
         errorCode_ = zinaConversation->getErrorCode();
         errorInfo_ = sendInfo.queueInfo_deviceId;

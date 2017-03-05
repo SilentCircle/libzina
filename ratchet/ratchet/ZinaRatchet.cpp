@@ -424,18 +424,17 @@ static int32_t decryptAndCheck(const string& MK, const string& iv, const string&
 }
 
 static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encrypted, const string& supplements, const string& mac,
-                                     string* plaintext, string* supplementsPlain)
+                                     string* plaintext, string* supplementsPlain, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    int32_t retVal = MAC_CHECK_FAILED;              // Initialize to an expected error return, see decryptAndCheck(...)
     list<string> mks;
-    conv->loadStagedMks(mks);
+    int32_t result = conv->loadStagedMks(mks, store);
     if (mks.empty()) {
-        if (conv->getErrorCode() != SUCCESS) {
+        if (result != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Error reading MK: ", conv->getErrorCode(), ", DB code: ", conv->getSqlErrorCode());
         }
-        ZinaConversation::clearStagedMks(mks);
+        ZinaConversation::clearStagedMks(mks, store);
         LOGGER(INFO, __func__, " <-- No staged keys.");
         return NO_STAGED_KEYS;
     }
@@ -448,21 +447,21 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
         string MK = MKiv.substr(0, SYMMETRIC_KEY_LENGTH);
         string iv = MKiv.substr(SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
         string macKey = MKiv.substr(SYMMETRIC_KEY_LENGTH + AES_BLOCK_SIZE);
-        if ((retVal = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == SUCCESS) {
-            conv->deleteStagedMk(MKiv);
+        if ((result = decryptAndCheck(MK, iv, encrypted, supplements, macKey, mac, plaintext, supplementsPlain, true)) == SUCCESS) {
+            conv->deleteStagedMk(MKiv, store);
         }
         // First really clear the memory, the set size to 0.
         Utilities::wipeString(MK);
         Utilities::wipeString(iv);
         Utilities::wipeString(macKey);
-        if (retVal == SUCCESS) {
+        if (result == SUCCESS) {
             break;
         }
     }
     // Clear staged keys really clears memory of list data and resets the list to null
-    ZinaConversation::clearStagedMks(mks);
-    LOGGER(DEBUGGING, __func__, " <-- ", (retVal != SUCCESS) ? "no matching MK found." : "matching MK found");
-    return retVal;
+    ZinaConversation::clearStagedMks(mks, store);
+    LOGGER(DEBUGGING, __func__, " <-- ", (result != SUCCESS) ? "no matching MK found." : "matching MK found");
+    return result;
 }
 
 static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
@@ -513,7 +512,7 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     Utilities::wipeString(iv);
     Utilities::wipeString(mKey);
     memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
-    LOGGER(INFO, __func__, " Number of staged keys: ", mks.size());
+    LOGGER(INFO, __func__, " Number of new staged keys: ", Np - Nr);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
@@ -579,7 +578,7 @@ CKr = CKp
 return read()
  */
 static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& supplements,
-    string* supplementsPlain, pair<string, string>* idHashes)
+    SQLiteStoreConv &store, string* supplementsPlain, pair<string, string>* idHashes)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     // The partner shows that it supports a proto version > 1, save this in the context data
@@ -599,7 +598,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
 
         // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
         // Called function get ownership of the two key pointers aliceId, alicePreKey
-        result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey);
+        result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey, store);
         if (result < SUCCESS ) {
             return shared_ptr<string>();
         }
@@ -636,7 +635,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
 
     if (idHashes != nullptr) {
         string recvIdHash;
-        auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser());
+        auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser(), store);
         if (localConv->isValid()) {
             const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
             computeIdHash(idPub, &recvIdHash);
@@ -655,7 +654,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     shared_ptr<string> decrypted = make_shared<string>();
 
     string mac((const char*)msgStruct.mac, 8);
-    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted.get(), supplementsPlain) == SUCCESS) {
+    if (trySkippedMessageKeys(conv, encrypted, supplements, mac, decrypted.get(), supplementsPlain, store) == SUCCESS) {
         return decrypted;
     }
 
@@ -751,7 +750,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     return decrypted;
 }
 
-shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnvelope& envelope, string* supplementsPlain)
+shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnvelope& envelope, SQLiteStoreConv &store, string* supplementsPlain)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -803,7 +802,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnv
 
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
 
-    return decryptInternal(conv, msgStruct, supplements, supplementsPlain, hasIdHashes ? &idHashes : nullptr);
+    return decryptInternal(conv, msgStruct, supplements, store, supplementsPlain, hasIdHashes ? &idHashes : nullptr);
 }
 
 /*
@@ -830,7 +829,7 @@ return msg
  * This implementation does not use header keys.
  */
 int32_t
-ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements)
+ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     if (conv.getRK().empty()) {
@@ -846,7 +845,7 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
 
     string senderIdHash;
 
-    auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser());
+    auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser(), store);
     if (localConv->isValid()) {
         const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
         computeIdHash(idPub, &senderIdHash);
@@ -858,6 +857,7 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     idHashes.first = recvIdHash;
     idHashes.second = senderIdHash;
 
+    const bool ratchetSave = conv.getRatchetFlag();
     if (conv.getRatchetFlag()) {
         const DhKeyPair *oldDHRs = conv.getDHRs();
         const DhKeyPair *newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
@@ -881,14 +881,12 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
 
     int32_t ret = aesCbcEncrypt(MK, iv, message, &encryptedData);
     if (ret != SUCCESS) {
-        conv.setErrorCode(ret);
         LOGGER(ERROR, __func__, " <-- Encryption failed.");
         return ret;
     }
     if (!supplements.empty()) {
         ret = aesCbcEncrypt(MK, iv, supplements, &supplementsEncrypted);
         if (ret != SUCCESS) {
-            conv.setErrorCode(ret);
             LOGGER(ERROR, __func__, " <-- Encryption failed (supplements).");
             return ret;
         }
@@ -947,7 +945,8 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     envelope.set_recvidhash(idHashes.first.data(), 4);
     envelope.set_senderidhash(idHashes.second.data(), 4);
 
-//    LOGGER(ERROR, "++++ Encrypt message to:   ", conv.getPartner().getName(), " Nr: ", conv.getNr(), " Np: ", conv.getNs(), " PNp: ", conv.getPNs(), " newR: ", ratchetSave);
+//    LOGGER(INFO, "Encrypt message to:   ", conv.getPartner().getName(), " Nr: ", conv.getNr(), " Np: ", conv.getNs(), " PNp: ", conv.getPNs(), " newR: ", ratchetSave);
+
     // After creating the wire message update the conversation (ratchet context) data
     conv.setNs(conv.getNs() + 1);
 

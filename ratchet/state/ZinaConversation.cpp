@@ -24,7 +24,7 @@ using namespace std;
 
 void Log(const char* format, ...);
 
-shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& localUser, const string& user, const string& deviceId)
+shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     int32_t result;
@@ -33,8 +33,7 @@ shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& lo
     auto conv = make_shared<ZinaConversation>(localUser, user, deviceId);
     conv->setErrorCode(SUCCESS);
 
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    bool found = store->hasConversation(user, deviceId, localUser, &result);
+    bool found = store.hasConversation(user, deviceId, localUser, &result);
     if (SQL_FAIL(result)) {
         conv->errorCode_ = DATABASE_ERROR;
         conv->sqlErrorCode_ = result;
@@ -45,10 +44,9 @@ shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& lo
         return conv;            // SUCCESS, however return an empty conversation
     }
 
-    string* data = store->loadConversation(user, deviceId, localUser, &result);
+    string* data = store.loadConversation(user, deviceId, localUser, &result);
     if (SQL_FAIL(result)) {
         conv->errorCode_ = DATABASE_ERROR;
-        conv->sqlErrorCode_ = result;
         return conv;
     }
     if (data == NULL || data->empty()) {   // Illegal state, should not happen
@@ -64,15 +62,14 @@ shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& lo
     return conv;
 }
 
-int32_t ZinaConversation::storeConversation()
+int32_t ZinaConversation::storeConversation(SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 
     const string* data = serialize();
 
     int32_t result;
-    store->storeConversation(partner_.getName(), deviceId_, localUser_, *data, &result);
+    store.storeConversation(partner_.getName(), deviceId_, localUser_, *data, &result);
     memset_volatile((void*)data->data(), 0, data->size());
 
     delete data;
@@ -121,17 +118,16 @@ int32_t ZinaConversation::renameConversation(const string& localUserOld, const s
 }
 #endif
 
-int32_t ZinaConversation::storeStagedMks() {
+int32_t ZinaConversation::storeStagedMks(SQLiteStoreConv &store) {
     LOGGER(DEBUGGING, __func__, " -->");
 
     errorCode_ = SUCCESS;
-    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
 
     for (; !stagedMk.empty(); stagedMk.pop_front()) {
         string& mkIvMac = stagedMk.front();
         if (!mkIvMac.empty()) {
             int32_t result;
-            store->insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac, &result);
+            store.insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac, &result);
             if (SQL_FAIL(result)) {
                 errorCode_ = DATABASE_ERROR;
                 sqlErrorCode_ = result;
@@ -141,12 +137,12 @@ int32_t ZinaConversation::storeStagedMks() {
             Utilities::wipeString(mkIvMac);
         }
     }
-    clearStagedMks(stagedMk);
+    clearStagedMks(stagedMk, store);
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
-void ZinaConversation::clearStagedMks(list<string> &keys)
+void ZinaConversation::clearStagedMks(list<string> &keys, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -157,47 +153,29 @@ void ZinaConversation::clearStagedMks(list<string> &keys)
     }
 
     // Cleanup old MKs, no harm if this DB function fails due to DB problems
-    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     time_t timestamp = time(0) - MK_STORE_TIME;
-    store->deleteStagedMk(timestamp);
+    store.deleteStagedMk(timestamp);
     LOGGER(DEBUGGING, __func__, " <--");
 }
 
-int32_t ZinaConversation::loadStagedMks(list<string> &keys)
+int32_t ZinaConversation::loadStagedMks(list<string> &keys, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    errorCode_ = SUCCESS;
 
-    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
-    int32_t result = store->loadStagedMks(partner_.getName(), deviceId_, localUser_, keys);
+    int32_t result = store.loadStagedMks(partner_.getName(), deviceId_, localUser_, keys);
 
     if (SQL_FAIL(result)) {
-        errorCode_ = DATABASE_ERROR;
-        sqlErrorCode_ = result;
-        keys.clear();
+        return DATABASE_ERROR;
     }
     LOGGER(INFO, __func__, " Number of loaded pre-keys: ", keys.size());
     LOGGER(DEBUGGING, __func__, " <--");
-    return result;
+    return SUCCESS;
 }
 
-list<string>& ZinaConversation::getEmptyStagedMks()
+void ZinaConversation::deleteStagedMk(string& mkiv, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-
-    errorCode_ = SUCCESS;
-    if (!stagedMk.empty()) {
-        storeStagedMks();               // in case the list was not saved yet
-    }
-    LOGGER(DEBUGGING, __func__, " <--");
-    return stagedMk;
-}
-
-void ZinaConversation::deleteStagedMk(string& mkiv)
-{
-    LOGGER(DEBUGGING, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    store->deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkiv);
+    store.deleteStagedMk(partner_.getName(), deviceId_, localUser_, mkiv);
     LOGGER(DEBUGGING, __func__, " <--");
 }
 

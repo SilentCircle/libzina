@@ -85,7 +85,7 @@ jfieldID receiverInfoID = NULL;
 static int32_t debugLevel = 1;
 
 // Plain public API without a class
-AppInterface* j_getAxoAppInterface() { return zinaAppInterface; }
+AppInterfaceImpl* j_getAxoAppInterface() { return zinaAppInterface; }
 
 void Log(char const *format, ...) {
     va_list arg;
@@ -669,11 +669,11 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     memset_volatile((void*)dbPw.data(), 0, dbPw.size());
 
     int32_t retVal = 1;
-    auto ownZinaConv = ZinaConversation::loadLocalConversation(name);
+    auto ownZinaConv = ZinaConversation::loadLocalConversation(name, *store);
     if (!ownZinaConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
         const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
         ownZinaConv->setDHIs(idKeyPair);
-        ownZinaConv->storeConversation();
+        ownZinaConv->storeConversation(*store);
         retVal = 2;
     }
 
@@ -1191,7 +1191,7 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
     if (strcmp("removeAxoConversation", cmd) == 0 && !dataContainer.empty()) {
         Log("Removing Axolotl conversation data for '%s'\n", dataContainer.c_str());
 
-        SQLiteStoreConv* store = SQLiteStoreConv::getStore();
+        SQLiteStoreConv* store = zinaAppInterface->getStore();
         int32_t sqlResult = 0;
         store->deleteConversationsName(dataContainer, zinaAppInterface->getOwnUser(), &sqlResult);
 

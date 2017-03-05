@@ -60,12 +60,13 @@ static void hexdump(const char* title, const string& in)
     masterSecret = HASH(DH(A, B0) || DH(A0, B) || DH(A0, B0))
 */
 int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
-                                                   int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys)
+                                                    int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys,
+                                                    SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     int32_t retVal;
 
-    auto conv = ZinaConversation::loadConversation(localUser, user, deviceId);
+    auto conv = ZinaConversation::loadConversation(localUser, user, deviceId, store);
     if (conv->isValid() && !conv->getRK().empty()) {       // Already a conversation available
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user, ", device: ", deviceId);
         return AXO_CONV_EXISTS;
@@ -89,7 +90,7 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
 
     conv->reset();
 
-    auto localConv = ZinaConversation::loadLocalConversation(localUser);
+    auto localConv = ZinaConversation::loadLocalConversation(localUser, store);
     if (!localConv->isValid()) {
         LOGGER(ERROR, __func__, " <-- No own identity exists.");
         retVal = (localConv->getErrorCode() == SUCCESS) ? NO_OWN_ID : localConv->getErrorCode();
@@ -139,7 +140,7 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     conv->setCKr(chain);
     conv->setPreKeyId(bobPreKeyId);
     conv->setRatchetFlag(true);
-    conv->storeConversation();
+    conv->storeConversation(store);
     retVal = conv->getErrorCode();
 
     LOGGER(DEBUGGING, __func__, " <--");
@@ -155,14 +156,14 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     B0 = P1_PK1 (public data)
 
 */
-int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey)
+int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId,
+                                                  const DhPublicKey* alicePreKey, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
 //    store->dumpPreKeys();
 
     // Get Bob's (my) pre-key that Alice used to create her conversation (ratchet context).
-    string* preKeyData = store->loadPreKey(bobPreKeyId);
+    string* preKeyData = store.loadPreKey(bobPreKeyId);
 
     // If no such prekey then check if the conversation was already set-up (RK available)
     // if yes -> OK, Alice sent the key more then one time because Bob didn't answer her
@@ -191,14 +192,14 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     }
 
     // Remove the pre-key from database because Alice used the key
-    store->removePreKey(bobPreKeyId);
+    store.removePreKey(bobPreKeyId);
     conv->reset();
 
     // A0 is Bob's (my) pre-key, this mirrors Alice's usage of her generated A0 pre-key.
     DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
     delete preKeyData;
 
-    auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser());
+    auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser(), store);
     if (!localConv->isValid()) {
         delete aliceId;
         delete alicePreKey;

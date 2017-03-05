@@ -43,9 +43,10 @@ public:
      * @param message The plaintext message bytes.
      * @param envelope The ProtoBuffer data structure to create the wire data
      * @param supplements Additional data for the message, will be encrypted with the message key
+     * @param Context storage
      * @return SUCCESS or a failure code
      */
-    static int32_t encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements);
+    static int32_t encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements, SQLiteStoreConv &store);
 
     /**
      * @brief Parse a wire message and decrypt the payload.
@@ -56,9 +57,10 @@ public:
      * @param supplementsPlain Additional data for the message if available and decryption was successful.
      * @param idHashes The sender's and receiver's id hashes contained in the message, can be @c NULL if
      *                 not available
+     * @param store Context storage
      * @return Plaintext or @c NULL if decryption failed
      */
-    static shared_ptr<const string> decrypt(ZinaConversation* conv, MessageEnvelope& envelope, string* supplementsPlain);
+    static shared_ptr<const string> decrypt(ZinaConversation* conv, MessageEnvelope& envelope, SQLiteStoreConv &store, string* supplementsPlain);
 
 private:
     ZinaRatchet() {};

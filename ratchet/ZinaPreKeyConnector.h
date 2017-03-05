@@ -69,7 +69,8 @@ public:
      * @return @c OK or an error code
      */
     static int32_t setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
-                                          int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys);
+                                          int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys,
+                                          SQLiteStoreConv &store);
 
     /**
      * @brief Setup Axolotl conversation for Bob role.
@@ -87,7 +88,8 @@ public:
      * 
      * This function performs the master secret computation.
      */
-    static int32_t setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId, const DhPublicKey* alicePreKey );
+    static int32_t setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId,
+                                        const DhPublicKey* alicePreKey, SQLiteStoreConv &store);
 
 private:
     ZinaPreKeyConnector() {};

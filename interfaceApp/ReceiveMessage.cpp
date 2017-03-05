@@ -249,7 +249,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         }
     }
 
-    axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId);
+    axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId, *store_);
     errorCode_ = axoConv->getErrorCode();
     if (errorCode_ != SUCCESS) {
         goto errorMessage_;
@@ -260,7 +260,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
     LOGGER_END
 
     // OK, do the real decryption here
-    messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, &supplementsPlain);
+    messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, *store_, &supplementsPlain);
     if (!messagePlain) {
         errorCode_ = axoConv->getErrorCode();
         goto errorMessage_;
@@ -332,11 +332,11 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         if (SQL_FAIL(result))
             goto error_;
 
-        result = axoConv->storeStagedMks();
+        result = axoConv->storeStagedMks(*store_);
         if (SQL_FAIL(result))
             goto error_;
 
-        result = axoConv->storeConversation();
+        result = axoConv->storeConversation(*store_);
         if (SQL_FAIL(result))
             goto error_;
 
@@ -408,16 +408,16 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         if (msgType >= GROUP_MSG_NORMAL) {
             groupStateReportCallback_(errorCode_,
                                       receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
-                                                       errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
+                                                       errorCode_, receiverDevId, store_->getExtendedErrorCode(), msgType));
         } else {
             stateReportCallback_(0, errorCode_,
                                  receiveErrorJson(sender, senderScClientDevId, msgId, "Message processing failed.",
-                                                  errorCode_, receiverDevId, axoConv->getSqlErrorCode(), msgType));
+                                                  errorCode_, receiverDevId, store_->getExtendedErrorCode(), msgType));
         }
 
         LOGGER(ERROR, __func__ , " Message processing failed: ", errorCode_, ", sender: ", sender, ", device: ", senderScClientDevId );
         if (errorCode_ == DATABASE_ERROR) {
-            LOGGER(ERROR, __func__, " Database error: ", axoConv->getSqlErrorCode(), ", SQL message: ", *store_->getLastError());
+            LOGGER(ERROR, __func__, " Database error: ", store_->getExtendedErrorCode(), ", SQL message: ", *store_->getLastError());
         }
         // Don't report processing failures on command messages
         if (msgType < MSG_CMD) {

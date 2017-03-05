@@ -52,17 +52,17 @@ static map<string, ZinaZrtpConnector*>* stagingList = new map<string, ZinaZrtpCo
 using namespace zina;
 void Log(const char* format, ...);
 
-const string getAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId)
+const string getAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
 
-    auto conv = ZinaConversation::loadConversation(localUser, user, deviceId);
+    auto conv = ZinaConversation::loadConversation(localUser, user, deviceId, store);
     if (conv->isValid()) {              // Already a conversation available, no setup necessary
         LOGGER(ERROR, __func__, " <-- Conversation already exists for user: ", user);
         return emptyString;
     }
-    auto localConv = ZinaConversation::loadLocalConversation(localUser);
+    auto localConv = ZinaConversation::loadLocalConversation(localUser, store);
     if (!localConv->isValid()) {
         return emptyString;
     }
@@ -163,7 +163,7 @@ Bob:
 
  
  */
-void setAxoExportedKey(const string& localUser, const string& user, const string& deviceId, const string& exportedKey)
+void setAxoExportedKey(const string& localUser, const string& user, const string& deviceId, const string& exportedKey, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     unique_lock<mutex> lck(sessionLock);
@@ -203,20 +203,20 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
         conv->setCKs(chain);
         conv->setRatchetFlag(false);
     }
-    conv->storeConversation();
+    conv->storeConversation(store);
 
     delete staging;
     lck.unlock();
     LOGGER(DEBUGGING, __func__, " <--");
 }
 
-typedef AppInterface* (*GET_APP_IF)();
+typedef AppInterfaceImpl* (*GET_APP_IF)();
 
 #ifdef ANDROID_NDK
-AppInterface* j_getAxoAppInterface();
+AppInterfaceImpl* j_getAxoAppInterface();
 static GET_APP_IF getAppIf = j_getAxoAppInterface;
 #elif defined __APPLE__
-AppInterface* t_getAxoAppInterface();
+AppInterfaceImpl* t_getAxoAppInterface();
 static GET_APP_IF getAppIf = t_getAxoAppInterface;
 #else
 #warning Get application interface call not initialized - ZRTP connection may not work
@@ -237,19 +237,19 @@ static string extractNameFromUri(const string& sipUri)
     return name;
 }
 
-const string getOwnAxoIdKey() 
+const string getOwnAxoIdKey()
 {
     LOGGER(DEBUGGING, __func__, " -->");
     if (getAppIf == NULL)
         return string();
-    AppInterface* appIf = getAppIf();
+    AppInterfaceImpl* appIf = getAppIf();
 
     if (appIf == NULL)
         return string();
 
     const string& localUser = appIf->getOwnUser();
 
-    auto local = ZinaConversation::loadLocalConversation(localUser);
+    auto local = ZinaConversation::loadLocalConversation(localUser, *appIf->getStore());
     if (!local->isValid()) {
         return string();
     }

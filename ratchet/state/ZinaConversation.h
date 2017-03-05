@@ -36,6 +36,7 @@ limitations under the License.
 #include "../crypto/Ec255PublicKey.h"
 #include "../../util/cJSON.h"
 #include "../../Constants.h"
+#include "../../storage/sqlite/SQLiteStoreConv.h"
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
@@ -76,7 +77,8 @@ public:
      * @param localUser name of local user/account
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static shared_ptr<ZinaConversation> loadLocalConversation(const string& localUser) { return loadConversation(localUser, localUser, string());}
+    static shared_ptr<ZinaConversation> loadLocalConversation(const string& localUser, SQLiteStoreConv &store) {
+        return loadConversation(localUser, localUser, string(), store);}
 
     /**
      * @brief Load a conversation from database.
@@ -86,7 +88,7 @@ public:
      * @param deviceId The remote user's device id if it is available
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static shared_ptr<ZinaConversation> loadConversation(const string& localUser, const string& user, const string& deviceId);
+    static shared_ptr<ZinaConversation> loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store);
 
     // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
 #if 0
@@ -106,17 +108,17 @@ public:
     /**
      * @brief Store this conversation in persitent store
      */
-    int32_t storeConversation();
+    int32_t storeConversation(SQLiteStoreConv &store);
 
-    int32_t storeStagedMks();
+    int32_t storeStagedMks(SQLiteStoreConv &store);
 
-    static void clearStagedMks(list<string> &keys);
+    static void clearStagedMks(list<string> &keys, SQLiteStoreConv &store);
 
-    int32_t loadStagedMks(list<string> &keys);
+    int32_t loadStagedMks(list<string> &keys, SQLiteStoreConv &store);
 
-    void deleteStagedMk(string& mkiv);
+    void deleteStagedMk(string& mkiv, SQLiteStoreConv &store);
 
-    list<string>& getEmptyStagedMks();
+    list<string>& getEmptyStagedMks() {return stagedMk; }
 
     const ZinaContact& getPartner()  { return partner_; }
 

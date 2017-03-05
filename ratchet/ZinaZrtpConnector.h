@@ -42,9 +42,10 @@ limitations under the License.
  * @param localUser name of local user/account
  * @param user Name of the remote user
  * @param deviceId The remote user's device id if it is available
+ * @param store Context storage
  * @return the serialized data of the public keys.
  */
-const string getAxoPublicKeyData( const string& localUser, const string& user, const string& deviceId );
+const string getAxoPublicKeyData( const string& localUser, const string& user, const string& deviceId, zina::SQLiteStoreConv &store);
 
 /**
  * @brief Set public keys of a remote user.
@@ -80,7 +81,7 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
  * @param exportedKey The raw data of the exported key from ZRTP
  * @param role the current client ZRTP role, Initiator or Responder
  */
-void setAxoExportedKey( const string& localUser, const string& user, const string& deviceId, const string& exportedKey );
+void setAxoExportedKey( const string& localUser, const string& user, const string& deviceId, const string& exportedKey, zina::SQLiteStoreConv &store);
 
 
 const string getOwnIdKey();
