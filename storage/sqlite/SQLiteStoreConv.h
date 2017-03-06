@@ -54,19 +54,20 @@ limitations under the License.
 using namespace std;
 
 auto cJSON_deleter = [](cJSON* json) {
-    cJSON_Delete(json); json = nullptr;
+    cJSON_Delete(json);
 };
 
 struct cJsonDeleter_ {
-    void operator()(cJSON* json) { cJSON_Delete(json); json = nullptr; }
+    void operator()(cJSON* json) { cJSON_Delete(json); }
 };
 
 struct charDeleter_ {
-    void operator()(char* arg) { free(arg); arg = nullptr; }
+    void operator()(char* arg) { free(arg); }
 };
 
 typedef unique_ptr<cJSON, cJsonDeleter_> JsonUnique;
 typedef unique_ptr<char, charDeleter_> CharUnique;
+typedef unique_ptr<std::string> StringUnique;
 
 namespace zina {
 
@@ -281,10 +282,10 @@ public:
      * @param name The message sender's/receiver's name (SC uid)
      * @param messageId The UUID of the message
      * @param deviceId The sender's device id
-     * @param sqlCode If not @c NULL returns the SQLite return/error code
-     * @return list of trace records, maybe empty, never @c NULL
+     * @param traceRecords List which receives the result strings
+     * @return SQLite codeL
      */
-    shared_ptr<list<string> > loadMsgTrace(const string& name, const string& messageId, const string& deviceId, int32_t* sqlCode = NULL);
+    int32_t loadMsgTrace(const string& name, const string& messageId, const string& deviceId, list<StringUnique> &traceRecords);
 
     /**
      * @brief Delete message trace records older than the timestamp.

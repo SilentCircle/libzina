@@ -1218,11 +1218,10 @@ cleanup:
     return sqlResult;
 }
 
-shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, const string &messageId, const string &deviceId, int32_t* sqlCode)
+int32_t SQLiteStoreConv::loadMsgTrace(const string &name, const string &messageId, const string &deviceId, list<StringUnique> &traceRecords)
 {
     sqlite3_stmt *stmt = NULL;
     int32_t sqlResult;
-    shared_ptr<list<string> > traceRecords = make_shared<list<string> >();
 
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -1276,7 +1275,8 @@ shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, cons
     }
     while (sqlResult == SQLITE_ROW) {
         // Get trace fields and create a JSON formatted string
-        cJSON* root = cJSON_CreateObject();
+        JsonUnique jsonUnique(cJSON_CreateObject());
+        cJSON* root = jsonUnique.get();
         // name is usually the SC UID string
         cJSON_AddStringToObject(root, "name", (const char*)sqlite3_column_text(stmt, 0));
         cJSON_AddStringToObject(root, "msgId", (const char*)sqlite3_column_text(stmt, 1));
@@ -1289,22 +1289,18 @@ shared_ptr<list<string> > SQLiteStoreConv::loadMsgTrace(const string &name, cons
         cJSON_AddNumberToObject(root, "received", ((flag & RECEIVED) == RECEIVED) ? 1 : 0);
         cJSON_AddNumberToObject(root, "attachment", ((flag & ATTACHMENT) == ATTACHMENT) ? 1 : 0);
 
-        char *out = cJSON_PrintUnformatted(root);
-        string traceRecord(out);
-        cJSON_Delete(root); free(out);
-        traceRecords->push_back(traceRecord);
+        CharUnique out(cJSON_PrintUnformatted(root));
+        traceRecords.push_back(StringUnique(new string(out.get())));
 
         sqlResult = sqlite3_step(stmt);
     }
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
 
-    return traceRecords;
+    return sqlResult;
 }
 
 

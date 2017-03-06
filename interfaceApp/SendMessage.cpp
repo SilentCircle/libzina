@@ -538,7 +538,7 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<Z
         cJSON_Delete(convJson); free(out);
 
         MessageCapture::captureSendMessage(sendInfo.queueInfo_recipient, sendInfo.queueInfo_msgId, sendInfo.queueInfo_deviceId, convState,
-                                           sendInfo.queueInfo_attributes, !sendInfo.queueInfo_attachment.empty());
+                                           sendInfo.queueInfo_attributes, !sendInfo.queueInfo_attachment.empty(), *store_);
     LOGGER_END
 
     Utilities::wipeString(const_cast<string&>(sendInfo.queueInfo_attachment));

@@ -39,6 +39,7 @@ limitations under the License.
 #include <string>
 #include <list>
 #include <memory>
+#include "sqlite/SQLiteStoreConv.h"
 
 using namespace std;
 
@@ -55,9 +56,11 @@ public:
      * @param attribute The message attribute string which contains status information
      * @param attachments If set the message contained an attachment descriptor
      * @param force store the data even in case the debug level is less than INFO to log error condition
+     * @return SQLite code
      */
     static int32_t captureReceivedMessage(const string& sender, const string& messageId, const string& deviceId,
-                                          const string &convState, const string& attributes, bool attachments);
+                                          const string &convState, const string& attributes, bool attachments,
+                                          zina::SQLiteStoreConv &store);
 
     /**
      * @brief Capture send message trace data.
@@ -69,9 +72,11 @@ public:
      * @param attribute The message attribute string which contains status information
      * @param attachments If set the message contained an attachment descriptor
      * @param force store the data even in case the debug level is less than INFO to log error condition
+     * @return SQLite code
      */
     static int32_t captureSendMessage(const string& receiver, const string& messageId, const string& deviceId,
-                                      const string &convState, const string& attributes, bool attachments);
+                                      const string &convState, const string& attributes, bool attachments,
+                                      zina::SQLiteStoreConv &store);
 
     /**
      * @brief Return a list of message trace records.
@@ -91,10 +96,11 @@ public:
      * @param name The message sender's/receiver's name (SC uid)
      * @param messageId The UUID of the message
      * @param deviceId The sender's device id
-     * @param sqlCode If not @c NULL returns the SQLite return/error code
-     * @return list of trace records, maybe empty, never @c NULL
+     * @param traceRecords list of trace records
+     * @return SQLite code
      */
-    static shared_ptr<list<string> > loadCapturedMsgs(const string& name, const string& messageId, const string& deviceId, int32_t* sqlCode = NULL);
+    static int32_t loadCapturedMsgs(const string& name, const string& messageId, const string& deviceId, zina::SQLiteStoreConv &store,
+                                    list<StringUnique> &traceRecords);
 };
 
 

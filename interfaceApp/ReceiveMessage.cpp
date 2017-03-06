@@ -277,7 +277,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         string convState(out.get());
         cJSON_Delete(convJson);
         MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
-                                               string("{\"cmd\":\"dummy\"}"), false);
+                                               string("{\"cmd\":\"dummy\"}"), false, *store_);
     LOGGER_END
     {
         /*
@@ -402,7 +402,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
                 cJSON_Delete(convJson);
 
                 MessageCapture::captureReceivedMessage(sender, msgId, senderScClientDevId, convState,
-                                                       string("{\"cmd\":\"failed\"}"), false);
+                                                       string("{\"cmd\":\"failed\"}"), false, *store_);
             }
         LOGGER_END
         if (msgType >= GROUP_MSG_NORMAL) {

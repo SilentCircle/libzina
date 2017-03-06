@@ -31,6 +31,7 @@ limitations under the License.
 #include "../../dataRetention/ScDataRetention.h"
 #include "../JsonStrings.h"
 #include "../../util/Utilities.h"
+#include "../../storage/sqlite/SQLiteStoreConv.h"
 
 using namespace zina;
 using namespace std;
@@ -3235,6 +3236,13 @@ JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyte
 {
     (void)clazz;
 
+    if (zinaAppInterface == NULL) {
+        if (code != NULL && env->GetArrayLength(code) >= 1) {
+            setReturnCode(env, code, GENERIC_ERROR);
+        }
+        return NULL;
+    }
+
     string nameString;
     arrayToString(env, name, &nameString);
 
@@ -3244,19 +3252,19 @@ JNI_FUNCTION(loadCapturedMsgs)(JNIEnv* env, jclass clazz, jbyteArray name, jbyte
     string devIdString;
     arrayToString(env, devId, &devIdString);
 
-    int32_t errorCode;
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    shared_ptr<list<string> > records = store->loadMsgTrace(nameString, msgIdString, devIdString, &errorCode);
+    SQLiteStoreConv &store = *zinaAppInterface->getStore();
+    list<StringUnique> records;
+    int32_t errorCode = store.loadMsgTrace(nameString, msgIdString, devIdString, records);
 
     if (code != NULL && env->GetArrayLength(code) >= 1) {
         setReturnCode(env, code, errorCode);
     }
     jclass byteArrayClass = env->FindClass("[B");
-    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(records->size()), byteArrayClass, NULL);
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(records.size()), byteArrayClass, NULL);
 
     int32_t index = 0;
-    for (; !records->empty(); records->pop_front()) {
-        const string& s = records->front();
+    for (; !records.empty(); records.pop_front()) {
+        const string& s = *records.front();
         jbyteArray retData = stringToArray(env, s);
         env->SetObjectArrayElement(retArray, index++, retData);
         env->DeleteLocalRef(retData);

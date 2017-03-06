@@ -172,38 +172,48 @@ static string displayName("John Doe");
 TEST_F(StoreTestFixture, MsgTraceStore)
 {
     // Fresh DB, trace must be empty
-    shared_ptr<list<string> > records = pks->loadMsgTrace(name, empty, empty);
-    ASSERT_TRUE(records->empty());
+    list<StringUnique> records;
+    int32_t result = pks->loadMsgTrace(name, empty, empty, records);
+    ASSERT_TRUE(records.empty());
 
     // Fresh DB, trace must be empty
-    records = pks->loadMsgTrace(empty, msgId, empty);
-    ASSERT_TRUE(records->empty());
+    result = pks->loadMsgTrace(empty, msgId, empty, records);
+    ASSERT_TRUE(records.empty());
 
     // Fresh DB, trace must be empty
-    records = pks->loadMsgTrace(empty, empty, devId);
-    ASSERT_TRUE(records->empty());
+    result = pks->loadMsgTrace(empty, empty, devId, records);
+    ASSERT_TRUE(records.empty());
 
     // Insert a message trace record
-    int32_t result = pks->insertMsgTrace(name, msgId, devId, convState, attrib, false, false);
+    result = pks->insertMsgTrace(name, msgId, devId, convState, attrib, false, false);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    records = pks->loadMsgTrace(name, empty, empty);
-    ASSERT_EQ(1, records->size());
+    result = pks->loadMsgTrace(name, empty, empty, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, records.size());
 
-    records = pks->loadMsgTrace(empty, msgId, empty);
-    ASSERT_EQ(1, records->size());
+    records.clear();
+    result = pks->loadMsgTrace(empty, msgId, empty, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, records.size());
 
-    records = pks->loadMsgTrace(empty, empty, devId);
-    ASSERT_EQ(1, records->size());
+    records.clear();
+    result = pks->loadMsgTrace(empty, empty, devId, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, records.size());
 
-    records = pks->loadMsgTrace(empty, msgId, devId);
-    ASSERT_EQ(1, records->size());
+    records.clear();
+    result = pks->loadMsgTrace(empty, msgId, devId, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(1, records.size());
 
     time_t nowMinus1 = time(NULL)-1;
     pks->deleteMsgTrace(nowMinus1);
 
-    records = pks->loadMsgTrace(name, empty, empty);
-    ASSERT_FALSE(records->empty());
+    records.clear();
+    result = pks->loadMsgTrace(name, empty, empty, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_FALSE(records.empty());
 
     sqlite3_sleep(2000);
     nowMinus1 = time(NULL) - 1;
@@ -211,8 +221,10 @@ TEST_F(StoreTestFixture, MsgTraceStore)
     result = pks->deleteMsgTrace(nowMinus1);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
-    records = pks->loadMsgTrace(name, empty, empty);
-    ASSERT_TRUE(records->empty());
+    records.clear();
+    result = pks->loadMsgTrace(name, empty, empty, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(records.empty());
 }
 
 TEST_F(StoreTestFixture, ReceivedRawData)

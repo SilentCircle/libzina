@@ -41,19 +41,19 @@ static int32_t filterAttributes(const string& attributes, string *filteredAttrib
     return OK;
 }
 
-static void cleanupTrace(SQLiteStoreConv* store )
+static void cleanupTrace(SQLiteStoreConv &store )
 {
     // Cleanup old traces, currently using the same time as for the Message Key cleanup
     time_t timestamp = time(0) - MK_STORE_TIME;
-    store->deleteMsgTrace(timestamp);
+    store.deleteMsgTrace(timestamp);
 }
 
 int32_t MessageCapture::captureReceivedMessage(const string &sender, const string &messageId, const string &deviceId,
-                                               const string &convState, const string &attributes, bool attachments)
+                                               const string &convState, const string &attributes, bool attachments,
+                                               SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__ , " -->");
 
-    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     LOGGER_BEGIN(INFO)
         string filteredAttributes;
         int32_t result = filterAttributes(attributes, &filteredAttributes);
@@ -62,7 +62,7 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
             return result;
         }
 
-        result = store->insertMsgTrace(sender, messageId, deviceId, convState, filteredAttributes, attachments, true);
+        result = store.insertMsgTrace(sender, messageId, deviceId, convState, filteredAttributes, attachments, true);
         if (SQL_FAIL(result)) {
             LOGGER(ERROR, __func__, " <-- Cannot store received message trace data.", result);
             return result;
@@ -70,15 +70,15 @@ int32_t MessageCapture::captureReceivedMessage(const string &sender, const strin
     LOGGER_END
     cleanupTrace(store);
     LOGGER(DEBUGGING, __func__ , " <-- ");
-    return OK;
+    return SUCCESS;
 }
 
 int32_t MessageCapture::captureSendMessage(const string &receiver, const string &messageId,const string &deviceId,
-                                           const string &convState, const string &attributes, bool attachments)
+                                           const string &convState, const string &attributes, bool attachments,
+                                           SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    SQLiteStoreConv *store = SQLiteStoreConv::getStore();
     LOGGER_BEGIN(INFO)
         string filteredAttributes;
         int32_t result = filterAttributes(attributes, &filteredAttributes);
@@ -87,7 +87,7 @@ int32_t MessageCapture::captureSendMessage(const string &receiver, const string 
             return result;
         }
 
-        result = store->insertMsgTrace(receiver, messageId, deviceId, convState, filteredAttributes, attachments, false);
+        result = store.insertMsgTrace(receiver, messageId, deviceId, convState, filteredAttributes, attachments, false);
         if (SQL_FAIL(result)) {
             LOGGER(ERROR, __func__, " <-- Cannot store sent message trace data.", result);
             return result;
@@ -95,14 +95,14 @@ int32_t MessageCapture::captureSendMessage(const string &receiver, const string 
     LOGGER_END
     cleanupTrace(store);
     LOGGER(DEBUGGING, __func__ , " <-- ");
-    return OK;
+    return SUCCESS;
 }
 
-shared_ptr<list<string> > MessageCapture::loadCapturedMsgs(const string &name, const string &messageId,
-                                                           const string &deviceId, int32_t *sqlCode)
+int32_t MessageCapture::loadCapturedMsgs(const string &name, const string &messageId,
+                                         const string &deviceId, SQLiteStoreConv &store,
+                                         list<StringUnique> &traceRecords)
 {
-    SQLiteStoreConv* store = SQLiteStoreConv::getStore();
-    return store->loadMsgTrace(name, messageId, deviceId, sqlCode);
+    return store.loadMsgTrace(name, messageId, deviceId, traceRecords);
 }
 
 
