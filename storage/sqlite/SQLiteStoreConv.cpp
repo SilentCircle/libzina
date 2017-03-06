@@ -968,7 +968,7 @@ cleanup:
     return sqlResult;
 }
 
-void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)
+int32_t SQLiteStoreConv::deleteStagedMk(time_t timestamp)
 {
     sqlite3_stmt *stmt;
 //    int32_t cleaned;
@@ -981,23 +981,21 @@ void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)
 
     sqlResult= sqlite3_step(stmt);
 //    cleaned = sqlite3_changes(db);
-//    LOGGER(ERROR, "Number of removed old MK: ", cleaned);
+//    LOGGER(INFO, "Number of removed old MK: ", cleaned);
     ERRMSG;
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
 // ******** PreKey store
-string* SQLiteStoreConv::loadPreKey(int32_t preKeyId, int32_t* sqlCode) const 
+int32_t SQLiteStoreConv::loadPreKey(const int32_t preKeyId, string &preKeyData) const
 {
     sqlite3_stmt *stmt;
     int32_t len;
-    string* preKeyData = NULL;
     int32_t sqlResult;
 
     // selectPreKey = "SELECT preKeyData FROM PreKeys WHERE keyid=?1;";
@@ -1012,19 +1010,17 @@ string* SQLiteStoreConv::loadPreKey(int32_t preKeyId, int32_t* sqlCode) const
     if (sqlResult == SQLITE_ROW) {        // No such pre key
         // Get the pre key data
         len = sqlite3_column_bytes(stmt, 0);
-        preKeyData = new string((const char*)sqlite3_column_blob(stmt, 0), len);
+        preKeyData.assign((const char*)sqlite3_column_blob(stmt, 0), static_cast<size_t >(len));
     }
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
-    return preKeyData;
+    return sqlResult;
 }
 
-void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, int32_t* sqlCode)
+int32_t SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -1042,10 +1038,9 @@ void SQLiteStoreConv::storePreKey(int32_t preKeyId, const string& preKeyData, in
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
 bool SQLiteStoreConv::containsPreKey(int32_t preKeyId, int32_t* sqlCode) const
@@ -1074,7 +1069,7 @@ cleanup:
     return retVal;
 }
 
-void SQLiteStoreConv::removePreKey(int32_t preKeyId, int32_t* sqlCode) 
+int32_t SQLiteStoreConv::removePreKey(int32_t preKeyId)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -1090,10 +1085,9 @@ void SQLiteStoreConv::removePreKey(int32_t preKeyId, int32_t* sqlCode)
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <--", sqlResult);
+    return sqlResult;
 }
 
 #pragma clang diagnostic push

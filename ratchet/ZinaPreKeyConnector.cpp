@@ -19,6 +19,7 @@ limitations under the License.
 #include "../ratchet/crypto/EcCurve.h"
 
 #include "../keymanagment/PreKeys.h"
+#include "../util/Utilities.h"
 
 // Generic function, located in AxoZrtpConnector.
 void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, size_t requested);
@@ -163,12 +164,13 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
 //    store->dumpPreKeys();
 
     // Get Bob's (my) pre-key that Alice used to create her conversation (ratchet context).
-    string* preKeyData = store.loadPreKey(bobPreKeyId);
+    string preKeyData;
+    int32_t result = store.loadPreKey(bobPreKeyId, preKeyData);
 
     // If no such prekey then check if the conversation was already set-up (RK available)
-    // if yes -> OK, Alice sent the key more then one time because Bob didn't answer her
+    // if yes -> OK, Alice sent the key more than once because Bob didn't answer her
     // yet. Otherwise Bob got an illegal pre-key.
-    if (preKeyData == NULL) {
+    if (preKeyData.empty()) {
         delete aliceId;
         delete alicePreKey;
         if (conv->getRK().empty()) {
@@ -196,8 +198,8 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     conv->reset();
 
     // A0 is Bob's (my) pre-key, this mirrors Alice's usage of her generated A0 pre-key.
-    DhKeyPair* A0 = PreKeys::parsePreKeyData(*preKeyData);
-    delete preKeyData;
+    DhKeyPair* A0 = PreKeys::parsePreKeyData(preKeyData);
+    Utilities::wipeString(preKeyData);
 
     auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser(), store);
     if (!localConv->isValid()) {

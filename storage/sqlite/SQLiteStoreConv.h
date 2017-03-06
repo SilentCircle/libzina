@@ -211,16 +211,16 @@ public:
 
     int32_t deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv);
 
-    void deleteStagedMk(time_t timestamp, int32_t* sqlCode = NULL);
+    int32_t deleteStagedMk(time_t timestamp);
 
     // Pre key storage. The functions encrypt, decrypt and store/retrieve Pre-key JSON strings
-    string* loadPreKey(int32_t preKeyId, int32_t* sqlCode = NULL) const;
+    int32_t loadPreKey(const int32_t preKeyId, string &key) const;
 
-    void storePreKey(int32_t preKeyId, const string& preKeyData, int32_t* sqlCode = NULL);
+    int32_t storePreKey(int32_t preKeyId, const string& preKeyData);
 
     bool containsPreKey(int32_t preKeyId, int32_t* sqlCode = NULL) const;
 
-    void removePreKey(int32_t preKeyId, int32_t* sqlCode = NULL);
+    int32_t removePreKey(int32_t preKeyId);
 
     void dumpPreKeys() const;
 

@@ -97,22 +97,25 @@ TEST_F(StoreTestFixture, PreKeyStore)
 
     string* pk = preKeyJson(basePair);
 
-    string* pk_1 = pks->loadPreKey(3);
-    ASSERT_EQ(NULL, pk_1) <<  "Some data in an empty store?";
+    string pk_1;
+    int32_t result = pks->loadPreKey(3, pk_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_TRUE(pk_1.empty()) <<  "Some data in an empty store?";
 
-    pks->storePreKey(3, *pk);
+    result = pks->storePreKey(3, *pk);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(pks->containsPreKey(3));
 
-    pks->storePreKey(3, *pk);
-    ASSERT_TRUE(pks->getSqlCode() == SQLITE_CONSTRAINT) << pks->getLastError();
+    result = pks->storePreKey(3, *pk);
+    ASSERT_TRUE(result == SQLITE_CONSTRAINT) << pks->getLastError();
 
-    pk_1 = pks->loadPreKey(3);
-    ASSERT_EQ(*pk, *pk_1);
-    delete pk_1;
+    pk_1.clear();
+    result = pks->loadPreKey(3, pk_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+    ASSERT_EQ(*pk, pk_1);
 
     pks->removePreKey(3);
     ASSERT_FALSE(pks->containsPreKey(3));
-
 }
 
 TEST_F(StoreTestFixture, PreKeyGenerate)
@@ -120,8 +123,9 @@ TEST_F(StoreTestFixture, PreKeyGenerate)
     // generate and store a key pair
     pair<int32_t, const DhKeyPair*> preKeyBundle = PreKeys::generatePreKey(pks);
 
-    string* pk_1 = pks->loadPreKey(preKeyBundle.first);
-    ASSERT_NE(nullptr, pk_1) <<  "Generated key not found, " << *pk_1 << endl;
+    string pk_1;
+    int32_t result = pks->loadPreKey(preKeyBundle.first, pk_1);
+    ASSERT_FALSE(pk_1.empty()) <<  "Generated key not found, " << pk_1 << endl;
 }
 
 TEST_F(StoreTestFixture, MsgHashStore)
@@ -174,14 +178,17 @@ TEST_F(StoreTestFixture, MsgTraceStore)
     // Fresh DB, trace must be empty
     list<StringUnique> records;
     int32_t result = pks->loadMsgTrace(name, empty, empty, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(records.empty());
 
     // Fresh DB, trace must be empty
     result = pks->loadMsgTrace(empty, msgId, empty, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(records.empty());
 
     // Fresh DB, trace must be empty
     result = pks->loadMsgTrace(empty, empty, devId, records);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_TRUE(records.empty());
 
     // Insert a message trace record
