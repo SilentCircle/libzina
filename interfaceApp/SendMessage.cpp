@@ -53,9 +53,8 @@ getDevicesNewUser(string& recipient, string& authorization, list<pair<string, st
 
     int32_t result = Provisioning::getZinaDeviceIds(recipient, authorization, devices);
 
-    if (result >= 400) {
-        LOGGER(ERROR, __func__, " <-- Network error: ", result);
-        return NETWORK_ERROR;
+    if (result != SUCCESS) {
+        return result;
     }
 
     if (devices.empty()) {
@@ -101,7 +100,7 @@ AppInterfaceImpl::addSiblingDevices(shared_ptr<list<string> > idDevInfos)
     int32_t errorCode = Provisioning::getZinaDeviceIds(ownUser_, authorization_, siblingDevices);
 
     // The provisioning server reported an error or both lists are empty: no new siblings known yet
-    if (errorCode > 400 || (idDevInfos->empty() && siblingDevices.empty()))
+    if (errorCode != SUCCESS || (idDevInfos->empty() && siblingDevices.empty()))
         return newSiblingDevices;
 
     if (idDevInfos->empty()) {

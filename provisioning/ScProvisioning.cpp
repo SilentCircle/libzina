@@ -237,11 +237,8 @@ shared_ptr<list<pair<string, string> > > Provisioning::getZinaDeviceIds(const st
     shared_ptr<list<pair<string, string> > > deviceIds = make_shared<list<pair<string, string> > >();
     int32_t code = getZinaDeviceIds(name, authorization, *deviceIds);
 
-    if (code >= 400) {
-        if (errorCode != NULL)
-            *errorCode = code;
-        return shared_ptr<list<pair<string, string> > >();
-    }
+    if (errorCode != NULL)
+        *errorCode = code;
     return deviceIds;
 }
 
@@ -250,7 +247,7 @@ int32_t Provisioning::getZinaDeviceIds(const std::string& name, const std::strin
     LOGGER(DEBUGGING, __func__, " -->");
 
     if (ScProvisioning::httpHelper_ == nullptr) {
-        LOGGER(ERROR, __func__,  "ZINA library not correctly initailized");
+        LOGGER(ERROR, __func__,  "ZINA library not correctly initialized");
         return 500;
     }
 
@@ -265,20 +262,22 @@ int32_t Provisioning::getZinaDeviceIds(const std::string& name, const std::strin
     int32_t code = ScProvisioning::httpHelper_(requestUri, GET, Empty, &response);
 
     if (code >= 400) {
-        return code;
+        return NETWORK_ERROR;
     }
-
+    if (response.empty()) {
+        return NO_DEVS_FOUND;
+    }
     JsonUnique uniqueJson(cJSON_Parse(response.c_str()));
     cJSON* root = uniqueJson.get();
     if (root == NULL) {
-        LOGGER(ERROR, __func__,  "Wrong device response JSON data, ignoring.");
-        return 500;
+        LOGGER(ERROR, __func__,  "Wrong device response JSON data, ignoring: ", response);
+        return NETWORK_ERROR;
     }
 
     cJSON* devIds = cJSON_GetObjectItem(root, "devices");
     if (devIds == NULL || devIds->type != cJSON_Array) {
         LOGGER(ERROR, __func__,  "No devices array in response, ignoring.");
-        return 500;
+        return NO_DEVS_FOUND;
     }
     int32_t numIds = cJSON_GetArraySize(devIds);
     for (int32_t i = 0; i < numIds; i++) {

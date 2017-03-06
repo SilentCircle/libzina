@@ -945,7 +945,7 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     envelope.set_recvidhash(idHashes.first.data(), 4);
     envelope.set_senderidhash(idHashes.second.data(), 4);
 
-//    LOGGER(INFO, "Encrypt message to:   ", conv.getPartner().getName(), " Nr: ", conv.getNr(), " Np: ", conv.getNs(), " PNp: ", conv.getPNs(), " newR: ", ratchetSave);
+    LOGGER(INFO, "Encrypt message to:   ", conv.getPartner().getName(), " Nr: ", conv.getNr(), " Np: ", conv.getNs(), " PNp: ", conv.getPNs(), " newR: ", ratchetSave);
 
     // After creating the wire message update the conversation (ratchet context) data
     conv.setNs(conv.getNs() + 1);

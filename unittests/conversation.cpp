@@ -65,10 +65,10 @@ TEST_F(StoreTestFixture, BasicEmpty)
 
     // localUser, remote user, remote dev id
     ZinaConversation conv(aliceName, bobName, bobDev);
-    conv.storeConversation();
+    conv.storeConversation(*store);
     ASSERT_FALSE(SQL_FAIL(store->getSqlCode())) << store->getLastError();    
 
-    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRK().empty());
 }
@@ -85,8 +85,8 @@ TEST_F(StoreTestFixture, TestDHR)
     const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
     conv.setDHRs(keyPair);
 
-    conv.storeConversation();
-    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
+    conv.storeConversation(*store);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -111,8 +111,8 @@ TEST_F(StoreTestFixture, TestDHI)
     const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
     conv.setDHIs(keyPair);
 
-    conv.storeConversation();
-    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
+    conv.storeConversation(*store);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev,*store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -134,8 +134,8 @@ TEST_F(StoreTestFixture, TestA0)
     const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
     conv.setA0(keyPair);
 
-    conv.storeConversation();
-    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
+    conv.storeConversation(*store);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
@@ -163,8 +163,8 @@ TEST_F(StoreTestFixture, SimpleFields)
     string tst("test");
     conv.setDeviceName(tst);
 
-    conv.storeConversation();
-    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev);
+    conv.storeConversation(*store);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
 
     ASSERT_EQ(RK, conv1->getRK());
     ASSERT_EQ(CKr, conv1->getCKr());

@@ -435,7 +435,7 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
     list<pair<string, string> > devices;
     int32_t errorCode = Provisioning::getZinaDeviceIds(command.queueInfo_recipient, authorization_, devices);
 
-    if (errorCode > 400 || devices.empty()) {
+    if (errorCode != SUCCESS || devices.empty()) {
         store_->deleteConversationsName(command.queueInfo_recipient, ownUser_);
         return;
     }
@@ -569,7 +569,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     list<pair<string, string> > devices;
     int32_t errorCode = Provisioning::getZinaDeviceIds(userName, authorization_, devices);
 
-    if (errorCode >= 400 || devices.empty()) {
+    if (errorCode != SUCCESS || devices.empty()) {
         return;
     }
 
@@ -686,8 +686,8 @@ int32_t AppInterfaceImpl::requestGroupsSync()
     list<pair<string, string> > devices;
     int32_t errorCode = Provisioning::getZinaDeviceIds(getOwnUser(), authorization_, devices);
 
-    // Provisioning server knows only one device, must be this device.
-    if (errorCode >= 400 || devices.size() <= 1) {
+    // Provisioning server knows no or only one device, must be this device.
+    if (errorCode != SUCCESS || devices.size() <= 1) {
         return SUCCESS;
     }
 
