@@ -126,12 +126,11 @@ int32_t ZinaConversation::storeStagedMks(SQLiteStoreConv &store) {
     for (; !stagedMk.empty(); stagedMk.pop_front()) {
         string& mkIvMac = stagedMk.front();
         if (!mkIvMac.empty()) {
-            int32_t result;
-            store.insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac, &result);
+            int32_t result = store.insertStagedMk(partner_.getName(), deviceId_, localUser_, mkIvMac);
             if (SQL_FAIL(result)) {
                 errorCode_ = DATABASE_ERROR;
                 sqlErrorCode_ = result;
-                LOGGER(ERROR, __func__, " <--, error: ");
+                LOGGER(ERROR, __func__, " <--, error: ", result);
                 return result;
             }
             Utilities::wipeString(mkIvMac);

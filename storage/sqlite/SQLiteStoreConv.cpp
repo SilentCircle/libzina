@@ -888,7 +888,7 @@ static bool hasStagedMk(sqlite3* db, const string& name, const string& longDevId
     return exists == 1;
 }
 
-void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode)
+int32_t SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult = SQLITE_OK;
@@ -907,11 +907,9 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
     }
 
     if (hasStagedMk(db, name, string(devId), ownName, MKiv)) {
-        if (sqlCode != NULL)
-            *sqlCode = sqlResult;
         sqlCode_ = sqlResult;
         LOGGER(DEBUGGING, __func__, " <-- MK exists in DB, skip");
-        return;
+        return sqlResult;
     }
 
 //     insertStagedMkSql =
@@ -931,13 +929,12 @@ void SQLiteStoreConv::insertStagedMk(const string& name, const string& longDevId
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
-void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode)
+int32_t SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -966,10 +963,9 @@ void SQLiteStoreConv::deleteStagedMk(const string& name, const string& longDevId
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
 void SQLiteStoreConv::deleteStagedMk(time_t timestamp, int32_t* sqlCode)

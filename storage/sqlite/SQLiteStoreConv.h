@@ -207,9 +207,9 @@ public:
     // ***** staged message keys store
     int32_t loadStagedMks(const string& name, const string& longDevId, const string& ownName, list<string> &keys) const;
 
-    void insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode = NULL);
+    int32_t insertStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv);
 
-    void deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv, int32_t* sqlCode = NULL);
+    int32_t deleteStagedMk(const string& name, const string& longDevId, const string& ownName, const string& MKiv);
 
     void deleteStagedMk(time_t timestamp, int32_t* sqlCode = NULL);
 
