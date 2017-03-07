@@ -143,11 +143,11 @@ uint8_t shared[] = {
 
 TEST_F(CryptoTestFixture, Curve25519Agreement)
 {
-    const DhPublicKey* alicePublicKey = EcCurve::decodePoint(alicePublic);
-    const DhPrivateKey* alicePrivateKey = EcCurve::decodePrivatePoint(alicePrivate, sizeof(alicePrivate));
+    PublicKeyUnique alicePublicKey = EcCurve::decodePoint(alicePublic);
+    PrivateKeyUnique alicePrivateKey = EcCurve::decodePrivatePoint(alicePrivate, sizeof(alicePrivate));
 
-    const DhPublicKey* bobPublicKey = EcCurve::decodePoint(bobPublic);
-    const DhPrivateKey* bobPrivateKey = EcCurve::decodePrivatePoint(bobPrivate, sizeof(bobPrivate));
+    PublicKeyUnique bobPublicKey = EcCurve::decodePoint(bobPublic);
+    PrivateKeyUnique bobPrivateKey = EcCurve::decodePrivatePoint(bobPrivate, sizeof(bobPrivate));
 
     uint8_t sharedOne[Ec255PrivateKey::KEY_LENGTH] = {0};
     uint8_t sharedTwo[Ec255PrivateKey::KEY_LENGTH] = {0};
@@ -165,10 +165,6 @@ TEST_F(CryptoTestFixture, Curve25519Agreement)
     for (int i = 0; i < Ec255PrivateKey::KEY_LENGTH; ++i) {
         ASSERT_EQ(shared[i], sharedTwo[i]) << "Agreement two differs at index " << i;
     }
-    delete alicePublicKey;
-    delete alicePrivateKey;
-    delete bobPublicKey;
-    delete bobPrivateKey;
 }
 
 uint8_t aliceIdentityPrivate[] = {

@@ -256,7 +256,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
             break;
         }
     }
-    list<string> devicesDb;
+    list<StringUnique> devicesDb;
     store->getLongDeviceIds(name, appInterface_->getOwnUser(), devicesDb);
     size_t numKnownDevices = devicesDb.size();
 

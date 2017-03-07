@@ -172,7 +172,7 @@ public:
      * registered with the account. The function returns data only for other devices, not
      * the own client device.
      *
-     * @deprecated Use getLongDeviceIds(const string&, const string&, list<string> *) instead.
+     * @deprecated Use getLongDeviceIds(const string&, const string&, list<StringUnique> *) instead.
      * 
      * @param name the user's name.
      * @param sqlCode If not @c NULL returns the SQLite return/error code
@@ -188,10 +188,10 @@ public:
      * the own client device.
      *
      * @param name the user's name.
-     * @param devIds List of strings
+     * @param devIds List of StringUnique pointers
      * @return SQLite code, @c SQLITE_ROW indicates the message hash exists in the table
      */
-    int32_t getLongDeviceIds(const string& name, const string& ownName, list<string> &devIds);
+    int32_t getLongDeviceIds(const string& name, const string& ownName, list<StringUnique> &devIds);
 
     // ***** Conversation store
     string* loadConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;

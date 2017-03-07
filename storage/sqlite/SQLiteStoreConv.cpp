@@ -572,7 +572,13 @@ shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, 
 {
     LOGGER(DEBUGGING, __func__, " -->");
     shared_ptr<list<string> > devIds = make_shared<list<string> >();
-    int32_t sqlResult = getLongDeviceIds(name, ownName, *devIds);
+
+    list<StringUnique> devs;
+    int32_t sqlResult = getLongDeviceIds(name, ownName, devs);
+    for (const auto& dev : devs) {
+        const string tmp(*dev);
+        devIds->push_back(tmp);
+    }
 
     if (sqlCode != NULL)
         *sqlCode = sqlResult;
@@ -582,7 +588,7 @@ shared_ptr<list<string> > SQLiteStoreConv::getLongDeviceIds(const string& name, 
 }
 #pragma clang diagnostic pop
 
-int32_t SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownName, list<string> &devIds)
+int32_t SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownName, list<StringUnique> &devIds)
 {
     sqlite3_stmt *stmt;
     int32_t idLen;
@@ -597,10 +603,10 @@ int32_t SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownN
 
     while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         idLen = sqlite3_column_bytes(stmt, 0);
-        string id((const char*)sqlite3_column_text(stmt, 0), static_cast<size_t>(idLen));
-        if (id.compare(0, id.size(), dummyId, id.size()) == 0)
+        StringUnique id(new string((const char*)sqlite3_column_text(stmt, 0), static_cast<size_t>(idLen)));
+        if (id->compare(0, id->size(), dummyId, id->size()) == 0)
             continue;
-        devIds.push_back(id);
+        devIds.push_back(move(id));
     }
 
 cleanup:

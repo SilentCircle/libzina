@@ -257,7 +257,7 @@ void AppInterfaceImpl::setS3Helper(S3_FUNC s3Helper)
 }
 
 void AppInterfaceImpl::reKeyAllDevices(string &userName) {
-    list<string> devices;
+    list<StringUnique> devices;
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " Axolotl conversation DB not ready.");
@@ -265,7 +265,7 @@ void AppInterfaceImpl::reKeyAllDevices(string &userName) {
     }
     store_->getLongDeviceIds(userName, ownUser_, devices);
     for (auto &recipientDeviceId : devices) {
-        reSyncConversation(userName, recipientDeviceId);
+        reSyncConversation(userName, *recipientDeviceId);
     }
 }
 
@@ -377,11 +377,11 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     shared_ptr<list<string> > idKeys = make_shared<list<string> >();
 
-    list<string> devices;
+    list<StringUnique> devices;
     store_->getLongDeviceIds(user, ownUser_, devices);
 
     for (auto &recipientDeviceId : devices) {
-        auto axoConv = ZinaConversation::loadConversation(ownUser_, user, recipientDeviceId, *store_);
+        auto axoConv = ZinaConversation::loadConversation(ownUser_, user, *recipientDeviceId, *store_);
         errorCode_ = axoConv->getErrorCode();
         if (errorCode_ != SUCCESS || !axoConv->isValid()) { // A database problem when loading the conversation
             errorInfo_ = "Failed to read remote conversation from database";
@@ -400,7 +400,7 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
         if (!axoConv->getDeviceName().empty()) {
             id.append(axoConv->getDeviceName());
         }
-        id.append(":").append(recipientDeviceId);
+        id.append(":").append(*recipientDeviceId);
         snprintf(b64Buffer, 5, ":%d", axoConv->getZrtpVerifyState());
         b64Buffer[4] = '\0';          // make sure it's terminated
         id.append(b64Buffer);
@@ -576,7 +576,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // Get known devices from DB, compare with devices from provisioning server
     // and remove old devices in DB, i.e. devices not longer known to provisioning server
     //
-    list<string> devicesDb;
+    list<StringUnique> devicesDb;
 
     store_->getLongDeviceIds(userName, ownUser_, devicesDb);
 
@@ -584,14 +584,14 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         bool found = false;
 
         for (const auto &device : devices) {
-            if (devIdDb == device.first) {
+            if (*devIdDb == device.first) {
                 found = true;
                 break;
             }
         }
         if (!found) {
-            store_->deleteConversation(userName, devIdDb, ownUser_);
-            LOGGER(INFO, __func__, "Remove device from database: ", devIdDb);
+            store_->deleteConversation(userName, *devIdDb, ownUser_);
+            LOGGER(INFO, __func__, "Remove device from database: ", *devIdDb);
         }
     }
 
