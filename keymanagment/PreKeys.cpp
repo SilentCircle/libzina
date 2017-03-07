@@ -92,20 +92,18 @@ DhKeyPair* PreKeys::parsePreKeyData(const string& data)
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "public")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t b64Length = strlen(b64Buffer);
     b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-    const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
+    const PublicKeyUnique pubKey = EcCurve::decodePoint(binBuffer);
 
     // Here we may check the public curve type and do some code to support different curves and
     // create to correct private key. The serialized public key data contains a curve type id. For
     // the time being use Ec255 (DJB's curve 25519).
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
-    const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
+    const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
     cJSON_Delete(root);
 
     DhKeyPair* keyPair = new DhKeyPair(*pubKey, *privKey);
-    delete pubKey;
-    delete privKey;
 
     LOGGER(DEBUGGING, __func__, " <--");
     return keyPair;

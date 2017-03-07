@@ -61,7 +61,7 @@ static void hexdump(const char* title, const string& in)
     masterSecret = HASH(DH(A, B0) || DH(A0, B) || DH(A0, B0))
 */
 int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
-                                                    int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys,
+                                                    int32_t bobPreKeyId, pair<PublicKeyUnique, PublicKeyUnique>& bobKeys,
                                                     SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
@@ -110,8 +110,8 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));    // Alice's Identity key pair
     const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);   // generate Alice's pre-key
 
-    const DhPublicKey* B = bobKeys.first;       // Bob's identity key, public part
-    const DhPublicKey* B0 = bobKeys.second;     // Bob's pre-key, public part
+    const DhPublicKey* B = bobKeys.first.release();       // Bob's identity key, public part
+    const DhPublicKey* B0 = bobKeys.second.release();     // Bob's pre-key, public part
 
     uint8_t masterSecret[EcCurveTypes::Curve25519KeyLength*3];
 

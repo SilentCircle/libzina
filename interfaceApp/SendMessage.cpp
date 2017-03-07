@@ -617,7 +617,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
         return sendMessageExisting(sendInfo, zinaConversation);
     }
 
-    pair<const DhPublicKey*, const DhPublicKey*> preIdKeys;
+    pair<PublicKeyUnique, PublicKeyUnique> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, authorization_, &preIdKeys);
     if (preKeyId == 0) {
         LOGGER(ERROR, "No pre-key bundle available for recipient ", sendInfo.queueInfo_recipient, ", device id: ", sendInfo.queueInfo_deviceId);
@@ -631,8 +631,6 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
 
     // This is always a security issue: return immediately, don't process and send a message
     if (buildResult != SUCCESS) {
-        delete preIdKeys.first;
-        delete preIdKeys.second;
         errorCode_ = buildResult;
         errorInfo_ = sendInfo.queueInfo_deviceId;
         getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);

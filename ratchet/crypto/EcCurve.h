@@ -107,13 +107,16 @@ public:
      * @param bytes the serialized bytes of the public key
      * @return The public key object or @c NULL if serialized data is wrong.
      */
-    static const DhPublicKey* decodePoint(const uint8_t* bytes);
+    static PublicKeyUnique decodePoint(const uint8_t* bytes);
 
-    static const DhPrivateKey* decodePrivatePoint(const std::string& data, int32_t type = EcCurveTypes::Curve25519) {
+    static PrivateKeyUnique decodePrivatePoint(const uint8_t* bytes, size_t length,
+                                                         int32_t type = EcCurveTypes::Curve25519) {
+        return PrivateKeyUnique(new Ec255PrivateKey(bytes));
+    }
+
+    static PrivateKeyUnique decodePrivatePoint(const std::string& data, int32_t type = EcCurveTypes::Curve25519) {
         return decodePrivatePoint((const uint8_t*)data.data(), data.size(), type);
     }
-    static const DhPrivateKey* decodePrivatePoint(const uint8_t* bytes, size_t length,
-                                                  int32_t type = EcCurveTypes::Curve25519) {return new Ec255PrivateKey(bytes);}
 
 };
 }  // namespace

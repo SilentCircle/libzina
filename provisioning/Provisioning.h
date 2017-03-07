@@ -74,8 +74,8 @@ public:
      *                  parte as the second member.
      * @return a pre-key id or @c 0 on failure
      */
-    static int32_t getPreKeyBundle(const string& name, const string& longDevId, const string& authorization, 
-                                   pair< const DhPublicKey*, const DhPublicKey* >* preIdKeys );
+    static int32_t getPreKeyBundle(const string& name, const string& longDevId, const string& authorization,
+                                   pair<PublicKeyUnique, PublicKeyUnique>* preIdKeys );
 
     /**
      * @brief Get number of available pre-keys on the server.

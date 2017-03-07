@@ -216,25 +216,23 @@ void ZinaConversation::deserialize(const std::string& data)
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
+        const PublicKeyUnique pubKey = EcCurve::decodePoint(binBuffer);
 
         // Here we may check the public curve type and do some code to support different curves and
         // create to correct private key. The serilaized public key data contain a curve type id. For
         // the time being use Ec255 (DJB's curve 25519).
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
         binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
-        const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
+        const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
         DHRs = new DhKeyPair(*pubKey, *privKey);
-        delete pubKey;
-        delete privKey;
     }
 
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "DHRr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        DHRr = EcCurve::decodePoint(binBuffer);
+        DHRr = EcCurve::decodePoint(binBuffer).release();
     }
 
     // Get the DHIs key pair
@@ -243,21 +241,19 @@ void ZinaConversation::deserialize(const std::string& data)
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
+        const PublicKeyUnique pubKey = EcCurve::decodePoint(binBuffer);
 
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
         binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
-        const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
+        const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
         DHIs = new DhKeyPair(*pubKey, *privKey);
-        delete pubKey;
-        delete privKey;
     }
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "DHIr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        DHIr = EcCurve::decodePoint(binBuffer);
+        DHIr = EcCurve::decodePoint(binBuffer).release();
     }
 
     // Get the A0 key pair
@@ -266,15 +262,13 @@ void ZinaConversation::deserialize(const std::string& data)
     if (b64Length > 0) {
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "public")->valuestring, b64Length+1);
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        const DhPublicKey* pubKey = EcCurve::decodePoint(binBuffer);
+        const PublicKeyUnique pubKey = EcCurve::decodePoint(binBuffer);
 
         strncpy(b64Buffer, cJSON_GetObjectItem(jsonItem, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
         binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
-        const DhPrivateKey* privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
+        const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
         A0 = new DhKeyPair(*pubKey, *privKey);
-        delete pubKey;
-        delete privKey;
     }
 
     // Get CKs b64 string, decode and store

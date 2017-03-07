@@ -115,17 +115,17 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
     string keyData(data, keyLength);
 
     data += keyLength;
-    const DhPublicKey* remoteIdKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
+    PublicKeyUnique remoteIdKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
 
     int32_t cmp = memcmp(localIdKey->getPublicKey().getPublicKeyPointer(), remoteIdKey->getPublicKeyPointer(), localIdKey->getPublicKey().getSize());
     staging->setRole((cmp < 0) ? Alice : Bob);
-    staging->setRemoteIdKey(remoteIdKey);
+    staging->setRemoteIdKey(remoteIdKey.release());
 
     // Now the remote ratchet key
     keyLength = static_cast<size_t>(*data++);
     keyData = string(data, keyLength);
-    const DhPublicKey* remoteRatchetKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
-    staging->setRemoteRatchetKey(remoteRatchetKey);
+    PublicKeyUnique remoteRatchetKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
+    staging->setRemoteRatchetKey(remoteRatchetKey.release());
 
     lck.unlock();
     LOGGER(DEBUGGING, __func__, " <--");

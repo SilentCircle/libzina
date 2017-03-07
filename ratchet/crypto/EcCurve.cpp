@@ -116,15 +116,15 @@ int32_t EcCurve::calculateAgreement(const DhPublicKey& publicKey, const DhPrivat
 //     return NO_SUCH_CURVE;
 // }
 // 
-const DhPublicKey* EcCurve::decodePoint(const uint8_t* bytes) 
+PublicKeyUnique EcCurve::decodePoint(const uint8_t* bytes)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     int32_t type = *bytes & 0xFF;
 
     if (type == EcCurveTypes::Curve25519) {
         LOGGER(DEBUGGING, __func__, " <--");
-        return new Ec255PublicKey(bytes+1);
+        return PublicKeyUnique(new Ec255PublicKey(bytes+1));
     }
     LOGGER(WARNING, __func__, " <-- unsupported curve type");
-    return NULL;
+    return PublicKeyUnique(nullptr);
 }

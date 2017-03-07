@@ -29,6 +29,7 @@ limitations under the License.
 
 #include <stdint.h>
 #include <string>
+#include <memory>
 
 namespace zina {
 class DhPublicKey
@@ -87,6 +88,7 @@ public:
     virtual const uint8_t* getPublicKeyPointer() const = 0;
 
 };
+typedef std::unique_ptr<const DhPublicKey> PublicKeyUnique;
 } // namespace
 
 /**

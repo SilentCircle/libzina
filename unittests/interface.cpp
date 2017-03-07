@@ -164,7 +164,7 @@ TEST(PreKeyBundle, Basic)
     ScProvisioning::setHttpHelper(helper1);
 
 
-    pair< const DhPublicKey*, const DhPublicKey* > preIdKeys;
+    pair<PublicKeyUnique, PublicKeyUnique> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(bob, bobDevId, bobAuth, &preIdKeys);
     
     ASSERT_EQ(bobPreKey.first, preKeyId);

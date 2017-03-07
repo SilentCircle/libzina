@@ -69,7 +69,7 @@ public:
      * @return @c OK or an error code
      */
     static int32_t setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
-                                          int32_t bobPreKeyId, pair<const DhPublicKey*, const DhPublicKey*> bobKeys,
+                                          int32_t bobPreKeyId, pair<PublicKeyUnique, PublicKeyUnique>& bobKeys,
                                           SQLiteStoreConv &store);
 
     /**

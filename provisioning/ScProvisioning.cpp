@@ -84,7 +84,7 @@ int32_t Provisioning::removeZinaDevice(const string& scClientDevId, const string
 static const char* getPreKeyRequest = "/v1/user/%s/device/%s/?api_key=%s";
 
 int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevId, const string& authorization,
-                                      pair<const DhPublicKey*, const DhPublicKey*>* preIdKeys)
+                                      pair<PublicKeyUnique, PublicKeyUnique>* preIdKeys)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -129,13 +129,13 @@ int32_t Provisioning::getPreKeyBundle(const string& name, const string& longDevI
     string pkyPub(cJSON_GetObjectItem(pky, "key")->valuestring);
 
     b64Decode(pkyPub.data(), pkyPub.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
-    const DhPublicKey* prePublic = EcCurve::decodePoint(pubKeyBuffer);
+    PublicKeyUnique prePublic = EcCurve::decodePoint(pubKeyBuffer);
 
     b64Decode(identity.data(), identity.size(), pubKeyBuffer, MAX_KEY_BYTES_ENCODED);
-    const DhPublicKey *identityKey = EcCurve::decodePoint(pubKeyBuffer);
+    PublicKeyUnique identityKey = EcCurve::decodePoint(pubKeyBuffer);
 
-    preIdKeys->first = identityKey;
-    preIdKeys->second = prePublic;
+    preIdKeys->first = move(identityKey);
+    preIdKeys->second = move(prePublic);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return pkyId;

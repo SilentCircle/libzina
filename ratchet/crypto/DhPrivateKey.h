@@ -26,6 +26,7 @@ limitations under the License.
 
 #include <stdint.h>
 #include <string>
+#include <memory>
 
 namespace zina {
 class DhPrivateKey
@@ -70,6 +71,8 @@ public:
     virtual const uint8_t* privateData() const = 0;
 
 };
+typedef std::unique_ptr<const DhPrivateKey> PrivateKeyUnique;
+
 } // namespace
 
 /**
