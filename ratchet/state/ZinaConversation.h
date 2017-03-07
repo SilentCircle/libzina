@@ -106,7 +106,10 @@ public:
                                       const string& userOld, const string& userNew, const string& deviceId);
 #endif
     /**
-     * @brief Store this conversation in persitent store
+     * @brief Store this conversation in persistent store.
+     *
+     * @param store In which store to persist the data
+     * @return A SQLite code
      */
     int32_t storeConversation(SQLiteStoreConv &store);
 

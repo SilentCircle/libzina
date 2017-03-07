@@ -68,8 +68,7 @@ int32_t ZinaConversation::storeConversation(SQLiteStoreConv &store)
 
     const string* data = serialize();
 
-    int32_t result;
-    store.storeConversation(partner_.getName(), deviceId_, localUser_, *data, &result);
+    int32_t result= store.storeConversation(partner_.getName(), deviceId_, localUser_, *data);
     memset_volatile((void*)data->data(), 0, data->size());
 
     delete data;

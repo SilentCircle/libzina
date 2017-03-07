@@ -147,9 +147,9 @@ public:
     /**
      * @brief Return the SQLite code of the last SQLite function.
      * 
-     * Many functions interally use SQLite which may return an SQLite error.
+     * Many functions internally use SQLite which may return an SQLite error.
      * In this case the functions store the SQLite code and the caller can
-     * check if all operations were successfull. 
+     * check if all operations were successful.
      */
     int32_t getSqlCode() const {return sqlCode_;}
 
@@ -196,13 +196,13 @@ public:
     // ***** Conversation store
     string* loadConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
 
-    void storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data, int32_t* sqlCode = NULL);
+    int32_t storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data);
 
     bool hasConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL) const;
 
-    void deleteConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode = NULL);
+    int32_t deleteConversation(const string& name, const string& longDevId, const string& ownName);
 
-    void deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode = NULL);
+    int32_t deleteConversationsName(const string& name, const string& ownName);
 
     // ***** staged message keys store
     int32_t loadStagedMks(const string& name, const string& longDevId, const string& ownName, list<string> &keys) const;

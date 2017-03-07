@@ -263,6 +263,7 @@ void SipTransport::notifyAxo(uint8_t* data, size_t length)
     // If we saw a new device or the number of reported and known devices differs the user
     // added or removed a device, re-scan devices
     if (newDevice || numKnownDevices != numReportedDevices) {
+        LOGGER(INFO, __func__, " Calling notify callback for: ", name, ", device: ", devIdsSave);
         appInterface_->notifyCallback_(AppInterface::DEVICE_SCAN, name, devIdsSave);
     }
     LOGGER(DEBUGGING, __func__, " <--");

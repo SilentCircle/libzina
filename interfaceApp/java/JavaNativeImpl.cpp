@@ -1193,8 +1193,7 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
         Log("Removing Axolotl conversation data for '%s'\n", dataContainer.c_str());
 
         SQLiteStoreConv* store = zinaAppInterface->getStore();
-        int32_t sqlResult = 0;
-        store->deleteConversationsName(dataContainer, zinaAppInterface->getOwnUser(), &sqlResult);
+        int32_t sqlResult = store->deleteConversationsName(dataContainer, zinaAppInterface->getOwnUser());
 
         Log("Removing Zina conversation data for '%s' returned %d\n", dataContainer.c_str(), sqlResult);
         if (SQL_FAIL(sqlResult)) {

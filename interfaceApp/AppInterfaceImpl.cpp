@@ -425,8 +425,8 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
         return;
     }
     conv->reset();
-    conv->storeConversation(*store_);
-    if (conv->getErrorCode() != SUCCESS) {
+    int32_t result = conv->storeConversation(*store_);
+    if (result != SUCCESS) {
         return;
     }
 

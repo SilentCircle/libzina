@@ -520,11 +520,11 @@ TEST_F(StoreTestFixture, GroupChatStore)
 
     // Add a ratchet conversation for the member, use some dummy data. Keys are
     // important here
-    pks->storeConversation(memberId_1, deviceId_1, ownName, attrib, &result);
+    result = pks->storeConversation(memberId_1, deviceId_1, ownName, attrib);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // Add ratchet conversation for a second member
-    pks->storeConversation(memberId_2, deviceId_2, ownName, attrib, &result);
+    result = pks->storeConversation(memberId_2, deviceId_2, ownName, attrib);
     ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
 
     // Add a group member.
@@ -656,7 +656,7 @@ TEST_F(StoreTestFixture, GroupChatStore)
     ASSERT_FALSE((bool)group);
 
     // Delete conversation of the group member, must succeed now
-    pks->deleteConversation(memberId_1, deviceId_1, ownName, &result);
+    result = pks->deleteConversation(memberId_1, deviceId_1, ownName);
     ASSERT_FALSE(SQL_FAIL(result));
 }
 

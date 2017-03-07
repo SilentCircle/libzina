@@ -662,7 +662,7 @@ cleanup:
     return data;
 }
 
-void SQLiteStoreConv::storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data, int32_t* sqlCode)
+int32_t SQLiteStoreConv::storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
@@ -717,11 +717,10 @@ void SQLiteStoreConv::storeConversation(const string& name, const string& longDe
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     lck.unlock();
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
 bool SQLiteStoreConv::hasConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode) const 
@@ -762,7 +761,7 @@ cleanup:
     return retVal;
 }
 
-void SQLiteStoreConv::deleteConversation(const string& name, const string& longDevId, const string& ownName, int32_t* sqlCode)
+int32_t SQLiteStoreConv::deleteConversation(const string& name, const string& longDevId, const string& ownName)
 {
     sqlite3_stmt *stmt = NULL;
     int32_t sqlResult;
@@ -791,13 +790,12 @@ void SQLiteStoreConv::deleteConversation(const string& name, const string& longD
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
-void SQLiteStoreConv::deleteConversationsName(const string& name, const string& ownName, int32_t* sqlCode)
+int32_t SQLiteStoreConv::deleteConversationsName(const string& name, const string& ownName)
 {
     sqlite3_stmt *stmt = nullptr;
     int32_t sqlResult;
@@ -817,10 +815,9 @@ void SQLiteStoreConv::deleteConversationsName(const string& name, const string& 
 
 cleanup:
     sqlite3_finalize(stmt);
-    if (sqlCode != NULL)
-        *sqlCode = sqlResult;
     sqlCode_ = sqlResult;
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+    return sqlResult;
 }
 
 int32_t SQLiteStoreConv::loadStagedMks(const string& name, const string& longDevId, const string& ownName, list<string> &keys) const
