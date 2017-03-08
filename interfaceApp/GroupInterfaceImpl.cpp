@@ -944,7 +944,7 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
 
     const string msgId = generateMsgIdTime();
 
-    queueGroupMessageToSingleUserDevice(userId, groupId, msgId, deviceId, newAttributes, msg, msgType);
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, 0, false);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
@@ -982,35 +982,6 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
 
     LOGGER(DEBUGGING, __func__, " <--");
     return OK;
-}
-
-void AppInterfaceImpl::queueGroupMessageToSingleUserDevice(const string &userId, const string &groupId,
-                                                           const string &msgId, const string &deviceId,
-                                                           const string &attributes, const string &msg, int32_t msgType)
-{
-    LOGGER(DEBUGGING, __func__, " --> ");
-
-    int64_t transportMsgId;
-    ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
-
-    // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
-    transportMsgId &= ~0xff;
-
-    auto msgInfo = new CmdQueueInfo;
-    msgInfo->command = SendMessage;
-    msgInfo->queueInfo_recipient = userId;
-    msgInfo->queueInfo_deviceName = Empty;                      // Not relevant in this case, we send to a known user
-    msgInfo->queueInfo_deviceId = deviceId;                     // to this user device
-    msgInfo->queueInfo_msgId = msgId;
-    msgInfo->queueInfo_message = createMessageDescriptor(groupId, msgId, msg);
-    msgInfo->queueInfo_attachment = Empty;
-    msgInfo->queueInfo_attributes = attributes;              // message attributes
-    msgInfo->queueInfo_transportMsgId = transportMsgId | static_cast<uint64_t>(msgType);
-    msgInfo->queueInfo_toSibling = userId == getOwnUser();
-    msgInfo->queueInfo_newUserDevice = false;                   // known user, known device
-    addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
-
-    LOGGER(DEBUGGING, __func__, " <-- ");
 }
 
 void AppInterfaceImpl::clearGroupData()

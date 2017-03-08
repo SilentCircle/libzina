@@ -456,7 +456,7 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
     }
 
     queueMessageToSingleUserDevice(command.queueInfo_recipient, generateMsgIdTime(), command.queueInfo_deviceId,
-                                   deviceName, ping, Empty, MSG_NORMAL, 0, true);
+                                   deviceName, ping, Empty, MSG_CMD, 0, true);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return;
@@ -643,7 +643,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         }
 
         LOGGER(INFO, __func__, "Send Ping to new found device: ", deviceId);
-        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_NORMAL, counter, true);
+        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_CMD, counter, true);
         counter++;
 
         LOGGER(DEBUGGING, "Queued message to ping a new device.");
@@ -670,7 +670,7 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
     msgInfo->queueInfo_deviceName = deviceName;
     msgInfo->queueInfo_deviceId = deviceId;                     // to this user device
     msgInfo->queueInfo_msgId = msgId;
-    msgInfo->queueInfo_message = createMessageDescriptor(userId, msgId, msg);
+    msgInfo->queueInfo_message = msg;
     msgInfo->queueInfo_attachment = Empty;                      // No attachments
     msgInfo->queueInfo_attributes = attributes;                 // message attributes
     msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | static_cast<uint64_t>(msgType);

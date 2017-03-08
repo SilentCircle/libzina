@@ -1010,7 +1010,7 @@ int32_t AppInterfaceImpl::groupSyncSibling(const string &groupId, const string &
     }
     const string msgId = generateMsgIdTime();
 
-    queueGroupMessageToSingleUserDevice(getOwnUser(), groupId, msgId, deviceId, attributes, Empty, GROUP_MSG_CMD);
+    queueMessageToSingleUserDevice(getOwnUser(), msgId, deviceId, Empty, attributes, Empty, GROUP_MSG_CMD, 0, false);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;

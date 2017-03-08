@@ -78,7 +78,7 @@ bool AppInterfaceImpl::isCommand(int32_t msgType, const string& attributes)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    if (msgType == GROUP_MSG_CMD || msgType >= MSG_CMD)
+    if (msgType == GROUP_MSG_CMD || msgType == MSG_CMD)
         return true;
 
     if (attributes.empty())

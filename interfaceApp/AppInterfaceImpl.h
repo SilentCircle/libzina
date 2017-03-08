@@ -750,9 +750,6 @@ private:
      */
     static shared_ptr<vector<uint64_t> > extractTransportIds(list<shared_ptr<PreparedMessageData> >* data);
 
-    void queueGroupMessageToSingleUserDevice(const string &userId, const string &groupId, const string &msgId, const string &deviceId,
-                                             const string &command, const string &msg, int32_t msgType);
-
     void queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
                                         const string &deviceName, const string &attributes, const string &msg,
                                         int32_t msgType, int64_t counter, bool newDevice);
