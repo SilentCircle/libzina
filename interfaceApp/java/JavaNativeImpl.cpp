@@ -31,7 +31,6 @@ limitations under the License.
 #include "../../dataRetention/ScDataRetention.h"
 #include "../JsonStrings.h"
 #include "../../util/Utilities.h"
-#include "../../storage/sqlite/SQLiteStoreConv.h"
 
 using namespace zina;
 using namespace std;
@@ -70,7 +69,6 @@ static JavaVM* javaVM = NULL;
 // Set in doInit(...)
 static jobject zinaCallbackObject = NULL;
 static jmethodID receiveMessageCallback = NULL;
-static jmethodID storeMessageCallback = NULL;
 static jmethodID stateReportCallback = NULL;
 static jmethodID httpHelperCallback = NULL;
 static jmethodID javaNotifyCallback = NULL;
@@ -104,6 +102,8 @@ void Log(char const *format, ...) {
 // names, devIds, envelopes, sizes, msgIds
 static bool sendDataFuncTesting(uint8_t* names, uint8_t* devIds, uint8_t* envelopes, size_t sizes, uint64_t msgIds)
 {
+    (void)msgIds;
+
     Log("sendData: %s - %s - %s\n", names, devIds, envelopes);
 
     string fName((const char*)names);
@@ -254,49 +254,6 @@ static int32_t receiveMessage(const string& messageDescriptor, const string& att
         }
     }
     int32_t result = env->CallIntMethod(zinaCallbackObject, receiveMessageCallback, message, attachment, attributes);
-
-    env->DeleteLocalRef(message);
-    if (attachment != NULL)
-        env->DeleteLocalRef(attachment);
-    if (attributes != NULL)
-        env->DeleteLocalRef(attributes);
-
-    return result;
-}
-
-/*
- * Store message data callback for AppInterfaceImpl.
- *
- * "([B[B[B)I"
- */
-static int32_t storeMessageData(const string& messageDescriptor, const string& attachmentDescriptor = string(), const string& messageAttributes = string())
-{
-    if (zinaCallbackObject == NULL)
-        return -1;
-
-    CTJNIEnv jni;
-    JNIEnv *env = jni.getEnv();
-    if (!env)
-        return -2;
-
-    jbyteArray message = stringToArray(env, messageDescriptor);
-    Log("storeMessageData - message: '%s' - length: %d", messageDescriptor.c_str(), messageDescriptor.size());
-
-    jbyteArray attachment = NULL;
-    if (!attachmentDescriptor.empty()) {
-        attachment = stringToArray(env, attachmentDescriptor);
-        if (attachment == NULL) {
-            return -4;
-        }
-    }
-    jbyteArray attributes = NULL;
-    if (!messageAttributes.empty()) {
-        attributes = stringToArray(env, messageAttributes);
-        if (attributes == NULL) {
-            return -4;
-        }
-    }
-    int32_t result = env->CallIntMethod(zinaCallbackObject, storeMessageCallback, message, attachment, attributes);
 
     env->DeleteLocalRef(message);
     if (attachment != NULL)
@@ -1861,6 +1818,7 @@ JNIEXPORT jint JNICALL
 JNI_FUNCTION(requestGroupsSync)(JNIEnv* env, jclass clazz)
 {
     (void)clazz;
+    (void)env;
 
     if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
@@ -3441,6 +3399,8 @@ JNI_FUNCTION(isDrEnabled)(JNIEnv * env, jclass clazz)
 JNIEXPORT jboolean JNICALL
 JNI_FUNCTION(isDrEnabledForUser)(JNIEnv * env, jclass clazz, jstring user)
 {
+    (void)clazz;
+
     bool enabled = false;
 
     const char* userTemp = env->GetStringUTFChars(user, 0);
