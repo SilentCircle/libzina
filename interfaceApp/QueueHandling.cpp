@@ -99,6 +99,9 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
                         }
                         LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
                     }
+                    if (cmdInfo->queueInfo_callbackAction != NoAction) {
+                        obj->sendActionCallback(static_cast<SendCallbackAction>(cmdInfo->queueInfo_callbackAction));
+                    }
 #else
                     result = cmdInfo->queueInfo_newUserDevice ? testIf_->sendMessageNewUser(*cmdInfo)
                                                               : testIf_->sendMessageExisting(*cmdInfo);
@@ -108,6 +111,9 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
                                                           createSendErrorJson(*cmdInfo, result));
                         }
                         LOGGER(ERROR, __func__, " Failed to send a message, error code: ", result);
+                    }
+                    if (cmdInfo->queueInfo_callbackAction != NoAction) {
+                        testIf_->sendActionCallback(static_cast<SendCallbackAction>(cmdInfo->queueInfo_callbackAction));
                     }
 #endif
                 }
@@ -132,8 +138,8 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
                     obj->setIdKeyVerifiedCommand(*cmdInfo);
                     break;
 
-                case ReSyncDeviceConversation:
-                    obj->reSyncConversationCommand(*cmdInfo);
+                case ReKeyDevice:
+                    obj->reKeyDeviceCommand(*cmdInfo);
                     break;
 
                 case ReScanUserDevices:

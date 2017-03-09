@@ -25,11 +25,24 @@ limitations under the License.
 #include "../util/Utilities.h"
 
 #include <cryptcommon/ZrtpRandom.h>
+#include <condition_variable>
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
 
 using namespace zina;
+
+// Locks, conditional variables and flags to synchronize the functions to re-key a device
+// conversation (ratchet context) and to re-scan devices.
+static mutex reKeyLock;
+static bool reKeyDone;
+
+static mutex reScanLock;
+static bool reScanDone;
+
+static mutex synchronizeLock;
+static condition_variable synchronizeCv;
+
 
 static string requestGroupSyncCommand(const string& deviceId)
 {
@@ -235,11 +248,20 @@ void AppInterfaceImpl::rescanUserDevices(string& userName)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
+    // Only _one_ re-scan command at a time because we check on one Done condition only
+    unique_lock<mutex> reScan(reScanLock);
+    reScanDone = false;
+
     auto msgInfo = new CmdQueueInfo;
     msgInfo->command = ReScanUserDevices;
     msgInfo->queueInfo_recipient = userName;
+
+    unique_lock<mutex> syncCv(synchronizeLock);
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
+    while (!reScanDone) {
+        synchronizeCv.wait(syncCv);
+    }
     LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
@@ -265,11 +287,11 @@ void AppInterfaceImpl::reKeyAllDevices(string &userName) {
     }
     store_->getLongDeviceIds(userName, ownUser_, devices);
     for (auto &recipientDeviceId : devices) {
-        reSyncConversation(userName, *recipientDeviceId);
+        reKeyDevice(userName, *recipientDeviceId);
     }
 }
 
-void AppInterfaceImpl::reSyncConversation(const string &userName, const string& deviceId) {
+void AppInterfaceImpl::reKeyDevice(const string &userName, const string &deviceId) {
     LOGGER(DEBUGGING, __func__, " -->");
 
     if (!store_->isReady()) {
@@ -281,12 +303,23 @@ void AppInterfaceImpl::reSyncConversation(const string &userName, const string& 
     if (toSibling && deviceId == scClientDevId_) {
         return;
     }
+
+    // Only _one_ re-key command at a time because we check on one Done condition only
+    unique_lock<mutex> reKey(reKeyLock);
+    reKeyDone = false;
+
     auto msgInfo = new CmdQueueInfo;
-    msgInfo->command = ReSyncDeviceConversation;
+    msgInfo->command = ReKeyDevice;
     msgInfo->queueInfo_recipient = userName;
     msgInfo->queueInfo_deviceId = deviceId;
     msgInfo->boolData1 = toSibling;
+
+    unique_lock<mutex> syncCv(synchronizeLock);
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
+
+    while (!reKeyDone) {
+        synchronizeCv.wait(syncCv);
+    }
 
     LOGGER(DEBUGGING, __func__, " <--");
     return;
@@ -412,35 +445,40 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
 }
 
 
-void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
+void AppInterfaceImpl::reKeyDeviceCommand(const CmdQueueInfo &command) {
     LOGGER(DEBUGGING, __func__, " -->");
 
     if (!store_->isReady()) {
         LOGGER(ERROR, __func__, " ZINA conversation DB not ready.");
+        sendActionCallback(ReKeyAction);
         return;
     }
     // clear data and store the nearly empty conversation
     shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command.queueInfo_recipient, command.queueInfo_deviceId, *store_);
     if (!conv->isValid()) {
+        sendActionCallback(ReKeyAction);
         return;
     }
     conv->reset();
     int32_t result = conv->storeConversation(*store_);
     if (result != SUCCESS) {
+        sendActionCallback(ReKeyAction);
         return;
     }
 
     // Check if server still knows this device.
     // If no device at all for his user -> remove all conversations (ratchet contexts) of this user.
     list<pair<string, string> > devices;
-    int32_t errorCode = Provisioning::getZinaDeviceIds(command.queueInfo_recipient, authorization_, devices);
+    result = Provisioning::getZinaDeviceIds(command.queueInfo_recipient, authorization_, devices);
 
-    if (errorCode != SUCCESS || devices.empty()) {
+    if (result != SUCCESS || devices.empty()) {
         store_->deleteConversationsName(command.queueInfo_recipient, ownUser_);
+        sendActionCallback(ReKeyAction);
         return;
     }
-    bool deviceFound = false;
+
     string deviceName;
+    bool deviceFound = false;
     for (const auto &device : devices) {
         if (command.queueInfo_deviceId == device.first) {
             deviceName = device.second;
@@ -452,12 +490,11 @@ void AppInterfaceImpl::reSyncConversationCommand(const CmdQueueInfo &command) {
     // The server does not know this device anymore. In this case remove the conversation (ratchet context), done.
     if (!deviceFound) {
         store_->deleteConversation(command.queueInfo_recipient, command.queueInfo_deviceId, ownUser_);
+        sendActionCallback(ReKeyAction);
         return;
     }
-
     queueMessageToSingleUserDevice(command.queueInfo_recipient, generateMsgIdTime(), command.queueInfo_deviceId,
-                                   deviceName, ping, Empty, MSG_CMD, 0, true);
-
+                                   deviceName, ping, Empty, MSG_CMD, 0, true, ReKeyAction);
     LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
@@ -570,6 +607,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     int32_t errorCode = Provisioning::getZinaDeviceIds(userName, authorization_, devices);
 
     if (errorCode != SUCCESS || devices.empty()) {
+        sendActionCallback(ReScanAction);
         return;
     }
 
@@ -609,9 +647,12 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // The transport id is structured: bits 0..3 are status/type bits, bits 4..7 is a counter, bits 8..63 random data
     transportMsgId &= ~0xff;
 
+    string deviceId;
+    string deviceName;
+
     for (const auto &device : devices) {
-        const string& deviceId = device.first;
-        const string& deviceName = device.second;
+        deviceId = device.first;
+        deviceName = device.second;
 
         // Don't re-scan own device, just check if name changed
         bool toSibling = userName == ownUser_;
@@ -643,18 +684,32 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         }
 
         LOGGER(INFO, __func__, "Send Ping to new found device: ", deviceId);
-        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_CMD, counter, true);
+        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_CMD,
+                                       counter, true, NoAction);
         counter++;
 
         LOGGER(DEBUGGING, "Queued message to ping a new device.");
     }
-    LOGGER(DEBUGGING, __func__, " <--");
+    // If we found at least on new device: re-send the Ping to the last device found with a callback action,
+    // then return, send callback function handles unlock/synchronize actions. Sending a Ping a second time does
+    // not do any harm. We do this to signal: done with rescanning devices.
+    if (counter > 0) {
+        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_CMD,
+                                       counter, true, ReScanAction);
+        LOGGER(DEBUGGING, __func__, " <--");
+        return;
+    }
+
+    // No new devices found, unlock/sync and return
+    sendActionCallback(ReScanAction);
+    LOGGER(DEBUGGING, __func__, " <-- no re-scan necessary");
     return;
 }
 
 void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
                                                       const string &deviceName, const string &attributes,
-                                                      const string &msg, int32_t msgType, int64_t counter, bool newDevice)
+                                                      const string &msg, int32_t msgType, int64_t counter, bool newDevice,
+                                                      SendCallbackAction sendCallbackAction)
 {
     LOGGER(DEBUGGING, __func__, " --> ");
 
@@ -676,6 +731,7 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
     msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | static_cast<uint64_t>(msgType);
     msgInfo->queueInfo_toSibling = userId == getOwnUser();
     msgInfo->queueInfo_newUserDevice = newDevice;
+    msgInfo->queueInfo_callbackAction = sendCallbackAction;
     addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo>(msgInfo));
 
     LOGGER(DEBUGGING, __func__, " <-- ");
@@ -696,8 +752,31 @@ int32_t AppInterfaceImpl::requestGroupsSync()
         if (device.first == getOwnDeviceId()) {
             continue;
         }
-        queueMessageToSingleUserDevice(getOwnUser(), generateMsgIdTime(), device.first, Empty, requestCmd, Empty, GROUP_MSG_CMD, 0, false);
+        queueMessageToSingleUserDevice(getOwnUser(), generateMsgIdTime(), device.first, Empty, requestCmd, Empty,
+                                       GROUP_MSG_CMD, 0, false, NoAction);
     }
     return SUCCESS;
+}
+
+void AppInterfaceImpl::sendActionCallback(SendCallbackAction sendCallbackAction)
+{
+    unique_lock<mutex> syncLock(synchronizeLock);
+    switch (sendCallbackAction) {
+        case NoAction:
+            return;
+
+        case ReKeyAction:
+            reKeyDone = true;
+            break;
+
+        case ReScanAction:
+            reScanDone = true;
+            break;
+
+        default:
+            LOGGER(WARNING, __func__, " Unknown send action callback code.");
+            return;
+    }
+    synchronizeCv.notify_one();
 }
 #pragma clang diagnostic pop

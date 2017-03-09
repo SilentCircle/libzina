@@ -1226,7 +1226,7 @@ JNI_FUNCTION(zinaCommand) (JNIEnv* env, jclass clazz, jstring command, jbyteArra
                 deviceId.assign(jsonItem->valuestring);
             }
             if (!userName.empty() && !deviceId.empty()) {
-                zinaAppInterface->reSyncConversation(userName, deviceId);
+                zinaAppInterface->reKeyDevice(userName, deviceId);
             }
         }
         cJSON_Delete(root);

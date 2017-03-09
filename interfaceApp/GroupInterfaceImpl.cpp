@@ -944,7 +944,7 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
 
     const string msgId = generateMsgIdTime();
 
-    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, 0, false);
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, 0, false, NoAction);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;

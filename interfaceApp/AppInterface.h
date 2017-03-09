@@ -307,9 +307,9 @@ public:
     virtual void reKeyAllDevices(string& userName) = 0;
 
     /**
-     * @brief Resynchronize conversation data and status of a remote user's device.
+     * @brief Re-key a device's conversation data (ratchet context).
      *
-     * Resynchronizes a conversation if it still exists on the server.
+     * Re-keys a conversation if it still exists on the server.
      * The function clears the key material and the conversation status. To create
      * new key material and status it's necessary to fetch a new pre-key of the
      * user and setup a new set of keys and status data.
@@ -318,7 +318,7 @@ public:
      * @param deviceId the user's device
      *
      */
-    virtual void reSyncConversation(const string& userName, const string& deviceId) = 0;
+    virtual void reKeyDevice(const string &userName, const string &deviceId) = 0;
 
     /**
      * @brief Set Identity key changed flag.

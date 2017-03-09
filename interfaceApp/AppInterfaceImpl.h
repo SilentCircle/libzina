@@ -47,7 +47,7 @@ typedef enum CmdQueueCommands_ {
     CheckForRetry,
     CheckRemoteIdKey,
     SetIdKeyChangeFlag,
-    ReSyncDeviceConversation,
+    ReKeyDevice,
     ReScanUserDevices
 } CmdQueueCommands;
 
@@ -67,6 +67,12 @@ typedef struct CmdQueueInfo_ {
     bool boolData2;
 } CmdQueueInfo;
 
+typedef enum sendCallbackAction_ {
+    NoAction = 0,
+    ReKeyAction,
+    ReScanAction
+} SendCallbackAction;
+
 // Define useful names/aliases for the CmdQueueInfo structure, send message operation
 #define queueInfo_recipient     stringData1
 #define queueInfo_deviceId      stringData2
@@ -76,6 +82,7 @@ typedef struct CmdQueueInfo_ {
 #define queueInfo_attachment    stringData6
 #define queueInfo_attributes    stringData7
 #define queueInfo_transportMsgId uint64Data
+#define queueInfo_callbackAction int32Data
 #define queueInfo_toSibling     boolData1
 #define queueInfo_newUserDevice boolData2
 
@@ -146,7 +153,7 @@ public:
 
     void reKeyAllDevices(string &userName);
 
-    void reSyncConversation(const string& userName, const string& deviceId);
+    void reKeyDevice(const string &userName, const string &deviceId);
 
     void setIdKeyVerified(const string& userName, const string& deviceId, bool flag);
 
@@ -679,7 +686,7 @@ private:
 
     void setIdKeyVerifiedCommand(const CmdQueueInfo &command);
 
-    void reSyncConversationCommand(const CmdQueueInfo &command);
+    void reKeyDeviceCommand(const CmdQueueInfo &command);
 
     void rescanUserDevicesCommand(const CmdQueueInfo &command);
 
@@ -752,8 +759,16 @@ private:
 
     void queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
                                         const string &deviceName, const string &attributes, const string &msg,
-                                        int32_t msgType, int64_t counter, bool newDevice);
+                                        int32_t msgType, int64_t counter, bool newDevice,
+                                        SendCallbackAction sendCallbackAction);
 
+
+    /**
+     * @brief Callback function if some action necessary after sending a message.
+     *
+     * @param sendCallbackAction Which action to perform
+     */
+    void sendActionCallback(SendCallbackAction sendCallbackAction);
 
     /**
      * @brief Process group sync data change set.
