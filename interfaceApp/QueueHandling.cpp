@@ -156,7 +156,7 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
 }
 
 shared_ptr<vector<uint64_t> >
-AppInterfaceImpl::extractTransportIds(list<shared_ptr<PreparedMessageData> >* data)
+AppInterfaceImpl::extractTransportIds(list<unique_ptr<PreparedMessageData> >* data)
 {
     auto ids = make_shared<vector<uint64_t> >();
 

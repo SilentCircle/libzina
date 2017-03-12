@@ -185,17 +185,27 @@ public:
 
     int32_t groupMessageRemoved(const string& groupId, const string& messageId);
 
-    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
+    DEPRECATED_ZINA shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
                                                                        const string& attachmentDescriptor,
                                                                        const string& messageAttributes,
                                                                        bool normalMsg, int32_t* result);
 
-    shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
+    DEPRECATED_ZINA shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
                                                                                  const string &attachmentDescriptor,
                                                                                  const string &messageAttributes,
                                                                                  bool normalMsg, int32_t *result);
 
-    int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
+    unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageNormal(const string &messageDescriptor,
+                                                                             const string &attachmentDescriptor,
+                                                                             const string &messageAttributes,
+                                                                             bool normalMsg, int32_t *result);
+
+    unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageSiblings(const string &messageDescriptor,
+                                                                               const string &attachmentDescriptor,
+                                                                               const string &messageAttributes,
+                                                                               bool normalMsg, int32_t *result);
+
+        int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
 
     int32_t removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds);
 
@@ -457,7 +467,7 @@ private:
     void queuePreparedMessage(unique_ptr<CmdQueueInfo> msgInfo);
 
 
-    shared_ptr<list<shared_ptr<PreparedMessageData> > >
+    unique_ptr<list<unique_ptr<PreparedMessageData> > >
     prepareMessageInternal(const string& messageDescriptor,
                            const string& attachmentDescriptor,
                            const string& messageAttributes,
@@ -755,7 +765,7 @@ private:
      * @param data List of prepared message data
      * @return Vector with the transport ids
      */
-    static shared_ptr<vector<uint64_t> > extractTransportIds(list<shared_ptr<PreparedMessageData> >* data);
+    static shared_ptr<vector<uint64_t> > extractTransportIds(list<unique_ptr<PreparedMessageData> >* data);
 
     void queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
                                         const string &deviceName, const string &attributes, const string &msg,

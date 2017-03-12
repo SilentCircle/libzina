@@ -104,6 +104,8 @@ public:
      *      by @c AppInterfaceImpl::getIdentityKeys
      * </ul>
      *
+     * @deprecated use unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageNormal(const string&, const string&, const string&, bool, int32_t*)
+     *
      * @param messageDescriptor      the JSON formatted message descriptor, required
      * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
      *                               shows that not attachment descriptor is available.
@@ -125,8 +127,10 @@ public:
      * This function performs the same actions as the @c prepareMessage function, it only sends
      * the message to the user's sibling devices if such devices are available.
      *
+     * @deprecated use unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageSiblings(const string&, const string&, const string&, bool, int32_t*)
+     *
      * @param messageDescriptor     the JSON formatted message descriptor, required
-
+     *
      * @param attachmentDescriptor  Optional, a string that contains an attachment descriptor. An empty string
      *                              shows that not attachment descriptor is available.
      * @param messageAttributes     Optional, a JSON formatted string that contains message attributes. An empty
@@ -141,6 +145,65 @@ public:
                              const string &attachmentDescriptor,
                              const string &messageAttributes,
                              bool normalMsg, int32_t *result) = 0;
+
+    /**
+     * @brief Prepare a user-to-user message for sending.
+     *
+     * The functions prepares a message and queues it for sending to the receiver' devices.
+     * The function only prpares the message(s) but does not send them. To actually send the
+     * the messages to the device(s) the application needs to call the @c sendPreparedMessage()
+     * function.
+     *
+     * This function may trigger network actions, thus it must not run on the UI thread.
+     *
+     * The function creates a list of PreparedMessage data structures that contain information
+     * for each prepared message:
+     * <ul>
+     * <li> a 64 bit integer which is the transport id of the prepared message. Libzina uses this
+     *      transport id to identify a message in transit (during send) to the server and to report
+     *      a message status to the application. The application must not modify this data and may
+     *      use it to setup a queue to monitor the message status reports.</li>
+     * <li> A string that contains recipient information. The data and format is the same as returned
+     *      by @c AppInterfaceImpl::getIdentityKeys
+     * </ul>
+     *
+     * @param messageDescriptor      the JSON formatted message descriptor, required
+     * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @param result    Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param normalMsg If true then this is a normal message, if false it's a command message
+     * @return A list of prepared message information, or empty on failure
+     */
+    virtual unique_ptr<list<unique_ptr<PreparedMessageData> > >
+    prepareMessageNormal(const string& messageDescriptor,
+                         const string& attachmentDescriptor,
+                         const string& messageAttributes,
+                         bool normalMsg, int32_t* result) = 0;
+
+    /**
+     * @brief Prepare a user-to-user message for sending to its sibling devices.
+     *
+     * This function performs the same actions as the @c prepareMessage function, it only sends
+     * the message to the user's sibling devices if such devices are available.
+     *
+     * @param messageDescriptor     the JSON formatted message descriptor, required
+
+     * @param attachmentDescriptor  Optional, a string that contains an attachment descriptor. An empty string
+     *                              shows that not attachment descriptor is available.
+     * @param messageAttributes     Optional, a JSON formatted string that contains message attributes. An empty
+     *                              string shows that not attributes are available.
+     * @param result    Pointer to result of the operation, if not @c SUCCESS then the returned list is empty
+     * @param normalMsg If true then this is a normal message, if false it's a command message. Messages to
+     *                  siblings are usually commands
+     * @return A list of prepared message information, or empty on failure
+     */
+    virtual unique_ptr<list<unique_ptr<PreparedMessageData> > >
+    prepareMessageSiblings(const string &messageDescriptor,
+                           const string &attachmentDescriptor,
+                           const string &messageAttributes,
+                           bool normalMsg, int32_t *result) = 0;
 
     /**
      * @brief Encrypt the prepared messages and send them to the receiver.

@@ -36,7 +36,15 @@ AppInterfaceImpl::prepareMessage(const string& messageDescriptor,
                                  const string& attachmentDescriptor,
                                  const string& messageAttributes, bool normalMsg, int32_t* result)
 {
-    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, false, normalMsg ? MSG_NORMAL : MSG_CMD, result);
+    auto resultList = prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true,
+                                             normalMsg ? MSG_NORMAL : MSG_CMD, result);
+
+    auto returnList = make_shared<list<shared_ptr<PreparedMessageData> > >();
+    for (; resultList->empty(); resultList->pop_front()) {
+        auto msgData = shared_ptr<PreparedMessageData>(resultList->front().release());
+        returnList->push_back(msgData);
+    }
+    return returnList;
 }
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
@@ -44,7 +52,33 @@ AppInterfaceImpl::prepareMessageToSiblings(const string &messageDescriptor,
                                            const string &attachmentDescriptor,
                                            const string &messageAttributes, bool normalMsg, int32_t *result)
 {
-    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true, normalMsg ? MSG_NORMAL : MSG_CMD, result);
+    auto resultList = prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true,
+                                             normalMsg ? MSG_NORMAL : MSG_CMD, result);
+
+    auto returnList = make_shared<list<shared_ptr<PreparedMessageData> > >();
+    for (; resultList->empty(); resultList->pop_front()) {
+        auto msgData = shared_ptr<PreparedMessageData>(resultList->front().release());
+        returnList->push_back(msgData);
+    }
+    return returnList;
+}
+
+unique_ptr<list<unique_ptr<PreparedMessageData> > >
+AppInterfaceImpl::prepareMessageNormal(const string &messageDescriptor,
+                                       const string &attachmentDescriptor,
+                                       const string &messageAttributes, bool normalMsg, int32_t *result)
+{
+    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, false,
+                                  normalMsg ? MSG_NORMAL : MSG_CMD, result);
+}
+
+unique_ptr<list<unique_ptr<PreparedMessageData> > >
+AppInterfaceImpl::prepareMessageSiblings(const string &messageDescriptor,
+                                         const string &attachmentDescriptor,
+                                         const string &messageAttributes, bool normalMsg, int32_t *result)
+{
+    return prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true,
+                                  normalMsg ? MSG_NORMAL : MSG_CMD, result);
 }
 
 static int32_t
@@ -202,7 +236,7 @@ static uint32_t getAndMaintainRetainInfo(uint64_t id, bool remove)
 #endif
 }
 
-shared_ptr<list<shared_ptr<PreparedMessageData> > >
+unique_ptr<list<unique_ptr<PreparedMessageData> > >
 AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
                                          const string& attachmentDescriptor,
                                          const string& messageAttributes,
@@ -216,7 +250,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
 
     LOGGER(DEBUGGING, __func__, " -->");
 
-    auto messageData = make_shared<list<shared_ptr<PreparedMessageData> > >();
+    unique_ptr<list<unique_ptr<PreparedMessageData> > > messageData(new list<unique_ptr<PreparedMessageData> >);
 
     if (result != nullptr) {
         *result = SUCCESS;
@@ -384,10 +418,10 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         counter++;
 
         // Prepare the return data structure and fill into list
-        auto resultData = make_shared<PreparedMessageData>();
+        auto resultData = unique_ptr<PreparedMessageData>(new PreparedMessageData);
         resultData->transportId = msgInfo->queueInfo_transportMsgId;
         resultData->receiverInfo = idDevInfo;
-        messageData->push_back(resultData);
+        messageData->push_back(move(resultData));
 
         queuePreparedMessage(unique_ptr<CmdQueueInfo>(msgInfo));
     }

@@ -141,7 +141,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *         {@code getErrorInfo} have the details.
      */
     @WorkerThread
-    public static native PreparedMessageData[] prepareMessage(byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
+    public static native PreparedMessageData[] prepareMessageNormal(byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
                                             @Nullable byte[] messageAttributes, boolean normalMsg, int[] resultCode);
 
     /**
@@ -167,7 +167,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *         failed.
      */
     @WorkerThread
-    public static native PreparedMessageData[] prepareMessageToSiblings(byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
+    public static native PreparedMessageData[] prepareMessageSiblings(byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
                                                          @Nullable byte[] messageAttributes, boolean normalMsg, int[] resultCode);
 
     /**

@@ -668,7 +668,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     return retVal;
 }
 
-static jobjectArray fillPrepMsgDataToJava(JNIEnv* env, shared_ptr<list<shared_ptr<PreparedMessageData> > > prepMessageData)
+static jobjectArray fillPrepMsgDataToJava(JNIEnv* env, unique_ptr<list<unique_ptr<PreparedMessageData> > > prepMessageData)
 {
     size_t size = prepMessageData->size();
 
@@ -693,13 +693,13 @@ static jobjectArray fillPrepMsgDataToJava(JNIEnv* env, shared_ptr<list<shared_pt
 
 /*
  * Class:     zina_ZinaNative
- * Method:    prepareMessage
+ * Method:    prepareMessageNormal
  * Signature: ([B[B[BZ[I)[Lzina/ZinaNative/PreparedMessageData;
  */
 JNIEXPORT jobjectArray JNICALL
-JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
-                             jbyteArray attachmentDescriptor, jbyteArray messageAttributes,
-                             jboolean normalMsg, jintArray code)
+JNI_FUNCTION(prepareMessageNormal)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
+                                   jbyteArray attachmentDescriptor, jbyteArray messageAttributes,
+                                   jboolean normalMsg, jintArray code)
 {
     (void)clazz;
 
@@ -724,23 +724,24 @@ JNI_FUNCTION(prepareMessage)(JNIEnv* env, jclass clazz, jbyteArray messageDescri
         Log("prepareMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     int32_t error;
-    auto prepMessageData = zinaAppInterface->prepareMessage(message, attachment, attributes, static_cast<bool>(normalMsg), &error);
+    auto prepMessageData = zinaAppInterface->prepareMessageNormal(message, attachment, attributes,
+                                                                  static_cast<bool>(normalMsg), &error);
     if (error != SUCCESS) {
         setReturnCode(env, code, error);
         return NULL;
     }
-    return fillPrepMsgDataToJava(env, prepMessageData);
+    return fillPrepMsgDataToJava(env, move(prepMessageData));
 }
 
 /*
  * Class:     zina_ZinaNative
- * Method:    prepareMessageToSiblings
+ * Method:    prepareMessageSiblings
  * Signature: ([B[B[BZ[I)[Lzina/ZinaNative/PreparedMessageData;
  */
 JNIEXPORT jobjectArray JNICALL
-JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
-                                       jbyteArray attachmentDescriptor, jbyteArray messageAttributes,
-                                       jboolean normalMsg, jintArray code)
+JNI_FUNCTION(prepareMessageSiblings)(JNIEnv* env, jclass clazz, jbyteArray messageDescriptor,
+                                     jbyteArray attachmentDescriptor, jbyteArray messageAttributes,
+                                     jboolean normalMsg, jintArray code)
 {
     (void)clazz;
 
@@ -765,12 +766,14 @@ JNI_FUNCTION(prepareMessageToSiblings)(JNIEnv* env, jclass clazz, jbyteArray mes
         Log("prepareMessageToSiblings - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
     int32_t error;
-    auto prepMessageData = zinaAppInterface->prepareMessageToSiblings(message, attachment, attributes, static_cast<bool>(normalMsg), &error);
+
+    auto prepMessageData = zinaAppInterface->prepareMessageSiblings(message, attachment, attributes,
+                                                                    static_cast<bool>(normalMsg), &error);
     if (error != SUCCESS) {
         setReturnCode(env, code, error);
         return NULL;
     }
-    return fillPrepMsgDataToJava(env, prepMessageData);
+    return fillPrepMsgDataToJava(env, move(prepMessageData));
 }
 
 /*
