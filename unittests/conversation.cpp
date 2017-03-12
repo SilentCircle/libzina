@@ -79,24 +79,24 @@ TEST_F(StoreTestFixture, TestDHR)
     ZinaConversation conv(aliceName,   bobName,   bobDev);
     conv.setRatchetFlag(true);
 
-    Ec255PublicKey* pubKey = new Ec255PublicKey(keyInData);
-    conv.setDHRr(pubKey);
+    conv.setDHRr(PublicKeyUnique(new Ec255PublicKey(keyInData)));
+    PublicKeyUnique pubKey = PublicKeyUnique(new Ec255PublicKey(conv.getDHRr().getPublicKeyPointer()));
 
-    const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    conv.setDHRs(keyPair);
+    conv.setDHRs(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
+    KeyPairUnique keyPair(new DhKeyPair(conv.getDHRs().getPublicKey(), conv.getDHRs().getPrivateKey()));
 
     conv.storeConversation(*store);
     auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
-    const DhKeyPair* keyPair1 = conv1->getDHRs();
-    ASSERT_TRUE(keyPair1 != NULL);
-    ASSERT_TRUE(keyPair->getPublicKey() == keyPair1->getPublicKey());
+    const DhKeyPair& keyPair1 = conv1->getDHRs();
+    ASSERT_TRUE(conv1->hasDHRs());
+    ASSERT_TRUE(keyPair->getPublicKey() == keyPair1.getPublicKey());
 
-    const DhPublicKey* pubKey1 = conv1->getDHRr();
-    ASSERT_TRUE(pubKey1 != NULL);
-    ASSERT_TRUE(*pubKey == *pubKey1);
+    const DhPublicKey& pubKey1 = conv1->getDHRr();
+    ASSERT_TRUE(conv1->hasDHRr());
+    ASSERT_TRUE(*pubKey == pubKey1);
 }
 
 TEST_F(StoreTestFixture, TestDHI)
@@ -105,24 +105,24 @@ TEST_F(StoreTestFixture, TestDHI)
     ZinaConversation conv(aliceName, bobName, bobDev);
     conv.setRatchetFlag(true);
 
-    Ec255PublicKey* pubKey = new Ec255PublicKey(keyInData);
-    conv.setDHIr(pubKey);
+    conv.setDHIr(PublicKeyUnique(new Ec255PublicKey(keyInData)));
+    PublicKeyUnique pubKey = PublicKeyUnique(new Ec255PublicKey(conv.getDHIr().getPublicKeyPointer()));
 
-    const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    conv.setDHIs(keyPair);
+    conv.setDHIs(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
+    KeyPairUnique keyPair(new DhKeyPair(conv.getDHIs().getPublicKey(), conv.getDHIs().getPrivateKey()));
 
     conv.storeConversation(*store);
     auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev,*store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
-    const DhKeyPair* keyPair1 = conv1->getDHIs();
-    ASSERT_TRUE(keyPair1 != NULL);
-    ASSERT_TRUE(keyPair->getPublicKey() == keyPair1->getPublicKey());
+    const DhKeyPair& keyPair1 = conv1->getDHIs();
+    ASSERT_TRUE(conv1->hasDHIs());
+    ASSERT_TRUE(keyPair->getPublicKey() == keyPair1.getPublicKey());
 
-    const DhPublicKey* pubKey1 = conv1->getDHIr();
-    ASSERT_TRUE(pubKey1 != NULL);
-    ASSERT_TRUE(*pubKey == *pubKey1);
+    const DhPublicKey& pubKey1 = conv1->getDHIr();
+    ASSERT_TRUE(conv1->hasDHIr());
+    ASSERT_TRUE(*pubKey == pubKey1);
 }
 
 TEST_F(StoreTestFixture, TestA0)
@@ -131,17 +131,17 @@ TEST_F(StoreTestFixture, TestA0)
     ZinaConversation conv(aliceName,   bobName,   bobDev);
     conv.setRatchetFlag(true);
 
-    const DhKeyPair* keyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    conv.setA0(keyPair);
+    conv.setA0(EcCurve::generateKeyPair(EcCurveTypes::Curve25519));
+    KeyPairUnique keyPair(new DhKeyPair(conv.getA0().getPublicKey(), conv.getA0().getPrivateKey()));
 
     conv.storeConversation(*store);
     auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
     ASSERT_TRUE(conv1 != NULL);
     ASSERT_TRUE(conv1->getRatchetFlag());
 
-    const DhKeyPair* keyPair1 = conv1->getA0();
-    ASSERT_TRUE(keyPair1 != NULL);
-    ASSERT_TRUE(keyPair->getPublicKey() == keyPair1->getPublicKey());
+    const DhKeyPair& keyPair1 = conv1->getA0();
+    ASSERT_TRUE(conv1->hasA0());
+    ASSERT_TRUE(keyPair->getPublicKey() == keyPair1.getPublicKey());
 }
 
 TEST_F(StoreTestFixture, SimpleFields)

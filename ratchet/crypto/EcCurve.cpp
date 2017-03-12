@@ -38,7 +38,7 @@ static void ecGenerateRandomNumber25519(uint8_t* outBuffer)
     return;
 }
 
-const DhKeyPair* EcCurve::generateKeyPair(int32_t curveType)
+KeyPairUnique EcCurve::generateKeyPair(int32_t curveType)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     if (curveType == EcCurveTypes::Curve25519) {
@@ -55,7 +55,7 @@ const DhKeyPair* EcCurve::generateKeyPair(int32_t curveType)
         Ec255PublicKey ecPublic(publicKeyData);
         memset(privateKeyData, 0, Ec255PrivateKey::KEY_LENGTH);  // clear temporary buffer
 
-        DhKeyPair* ecPair = new DhKeyPair(ecPublic, ecPrivate);
+        KeyPairUnique ecPair = KeyPairUnique(new DhKeyPair(ecPublic, ecPrivate));
         LOGGER(DEBUGGING, __func__, " <--");
         return ecPair;
     }

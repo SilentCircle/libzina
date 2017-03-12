@@ -1,5 +1,5 @@
 /*
-Copyright 2016 Silent Circle, LLC
+ * Copyright 2016 Silent Circle, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -174,14 +174,14 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
         LOGGER(ERROR, __func__, " No own conversation in database.");
         return NO_OWN_ID;
     }
-    const DhKeyPair* myIdPair = ownConv->getDHIs();
-    if (myIdPair == NULL) {
+    if (!ownConv->hasDHIs()) {
         cJSON_Delete(root);
         LOGGER(ERROR, __func__, " Own conversation not correctly initialized.");
         return NO_OWN_ID;
     }
 
-    string data = myIdPair->getPublicKey().serialize();
+    const DhKeyPair& myIdPair = ownConv->getDHIs();
+    string data = myIdPair.getPublicKey().serialize();
 
     b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(root, "identity_key", b64Buffer);
@@ -189,22 +189,20 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     cJSON* jsonPkrArray;
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
-    list<pair<int32_t, const DhKeyPair* > >* preList = PreKeys::generatePreKeys(store_);
+    auto* preList = PreKeys::generatePreKeys(store_);
 
     for (; !preList->empty(); preList->pop_front()) {
-        const pair< int32_t, const DhKeyPair* >& pkPair = preList->front();
+        auto& pkPair = preList->front();
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());
         cJSON_AddNumberToObject(pkrObject, "id", pkPair.first);
 
         // Get pre-key's public key data, serialized
-        const DhKeyPair* ecPair = pkPair.second;
-        const string keyData = ecPair->getPublicKey().serialize();
+        const string keyData = pkPair.second->getPublicKey().serialize();
 
         b64Encode((const uint8_t*) keyData.data(), keyData.size(), b64Buffer, MAX_KEY_BYTES_ENCODED * 2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
-        delete ecPair;
     }
     delete preList;
 
@@ -388,8 +386,7 @@ string AppInterfaceImpl::getOwnIdentityKey()
         return Empty;
     }
 
-    const DhKeyPair* keyPair = axoConv->getDHIs();
-    const DhPublicKey& pubKey = keyPair->getPublicKey();
+    const DhPublicKey& pubKey = axoConv->getDHIs().getPublicKey();
 
     b64Encode(pubKey.getPublicKeyPointer(), pubKey.getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
@@ -421,12 +418,12 @@ shared_ptr<list<string> > AppInterfaceImpl::getIdentityKeys(string& user)
             idKeys->clear();                // return an empty list, all gathered info may be invalid
             return idKeys;
         }
-        const DhPublicKey* idKey = axoConv->getDHIr();
-        if (idKey == NULL) {
+        if (!axoConv->hasDHIr()) {
             continue;
         }
+        const DhPublicKey &idKey = axoConv->getDHIr();
 
-        b64Encode(idKey->getPublicKeyPointer(), idKey->getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
+        b64Encode(idKey.getPublicKeyPointer(), idKey.getSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
 
         string id((const char*)b64Buffer);
         id.append(":");
@@ -454,7 +451,7 @@ void AppInterfaceImpl::reKeyDeviceCommand(const CmdQueueInfo &command) {
         return;
     }
     // clear data and store the nearly empty conversation
-    shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, command.queueInfo_recipient, command.queueInfo_deviceId, *store_);
+    auto conv = ZinaConversation::loadConversation(ownUser_, command.queueInfo_recipient, command.queueInfo_deviceId, *store_);
     if (!conv->isValid()) {
         sendActionCallback(ReKeyAction);
         return;
@@ -562,8 +559,11 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(const CmdQueueInfo &command)
         LOGGER(ERROR, "<-- No conversation, user: '", command.stringData1, "', device: ", command.stringData2);
         return;
     }
-    const DhPublicKey* remoteId = remote->getDHIr();
-    const string remoteIdKey = remoteId->getPublicKey();
+    if (!remote->hasDHIr()) {
+        LOGGER(ERROR, "<-- User: '", command.stringData1, "' has no longer term identity key");
+
+    }
+    const string remoteIdKey = remote->getDHIr().getPublicKey();
 
     if (command.stringData3.compare(remoteIdKey) != 0) {
         LOGGER(ERROR, "<-- Messaging keys do not match, user: '", command.stringData1, "', device: ", command.stringData2);
@@ -672,7 +672,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         // after storing a user defined device name. The user may change a device's name
         // using the Web interface of the provisioning server
         if (store_->hasConversation(userName, deviceId, ownUser_)) {
-            shared_ptr<ZinaConversation> conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId, *store_);
+            auto conv = ZinaConversation::loadConversation(ownUser_, userName, deviceId, *store_);
             if (conv->isValid()) {
                 const string &convDevName = conv->getDeviceName();
                 if (deviceName.compare(convDevName) != 0) {

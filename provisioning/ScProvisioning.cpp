@@ -333,21 +333,19 @@ int32_t Provisioning::newPreKeys(SQLiteStoreConv* store, const string& longDevId
     cJSON* jsonPkrArray;
     cJSON_AddItemToObject(root, "prekeys", jsonPkrArray = cJSON_CreateArray());
 
-    list<pair<int32_t, const DhKeyPair*> >* preList = PreKeys::generatePreKeys(store, number);
+    list<pair<int32_t, KeyPairUnique> >* preList = PreKeys::generatePreKeys(store, number);
     for (; !preList->empty(); preList->pop_front()) {
-        pair<int32_t, const DhKeyPair*>& prePair = preList->front();
+        auto& prePair = preList->front();
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());
         cJSON_AddNumberToObject(pkrObject, "id", prePair.first);
 
         // Get pre-key's public key data, serialized
-        const DhKeyPair* ecPair = prePair.second;
-        const std::string data = ecPair->getPublicKey().serialize();
+        const std::string data = prePair.second->getPublicKey().serialize();
 
         b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
-        delete ecPair;
     }
     delete preList;
 

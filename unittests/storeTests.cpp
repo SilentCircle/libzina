@@ -121,7 +121,7 @@ TEST_F(StoreTestFixture, PreKeyStore)
 TEST_F(StoreTestFixture, PreKeyGenerate)
 {
     // generate and store a key pair
-    pair<int32_t, const DhKeyPair*> preKeyBundle = PreKeys::generatePreKey(pks);
+    pair<int32_t, KeyPairUnique> preKeyBundle = PreKeys::generatePreKey(pks);
 
     string pk_1;
     int32_t result = pks->loadPreKey(preKeyBundle.first, pk_1);

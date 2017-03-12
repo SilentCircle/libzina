@@ -461,13 +461,6 @@ string  AppInterfaceImpl::createSendErrorJson(const CmdQueueInfo& info, int32_t 
     return retVal;
 }
 
-int32_t AppInterfaceImpl::doSendSingleMessage(uint64_t transportId)
-{
-    auto ids = make_shared<vector<uint64_t> >();
-    ids->push_back(transportId);
-    return doSendMessages(ids);
-}
-
 int32_t AppInterfaceImpl::doSendMessages(shared_ptr<vector<uint64_t> > transportIds)
 {
     LOGGER(DEBUGGING, __func__, " -->");
@@ -524,7 +517,7 @@ int32_t AppInterfaceImpl::removePreparedMessages(shared_ptr<vector<uint64_t> > t
 }
 
 int32_t
-AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<ZinaConversation> zinaConversation)
+AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, unique_ptr<ZinaConversation> zinaConversation)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -648,7 +641,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
     // processing and just handle it as an existing user.
     auto zinaConversation = ZinaConversation::loadConversation(ownUser_, sendInfo.queueInfo_recipient, sendInfo.queueInfo_deviceId, *store_);
     if (zinaConversation->isValid() && !zinaConversation->getRK().empty()) {
-        return sendMessageExisting(sendInfo, zinaConversation);
+        return sendMessageExisting(sendInfo, move(zinaConversation));
     }
 
     pair<PublicKeyUnique, PublicKeyUnique> preIdKeys;
@@ -682,7 +675,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
     zinaConversation->setDeviceName(sendInfo.queueInfo_deviceName);
     LOGGER(DEBUGGING, __func__, " <--");
 
-    return sendMessageExisting(sendInfo, zinaConversation);
+    return sendMessageExisting(sendInfo, move(zinaConversation));
 }
 
 string AppInterfaceImpl::createMessageDescriptor(const string& recipient, const string& msgId, const string& msg)

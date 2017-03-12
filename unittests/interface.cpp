@@ -45,7 +45,7 @@ static const int32_t bobRegisterId = 4711;
 
 static const Ec255PublicKey bobIdpublicKey(keyInData);
 
-static pair<int32_t, const DhKeyPair*> bobPreKey;
+static pair<int32_t, KeyPairUnique> bobPreKey;
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
@@ -97,8 +97,8 @@ TEST(RegisterRequest, Basic)
     auto ownAxoConv = ZinaConversation::loadLocalConversation(name, *store);
 
     if (!ownAxoConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name
-        const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-        ownAxoConv->setDHIs(idKeyPair);
+        KeyPairUnique idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+        ownAxoConv->setDHIs(move(idKeyPair));
         ownAxoConv->storeConversation(*store);
     }
 
@@ -139,11 +139,9 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
     cJSON_AddNumberToObject(jsonPkr, "id", bobPreKey.first);
 
     // Get pre-key's public key data, serialized and add it to JSON
-    const DhKeyPair* ecPair = bobPreKey.second;
-    data = ecPair->getPublicKey().serialize();
+    data = bobPreKey.second->getPublicKey().serialize();
     b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(jsonPkr, "key", b64Buffer);
-    delete ecPair;
 
     char* out = cJSON_Print(root);
     response->append(out);

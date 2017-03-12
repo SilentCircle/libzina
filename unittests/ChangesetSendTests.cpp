@@ -421,7 +421,8 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
     string newAttributes;
     appInterface_1->createChangeSetDevice(groupId, longDevId_2, attributes, &newAttributes);
     ASSERT_FALSE(newAttributes.empty());
-    cerr << "new attributes: " << newAttributes << endl;
+
+//    cerr << "new attributes: " << newAttributes << endl;
 
     appInterface_1->groupUpdateSendDone(groupId);
 
@@ -540,7 +541,8 @@ TEST_F(ChangeSetTestsFixtureMembers, CreateChangeSetTests) {
 
     appInterface_1->createChangeSetDevice(groupId, longDevId_2, attributes, &newAttributes);
     ASSERT_FALSE(newAttributes.empty());
-    cerr << "new attributes: " << newAttributes << endl;
+
+//    cerr << "new attributes: " << newAttributes << endl;
 
     // Finish creation of change set, manage pending change sets
     appInterface_1->groupUpdateSendDone(groupId);

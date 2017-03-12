@@ -20,8 +20,6 @@ limitations under the License.
 #include "../logging/ZinaLogging.h"
 #include "gtest/gtest.h"
 
-#include <memory>
-
 using namespace zina;
 static int32_t type255 = EcCurveTypes::Curve25519;
 
@@ -197,8 +195,8 @@ uint8_t aliceSignature[] = {
 
 TEST_F(CryptoTestFixture, Curve25519GenerateKeys)
 {
-    const DhKeyPair* alice = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    const DhKeyPair* bob = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+    KeyPairUnique alice = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+    KeyPairUnique bob = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
     uint8_t sharedOne[Ec255PrivateKey::KEY_LENGTH] = {0};
     uint8_t sharedTwo[Ec255PrivateKey::KEY_LENGTH] = {0};

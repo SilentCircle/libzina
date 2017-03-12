@@ -117,8 +117,9 @@ public:
      * @param conv Pointer to a remote ZinaConversation.
      * @param localConv Pointer to local ZinaConversatione
      */
-    ZinaZrtpConnector(shared_ptr<ZinaConversation> conv, shared_ptr<ZinaConversation> localConv): conv_(conv), localConv_(localConv), ratchetKey_(NULL),
-                     remoteRatchetKey_(NULL), remoteIdKey_(NULL), role_(None) {}
+    ZinaZrtpConnector(unique_ptr<ZinaConversation> conv, unique_ptr<ZinaConversation> localConv)
+            : conv_(move(conv)), localConv_(move(localConv)), ratchetKey_(NULL),
+              remoteRatchetKey_(NULL), remoteIdKey_(NULL), role_(None) {}
     ~ZinaZrtpConnector() { delete ratchetKey_; ratchetKey_ = NULL; delete remoteRatchetKey_; remoteRatchetKey_ = NULL; }
 
 
@@ -149,16 +150,16 @@ public:
     void setRole(int32_t role)                { role_ = role; }
     int32_t getRole()                         { return role_; }
 
-    shared_ptr<ZinaConversation> getRemoteConversation()  { return conv_; }
-    shared_ptr<ZinaConversation> getLocalConversation()   { return localConv_; }
+    unique_ptr<ZinaConversation> getRemoteConversation()  { return move(conv_); }
+    unique_ptr<ZinaConversation> getLocalConversation()   { return move(localConv_); }
 
 private:
     ZinaZrtpConnector (const ZinaZrtpConnector& other) = delete;
     ZinaZrtpConnector& operator= (const ZinaZrtpConnector& other) = delete;
     bool operator== (const ZinaZrtpConnector& other) const = delete;
 
-    shared_ptr<ZinaConversation> conv_;
-    shared_ptr<ZinaConversation> localConv_;
+    unique_ptr<ZinaConversation> conv_;
+    unique_ptr<ZinaConversation> localConv_;
     const DhKeyPair* ratchetKey_;
     const DhPublicKey* remoteRatchetKey_;
     const DhPublicKey* remoteIdKey_;

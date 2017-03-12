@@ -117,7 +117,7 @@ TEST_F(ScloudTestFixture, SCloudBasic)
 
     string key((char*)blob, blobSize);
     free(blob);
-    cerr << "Key: " << key << ", length: " << blobSize << endl;
+//    cerr << "Key: " << key << ", length: " << blobSize << endl;
 
     err = SCloudEncryptGetSegmentBLOB( scCtxEnc, 1, &blob, &blobSize);
     ASSERT_EQ(kSCLError_NoErr, err);
@@ -125,7 +125,7 @@ TEST_F(ScloudTestFixture, SCloudBasic)
 
     string segment((char*)blob, blobSize);
     free(blob);
-    cerr << "segment: " << segment << ", length: " << blobSize << endl;
+//    cerr << "segment: " << segment << ", length: " << blobSize << endl;
 
     err = SCloudDecryptNew((uint8_t*)key.data(), key.size(), NULL, NULL, &scCtxDec);
     ASSERT_EQ(kSCLError_NoErr, err);

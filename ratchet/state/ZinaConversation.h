@@ -63,7 +63,7 @@ class ZinaConversation
 public:
     ZinaConversation(const string& localUser, const string& user, const string& deviceId) :
             partner_(user, emptyString),
-            deviceId_(deviceId), localUser_(localUser), DHRs(NULL), DHRr(NULL), DHIs(NULL), DHIr(NULL), A0(NULL), Ns(0),
+            deviceId_(deviceId), localUser_(localUser), DHRs(nullptr), DHRr(nullptr), DHIs(nullptr), DHIr(nullptr), A0(nullptr), Ns(0),
             Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0),
             versionNumber(0), identityKeyChanged(false), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS), valid_(false)
     { }
@@ -77,8 +77,9 @@ public:
      * @param localUser name of local user/account
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static shared_ptr<ZinaConversation> loadLocalConversation(const string& localUser, SQLiteStoreConv &store) {
-        return loadConversation(localUser, localUser, string(), store);}
+    static unique_ptr<ZinaConversation> loadLocalConversation(const string& localUser, SQLiteStoreConv &store) {
+        return loadConversation(localUser, localUser, string(), store);
+    }
 
     /**
      * @brief Load a conversation from database.
@@ -88,7 +89,7 @@ public:
      * @param deviceId The remote user's device id if it is available
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static shared_ptr<ZinaConversation> loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store);
+    static unique_ptr<ZinaConversation> loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store);
 
     // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
 #if 0
@@ -121,13 +122,13 @@ public:
 
     void deleteStagedMk(string& mkiv, SQLiteStoreConv &store);
 
-    list<string>& getEmptyStagedMks() {return stagedMk; }
+    list<string>& getEmptyStagedMks() { return stagedMk; }
 
-    const ZinaContact& getPartner()  { return partner_; }
+    const ZinaContact& getPartner() const   { return partner_; }
 
-    const string& getLocalUser()    { return localUser_; }
+    const string& getLocalUser() const      { return localUser_; }
 
-    const string& getDeviceId()     { return deviceId_; }
+    const string& getDeviceId() const       { return deviceId_; }
 
     void setDeviceName(const string& name)  { deviceName_ = name; }
     const string& getDeviceName()           { return deviceName_; }
@@ -141,20 +142,25 @@ public:
     void setRK(const std::string& key)      { RK = key; }
     const std::string& getRK() const        { return RK; }
 
-    void setDHRr(const DhPublicKey* key)    { DHRr = key; }
-    const DhPublicKey* getDHRr() const      { return DHRr; }
+    bool hasDHRr() const                    { return (bool)DHRr; }
+    void setDHRr(PublicKeyUnique key)       { DHRr = move(key); }
+    const DhPublicKey& getDHRr() const      { return *DHRr; }
 
-    void setDHRs(const DhKeyPair* keyPair)  { DHRs = keyPair; }
-    const DhKeyPair* getDHRs()              { return DHRs; }
+    bool hasDHRs() const                    { return (bool)DHRs; }
+    void setDHRs(KeyPairUnique keyPair)     { DHRs = move(keyPair); }
+    const DhKeyPair& getDHRs() const        { return *DHRs; }
 
-    void setDHIr(const DhPublicKey* key)    { DHIr = key; }
-    const DhPublicKey* getDHIr() const      { return DHIr; }
+    bool hasDHIr() const                    { return (bool)DHIr; }
+    void setDHIr(PublicKeyUnique key)       { DHIr = move(key); }
+    const DhPublicKey& getDHIr() const      { return *DHIr; }
 
-    void setDHIs(const DhKeyPair* keyPair)  { DHIs = keyPair; }
-    const DhKeyPair* getDHIs()              { return DHIs; }
+    bool hasDHIs() const                    { return (bool)DHIs; }
+    void setDHIs(KeyPairUnique keyPair)     { DHIs = move(keyPair); }
+    const DhKeyPair& getDHIs() const        { return *DHIs; }
 
-    void setA0(const DhKeyPair* keyPair)    { A0 = keyPair; }
-    const DhKeyPair* getA0()                { return A0; }
+    bool hasA0() const                      { return (bool)A0; }
+    void setA0(KeyPairUnique keyPair)       { A0 = move(keyPair); }
+    const DhKeyPair& getA0() const          { return *A0; }
 
     void setCKs(const std::string& key)     { CKs = key; }
     const std::string& getCKs() const       { return CKs; }
@@ -183,7 +189,7 @@ public:
     void setIdentityKeyChanged(bool flag)   { identityKeyChanged = flag; }
     bool isIdentityKeyChanged() const       { return identityKeyChanged; }
 
-    bool isValid()                          { return valid_; }
+    bool isValid() const                    { return valid_; }
 
     uint32_t getContextId() const { return contextId; }
 
@@ -231,13 +237,13 @@ private:
     // some data/key lengths change
     std::string  RK;            //!< the current root key
 
-    const DhKeyPair*   DHRs;    //!< Diffie-Helman Ratchet key pair sender
-    const DhPublicKey* DHRr;    //!< Diffie-Helman Ratchet key receiver
+    KeyPairUnique   DHRs;       //!< Diffie-Helman Ratchet key pair sender
+    PublicKeyUnique DHRr;       //!< Diffie-Helman Ratchet key receiver
 
-    const DhKeyPair*   DHIs;    //!< DH Identity key pair sender
-    const DhPublicKey* DHIr;    //!< DH Identity key receiver
+    KeyPairUnique   DHIs;       //!< DH Identity key pair sender
+    PublicKeyUnique DHIr;       //!< DH Identity key receiver
 
-    const DhKeyPair*   A0;      //!< used when using pre-ky bundles, if not null send this info (pre-key message type)
+    KeyPairUnique   A0;         //!< used when using pre-ky bundles, if not null send this info (pre-key message type)
 
     string       CKs;           //!< 32-byte chain key sender (used for forward-secrecy updating)
     string       CKr;           //!< 32-byte chain key receiver (used for forward-secrecy updating)

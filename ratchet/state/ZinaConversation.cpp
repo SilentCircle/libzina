@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include "ZinaConversation.h"
-#include "../../storage/sqlite/SQLiteStoreConv.h"
 #include "../../util/b64helper.h"
 #include "../crypto/EcCurve.h"
 #include "../../util/Utilities.h"
@@ -24,13 +23,14 @@ using namespace std;
 
 void Log(const char* format, ...);
 
-shared_ptr<ZinaConversation> ZinaConversation::loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store)
+unique_ptr<ZinaConversation>
+ZinaConversation::loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     int32_t result;
 
     // Create new conversation object
-    auto conv = make_shared<ZinaConversation>(localUser, user, deviceId);
+    auto conv = unique_ptr<ZinaConversation>(new ZinaConversation(localUser, user, deviceId));
     conv->setErrorCode(SUCCESS);
 
     bool found = store.hasConversation(user, deviceId, localUser, &result);
@@ -224,14 +224,14 @@ void ZinaConversation::deserialize(const std::string& data)
         binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
         const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
-        DHRs = new DhKeyPair(*pubKey, *privKey);
+        DHRs = KeyPairUnique(new DhKeyPair(*pubKey, *privKey));
     }
 
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "DHRr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        DHRr = EcCurve::decodePoint(binBuffer).release();
+        DHRr = EcCurve::decodePoint(binBuffer);
     }
 
     // Get the DHIs key pair
@@ -246,13 +246,13 @@ void ZinaConversation::deserialize(const std::string& data)
         binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
         const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
-        DHIs = new DhKeyPair(*pubKey, *privKey);
+        DHIs = KeyPairUnique(new DhKeyPair(*pubKey, *privKey));
     }
     strncpy(b64Buffer, cJSON_GetObjectItem(root, "DHIr")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     b64Length = strlen(b64Buffer);
     if (b64Length > 0) {
         b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
-        DHIr = EcCurve::decodePoint(binBuffer).release();
+        DHIr = EcCurve::decodePoint(binBuffer);
     }
 
     // Get the A0 key pair
@@ -267,7 +267,7 @@ void ZinaConversation::deserialize(const std::string& data)
         binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
         const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
 
-        A0 = new DhKeyPair(*pubKey, *privKey);
+        A0 = KeyPairUnique(new DhKeyPair(*pubKey, *privKey));
     }
 
     // Get CKs b64 string, decode and store
@@ -329,7 +329,7 @@ const string* ZinaConversation::serialize() const
 
     // DHRs key pair, private, public
     cJSON_AddItemToObject(root, "DHRs", jsonItem = cJSON_CreateObject());
-    if (DHRs != NULL) {
+    if (DHRs) {
         b64Encode(DHRs->getPrivateKey().privateData(), DHRs->getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "private", b64Buffer);
 
@@ -342,7 +342,7 @@ const string* ZinaConversation::serialize() const
     }
 
     // DHRr key, public
-    if (DHRr != NULL) {
+    if (DHRr) {
         b64Encode((const uint8_t*)DHRr->serialize().data(), DHRr->getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(root, "DHRr", b64Buffer);
     }
@@ -351,7 +351,7 @@ const string* ZinaConversation::serialize() const
 
     // DHIs key pair, private, public
     cJSON_AddItemToObject(root, "DHIs", jsonItem = cJSON_CreateObject());
-    if (DHIs != NULL) {
+    if (DHIs) {
         b64Encode(DHIs->getPrivateKey().privateData(), DHIs->getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "private", b64Buffer);
 
@@ -364,7 +364,7 @@ const string* ZinaConversation::serialize() const
     }
 
     // DHIr key, public
-    if (DHIr != NULL) {
+    if (DHIr) {
         b64Encode((const uint8_t*)DHIr->serialize().data(), DHIr->getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(root, "DHIr", b64Buffer);
     }
@@ -374,7 +374,7 @@ const string* ZinaConversation::serialize() const
 
     // A0 key pair, private, public
     cJSON_AddItemToObject(root, "A0", jsonItem = cJSON_CreateObject());
-    if (A0 != NULL) {
+    if (A0) {
         b64Encode(A0->getPrivateKey().privateData(), A0->getPrivateKey().getEncodedSize(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
         cJSON_AddStringToObject(jsonItem, "private", b64Buffer);
 
@@ -414,11 +414,11 @@ const string* ZinaConversation::serialize() const
 void ZinaConversation::reset()
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    delete DHRs; DHRs = NULL;
-    delete DHRr; DHRr = NULL;
-    delete DHIs; DHIs = NULL;
+    DHRs.reset();
+    DHRr.reset();
+    DHIs.reset();
 // Keep it to detect changes of the long-term identity key    delete DHIr; DHIr = NULL;
-    delete A0; A0 = NULL;
+    A0.reset();
 
     if (!CKr.empty())
         memset_volatile((void*)CKr.data(), 0 , CKr.size());

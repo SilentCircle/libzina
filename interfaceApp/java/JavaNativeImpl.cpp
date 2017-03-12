@@ -629,8 +629,8 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     int32_t retVal = 1;
     auto ownZinaConv = ZinaConversation::loadLocalConversation(name, *store);
     if (!ownZinaConv->isValid()) {  // no yet available, create one. An own conversation has the same local and remote name, empty device id
-        const DhKeyPair* idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-        ownZinaConv->setDHIs(idKeyPair);
+        KeyPairUnique idKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+        ownZinaConv->setDHIs(move(idKeyPair));
         ownZinaConv->storeConversation(*store);
         retVal = 2;
     }

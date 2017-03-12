@@ -66,20 +66,19 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     if (!localConv->isValid()) {
         return emptyString;
     }
-    const DhKeyPair* idKey = localConv->getDHIs();
+    const DhKeyPair& idKey = localConv->getDHIs();
 
-    ZinaZrtpConnector* staging = new ZinaZrtpConnector(conv, localConv);
+    ZinaZrtpConnector* staging = new ZinaZrtpConnector(move(conv), move(localConv));
 
     pair<string, ZinaZrtpConnector*> stage(localUser, staging);
     stagingList->insert(stage);
 
-    const DhKeyPair* ratchetKey = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-    staging->setRatchetKey(ratchetKey);
+    KeyPairUnique ratchetKey = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
     std::string combinedKeys;
 
     // First: length and data of local identity key
-    const string key = idKey->getPublicKey().serialize();
+    const string key = idKey.getPublicKey().serialize();
     char keyLength = static_cast<char>(key.size() & 0x7f);
     combinedKeys.assign(&keyLength, 1).append(key);
 
@@ -87,6 +86,8 @@ const string getAxoPublicKeyData(const string& localUser, const string& user, co
     const std::string rkey = ratchetKey->getPublicKey().serialize();
     keyLength = static_cast<char>(rkey.size() & 0x7f);
     combinedKeys.append(&keyLength, 1).append(rkey);
+
+    staging->setRatchetKey(ratchetKey.release());
     lck.unlock();
 
     LOGGER(DEBUGGING, __func__, " <--");
@@ -107,7 +108,7 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
         return;
     }
     auto localConv = staging->getLocalConversation();
-    const DhKeyPair* localIdKey = localConv->getDHIs();
+    const DhKeyPair& localIdKey = localConv->getDHIs();
     const char* data = pubKeyData.data();
 
     // Get remote id key
@@ -117,7 +118,7 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
     data += keyLength;
     PublicKeyUnique remoteIdKey = EcCurve::decodePoint((const uint8_t*)keyData.data());
 
-    int32_t cmp = memcmp(localIdKey->getPublicKey().getPublicKeyPointer(), remoteIdKey->getPublicKeyPointer(), localIdKey->getPublicKey().getSize());
+    int32_t cmp = memcmp(localIdKey.getPublicKey().getPublicKeyPointer(), remoteIdKey->getPublicKeyPointer(), localIdKey.getPublicKey().getSize());
     staging->setRole((cmp < 0) ? Alice : Bob);
     staging->setRemoteIdKey(remoteIdKey.release());
 
@@ -184,12 +185,12 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
 
 //    hexdump(conv->getPartner().getName().c_str(), staging->getRemoteIdKey()->serialize());
 
-    conv->setDHIr((Ec255PublicKey*)staging->getRemoteIdKey());
+    conv->setDHIr(PublicKeyUnique(staging->getRemoteIdKey()));
     staging->setRemoteIdKey(NULL);
 
     if (staging->getRole() == Alice) {
 //        cerr << "Remote party '" << user << "' takes 'Alice' role" << endl;
-        conv->setDHRr((Ec255PublicKey*)staging->getRemoteRatchetKey());     // Bob's B0 public part
+        conv->setDHRr(PublicKeyUnique(staging->getRemoteRatchetKey()));     // Bob's B0 public part
         staging->setRemoteRatchetKey(NULL);
         conv->setRK(root);
         conv->setCKr(chain);
@@ -197,8 +198,8 @@ void setAxoExportedKey(const string& localUser, const string& user, const string
     }
     else {
 //        cerr << "Remote party '" << user << "' takes 'Bob' role" << endl;
-        conv->setDHRs(staging->getRatchetKey());           // Bob's B0 key
-        staging->setRatchetKey(NULL);
+        conv->setDHRs(KeyPairUnique(staging->getRatchetKey()));           // Bob's B0 key
+        staging->setRatchetKey(nullptr);
         conv->setRK(root);
         conv->setCKs(chain);
         conv->setRatchetFlag(false);
@@ -250,12 +251,11 @@ const string getOwnAxoIdKey()
     const string& localUser = appIf->getOwnUser();
 
     auto local = ZinaConversation::loadLocalConversation(localUser, *appIf->getStore());
-    if (!local->isValid()) {
+    if (!local->isValid() || !local->hasDHIs()) {
         return string();
     }
 
-    const DhKeyPair* keyPair = local->getDHIs();
-    const DhPublicKey& pubKey = keyPair->getPublicKey();
+    const DhPublicKey& pubKey = local->getDHIs().getPublicKey();
 
     string key((const char*)pubKey.getPublicKeyPointer(), pubKey.getSize());
 

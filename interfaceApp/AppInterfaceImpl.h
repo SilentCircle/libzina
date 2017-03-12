@@ -489,7 +489,7 @@ private:
      * @param zinaConversation an optional valid ratchet conversation
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageExisting(const CmdQueueInfo &sendInfo, shared_ptr<ZinaConversation> zinaConversation = nullptr);
+    int32_t sendMessageExisting(const CmdQueueInfo &sendInfo, unique_ptr<ZinaConversation> zinaConversation = nullptr);
 
     /**
      * @brief Send a message to a use who does not have a valid ratchet conversation.
@@ -504,17 +504,6 @@ private:
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
     int32_t sendMessageNewUser(const CmdQueueInfo &sendInfo);
-
-    /**
-     * @brief Move a single prepared message info to the processing queue.
-     *
-     * A small wrapper to handle a single 64-bit transport id and queue the message info
-     * for processing.
-     *
-     * @param transportId The transport id of the message info to move to processing queue.
-     * @return SUCCESS in case moving data was OK
-     */
-    int32_t doSendSingleMessage(uint64_t transportId);
 
     /**
      * @brief Add a List of message info structure to the run queue.

@@ -52,7 +52,7 @@ namespace zina {
 class EcCurve
 {
 public:
-    static const DhKeyPair* generateKeyPair(int32_t curveType);
+    static KeyPairUnique generateKeyPair(int32_t curveType);
 
     /**
      * @brief Computes the key agreement value.

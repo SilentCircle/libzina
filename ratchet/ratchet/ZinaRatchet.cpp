@@ -19,7 +19,6 @@ limitations under the License.
 #include "../crypto/EcCurve.h"
 #include "../crypto/AesCbc.h"
 #include "../crypto/HKDF.h"
-#include "../../logging/ZinaLogging.h"
 #include "../../interfaceApp/MessageEnvelope.pb.h"
 #include "../../util/Utilities.h"
 
@@ -83,13 +82,13 @@ static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
     LOGGER(DEBUGGING, __func__, " -->");
     uint8_t agreement[MAX_KEY_BYTES];
 
-    if (conv.getDHRr() == nullptr || conv.getDHRs() == nullptr || conv.getRK().empty()) {
+    if (!conv.hasDHRr() || !conv.hasDHRs() || conv.getRK().empty()) {
         return SESSION_NOT_INITED;
     }
 
     // Compute a DH agreement from the current Ratchet keys: use receiver's (remote party's) public key and sender's
     // (local party's) private key
-    int32_t agreementLength = EcCurve::calculateAgreement(*conv.getDHRr(), conv.getDHRs()->getPrivateKey(),
+    int32_t agreementLength = EcCurve::calculateAgreement(conv.getDHRr(), conv.getDHRs().getPrivateKey(),
                                                           agreement, (size_t)MAX_KEY_BYTES);
     if (agreementLength < 0) {
         LOGGER(ERROR, __func__, " <-- agreement computation failed");
@@ -164,7 +163,7 @@ static void createWireMessageV1(ZinaConversation &conv, string &message, string 
 
     // A0 is set only if we use pre-keys and this is 'Alice' and generated a pre-key info, thus
     // wire message type 2 only if we use pre-key initialization
-    msgType = static_cast<uint8_t>((conv.getA0() == NULL) ? 1 : 2);
+    msgType = static_cast<uint8_t>(!conv.hasA0() ? 1 : 2);
 
     // The code below currently uses the curve 25519 only. This curve requires 32 byte key data.
     // To support other curves we need to adapt that code
@@ -209,7 +208,7 @@ static void createWireMessageV1(ZinaConversation &conv, string &message, string 
     wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(conv.getNs())); byteIndex += sizeof(uint32_t);
     wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(conv.getPNs())); byteIndex += sizeof(uint32_t);
 
-    const DhPublicKey& rKey = conv.getDHRs()->getPublicKey();
+    const DhPublicKey& rKey = conv.getDHRs().getPublicKey();
     memcpy(&wmPb[byteIndex], rKey.getPublicKeyPointer(), rKey.getSize());   // sizes are currently Curve25519KeyLength
     intIndex += rKey.getSize()/sizeof(int32_t); byteIndex += rKey.getSize();
 
@@ -220,11 +219,11 @@ static void createWireMessageV1(ZinaConversation &conv, string &message, string 
         // set remote pre-key id, always a positive value, thus cast
         wmPi[intIndex++] = zrtpHtonl(static_cast<uint32_t>(conv.getPreKeyId())); byteIndex += sizeof(uint32_t);
 
-        const DhPublicKey& idKey = conv.getDHIs()->getPublicKey();   // copy the public identity key
+        const DhPublicKey& idKey = conv.getDHIs().getPublicKey();   // copy the public identity key
         memcpy(&wmPb[byteIndex], idKey.getPublicKeyPointer(), idKey.getSize());
         intIndex += idKey.getSize()/sizeof(int32_t); byteIndex += idKey.getSize();
 
-        const DhPublicKey& a0Key = conv.getA0()->getPublicKey();   // copy the local generated pre-key
+        const DhPublicKey& a0Key = conv.getA0().getPublicKey();   // copy the local generated pre-key
         memcpy(&wmPb[byteIndex], a0Key.getPublicKeyPointer(), a0Key.getSize());
         intIndex += a0Key.getSize()/sizeof(int32_t); byteIndex += a0Key.getSize();
     }
@@ -249,7 +248,7 @@ static void createWireMessageVx(ZinaConversation &conv, MessageEnvelope& envelop
 
     // A0 is set only if we use pre-keys and this is 'Alice' and generated a pre-key info, thus
     // wire message type 2 only if we use pre-key initialization
-    int32_t msgType = static_cast<uint8_t>((conv.getA0() == NULL) ? 1 : 2);
+    int32_t msgType = static_cast<uint8_t>(!conv.hasA0() ? 1 : 2);
 
     RatchetData* ratchet = envelope.mutable_ratchet();
     ratchet->set_ratchetmsgtype(msgType);
@@ -260,15 +259,15 @@ static void createWireMessageVx(ZinaConversation &conv, MessageEnvelope& envelop
     ratchet->set_np(conv.getNs());
     ratchet->set_pnp(conv.getPNs());
 
-    const DhPublicKey& rKey = conv.getDHRs()->getPublicKey();
-    ratchet->set_ratchet(conv.getDHRs()->getPublicKey().getPublicKey());
+    const DhPublicKey& rKey = conv.getDHRs().getPublicKey();
+    ratchet->set_ratchet(conv.getDHRs().getPublicKey().getPublicKey());
 
     ratchet->set_mac(computedMac.data(), 8);
 
     if (msgType == 2) {
         ratchet->set_localprekeyid(conv.getPreKeyId());
-        ratchet->set_remoteidkey(conv.getDHIs()->getPublicKey().getPublicKey());
-        ratchet->set_remoteprekey(conv.getA0()->getPublicKey().getPublicKey());
+        ratchet->set_remoteidkey(conv.getDHIs().getPublicKey().getPublicKey());
+        ratchet->set_remoteprekey(conv.getA0().getPublicKey().getPublicKey());
     }
 }
 
@@ -465,7 +464,7 @@ static int32_t trySkippedMessageKeys(ZinaConversation* conv, const string& encry
 }
 
 static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32_t Np, const string& CKr, string* CKp,
-                                    pair<string, string>* MKp, string* macKey)
+                                    string *msgKey, string *msgIv, string* macKey)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -500,8 +499,8 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     deriveMk(*CKp, &MK, &iv, &mKey);
 
     // Use assign here to work around GCC's Copy-On-Write behaviour for strings.
-    MKp->first.assign(MK.c_str(), MK.size());
-    MKp->second.assign(iv.c_str(), iv.size());
+    msgKey->assign(MK.c_str(), MK.size());
+    msgIv->assign(iv.c_str(), iv.size());
     macKey->assign(mKey.c_str(), mKey.size());
 
     // Hash CK with "1"
@@ -528,17 +527,15 @@ static void computeIdHash(const string& id, string* idHash)
     LOGGER(DEBUGGING, __func__, " <--");
 }
 
-static int32_t compareHashes(pair<string, string>* idHashes, string& recvIdHash, string& senderIdHash)
+static int32_t compareHashes(const string& recvIdHash, const string& senderIdHash, string& recvIdHashComp, string& senderIdHashComp)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    string id = idHashes->first;
-    if (id.compare(0, id.size(), recvIdHash, 0, id.size()) != 0) {
+    if (recvIdHash.compare(0, recvIdHash.size(), recvIdHashComp, 0, recvIdHash.size()) != 0) {
         LOGGER(ERROR, __func__, " <-- Receive ID wrong");
         return RECEIVE_ID_WRONG;
     }
 
-    id = idHashes->second;
-    if (id.compare(0, id.size(), senderIdHash, 0, id.size()) != 0) {
+    if (senderIdHash.compare(0, senderIdHash.size(), senderIdHashComp, 0, senderIdHash.size()) != 0) {
         LOGGER(ERROR, __func__, " <-- Sender ID wrong");
         return SENDER_ID_WRONG;
     }
@@ -578,7 +575,7 @@ CKr = CKp
 return read()
  */
 static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& supplements,
-    SQLiteStoreConv &store, string* supplementsPlain, pair<string, string>* idHashes)
+    SQLiteStoreConv &store, string* supplementsPlain, const string& recvIdHash, const string& senderIdHash)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     // The partner shows that it supports a proto version > 1, save this in the context data
@@ -589,16 +586,16 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     int32_t result;
 
     // This is a message with embedded pre-key and identity key. Need to setup the
-    // Axolotl conversation first. According to the optimized pre-key handling this
-    // client takes the Axolotl 'Bob' role.
+    // double ratchet conversation first. According to the optimized pre-key handling this
+    // client takes the double ratchet's 'Bob' role.
     if (msgStruct.msgType == 2) {
-        const Ec255PublicKey *aliceId = new Ec255PublicKey(msgStruct.remoteIdKey);
-        const Ec255PublicKey *alicePreKey = new Ec255PublicKey(msgStruct.remotePreKey);
+        PublicKeyUnique aliceId = PublicKeyUnique(new Ec255PublicKey(msgStruct.remoteIdKey));
+        PublicKeyUnique alicePreKey = PublicKeyUnique(new Ec255PublicKey(msgStruct.remotePreKey));
         conv->setContextId(msgStruct.contextId);
 
         // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
         // Called function get ownership of the two key pointers aliceId, alicePreKey
-        result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, aliceId, alicePreKey, store);
+        result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, move(aliceId), move(alicePreKey), store);
         if (result < SUCCESS ) {
             return shared_ptr<string>();
         }
@@ -609,7 +606,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
             // Alice used to setup the ratchet context. Compute and check hashes.
             uint8_t hash[SHA256_DIGEST_LENGTH];
 
-            const string& pubKeyData = conv->getDHRs()->getPublicKey().getPublicKey();
+            const string& pubKeyData = conv->getDHRs().getPublicKey().getPublicKey();
             sha256((uint8_t*)pubKeyData.data(), static_cast<uint>(pubKeyData.size()), hash);
 
             if (memcmp(msgStruct.preKeyHash, hash, SHA256_DIGEST_LENGTH) != 0) {
@@ -621,7 +618,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     }
 
     // Check if conversation is really setup - identity key must be available in any case
-    if (conv->getDHIr() == NULL) {
+    if (!conv->hasDHIr()) {
         conv->setErrorCode(SESSION_NOT_INITED);
         return shared_ptr<string>();
     }
@@ -633,17 +630,17 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         return shared_ptr<string>();
     }
 
-    if (idHashes != nullptr) {
-        string recvIdHash;
+    if (!recvIdHash.empty()) {
+        string recvIdHashComp;
         auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser(), store);
         if (localConv->isValid()) {
-            const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
-            computeIdHash(idPub, &recvIdHash);
+            const string idPub = localConv->getDHIs().getPublicKey().getPublicKey();
+            computeIdHash(idPub, &recvIdHashComp);
         }
-        string senderIdHash;
-        const string idPub = conv->getDHIr()->getPublicKey();
-        computeIdHash(idPub, &senderIdHash);
-        result = compareHashes(idHashes, recvIdHash, senderIdHash);
+        string senderIdHashComp;
+        const string idPub = conv->getDHIr().getPublicKey();
+        computeIdHash(idPub, &senderIdHashComp);
+        result = compareHashes(recvIdHash, senderIdHash, recvIdHashComp, senderIdHashComp);
         if (result != SUCCESS) {
             conv->setErrorCode(result);
             return shared_ptr<string>();
@@ -658,24 +655,24 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         return decrypted;
     }
 
-    const DhPublicKey* DHRp = new Ec255PublicKey(msgStruct.ratchet);
-    bool newRatchet = conv->getDHRr() == NULL || !(*DHRp == *(conv->getDHRr()));
+    PublicKeyUnique DHRp = PublicKeyUnique(new Ec255PublicKey(msgStruct.ratchet));
+    bool newRatchet = !conv->hasDHRr() || !(*DHRp == conv->getDHRr());
 
     string RKp;
     string CKp;
     string macKey;
-    pair <string, string> MK;
+    string msgKey;
+    string msgIv;
     LOGGER(INFO, "Decrypt message from: ", conv->getPartner().getName(), " Nr: ", conv->getNr(), " Np: ", msgStruct.Np, " PNp: ", msgStruct.PNp, " newR: ", newRatchet);
 
     if (!newRatchet) {
-        delete(DHRp);
-        int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &MK, &macKey);
+        int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.Np, conv->getCKr(), &CKp, &msgKey, &msgIv, &macKey);
         if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Old ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
             conv->setErrorCode(status);
             return shared_ptr<string>();
         }
-        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements,  macKey, mac, decrypted.get(), supplementsPlain);
+        status = decryptAndCheck(msgKey, msgIv, encrypted, supplements,  macKey, mac, decrypted.get(), supplementsPlain);
         if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- Old ratchet, decrypt failed, staged MK not stored.");
             conv->setErrorCode(status);
@@ -685,25 +682,27 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     else {
         // Stage the skipped message for the current (old) ratchet, CKp, MK and macKey are not
         // used at this point, PNp has the max number of message sent on the old ratchet
-        int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.PNp, conv->getCKr(), &CKp, &MK, &macKey);
+        int32_t status = stageSkippedMessageKeys(conv, conv->getNr(), msgStruct.PNp, conv->getCKr(), &CKp, &msgKey, &msgIv, &macKey);
         if (status != SUCCESS) {
             LOGGER(ERROR, __func__, " <-- New ratchet, staging MK for old ratchet failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
             conv->setErrorCode(status);
             return shared_ptr<string>();
         }
 
-        // Save old DHRr, may need to restore in case of failure
-        const DhPublicKey* saveDHRr = conv->getDHRr();
+        // Save old DHRr, may be needed to restore in case of failure
+        PublicKeyUnique saveDHRr;
+        if (conv->hasDHRr()) {
+            saveDHRr = PublicKeyUnique(new Ec255PublicKey(conv->getDHRr().getPublicKeyPointer()));
+        }
 
         // set up the new ratchet DHRr and derive the new RK and CKr from it
-        conv->setDHRr(DHRp);
+        conv->setDHRr(move(DHRp));
 
         // RKp, CKp = KDF( HMAC-HASH(RK, DH(DHRp, DHRs)) )
         // With the new ratchet key derive the purported RK and CKr
         status = deriveRkCk(*conv, &RKp, &CKp);
         if (status < 0) {
-            conv->setDHRr(saveDHRr);
-            delete DHRp;
+            conv->setDHRr(move(saveDHRr));
             conv->setErrorCode(status);
             LOGGER(ERROR, __func__, " <-- New ratchet, failed to derive RKp/CKp, staged MK not stored.");
             return shared_ptr<string>();
@@ -712,26 +711,23 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         // With a new ratchet the message nr starts at zero, however we may have missed
         // the first message with the new ratchet key, thus stage up to purported number and
         // compute the chain key starting with the purported chain key computed above
-        status = stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &MK, &macKey);
+        status = stageSkippedMessageKeys(conv, 0, msgStruct.Np, CKp, &CKp, &msgKey, &msgIv, &macKey);
         if (status != SUCCESS) {
-            conv->setDHRr(saveDHRr);
-            delete DHRp;
+            conv->setDHRr(move(saveDHRr));
             conv->setErrorCode(status);
             LOGGER(ERROR, __func__, " <-- New ratchet, staging MK failed, error codes: ", conv->getErrorCode(), ", ", conv->getSqlErrorCode());
             return shared_ptr<string>();
         }
 
-        status = decryptAndCheck(MK.first, MK.second, encrypted, supplements, macKey, mac, decrypted.get(), supplementsPlain);
+        status = decryptAndCheck(msgKey, msgIv, encrypted, supplements, macKey, mac, decrypted.get(), supplementsPlain);
         if (status != SUCCESS) {
-            conv->setDHRr(saveDHRr);
-            delete DHRp;
+            conv->setDHRr(move(saveDHRr));
             conv->setErrorCode(status);
             LOGGER(ERROR, __func__, " <-- New ratchet, failed to decrypt, new staged MK not stored.");
             return shared_ptr<string>();
         }
         conv->setRK(RKp);
         Utilities::wipeString(RKp);
-        delete saveDHRr;
         conv->setRatchetFlag(true);
     }
     conv->setCKr(CKp);
@@ -741,7 +737,6 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
 
     // Here we can delete A0 in case it was set, if this was Alice then Bob replied and
     // A0 is not needed anymore.
-    delete(conv->getA0());
     conv->setA0(nullptr);
 
     Utilities::wipeString(macKey);
@@ -790,19 +785,16 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnv
         return shared_ptr<string>();
     }
 
-    pair<string, string> idHashes;
-    bool hasIdHashes = false;
+    string recvIdHash;
+    string senderIdHash;
     if (envelope.has_recvidhash() && envelope.has_senderidhash()) {
-        hasIdHashes = true;
-        const string& recvIdHash = envelope.recvidhash();
-        const string& senderIdHash = envelope.senderidhash();
-        idHashes.first = recvIdHash;
-        idHashes.second = senderIdHash;
+        recvIdHash = envelope.recvidhash();
+        senderIdHash = envelope.senderidhash();
     }
 
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
 
-    return decryptInternal(conv, msgStruct, supplements, store, supplementsPlain, hasIdHashes ? &idHashes : nullptr);
+    return decryptInternal(conv, msgStruct, supplements, store, supplementsPlain, recvIdHash, senderIdHash);
 }
 
 /*
@@ -838,8 +830,6 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     }
 
     // Encrypt the user's message and the supplementary data if necessary
-    pair<string, string> idHashes;
-
     string wireMessage;
     string supplementsEncrypted;;
 
@@ -847,22 +837,18 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
 
     auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser(), store);
     if (localConv->isValid()) {
-        const string idPub = localConv->getDHIs()->getPublicKey().getPublicKey();
+        const string idPub = localConv->getDHIs().getPublicKey().getPublicKey();
         computeIdHash(idPub, &senderIdHash);
     }
 
     string recvIdHash;
-    const string idPub = conv.getDHIr()->getPublicKey();
+    const string idPub = conv.getDHIr().getPublicKey();
     computeIdHash(idPub, &recvIdHash);
-    idHashes.first = recvIdHash;
-    idHashes.second = senderIdHash;
 
     const bool ratchetSave = conv.getRatchetFlag();
     if (conv.getRatchetFlag()) {
-        const DhKeyPair *oldDHRs = conv.getDHRs();
-        const DhKeyPair *newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
-        conv.setDHRs(newDHRs);
-        delete oldDHRs;
+        KeyPairUnique newDHRs = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+        conv.setDHRs(move(newDHRs));
         string newRK;
         string newCK;
         deriveRkCk(conv, &newRK, &newCK);
@@ -931,10 +917,10 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     ratchet->set_contextid(conv.getContextId());
 
     // We still send setup messages because Bob has not yet answered our messages yet
-    if (conv.getA0() != nullptr) {
+    if (conv.hasA0()) {
         uint8_t hash[SHA256_DIGEST_LENGTH];
 
-        const string& pubKeyData = conv.getDHRr()->getPublicKey();
+        const string& pubKeyData = conv.getDHRr().getPublicKey();
         sha256((uint8_t*)pubKeyData.data(), static_cast<uint>(pubKeyData.size()), hash);
 
         ratchet->set_prekeyhash(hash, SHA256_DIGEST_LENGTH);
@@ -942,8 +928,8 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
 
     if (!supplementsEncrypted.empty())
         envelope.set_supplement(supplementsEncrypted);
-    envelope.set_recvidhash(idHashes.first.data(), 4);
-    envelope.set_senderidhash(idHashes.second.data(), 4);
+    envelope.set_recvidhash(recvIdHash.data(), 4);
+    envelope.set_senderidhash(senderIdHash.data(), 4);
 
     LOGGER(INFO, "Encrypt message to:   ", conv.getPartner().getName(), " Nr: ", conv.getNr(), " Np: ", conv.getNs(), " PNp: ", conv.getPNs(), " newR: ", ratchetSave);
 

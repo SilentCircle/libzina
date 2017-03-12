@@ -77,16 +77,10 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
         return retVal;
     }
 
-    const DhPublicKey *existingIdKey = conv->getDHIr();     // get a possible existing long term id key
-
-    if (existingIdKey == nullptr) {
+    // Check if our partner's long term id key changed or if it's a new conversation
+    if (!conv->hasDHIr() || !(conv->getDHIr() == *bobKeys.first)) {
         conv->setZrtpVerifyState(0);
         conv->setIdentityKeyChanged(true);
-    }
-    else if (!(*existingIdKey == *bobKeys.first)) {
-        conv->setIdentityKeyChanged(true);
-        delete existingIdKey;
-        conv->setDHIr(nullptr);
     }
 
     conv->reset();
@@ -107,22 +101,19 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     contextId |= sequence;
     conv->setContextId(contextId);
 
-    const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));    // Alice's Identity key pair
-    const DhKeyPair* A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);   // generate Alice's pre-key
-
-    const DhPublicKey* B = bobKeys.first.release();       // Bob's identity key, public part
-    const DhPublicKey* B0 = bobKeys.second.release();     // Bob's pre-key, public part
+    KeyPairUnique A = KeyPairUnique(new DhKeyPair(localConv->getDHIs()));    // Alice's Identity key pair
+    KeyPairUnique A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);   // generate Alice's pre-key
 
     uint8_t masterSecret[EcCurveTypes::Curve25519KeyLength*3];
 
     // DH(Bob's public pre-key, Alice's private identity key)
-    EcCurve::calculateAgreement(*B0, A->getPrivateKey(), masterSecret, EcCurveTypes::Curve25519KeyLength);
+    EcCurve::calculateAgreement(*bobKeys.second /*B0*/, A->getPrivateKey(), masterSecret, EcCurveTypes::Curve25519KeyLength);
 
     // DH(Bob's public identity key, Alice's private pre-key)
-    EcCurve::calculateAgreement(*B, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength, EcCurveTypes::Curve25519KeyLength);
+    EcCurve::calculateAgreement(*bobKeys.first /*B*/, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength, EcCurveTypes::Curve25519KeyLength);
 
     // DH(Bob's public pre-key, Alice's private pre-key)
-    EcCurve::calculateAgreement(*B0, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
+    EcCurve::calculateAgreement(*bobKeys.second /*B0*/, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
     string master((const char*)masterSecret, EcCurveTypes::Curve25519KeyLength*3);
 
     // derive root and chain key
@@ -133,10 +124,10 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     memset_volatile((void*)master.data(), 0, master.size());
 
     // Initialize conversation (ratchet context), conversation takes over the ownership of the keys.
-    conv->setDHIr(B);               // Bob is receiver, set his public identity key
-    conv->setDHIs(A);               // Alice is sender, set her identity key pair
-    conv->setDHRr(B0);              // Bob's B0 (pre-key) public part
-    conv->setA0(A0);                // Alice's generated pre-key.
+    conv->setDHIr(move(bobKeys.first)); // Bob is receiver, set his public identity key
+    conv->setDHIs(move(A));         // Alice is sender, set her identity key pair
+    conv->setDHRr(move(bobKeys.second)); // Bob's B0 (pre-key) public part
+    conv->setA0(move(A0));          // Alice's generated pre-key.
     conv->setRK(root);
     conv->setCKr(chain);
     conv->setPreKeyId(bobPreKeyId);
@@ -157,8 +148,8 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     B0 = P1_PK1 (public data)
 
 */
-int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId,
-                                                  const DhPublicKey* alicePreKey, SQLiteStoreConv &store)
+int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, PublicKeyUnique aliceId,
+                                                  PublicKeyUnique alicePreKey, SQLiteStoreConv &store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 //    store->dumpPreKeys();
@@ -171,8 +162,6 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     // if yes -> OK, Alice sent the key more than once because Bob didn't answer her
     // yet. Otherwise Bob got an illegal pre-key.
     if (preKeyData.empty()) {
-        delete aliceId;
-        delete alicePreKey;
         if (conv->getRK().empty()) {
             conv->setErrorCode(NO_PRE_KEY_FOUND);
             LOGGER(ERROR, __func__, " <-- Pre-key not found.");
@@ -181,16 +170,11 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
         LOGGER(INFO, __func__, " <-- OK - multiple type 2 message");
         return OK;      // return this code to show that this was a multiple type 2 message
     }
-    const DhPublicKey *existingIdKey = conv->getDHIr();     // get a possible existing long term id key
 
-    if (existingIdKey == nullptr) {
+    // Check if our partner's long term id key changed or if it's a new conversation
+    if (!conv->hasDHIr() || !(conv->getDHIr() == *aliceId)) {
         conv->setZrtpVerifyState(0);
         conv->setIdentityKeyChanged(true);
-    }
-    else if (!(*existingIdKey == *aliceId)) {
-        conv->setIdentityKeyChanged(true);
-        delete existingIdKey;
-        conv->setDHIr(nullptr);
     }
 
     // Remove the pre-key from database because Alice used the key
@@ -198,33 +182,27 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     conv->reset();
 
     // A0 is Bob's (my) pre-key, this mirrors Alice's usage of her generated A0 pre-key.
-    DhKeyPair* A0 = PreKeys::parsePreKeyData(preKeyData);
+    KeyPairUnique A0 = PreKeys::parsePreKeyData(preKeyData);
     Utilities::wipeString(preKeyData);
 
     auto localConv = ZinaConversation::loadLocalConversation(conv->getLocalUser(), store);
     if (!localConv->isValid()) {
-        delete aliceId;
-        delete alicePreKey;
         LOGGER(ERROR, __func__, " <-- Local conversation not valid, code: ", localConv->getErrorCode());
         return -1;
     }
-    const DhKeyPair* A = new DhKeyPair(*(localConv->getDHIs()));
-
-    const DhPublicKey* B = aliceId;
-    const DhPublicKey* B0 = alicePreKey;
+    KeyPairUnique A = KeyPairUnique(new DhKeyPair(localConv->getDHIs()));
 
     uint8_t masterSecret[EcCurveTypes::Curve25519KeyLength*3];
 
     // DH(Alice's public identity key, Bob's private pre-key)
-    EcCurve::calculateAgreement(*B, A0->getPrivateKey(), masterSecret, EcCurveTypes::Curve25519KeyLength);
+    EcCurve::calculateAgreement(*aliceId /* B */, A0->getPrivateKey(), masterSecret, EcCurveTypes::Curve25519KeyLength);
 
     // DH(Alice's public pre-key, Bob's private identity key)
-    EcCurve::calculateAgreement(*B0, A->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength, EcCurveTypes::Curve25519KeyLength);
+    EcCurve::calculateAgreement(*alicePreKey /* B0 */, A->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength, EcCurveTypes::Curve25519KeyLength);
 
     // DH(Alice's public pre-key, Bob's private pre-key)
-    EcCurve::calculateAgreement(*B0, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
+    EcCurve::calculateAgreement(*alicePreKey /* B0 */, A0->getPrivateKey(), masterSecret+EcCurveTypes::Curve25519KeyLength*2, EcCurveTypes::Curve25519KeyLength);
     string master((const char*)masterSecret, EcCurveTypes::Curve25519KeyLength*3);
-    delete B0;
 //    hexdump("master Bob", master);  Log("%s", hexBuffer);
 
     // derive root and chain key
@@ -234,9 +212,9 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     memset_volatile(masterSecret, 0, EcCurveTypes::Curve25519KeyLength*3);
     memset_volatile((void*)master.data(), 0, master.size());
 
-    conv->setDHRs(A0);              // Actually Bob's pre-key - because of the optimized pre-key handling
-    conv->setDHIs(A);               // Bob's (own) identity key
-    conv->setDHIr(B);               // Alice's (remote) identity key
+    conv->setDHRs(move(A0));        // Actually Bob's pre-key - because of the optimized pre-key handling
+    conv->setDHIs(move(A));         // Bob's (own) identity key
+    conv->setDHIr(move(aliceId) /* B */); // Alice's (remote) identity key
     conv->setRK(root);
     conv->setCKs(chain);
     conv->setRatchetFlag(false);

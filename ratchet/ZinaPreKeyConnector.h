@@ -88,8 +88,8 @@ public:
      * 
      * This function performs the master secret computation.
      */
-    static int32_t setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, const DhPublicKey* aliceId,
-                                        const DhPublicKey* alicePreKey, SQLiteStoreConv &store);
+    static int32_t setupConversationBob(ZinaConversation* conv, int32_t bobPreKeyId, PublicKeyUnique aliceId,
+                                        PublicKeyUnique alicePreKey, SQLiteStoreConv &store);
 
 private:
     ZinaPreKeyConnector() {};

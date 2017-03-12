@@ -45,7 +45,7 @@ static unique_ptr<string> preKeyJson(const DhKeyPair &preKeyPair)
     return data;
 }
 
-pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
+pair<int32_t, KeyPairUnique> PreKeys::generatePreKey(SQLiteStoreConv* store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -55,33 +55,33 @@ pair<int32_t, const DhKeyPair*> PreKeys::generatePreKey(SQLiteStoreConv* store)
         keyId &= 0x7fffffff;      // always a positive value
         ok = !store->containsPreKey(keyId);
     }
-    const DhKeyPair* preKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
+    KeyPairUnique preKeyPair = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);
 
     // Create storage format (JSON) of pre-key and store it. Storage encrypts the JSON data
     const auto pk = preKeyJson(*preKeyPair);
     store->storePreKey(keyId, pk->c_str());
 
-    pair <int32_t, const DhKeyPair*> prePair(keyId, preKeyPair);
+    pair <int32_t, KeyPairUnique> prePair(keyId, move(preKeyPair));
 
     LOGGER(DEBUGGING, __func__, " <--");
     return prePair;
 }
 
-list<pair<int32_t, const DhKeyPair*> >* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
+list<pair<int32_t, KeyPairUnique> >* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    std::list<pair<int32_t, const DhKeyPair*> >* pkrList = new std::list<pair<int32_t, const DhKeyPair*> >;
+    auto* pkrList = new std::list<pair<int32_t, KeyPairUnique> >;
 
     for (int32_t i = 0; i < num; i++) {
-        pair<int32_t, const DhKeyPair*> pkPair = generatePreKey(store);
-        pkrList->push_back(pkPair);
+        pair<int32_t, KeyPairUnique> pkPair = generatePreKey(store);
+        pkrList->push_back(move(pkPair));
     }
     LOGGER(DEBUGGING, __func__, " <--");
     return pkrList;
 }
 
-DhKeyPair* PreKeys::parsePreKeyData(const string& data)
+KeyPairUnique PreKeys::parsePreKeyData(const string& data)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -103,8 +103,6 @@ DhKeyPair* PreKeys::parsePreKeyData(const string& data)
 
     cJSON_Delete(root);
 
-    DhKeyPair* keyPair = new DhKeyPair(*pubKey, *privKey);
-
     LOGGER(DEBUGGING, __func__, " <--");
-    return keyPair;
+    return KeyPairUnique(new DhKeyPair(*pubKey, *privKey));
 }

@@ -110,10 +110,10 @@ static string createRecvMessageDescriptor(AppInterfaceImpl* appInterface)
 
 static int32_t groupCmdCallback(const string& command)
 {
-    LOGGER(ERROR, __func__, " -->");
+    LOGGER(INFO, __func__, " -->");
 //    callbackCommand = command;
-    LOGGER(ERROR, command);
-    LOGGER(ERROR, __func__, " <--");
+    LOGGER(INFO, command);
+    LOGGER(INFO, __func__, " <--");
     return OK;
 }
 

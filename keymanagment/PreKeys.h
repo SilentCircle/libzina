@@ -42,7 +42,7 @@ public:
      * @param store The persitent Axolotl store to store and retrieve state information.
      * @return a new pre-key and its id
      */
-    static pair< int32_t, const DhKeyPair* > generatePreKey(SQLiteStoreConv* store );
+    static pair< int32_t, KeyPairUnique> generatePreKey(SQLiteStoreConv* store );
 
     /**
      * @brief Generate a batch of pre-keys.
@@ -56,7 +56,7 @@ public:
      * @param store The persitent Axolotl store to store and retrieve state information.
      * @return a list of the generated new pre-key.
      */
-    static list< pair< int32_t, const DhKeyPair* > >* generatePreKeys(SQLiteStoreConv* store, int32_t num = NUM_PRE_KEYS);
+    static list< pair< int32_t, KeyPairUnique> >* generatePreKeys(SQLiteStoreConv* store, int32_t num = NUM_PRE_KEYS);
 
     /**
      * @brief Parse pre-key JSON data and return the keys
@@ -64,7 +64,7 @@ public:
      * @param data The JSON string as produced during pre-key generation
      * @return a DH key pair
      */
-    static DhKeyPair* parsePreKeyData(const string& data);
+    static KeyPairUnique parsePreKeyData(const string& data);
 };
 } // namespace zina
 

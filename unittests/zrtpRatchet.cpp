@@ -66,7 +66,7 @@ public:
 
     void SetUp() {
         // code here will execute just before the test ensues
-        LOGGER_INSTANCE setLogLevel(INFO);
+        LOGGER_INSTANCE setLogLevel(WARNING);
         store = SQLiteStoreConv::getStore();
         if (store->isReady())
             return;
@@ -128,13 +128,13 @@ TEST_F(RatchetTestFixture, RatchetTest)
     // Load P2's conversation
     auto p1p2Conv = ZinaConversation::loadConversation(p1Name, p2Name, p2dev, *store);
     ASSERT_TRUE(p1p2Conv->isValid());
-    ASSERT_TRUE(p2Conv->getDHIs()->getPublicKey() == *p1p2Conv->getDHIr());
+    ASSERT_TRUE(p2Conv->getDHIs().getPublicKey() == p1p2Conv->getDHIr());
 
     auto p2p1Conv = ZinaConversation::loadConversation(p2Name, p1Name, p1dev, *store);
     ASSERT_TRUE(p1p2Conv->isValid());
-    ASSERT_TRUE(p1Conv->getDHIs()->getPublicKey() == *p2p1Conv->getDHIr());
+    ASSERT_TRUE(p1Conv->getDHIs().getPublicKey() == p2p1Conv->getDHIr());
 
-    if (p1p2Conv->getDHRs() == NULL) {    // This conversation is Alice
+    if (!p1p2Conv->hasDHRs()) {    // This conversation is Alice
 
     }
     else {

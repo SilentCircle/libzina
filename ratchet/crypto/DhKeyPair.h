@@ -62,6 +62,7 @@ private:
     const DhPrivateKey* privateKey_;
     const DhPublicKey*  publicKey_;
 };
+    typedef std::unique_ptr<const DhKeyPair> KeyPairUnique;
 }  // namespace
 /**
  * @}
