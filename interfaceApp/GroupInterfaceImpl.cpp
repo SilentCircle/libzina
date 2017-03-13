@@ -1082,6 +1082,20 @@ int32_t AppInterfaceImpl::processSiblingGroupSyncData(cJSON* root)
         return CORRUPT_DATA;
     }
 
+    // Implicitly create a new group if it does not exist yet and we should add a member to it
+    // Works the same for sibling devices and other member devices
+    if (changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) {
+        string callbackCmd;
+        const int32_t result = insertNewGroup(groupId, changeSet, &callbackCmd);
+        if (result != SUCCESS) {
+            errorCode_ = result;
+            errorInfo_ = "Cannot add new group (sync sibling).";
+            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
+            return result;
+        }
+        groupCmdCallback_(callbackCmd);
+    }
+
     int32_t result = syncGroupName(changeSet.updatename(), groupId);
     if (result != SUCCESS) {
         return result;
