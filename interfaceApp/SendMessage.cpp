@@ -28,8 +28,8 @@ limitations under the License.
 #include "JsonStrings.h"
 #include "../dataRetention/ScDataRetention.h"
 
+using namespace std;
 using namespace zina;
-
 
 shared_ptr<list<shared_ptr<PreparedMessageData> > >
 AppInterfaceImpl::prepareMessage(const string& messageDescriptor,

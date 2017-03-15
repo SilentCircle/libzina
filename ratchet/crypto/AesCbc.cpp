@@ -19,6 +19,7 @@ limitations under the License.
 #include "../../Constants.h"
 #include "../../logging/ZinaLogging.h"
 
+using namespace std;
 using namespace zina;
 
 int32_t zina::aesCbcEncrypt(const string& key, const string& IV, const string& plainText, string* cryptText)

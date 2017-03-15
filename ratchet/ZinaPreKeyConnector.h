@@ -30,8 +30,6 @@ limitations under the License.
 #include "state/ZinaConversation.h"
 #include "crypto/DhKeyPair.h"
 
-using namespace std;
-
 namespace zina {
 
 /**
@@ -68,8 +66,8 @@ public:
      *                Bob's pre-key.
      * @return @c OK or an error code
      */
-    static int32_t setupConversationAlice(const string& localUser, const string& user, const string& deviceId,
-                                          int32_t bobPreKeyId, pair<PublicKeyUnique, PublicKeyUnique>& bobKeys,
+    static int32_t setupConversationAlice(const std::string& localUser, const std::string& user, const std::string& deviceId,
+                                          int32_t bobPreKeyId, std::pair<PublicKeyUnique, PublicKeyUnique>& bobKeys,
                                           SQLiteStoreConv &store);
 
     /**

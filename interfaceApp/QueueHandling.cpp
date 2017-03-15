@@ -24,6 +24,7 @@ limitations under the License.
 
 #include "AppInterfaceImpl.h"
 
+using namespace std;
 using namespace zina;
 
 static mutex commandQueueLock;

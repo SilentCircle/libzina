@@ -35,6 +35,7 @@ static const char* kHashStr         = "hash";
 '\255')
 #define HEXOF(x) (x - _base(x))
 
+using namespace std;
 using namespace zina;
 
 SCLError scloudDeserializeKey(uint8_t *inData, size_t inLen, SCloudKey *keyOut)
@@ -43,7 +44,7 @@ SCLError scloudDeserializeKey(uint8_t *inData, size_t inLen, SCloudKey *keyOut)
     memcpy(in, inData, inLen);
     in[inLen] = '\0';
 
-    shared_ptr<cJSON> sharedRoot(cJSON_Parse(in), cJSON_deleter);
+    JsonUnique sharedRoot(cJSON_Parse(in));
     cJSON* root = sharedRoot.get();
 
     XFREE(in);
@@ -133,11 +134,10 @@ SCLError SCloudEncryptGetKeyBLOB(SCloudContextRef ctx, uint8_t **outData, size_t
     SCLError            err = kSCLError_NoErr;
     uint8_t             *outBuf = NULL;
 
-    cJSON* root = cJSON_CreateObject();
-    createKeyJson(ctx, root);
+    JsonUnique jsonUnique(cJSON_CreateObject());
+    createKeyJson(ctx, jsonUnique.get());
 
-    outBuf = (uint8_t*)cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
+    outBuf = (uint8_t*)cJSON_PrintUnformatted(jsonUnique.get());
 
     *outData = outBuf;
     *outSize = strlen((const char*)outBuf);

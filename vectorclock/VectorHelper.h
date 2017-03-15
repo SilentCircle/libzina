@@ -48,14 +48,14 @@ namespace zina {
      * @param vectorClock address of the LocalVClock class to add the de-serialized data
      * @return @c SUCCESS if de-serializing was OK, an error code if the operation failed
      */
-    int32_t readLocalVectorClock(SQLiteStoreConv &store, const string& groupId, GroupUpdateType type, LocalVClock *vectorClock);
+    int32_t readLocalVectorClock(SQLiteStoreConv &store, const std::string& groupId, GroupUpdateType type, LocalVClock *vectorClock);
 
     /**
      * @brief De-serialize a Vector Clock from proto buffer VClock class.
      * @param protoVc The proto buffer's vector clock data
      * @param vc The vector class
      */
-    void deserializeVectorClock(const google::protobuf::RepeatedPtrField<VClock> &protoVc, vectorclock::VectorClock<string> *vc);
+    void deserializeVectorClock(const google::protobuf::RepeatedPtrField<VClock> &protoVc, vectorclock::VectorClock<std::string> *vc);
 
     /**
      * @brief Store a vector clock for a group/type pair.
@@ -68,7 +68,7 @@ namespace zina {
      * @param vectorClock the LocalVClock class to store
      * @return @c SUCCESS if the function could store the data
      */
-    int32_t storeLocalVectorClock(SQLiteStoreConv &store, const string& groupId, GroupUpdateType type, const LocalVClock &vectorClock);
+    int32_t storeLocalVectorClock(SQLiteStoreConv &store, const std::string& groupId, GroupUpdateType type, const LocalVClock &vectorClock);
 
     /**
      * @brief Serialize a VectorClock into a proto buffer VClock class.
@@ -76,7 +76,7 @@ namespace zina {
      * @param vc The vector clock
      * @param protoVc the proto buffer vector class
      */
-    void serializeVectorClock(const vectorclock::VectorClock<string> &vc, google::protobuf::RepeatedPtrField<VClock> *protoVc);
+    void serializeVectorClock(const vectorclock::VectorClock<std::string> &vc, google::protobuf::RepeatedPtrField<VClock> *protoVc);
 }
 
 /**

@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+#include <malloc.h>
+
 #include "gtest/gtest.h"
 
 #include "../ratchet/state/ZinaConversation.h"
@@ -31,6 +33,13 @@ static std::string bobDev("BobDevId");
 
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 
+/**
+ * @brief Storage test fixture class that supports memory leak checking.
+ *
+ * NOTE: when using this class as a base class for a test fixture,
+ *       the derived class should not create any local member variables, as
+ *       they can cause memory leaks to be improperly reported.
+ */
 class StoreTestFixture: public ::testing::Test {
 public:
     StoreTestFixture( ) {
@@ -40,6 +49,11 @@ public:
     void SetUp() {
         // code here will execute just before the test ensues
         LOGGER_INSTANCE setLogLevel(ERROR);
+
+        // capture the memory state at the beginning of the test
+        struct mallinfo minfo = mallinfo();
+        beginMemoryState = minfo.uordblks;
+
         store = SQLiteStoreConv::getStore();
         store->setKey(std::string((const char*)keyInData, 32));
         store->openStore(std::string());
@@ -49,6 +63,25 @@ public:
         // code here will be called just after the test completes
         // ok to through exceptions from here if need be
         SQLiteStoreConv::closeStore();
+
+        // only check for memory leaks if the test did not end in a failure
+        if (!HasFailure())
+        {
+            // Gets information about the currently running test.
+            // Do NOT delete the returned object - it's managed by the UnitTest class.
+            const ::testing::TestInfo* const test_info = ::testing::UnitTest::GetInstance()->current_test_info();
+
+            // if there are differences between the memory state at beginning and end, then there are memory leaks
+            struct mallinfo minfo = mallinfo();
+            if ( beginMemoryState != minfo.uordblks )
+            {
+                FAIL() << "Memory Leak(s) detected in " << test_info->name()
+                       << ", test case: " << test_info->test_case_name()
+                       << ", memory before: " << beginMemoryState << ", after: " << minfo.uordblks
+                       << ", difference: " << minfo.uordblks - beginMemoryState
+                       << endl;
+            }
+        }
     }
 
     ~StoreTestFixture( )  {
@@ -58,6 +91,7 @@ public:
 
     // put in any custom data members that you need
     SQLiteStoreConv* store;
+    int beginMemoryState;
 };
 
 TEST_F(StoreTestFixture, BasicEmpty)
@@ -176,3 +210,79 @@ TEST_F(StoreTestFixture, SimpleFields)
     ASSERT_EQ(13, conv1->getPreKeyId());
     ASSERT_TRUE(tst == conv1->getDeviceName());
 }
+
+///**
+// * A base GTest (GoogleTest) text fixture class that supports memory leak checking.
+// *
+// * NOTE: when using this class as a base class for a test fixture,
+// *       the derived class should not create any local member variables, as
+// *       they can cause memory leaks to be improperly reported.
+// */
+//
+//class BaseTestFixture : public ::testing::Test
+//{
+//public:
+//    virtual void SetUp()
+//    {
+//        // capture the memory state at the beginning of the test
+//        struct mallinfo minfo = mallinfo();
+//        beginMemoryState = minfo.uordblks;
+//    }
+//
+//    virtual void TearDown()
+//    {
+//        // only check for memory leaks if the test did not end in a failure
+//        if (!HasFailure())
+//        {
+//            // Gets information about the currently running test.
+//            // Do NOT delete the returned object - it's managed by the UnitTest class.
+//            const ::testing::TestInfo* const test_info = ::testing::UnitTest::GetInstance()->current_test_info();
+//
+//            // if there are differences between the memory state at beginning and end, then there are memory leaks
+//            struct mallinfo minfo = mallinfo();
+//            if ( beginMemoryState != minfo.uordblks )
+//            {
+//                FAIL() << "Memory Leak(s) Detected in " << test_info->name() << ", test case: " << test_info->test_case_name() << endl;
+//            }
+//        }
+//    }
+//
+//private:
+//    // memory state at the beginning of the test fixture set up
+//    int beginMemoryState;
+//};
+//
+////----------------------------------------------------------------
+//// check that allocating nothing doesn't throw a false positive
+////----------------------------------------------------------------
+//TEST_F(BaseTestFixture, BaseTestFixtureTest)
+//{
+//    // should always pass an empty test
+//}
+//
+////----------------------------------------------------------------
+//// check that malloc()ing something is detected
+////----------------------------------------------------------------
+//TEST_F(BaseTestFixture, BaseTestFixtureMallocTest)
+//{
+//    // should always fail
+//    void* p = malloc(10);
+//}
+//
+////----------------------------------------------------------------
+//// check that new()ing something is detected
+////----------------------------------------------------------------
+//TEST_F(BaseTestFixture, BaseTestFixtureNewFailTest)
+//{
+//    // should always fail
+//    int* array = new int[10];
+//}
+//
+////----------------------------------------------------------------
+////
+////----------------------------------------------------------------
+//TEST_F(BaseTestFixture, BaseTestFixtureNewTest)
+//{
+//    void* p = malloc(10);
+//    free( p );
+//}

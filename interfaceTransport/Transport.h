@@ -32,9 +32,6 @@ limitations under the License.
 // bool g_sendDataFuncAxoNew(uint8_t* name, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgId){
 typedef bool (*SEND_DATA_FUNC)(uint8_t*, uint8_t*, uint8_t*, size_t, uint64_t);
 
-
-using namespace std;
-
 namespace zina {
 
 // Forward declaration to avoid include of AppInterfaceImpl.h
@@ -68,7 +65,7 @@ public:
      * @param info The meta-data of the message ot send
      * @param envelope The message envelope, serialized as string and B64 encoded
      */
-    virtual void sendAxoMessage(const CmdQueueInfo& info, const string& envelope) = 0;
+    virtual void sendAxoMessage(const CmdQueueInfo& info, const std::string& envelope) = 0;
 
     /**
      * @brief Receive data from network transport - callback function for network layer.

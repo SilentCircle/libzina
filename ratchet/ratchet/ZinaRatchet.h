@@ -28,8 +28,6 @@ limitations under the License.
 #include "../crypto/DhPublicKey.h"
 #include "../state/ZinaConversation.h"
 
-using namespace std;
-
 namespace zina {
 class MessageEnvelope;
 
@@ -46,7 +44,8 @@ public:
      * @param Context storage
      * @return SUCCESS or a failure code
      */
-    static int32_t encrypt(ZinaConversation& conv, const string& message, MessageEnvelope& envelope, const string &supplements, SQLiteStoreConv &store);
+    static int32_t encrypt(ZinaConversation& conv, const std::string& message, MessageEnvelope& envelope, const std::string &supplements,
+                           SQLiteStoreConv &store);
 
     /**
      * @brief Parse a wire message and decrypt the payload.
@@ -60,7 +59,8 @@ public:
      * @param store Context storage
      * @return Plaintext or @c NULL if decryption failed
      */
-    static shared_ptr<const string> decrypt(ZinaConversation* conv, MessageEnvelope& envelope, SQLiteStoreConv &store, string* supplementsPlain);
+    static std::shared_ptr<const std::string> decrypt(ZinaConversation* conv, MessageEnvelope& envelope, SQLiteStoreConv &store,
+                                                      std::string* supplementsPlain);
 
 private:
     ZinaRatchet() {};

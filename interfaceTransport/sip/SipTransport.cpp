@@ -27,6 +27,7 @@ limitations under the License.
 // #define MAX_AVAILABLE_SLOTS     30
 #define KEEP_SLOTS              10
 
+using namespace std;
 using namespace zina;
 
 static int32_t getNumOfSlots()

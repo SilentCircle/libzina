@@ -45,7 +45,7 @@ limitations under the License.
  * @param store Context storage
  * @return the serialized data of the public keys.
  */
-const string getAxoPublicKeyData( const string& localUser, const string& user, const string& deviceId, zina::SQLiteStoreConv &store);
+const std::string getAxoPublicKeyData(const std::string& localUser, const std::string& user, const std::string& deviceId, zina::SQLiteStoreConv &store);
 
 /**
  * @brief Set public keys of a remote user.
@@ -62,7 +62,7 @@ const string getAxoPublicKeyData( const string& localUser, const string& user, c
  * @param user the remote user's name
  * @param deviceId The remote user's device id if it is available
  */
-void setAxoPublicKeyData(const string& localUser, const string& user, const string& deviceId, const string& pubKeyData);
+void setAxoPublicKeyData(const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& pubKeyData);
 
 /**
  * @brief Receive the exported key data.
@@ -81,12 +81,13 @@ void setAxoPublicKeyData(const string& localUser, const string& user, const stri
  * @param exportedKey The raw data of the exported key from ZRTP
  * @param role the current client ZRTP role, Initiator or Responder
  */
-void setAxoExportedKey( const string& localUser, const string& user, const string& deviceId, const string& exportedKey, zina::SQLiteStoreConv &store);
+void setAxoExportedKey( const std::string& localUser, const std::string& user, const std::string& deviceId, const std::string& exportedKey,
+                        zina::SQLiteStoreConv &store);
 
 
-const string getOwnIdKey();
+const std::string getOwnIdKey();
 
-void checkRemoteIdKey(const string user, const string deviceId, const string pubKey, int32_t verifyState);
+void checkRemoteIdKey(const std::string user, const std::string deviceId, const std::string pubKey, int32_t verifyState);
 
 /*
  * To get some information from the SIP engine we need to something like this:
@@ -117,8 +118,8 @@ public:
      * @param conv Pointer to a remote ZinaConversation.
      * @param localConv Pointer to local ZinaConversatione
      */
-    ZinaZrtpConnector(unique_ptr<ZinaConversation> conv, unique_ptr<ZinaConversation> localConv)
-            : conv_(move(conv)), localConv_(move(localConv)), ratchetKey_(NULL),
+    ZinaZrtpConnector(std::unique_ptr<ZinaConversation> conv, std::unique_ptr<ZinaConversation> localConv)
+            : conv_(std::move(conv)), localConv_(std::move(localConv)), ratchetKey_(NULL),
               remoteRatchetKey_(NULL), remoteIdKey_(NULL), role_(None) {}
     ~ZinaZrtpConnector() { delete ratchetKey_; ratchetKey_ = NULL; delete remoteRatchetKey_; remoteRatchetKey_ = NULL; }
 
@@ -150,16 +151,16 @@ public:
     void setRole(int32_t role)                { role_ = role; }
     int32_t getRole()                         { return role_; }
 
-    unique_ptr<ZinaConversation> getRemoteConversation()  { return move(conv_); }
-    unique_ptr<ZinaConversation> getLocalConversation()   { return move(localConv_); }
+    std::unique_ptr<ZinaConversation> getRemoteConversation()  { return move(conv_); }
+    std::unique_ptr<ZinaConversation> getLocalConversation()   { return move(localConv_); }
 
 private:
     ZinaZrtpConnector (const ZinaZrtpConnector& other) = delete;
     ZinaZrtpConnector& operator= (const ZinaZrtpConnector& other) = delete;
     bool operator== (const ZinaZrtpConnector& other) const = delete;
 
-    unique_ptr<ZinaConversation> conv_;
-    unique_ptr<ZinaConversation> localConv_;
+    std::unique_ptr<ZinaConversation> conv_;
+    std::unique_ptr<ZinaConversation> localConv_;
     const DhKeyPair* ratchetKey_;
     const DhPublicKey* remoteRatchetKey_;
     const DhPublicKey* remoteIdKey_;

@@ -457,7 +457,7 @@ static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId,
  *
  *************************************************************************** */
 
-string AppInterfaceImpl::createNewGroup(string& groupName, string& groupDescription) {
+string AppInterfaceImpl::createNewGroup(const string& groupName, string& groupDescription) {
     LOGGER(DEBUGGING, __func__, " -->");
 
     uuid_t groupUuid = {0};

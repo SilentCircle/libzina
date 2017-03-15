@@ -25,7 +25,7 @@ limitations under the License.
 #include "../provisioning/Provisioning.h"
 #include "../util/Utilities.h"
 
-
+using namespace std;
 using namespace zina;
 
 static mutex nameLock;           // mutex for critical section

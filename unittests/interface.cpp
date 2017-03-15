@@ -28,6 +28,8 @@ limitations under the License.
 
 #include "gtest/gtest.h"
 
+using namespace std;
+
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
 static const uint8_t keyInData_2[] = {"ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW"};  // 32 bytes
@@ -45,7 +47,7 @@ static const int32_t bobRegisterId = 4711;
 
 static const Ec255PublicKey bobIdpublicKey(keyInData);
 
-static pair<int32_t, KeyPairUnique> bobPreKey;
+static PreKeys::PreKeyData bobPreKey(0, nullptr);
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
@@ -136,10 +138,10 @@ static int32_t helper1(const std::string& requestUrl, const std::string& method,
 
     cJSON* jsonPkr;
     cJSON_AddItemToObject(axolotl, "preKey", jsonPkr = cJSON_CreateObject());
-    cJSON_AddNumberToObject(jsonPkr, "id", bobPreKey.first);
+    cJSON_AddNumberToObject(jsonPkr, "id", bobPreKey.keyId);
 
     // Get pre-key's public key data, serialized and add it to JSON
-    data = bobPreKey.second->getPublicKey().serialize();
+    data = bobPreKey.keyPair->getPublicKey().serialize();
     b64Len = b64Encode((const uint8_t*)data.data(), data.size(), b64Buffer, MAX_KEY_BYTES_ENCODED*2);
     cJSON_AddStringToObject(jsonPkr, "key", b64Buffer);
 
@@ -165,7 +167,7 @@ TEST(PreKeyBundle, Basic)
     pair<PublicKeyUnique, PublicKeyUnique> preIdKeys;
     int32_t preKeyId = Provisioning::getPreKeyBundle(bob, bobDevId, bobAuth, &preIdKeys);
     
-    ASSERT_EQ(bobPreKey.first, preKeyId);
+    ASSERT_EQ(bobPreKey.keyId, preKeyId);
     ASSERT_TRUE(bobIdpublicKey == *(preIdKeys.first));
 
 }

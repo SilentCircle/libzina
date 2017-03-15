@@ -159,7 +159,7 @@ static int32_t serializeChangeSet(const GroupChangeSet changeSet, string *attrib
 // ****** Public instance functions
 // *******************************************************
 
-bool AppInterfaceImpl::modifyGroupSize(string& groupId, int32_t newSize)
+bool AppInterfaceImpl::modifyGroupSize(const string& groupId, int32_t newSize)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     if (!store_->isReady()) {

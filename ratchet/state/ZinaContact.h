@@ -26,8 +26,6 @@ limitations under the License.
 #include <string>
 #include <stdint.h>
 
-using namespace std;
-
 namespace zina {
 
 /**
@@ -37,7 +35,7 @@ namespace zina {
 class ZinaContact
 {
 public:
-    ZinaContact(const string& name, const string& alias) : name_(name), alias_(alias) {};
+    ZinaContact(const std::string& name, const std::string& alias) : name_(name), alias_(alias) {};
     ~ZinaContact() {};
 
     const std::string& getName() const { return name_; }

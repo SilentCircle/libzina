@@ -22,6 +22,7 @@ limitations under the License.
 #include <string.h>
 #include "Utilities.h"
 
+using namespace std;
 using namespace zina;
 
 

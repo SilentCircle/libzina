@@ -19,8 +19,6 @@
 #include <memory>
 #include "cJSON.h"
 
-using namespace std;
-
 namespace zina {
     class Utilities {
     public:
@@ -97,7 +95,7 @@ namespace zina {
          * @param delimiter The delimiter character
          * @return A vector of strings
          */
-        static shared_ptr<vector<string> > splitString(const string& data, const string delimiter);
+        static std::shared_ptr<std::vector<std::string> > splitString(const std::string& data, const std::string delimiter);
 
         /**
          * @brief Returns a string with date and Time with milliseconds, formatted according to ISO8601.
@@ -107,7 +105,7 @@ namespace zina {
          *
          * @return A formatted string with current Zulu time.
          */
-        static string currentTimeMsISO8601();
+        static std::string currentTimeMsISO8601();
 
         /**
          * @brief Returns a string with date and Time without milliseconds, formatted according to ISO8601.
@@ -117,7 +115,7 @@ namespace zina {
          *
          * @return A formatted string with current Zulu time.
          */
-        static string currentTimeISO8601();
+        static std::string currentTimeISO8601();
 
         /**
          * @brief get the cuurent time in milliseconds.
@@ -133,7 +131,7 @@ namespace zina {
          *
          * @param toWipe The string to wipe.
          */
-        static void wipeString(string &toWipe);
+        static void wipeString(std::string &toWipe);
 
         /**
          * @brief URL-encode the input string and return the encoded string
@@ -141,7 +139,7 @@ namespace zina {
          * @param s Input string
          * @return URL-encoded string
          */
-        static string urlEncode(string s);
+        static std::string urlEncode(std::string s);
     };
 }
 

@@ -30,15 +30,14 @@ limitations under the License.
 
 #include "../interfaceTransport/Transport.h"
 
-using namespace std;
 
-typedef int32_t (*RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string &messageAttributes);
-typedef void (*STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const string& stateInformation);
-typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const string& userId, const string& actionInformation);
+typedef int32_t (*RECV_FUNC)(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string &messageAttributes);
+typedef void (*STATE_FUNC)(int64_t messageIdentifier, int32_t errorCode, const std::string& stateInformation);
+typedef void (*NOTIFY_FUNC)(int32_t notifyActionCode, const std::string& userId, const std::string& actionInformation);
 
-typedef int32_t (*GROUP_CMD_RECV_FUNC)(const string& commandMessage);
-typedef int32_t (*GROUP_MSG_RECV_FUNC)(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
-typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const string& stateInformation);
+typedef int32_t (*GROUP_CMD_RECV_FUNC)(const std::string& commandMessage);
+typedef int32_t (*GROUP_MSG_RECV_FUNC)(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes);
+typedef void (*GROUP_STATE_FUNC)(int32_t errorCode, const std::string& stateInformation);
 
 /**
  * @brief Groups classes and data of the ZINA implementation.
@@ -50,7 +49,7 @@ namespace zina {
  */
 typedef struct PreparedMessageData_ {
     uint64_t transportId;           //!<  The transport id of the prepared message
-    string receiverInfo;            //!<  Some details about the receiver's device of this message
+    std::string receiverInfo;            //!<  Some details about the receiver's device of this message
 } PreparedMessageData;
 
 class AppInterface
@@ -87,7 +86,7 @@ public:
      * @brief Prepare a user-to-user message for sending.
      *
      * The functions prepares a message and queues it for sending to the receiver' devices.
-     * The function only prpares the message(s) but does not send them. To actually send the
+     * The function only prepares the message(s) but does not send them. To actually send the
      * the messages to the device(s) the application needs to call the @c sendPreparedMessage()
      * function.
      *
@@ -104,7 +103,7 @@ public:
      *      by @c AppInterfaceImpl::getIdentityKeys
      * </ul>
      *
-     * @deprecated use unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageNormal(const string&, const string&, const string&, bool, int32_t*)
+     * @deprecated use unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageNormal(const std::string&, const std::string&, const std::string&, bool, int32_t*)
      *
      * @param messageDescriptor      the JSON formatted message descriptor, required
      * @param attachmentDescriptor   Optional, a string that contains an attachment descriptor. An empty string
@@ -115,10 +114,10 @@ public:
      * @param normalMsg If true then this is a normal message, if false it's a command message
      * @return A list of prepared message information, or empty on failure
      */
-    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > >
-    prepareMessage(const string& messageDescriptor,
-                   const string& attachmentDescriptor,
-                   const string& messageAttributes,
+    virtual std::shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > >
+    prepareMessage(const std::string& messageDescriptor,
+                   const std::string& attachmentDescriptor,
+                   const std::string& messageAttributes,
                    bool normalMsg, int32_t* result) = 0;
 
     /**
@@ -127,7 +126,7 @@ public:
      * This function performs the same actions as the @c prepareMessage function, it only sends
      * the message to the user's sibling devices if such devices are available.
      *
-     * @deprecated use unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageSiblings(const string&, const string&, const string&, bool, int32_t*)
+     * @deprecated use unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageSiblings(const std::string&, const std::string&, const std::string&, bool, int32_t*)
      *
      * @param messageDescriptor     the JSON formatted message descriptor, required
      *
@@ -140,10 +139,10 @@ public:
      *                  siblings are usually commands
      * @return A list of prepared message information, or empty on failure
      */
-    virtual shared_ptr<list<shared_ptr<PreparedMessageData> > >
-    prepareMessageToSiblings(const string &messageDescriptor,
-                             const string &attachmentDescriptor,
-                             const string &messageAttributes,
+    virtual std::shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > >
+    prepareMessageToSiblings(const std::string &messageDescriptor,
+                             const std::string &attachmentDescriptor,
+                             const std::string &messageAttributes,
                              bool normalMsg, int32_t *result) = 0;
 
     /**
@@ -176,10 +175,10 @@ public:
      * @param normalMsg If true then this is a normal message, if false it's a command message
      * @return A list of prepared message information, or empty on failure
      */
-    virtual unique_ptr<list<unique_ptr<PreparedMessageData> > >
-    prepareMessageNormal(const string& messageDescriptor,
-                         const string& attachmentDescriptor,
-                         const string& messageAttributes,
+    virtual std::unique_ptr<std::list<std::unique_ptr<PreparedMessageData> > >
+    prepareMessageNormal(const std::string& messageDescriptor,
+                         const std::string& attachmentDescriptor,
+                         const std::string& messageAttributes,
                          bool normalMsg, int32_t* result) = 0;
 
     /**
@@ -199,10 +198,10 @@ public:
      *                  siblings are usually commands
      * @return A list of prepared message information, or empty on failure
      */
-    virtual unique_ptr<list<unique_ptr<PreparedMessageData> > >
-    prepareMessageSiblings(const string &messageDescriptor,
-                           const string &attachmentDescriptor,
-                           const string &messageAttributes,
+    virtual std::unique_ptr<std::list<std::unique_ptr<PreparedMessageData> > >
+    prepareMessageSiblings(const std::string &messageDescriptor,
+                           const std::string &attachmentDescriptor,
+                           const std::string &messageAttributes,
                            bool normalMsg, int32_t *result) = 0;
 
     /**
@@ -213,7 +212,7 @@ public:
      * @param transportIds An array of transport id that identify the messages to encrypt and send.
      * @return Number of queued messages, a negative value on failure
      */
-    virtual int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
+    virtual int32_t doSendMessages(std::shared_ptr<std::vector<uint64_t> > transportIds) = 0;
 
     /**
      * @brief Remove prepared messages from its queue.
@@ -224,7 +223,7 @@ public:
      * @param transportIds An array of transport id that identify the messages to remove.
      * @return Number of removed messages, a negative value on failure
      */
-    virtual int32_t removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds) = 0;
+    virtual int32_t removePreparedMessages(std::shared_ptr<std::vector<uint64_t> > transportIds) = 0;
 
     /**
      * @brief Receive a Message from transport
@@ -240,7 +239,7 @@ public:
      *
      * @return Either success or an error code
      */
-    virtual int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName) = 0;
+    virtual int32_t receiveMessage(const std::string& messageEnvelope, const std::string& uid, const std::string& displayName) = 0;
 
     /**
      * @brief Request names of known trusted ZINA user identities
@@ -251,7 +250,7 @@ public:
      *         JSON array if no users known. It returns NULL in case the request failed.
      *         Language bindings use appropriate return types.
      */
-    virtual string* getKnownUsers() = 0;
+    virtual std::string* getKnownUsers() = 0;
 
     /**
      * @brief Get name of own user.
@@ -260,7 +259,7 @@ public:
      *
      * @return Reference to internal own user
      */
-    virtual const string& getOwnUser() const = 0;
+    virtual const std::string& getOwnUser() const = 0;
 
     /**
      * @brief Get public part of own identity key.
@@ -272,13 +271,13 @@ public:
      *
      * @return formatted string, device name part may be empty if no device name was defined.
      */
-    virtual string getOwnIdentityKey() = 0;
+    virtual std::string getOwnIdentityKey() = 0;
 
     /**
      * @brief Get own device identifier.
      * @return Reference to own device identifier string
      */
-    virtual const string& getOwnDeviceId() const = 0;
+    virtual const std::string& getOwnDeviceId() const = 0;
 
     /**
      * @brief Get a list of all identity keys of a user.
@@ -299,7 +298,7 @@ public:
      * @param user the name of the user
      * @return list of identity keys. An empty list if no identity keys are available for that user.
      */
-    virtual shared_ptr<list<string> > getIdentityKeys(string& user) = 0;
+    virtual std::shared_ptr<std::list<std::string> > getIdentityKeys(std::string& user) = 0;
 
     /**
      * @brief Register device
@@ -313,7 +312,7 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server return code, usually a HTTP code, e.g. 200 for OK
      */
-    virtual int32_t registerZinaDevice(string* result) = 0;
+    virtual int32_t registerZinaDevice(std::string* result) = 0;
 
      /**
      * @brief Generate and register a set of new pre-keys.
@@ -340,7 +339,7 @@ public:
      *
      * @param messageToProcess message info structure
      */
-    virtual void addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToProcess) = 0;
+    virtual void addMsgInfoToRunQueue(std::unique_ptr<CmdQueueInfo> messageToProcess) = 0;
 
     // *************************************************************
     // Device handling functions
@@ -356,10 +355,10 @@ public:
      * @param userName The user account to check.
      *
      */
-    virtual void rescanUserDevices(string& userName) = 0;
+    virtual void rescanUserDevices(const std::string& userName) = 0;
 
     /**
-     * @brief Resyncs (re-keying) alle devices of a user account.
+     * @brief Re-syncs (re-keying) all devices of a user account.
      *
      * This function performs a re-keying of all devices of a user account. It does it
      * without changing the long-term identity key. The re-keying just uses a new pre-key
@@ -367,7 +366,7 @@ public:
      *
      * @param userName The user account to sync.
      */
-    virtual void reKeyAllDevices(string& userName) = 0;
+    virtual void reKeyAllDevices(const std::string& userName) = 0;
 
     /**
      * @brief Re-key a device's conversation data (ratchet context).
@@ -381,7 +380,7 @@ public:
      * @param deviceId the user's device
      *
      */
-    virtual void reKeyDevice(const string &userName, const string &deviceId) = 0;
+    virtual void reKeyDevice(const std::string &userName, const std::string &deviceId) = 0;
 
     /**
      * @brief Set Identity key changed flag.
@@ -394,7 +393,7 @@ public:
      * @param flag Set the changed id key flag to @c true or @c false
      *
      */
-    virtual void setIdKeyVerified(const string& userName, const string& deviceId, bool flag) = 0;
+    virtual void setIdKeyVerified(const std::string& userName, const std::string& deviceId, bool flag) = 0;
 
 
     // *************************************************************
@@ -417,7 +416,7 @@ public:
      * @return the group's UUID, if the string is empty then group creation failed, use
      *         @c AppInterfaceImpl::getErrorInfo() to get error string.
      */
-    virtual string createNewGroup(string& groupName, string& groupDescription) = 0;
+    virtual std::string createNewGroup(const std::string& groupName, std::string& groupDescription) = 0;
 
     /**
      * @brief Modify number maximum group member.
@@ -432,7 +431,7 @@ public:
      * @return @c true if new size could be set, @c false otherwise, use
      *         @c AppInterfaceImpl::getErrorInfo() to get error string.
      */
-    virtual bool modifyGroupSize(string& groupUuid, int32_t newSize) = 0;
+    virtual bool modifyGroupSize(const std::string& groupUuid, int32_t newSize) = 0;
 
     /**
      * @brief Set a group's new name.
@@ -445,7 +444,7 @@ public:
      *                  update from the change set.
      * @return @c SUCCESS if new name could be set, or an error code
      */
-    virtual int32_t setGroupName(const string& groupUuid, const string* groupName) = 0;
+    virtual int32_t setGroupName(const std::string& groupUuid, const std::string* groupName) = 0;
 
     /**
      * @brief Set a group's new burn time and mode.
@@ -464,7 +463,7 @@ public:
      * @param mode
      * @return @c SUCCESS if new name could be set, or an error code
      */
-    virtual int32_t setGroupBurnTime(const string& groupUuid, uint64_t burnTime, int32_t mode) = 0;
+    virtual int32_t setGroupBurnTime(const std::string& groupUuid, uint64_t burnTime, int32_t mode) = 0;
 
     /**
      * @brief Set a group's new avatar data.
@@ -477,7 +476,7 @@ public:
      *               avatar info update from the change set.
      * @return @c SUCCESS if new name could be set, or an error code
      */
-    virtual int32_t setGroupAvatar(const string& groupUuid, const string* avatar) = 0;
+    virtual int32_t setGroupAvatar(const std::string& groupUuid, const std::string* avatar) = 0;
 
     /**
      * @brief Add a user to a group.
@@ -490,7 +489,7 @@ public:
      * @param userId The invited user's unique id
      * @return @c SUCCESS or error code (<0)
      */
-    virtual int32_t addUser(const string& groupUuid, const string& userId) = 0;
+    virtual int32_t addUser(const std::string& groupUuid, const std::string& userId) = 0;
 
     /**
      * @brief Remove a user's name from the add member update change set.
@@ -502,7 +501,7 @@ public:
      * @param userId The user id to remove from the change set
      * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
      */
-    virtual int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId) = 0;
+    virtual int32_t removeUserFromAddUpdate(const std::string& groupUuid, const std::string& userId) = 0;
 
     /**
      * @brief Cancel group's current change set.
@@ -512,7 +511,7 @@ public:
      * @param groupId Cancel current change set for this group
      * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
      */
-    virtual int32_t cancelGroupChangeSet(const string& groupId) = 0;
+    virtual int32_t cancelGroupChangeSet(const std::string& groupId) = 0;
 
     /**
      * @brief Apply group's current change set.
@@ -524,7 +523,7 @@ public:
      * @param groupId Apply current change set for this group
      * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
      */
-    virtual int32_t applyGroupChangeSet(const string& groupId) = 0;
+    virtual int32_t applyGroupChangeSet(const std::string& groupId) = 0;
 
     /**
      * @brief Send a message to a group with an optional attachment and attributes.
@@ -550,7 +549,7 @@ public:
      *                               An empty string shows that not attributes are available.
      * @return @c OK if function could send the message, error code (<0) otherwise
      */
-    virtual int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes) = 0;
+    virtual int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes) = 0;
 
     /**
      * @brief Leave a group.
@@ -561,7 +560,7 @@ public:
      * @param groupId The group to leave
      * @return @c SUCCESS if 'leave group' processing was OK, error code (<0) otherwise
      */
-    virtual int32_t leaveGroup(const string& groupId) = 0;
+    virtual int32_t leaveGroup(const std::string& groupId) = 0;
 
     /**
      * @brief Remove another member (not myself) from a group.
@@ -578,7 +577,7 @@ public:
      * @param allowOwnUser If `true* then it's possible to remove the own user. Only ZINA uses this internally
      * @return @c SUCCESS if 'remove from group' processing was OK, error code (<0) otherwise
      */
-    virtual int32_t removeUser(const string& groupId, const string& userId, bool allowOwnUser = false) = 0;
+    virtual int32_t removeUser(const std::string& groupId, const std::string& userId, bool allowOwnUser = false) = 0;
 
     /**
      * @brief Remove a user's name from the remove member update change set.
@@ -590,7 +589,7 @@ public:
      * @param userId The user id to remove from the change set
      * @return @c SUCCESS if function could send invitation, error code (<0) otherwise
      */
-    virtual int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId) = 0;
+    virtual int32_t removeUserFromRemoveUpdate(const std::string& groupUuid, const std::string& userId) = 0;
 
     /**
      * @brief Synchronize sibling devices if group UI removed a group message.
@@ -607,7 +606,7 @@ public:
      * @param messageId The message id of the removed message
      * @return @c SUCCESS or an error code
      */
-    virtual int32_t groupMessageRemoved(const string& groupId, const string& messageId) = 0;
+    virtual int32_t groupMessageRemoved(const std::string& groupId, const std::string& messageId) = 0;
 
     // *************************************************************
     // Callback functions to UI part

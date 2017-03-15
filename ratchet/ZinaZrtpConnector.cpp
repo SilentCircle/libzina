@@ -22,6 +22,8 @@ limitations under the License.
 
 #include <map>
 
+using namespace std;
+
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks
 static char hexBuffer[2000] = {0};

@@ -30,8 +30,6 @@ limitations under the License.
 #include "../ratchet/crypto/DhPublicKey.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 
-using namespace std;
-
 namespace zina {
 class Provisioning
 {
@@ -59,7 +57,7 @@ public:
      * @param authorization autorization data, may be needed for some servers
      * @param result To store the result data of the server, usually in case of an error only
      */
-    static int32_t removeZinaDevice(const string& scClientDevId, const string& authorization, std::string* result);
+    static int32_t removeZinaDevice(const std::string& scClientDevId, const std::string& authorization, std::string* result);
 
     /**
      * @brief Get a pre-key bundle for the user/device id
@@ -74,8 +72,8 @@ public:
      *                  parte as the second member.
      * @return a pre-key id or @c 0 on failure
      */
-    static int32_t getPreKeyBundle(const string& name, const string& longDevId, const string& authorization,
-                                   pair<PublicKeyUnique, PublicKeyUnique>* preIdKeys );
+    static int32_t getPreKeyBundle(const std::string& name, const std::string& longDevId, const std::string& authorization,
+                                   std::pair<PublicKeyUnique, PublicKeyUnique>* preIdKeys );
 
     /**
      * @brief Get number of available pre-keys on the server.
@@ -84,7 +82,7 @@ public:
      * @param authorization autorization data, may be needed for some servers
      * @return number of available pre-keys, -1 if request to server failed.
      */
-    static int32_t getNumPreKeys(const string& longDevId, const string& authorization);
+    static int32_t getNumPreKeys(const std::string& longDevId, const std::string& authorization);
 
     /**
      * @brief Get the availabe registered ZINA device of a user
@@ -100,7 +98,8 @@ public:
      * @param errorCode If not null then it's set to the return code
      * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
      */
-    DEPRECATED_ZINA static shared_ptr<list<pair<string, string> > > getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
+    DEPRECATED_ZINA static std::shared_ptr<std::list<std::pair<std::string, std::string> > >
+    getZinaDeviceIds(const std::string& name, const std::string& authorization, int32_t* errorCode = NULL);
 
     /**
      * @brief Get the availabe registered ZINA device of a user
@@ -114,7 +113,8 @@ public:
      * @param deviceIds List of device ids, output
      * @return a list of available device ids (long device ids), @c NULL if the request to server failed.
      */
-    static int32_t getZinaDeviceIds(const std::string& name, const std::string& authorization, list<pair<string, string> > &deviceIds);
+    static int32_t getZinaDeviceIds(const std::string& name, const std::string& authorization,
+                                    std::list<std::pair<std::string, std::string> > &deviceIds);
 
     /**
      * @brief Set new pre-keys.
@@ -130,9 +130,10 @@ public:
      * @param result To store the result data of the server, usually in case of an error only
      * @return the server's request return code, e.g. 200 or 404 or alike.
      */
-    static int32_t newPreKeys(SQLiteStoreConv* store, const string& longDevId, const string& authorization, int32_t number, string* result);
+    static int32_t newPreKeys(SQLiteStoreConv* store, const std::string& longDevId, const std::string& authorization,
+                              int32_t number, std::string* result);
 
-    static int32_t getUserInfo(const string& alias, const string& authorization, string* result);
+    static int32_t getUserInfo(const std::string& alias, const std::string& authorization, std::string* result);
 };
 } // namespace
 

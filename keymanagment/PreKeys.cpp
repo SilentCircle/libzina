@@ -16,12 +16,12 @@ limitations under the License.
 #include "PreKeys.h"
 
 #include "../ratchet/crypto/EcCurve.h"
-#include "../util/cJSON.h"
 #include "../util/b64helper.h"
-#include "../logging/ZinaLogging.h"
+#include "../util/Utilities.h"
 
 #include <cryptcommon/ZrtpRandom.h>
 
+using namespace std;
 using namespace zina;
 
 static unique_ptr<string> preKeyJson(const DhKeyPair &preKeyPair)
@@ -45,7 +45,7 @@ static unique_ptr<string> preKeyJson(const DhKeyPair &preKeyPair)
     return data;
 }
 
-pair<int32_t, KeyPairUnique> PreKeys::generatePreKey(SQLiteStoreConv* store)
+PreKeys::PreKeyData PreKeys::generatePreKey(SQLiteStoreConv* store)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -61,20 +61,20 @@ pair<int32_t, KeyPairUnique> PreKeys::generatePreKey(SQLiteStoreConv* store)
     const auto pk = preKeyJson(*preKeyPair);
     store->storePreKey(keyId, pk->c_str());
 
-    pair <int32_t, KeyPairUnique> prePair(keyId, move(preKeyPair));
+    PreKeyData prePair(keyId, move(preKeyPair));
 
     LOGGER(DEBUGGING, __func__, " <--");
     return prePair;
 }
 
-list<pair<int32_t, KeyPairUnique> >* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
+list<PreKeys::PreKeyData>* PreKeys::generatePreKeys(SQLiteStoreConv* store, int32_t num)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    auto* pkrList = new std::list<pair<int32_t, KeyPairUnique> >;
+    auto* pkrList = new std::list<PreKeys::PreKeyData>;
 
     for (int32_t i = 0; i < num; i++) {
-        pair<int32_t, KeyPairUnique> pkPair = generatePreKey(store);
+        PreKeys::PreKeyData pkPair = generatePreKey(store);
         pkrList->push_back(move(pkPair));
     }
     LOGGER(DEBUGGING, __func__, " <--");
@@ -88,8 +88,14 @@ KeyPairUnique PreKeys::parsePreKeyData(const string& data)
     char b64Buffer[MAX_KEY_BYTES_ENCODED*2];   // Twice the max. size on binary data - b64 is times 1.5
     uint8_t binBuffer[MAX_KEY_BYTES_ENCODED];
 
-    cJSON* root = cJSON_Parse(data.c_str());
-    strncpy(b64Buffer, cJSON_GetObjectItem(root, "public")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
+    JsonUnique jsonUnique(cJSON_Parse(data.c_str()));
+
+    if (!jsonUnique || !Utilities::hasJsonKey(jsonUnique.get(), "public") ||
+            !Utilities::hasJsonKey(jsonUnique.get(), "private")) {
+        return KeyPairUnique(nullptr);
+    }
+
+    strncpy(b64Buffer, cJSON_GetObjectItem(jsonUnique.get(), "public")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t b64Length = strlen(b64Buffer);
     b64Decode(b64Buffer, b64Length, binBuffer, MAX_KEY_BYTES_ENCODED);
     const PublicKeyUnique pubKey = EcCurve::decodePoint(binBuffer);
@@ -97,11 +103,9 @@ KeyPairUnique PreKeys::parsePreKeyData(const string& data)
     // Here we may check the public curve type and do some code to support different curves and
     // create to correct private key. The serialized public key data contains a curve type id. For
     // the time being use Ec255 (DJB's curve 25519).
-    strncpy(b64Buffer, cJSON_GetObjectItem(root, "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
+    strncpy(b64Buffer, cJSON_GetObjectItem(jsonUnique.get(), "private")->valuestring, MAX_KEY_BYTES_ENCODED*2-1);
     size_t binLength = b64Decode(b64Buffer, strlen(b64Buffer), binBuffer, MAX_KEY_BYTES_ENCODED);
     const PrivateKeyUnique privKey = EcCurve::decodePrivatePoint(binBuffer, binLength);
-
-    cJSON_Delete(root);
 
     LOGGER(DEBUGGING, __func__, " <--");
     return KeyPairUnique(new DhKeyPair(*pubKey, *privKey));

@@ -26,6 +26,7 @@ limitations under the License.
 #include <zrtp/crypto/sha256.h>
 #include <common/osSpecifics.h>
 
+using namespace std;
 
 #ifdef UNITTESTS
 // Used in testing and debugging to do in-depth checks

@@ -29,12 +29,12 @@ limitations under the License.
  */
 
 #include <string>
-using namespace std;
+
 namespace zina {
 
     static const int32_t SUPPORTED_VERSION = 2;       //!< This is the ratchet protocol version we currently support
 
-    static string Empty;                              //!< For default return of an empty string
+    static std::string Empty;                         //!< For default return of an empty string
     static const int MAX_KEY_BYTES         = 128;     //!< This would cover a EC with a prime of 1024 bits
     static const int MAX_KEY_BYTES_ENCODED = 130;     //!< Max two bytes for encoding information per key
     static const int SYMMETRIC_KEY_LENGTH  = 32;      //!< Use 256 bit keys for symmetric crypto
@@ -77,9 +77,9 @@ namespace zina {
     static const int32_t ACTIVE       = 1;            //!< The group/member is active in this client
     static const int32_t INACTIVE     = 2;            //!< The group/member is active in this client, no more message processing
 
-    static const string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
-    static const string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");
-    static const string SILENT_MESSAGE("SilentCircleMessage");
+    static const std::string SILENT_RATCHET_DERIVE("SilentCircleRKCKDerive");
+    static const std::string SILENT_MSG_DERIVE("SilentCircleMessageKeyDerive");
+    static const std::string SILENT_MESSAGE("SilentCircleMessage");
 
     static const int32_t SUCCESS           = 0;       //!< Success, same as SQLITE SUCCESS
     static const int32_t OK = 1;                      //!< Is @c true 

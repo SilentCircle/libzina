@@ -41,8 +41,6 @@ limitations under the License.
 #include <memory>
 #include "sqlite/SQLiteStoreConv.h"
 
-using namespace std;
-
 class MessageCapture {
 
 public:
@@ -58,8 +56,8 @@ public:
      * @param force store the data even in case the debug level is less than INFO to log error condition
      * @return SQLite code
      */
-    static int32_t captureReceivedMessage(const string& sender, const string& messageId, const string& deviceId,
-                                          const string &convState, const string& attributes, bool attachments,
+    static int32_t captureReceivedMessage(const std::string& sender, const std::string& messageId, const std::string& deviceId,
+                                          const std::string &convState, const std::string& attributes, bool attachments,
                                           zina::SQLiteStoreConv &store);
 
     /**
@@ -74,8 +72,8 @@ public:
      * @param force store the data even in case the debug level is less than INFO to log error condition
      * @return SQLite code
      */
-    static int32_t captureSendMessage(const string& receiver, const string& messageId, const string& deviceId,
-                                      const string &convState, const string& attributes, bool attachments,
+    static int32_t captureSendMessage(const std::string& receiver, const std::string& messageId, const std::string& deviceId,
+                                      const std::string &convState, const std::string& attributes, bool attachments,
                                       zina::SQLiteStoreConv &store);
 
     /**
@@ -99,8 +97,8 @@ public:
      * @param traceRecords list of trace records
      * @return SQLite code
      */
-    static int32_t loadCapturedMsgs(const string& name, const string& messageId, const string& deviceId, zina::SQLiteStoreConv &store,
-                                    list<StringUnique> &traceRecords);
+    static int32_t loadCapturedMsgs(const std::string& name, const std::string& messageId, const std::string& deviceId,
+                                    zina::SQLiteStoreConv &store, std::list<StringUnique> &traceRecords);
 };
 
 

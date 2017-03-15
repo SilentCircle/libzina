@@ -21,6 +21,8 @@ limitations under the License.
 #include "SQLiteStoreConv.h"
 #include "SQLiteStoreInternal.h"
 
+using namespace std;
+
 /* *****************************************************************************
  * SQL statements to process received raw, encrypted message data
  *

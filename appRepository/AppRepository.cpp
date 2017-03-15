@@ -58,6 +58,8 @@ limitations under the License.
 
 #define DB_VERSION 3
 
+using namespace std;
+
 static mutex sqlLock;
 
 void Log(const char* format, ...);

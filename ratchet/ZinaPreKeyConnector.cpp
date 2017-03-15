@@ -24,6 +24,7 @@ limitations under the License.
 // Generic function, located in AxoZrtpConnector.
 void createDerivedKeys(const std::string& masterSecret, std::string* root, std::string* chain, size_t requested);
 
+using namespace std;
 using namespace zina;
 
 void Log(const char* format, ...);

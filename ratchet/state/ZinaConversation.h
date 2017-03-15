@@ -42,8 +42,6 @@ static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
 static const std::string emptyString;
 
-using namespace std;
-
 namespace zina {
 
 /**
@@ -61,7 +59,7 @@ namespace zina {
 class ZinaConversation
 {
 public:
-    ZinaConversation(const string& localUser, const string& user, const string& deviceId) :
+    ZinaConversation(const std::string& localUser, const std::string& user, const std::string& deviceId) :
             partner_(user, emptyString),
             deviceId_(deviceId), localUser_(localUser), DHRs(nullptr), DHRr(nullptr), DHIs(nullptr), DHIr(nullptr), A0(nullptr), Ns(0),
             Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0),
@@ -77,8 +75,8 @@ public:
      * @param localUser name of local user/account
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static unique_ptr<ZinaConversation> loadLocalConversation(const string& localUser, SQLiteStoreConv &store) {
-        return loadConversation(localUser, localUser, string(), store);
+    static std::unique_ptr<ZinaConversation> loadLocalConversation(const std::string& localUser, SQLiteStoreConv &store) {
+        return loadConversation(localUser, localUser, std::string(), store);
     }
 
     /**
@@ -89,7 +87,8 @@ public:
      * @param deviceId The remote user's device id if it is available
      * @return the loaded AxoConversation or NULL if none was stored.
      */
-    static unique_ptr<ZinaConversation> loadConversation(const string& localUser, const string& user, const string& deviceId, SQLiteStoreConv &store);
+    static std::unique_ptr<ZinaConversation> loadConversation(const std::string& localUser, const std::string& user,
+                                                              const std::string& deviceId, SQLiteStoreConv &store);
 
     // Currently not used, maybe we need to re-enable it, depending on new user UID (canonical name) design
 #if 0
@@ -116,22 +115,22 @@ public:
 
     int32_t storeStagedMks(SQLiteStoreConv &store);
 
-    static void clearStagedMks(list<string> &keys, SQLiteStoreConv &store);
+    static void clearStagedMks(std::list<std::string> &keys, SQLiteStoreConv &store);
 
-    int32_t loadStagedMks(list<string> &keys, SQLiteStoreConv &store);
+    int32_t loadStagedMks(std::list<std::string> &keys, SQLiteStoreConv &store);
 
-    void deleteStagedMk(string& mkiv, SQLiteStoreConv &store);
+    void deleteStagedMk(std::string& mkiv, SQLiteStoreConv &store);
 
-    list<string>& getEmptyStagedMks() { return stagedMk; }
+    std::list<std::string>& getEmptyStagedMks() { return stagedMk; }
 
     const ZinaContact& getPartner() const   { return partner_; }
 
-    const string& getLocalUser() const      { return localUser_; }
+    const std::string& getLocalUser() const      { return localUser_; }
 
-    const string& getDeviceId() const       { return deviceId_; }
+    const std::string& getDeviceId() const       { return deviceId_; }
 
-    void setDeviceName(const string& name)  { deviceName_ = name; }
-    const string& getDeviceName()           { return deviceName_; }
+    void setDeviceName(const std::string& name)  { deviceName_ = name; }
+    const std::string& getDeviceName()           { return deviceName_; }
 
     void setErrorCode(int32_t code)         { errorCode_ = code; } 
     int32_t getErrorCode()                  { return errorCode_; }
@@ -224,14 +223,14 @@ private:
     void deserialize(const std::string& data);
     const std::string* serialize() const;
 
-    list<string> stagedMk;
+    std::list<std::string> stagedMk;
 
 
     // The following data goes to persistent store
     ZinaContact partner_;
-    string  deviceId_;
-    string  deviceName_;
-    string  localUser_;
+    std::string  deviceId_;
+    std::string  deviceName_;
+    std::string  localUser_;
 
     // The std::string variables below are not strings, used as data containers. May be helpful if
     // some data/key lengths change
@@ -245,8 +244,8 @@ private:
 
     KeyPairUnique   A0;         //!< used when using pre-ky bundles, if not null send this info (pre-key message type)
 
-    string       CKs;           //!< 32-byte chain key sender (used for forward-secrecy updating)
-    string       CKr;           //!< 32-byte chain key receiver (used for forward-secrecy updating)
+    std::string       CKs;           //!< 32-byte chain key sender (used for forward-secrecy updating)
+    std::string       CKr;           //!< 32-byte chain key receiver (used for forward-secrecy updating)
 
     int32_t      Ns;            //!< Message number sender (reset to 0 with each new ratchet)
     int32_t      Nr;            //!< Message number receiver (reset to 0 with each new ratchet)

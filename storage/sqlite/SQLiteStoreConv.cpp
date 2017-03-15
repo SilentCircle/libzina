@@ -18,6 +18,8 @@ limitations under the License.
 
 #include <cryptcommon/ZrtpRandom.h>
 
+using namespace std;
+
 static mutex sqlLock;
 
 static void *(*volatile memset_volatile)(void *, int, size_t) = memset;

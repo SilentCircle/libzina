@@ -216,12 +216,11 @@ namespace logging {
  * - in this source file define you global Logger setup, for example
 
 @verbatim
-using namespace std;
 
 #define LOGGER_INSTANCE myGlobalLogger->
 #include "Logger.h"
 shared_ptr<logging::Logger<logging::CerrLogPolicy> >
-        myGlobalLogger = make_shared<logging::Logger<logging::CerrLogPolicy> >(string(""));
+        myGlobalLogger = make_shared<logging::Logger<logging::CerrLogPolicy> >(std::string(""));
 @endverbatim
 
  * Then declare the above Logger instance as external, either in an already existing include

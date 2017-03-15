@@ -33,7 +33,6 @@ limitations under the License.
 #define AES_BLOCK_SIZE 16
 #endif
 
-using namespace std;
 
 namespace zina {
 /**
@@ -50,7 +49,7 @@ namespace zina {
  * @param crypText pointer to a @c std::string that gets the encrypted data
  * @return @c SUCCESS if encryption was OK, an error code otherwise
  */
-int32_t aesCbcEncrypt(const string& key, const string& IV, const string& plainText, string* cryptText);
+int32_t aesCbcEncrypt(const std::string& key, const std::string& IV, const std::string& plainText, std::string* cryptText);
 
 /**
  * @brief Decrypt data with AES CBC mode.
@@ -67,9 +66,9 @@ int32_t aesCbcEncrypt(const string& key, const string& IV, const string& plainTe
  * @param plainText pointer to a @c std::string that gets the decrypted data
  * @return @c SUCCESS if decryption was OK, an error code otherwise
  */
-int32_t aesCbcDecrypt(const string& key, const string& IV, const string& cryptText, string* plainText);
+int32_t aesCbcDecrypt(const std::string& key, const std::string& IV, const std::string& cryptText, std::string* plainText);
 
-bool checkAndRemovePadding(string* data);
+bool checkAndRemovePadding(std::string* data);
 
 } // namespace
 #endif // AESCBC_H

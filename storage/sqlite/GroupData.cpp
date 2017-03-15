@@ -28,6 +28,8 @@ limitations under the License.
 #include "../../Constants.h"
 #include "../../util/Utilities.h"
 
+using namespace std;
+
 /* *****************************************************************************
  * SQL statements to process group chat table
  *

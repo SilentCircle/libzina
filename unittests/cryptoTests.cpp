@@ -20,7 +20,9 @@ limitations under the License.
 #include "../logging/ZinaLogging.h"
 #include "gtest/gtest.h"
 
+using namespace std;
 using namespace zina;
+
 static int32_t type255 = EcCurveTypes::Curve25519;
 
 class CryptoTestFixture: public ::testing::Test {

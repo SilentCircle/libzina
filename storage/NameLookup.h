@@ -34,26 +34,24 @@ limitations under the License.
  * @{
  */
 
-using namespace std;
-
 namespace zina {
 
     class UserInfo {
     public:
         explicit UserInfo() : drEnabled(false), drRrmm(false), drRrmp(false), drRrcm(false), drRrcp(false), drRrap(false) { }
-        string uniqueId;         //!< User's unique name, canonical name, not human readable
-        string displayName;      //!< User's full/display name as stored in the provisioning server
-        string alias0;           //!< Primary alias, aka preferred alias, aka alias0
-        string contactLookupUri; //!< Set by contacts discovery to the contact's lookup key
-        string avatarUrl;        //!< Avatar URL from provisioning server
-        string organization;     //!< User's organization
-        string retainForOrg;     //!< This organization defined the retention policy
-        bool   drEnabled;        //!< Data Retention enabled flag
-        bool   drRrmm;           //!< RRMM: "remote retains message metadata"
-        bool   drRrmp;           //!< RRMP: "remote retains message plaintext"
-        bool   drRrcm;           //!< RRCM: "remote retains call metadata"
-        bool   drRrcp;           //!< RRCP: "remote retains call plaintext (audio)"
-        bool   drRrap;           //!< RRAP: "remote retains attachment plaintext"
+        std::string uniqueId;         //!< User's unique name, canonical name, not human readable
+        std::string displayName;      //!< User's full/display name as stored in the provisioning server
+        std::string alias0;           //!< Primary alias, aka preferred alias, aka alias0
+        std::string contactLookupUri; //!< Set by contacts discovery to the contact's lookup key
+        std::string avatarUrl;        //!< Avatar URL from provisioning server
+        std::string organization;     //!< User's organization
+        std::string retainForOrg;     //!< This organization defined the retention policy
+        bool   drEnabled;             //!< Data Retention enabled flag
+        bool   drRrmm;                //!< RRMM: "remote retains message metadata"
+        bool   drRrmp;                //!< RRMP: "remote retains message plaintext"
+        bool   drRrcm;                //!< RRCM: "remote retains call metadata"
+        bool   drRrcp;                //!< RRCP: "remote retains call plaintext (audio)"
+        bool   drRrap;                //!< RRAP: "remote retains attachment plaintext"
     };
 
     class NameLookup {
@@ -80,7 +78,7 @@ namespace zina {
          *
          * @return A UUID string or empty shared pointer if alias is not known.
          */
-        const string getUid(const string& alias, const string& authorization);
+        const std::string getUid(const std::string& alias, const std::string& authorization);
 
         /**
          * @brief Get UserInfo of an alias, e.g. a name or number.
@@ -104,7 +102,8 @@ namespace zina {
          * @param cacheOnly If true only look in the cache, don't contact server if not in cache
          * @return The UserInfo or empty shared pointer if alias is not known.
          */
-        const shared_ptr<UserInfo> getUserInfo(const string& alias, const string& authorization, bool cacheOnly = false, int32_t* errorCode=NULL);
+        const std::shared_ptr<UserInfo> getUserInfo(const std::string& alias, const std::string& authorization, bool cacheOnly = false,
+                                                    int32_t* errorCode=NULL);
 
         /**
          * @brief Get UserInfo of an alias, e.g. a name or number, if in cache
@@ -114,8 +113,8 @@ namespace zina {
          * @param alias the alias name/number or the UUID
          * @return A JSON string containing the UserInfo or empty shared pointer if alias is not in cache.
          */
-        const shared_ptr<UserInfo> getUserInfoFromCache(const string& alias)
-        { return getUserInfo(alias, string(), true); }
+        const std::shared_ptr<UserInfo> getUserInfoFromCache(const std::string& alias)
+        { return getUserInfo(alias, std::string(), true); }
 
         /**
          * @brief Return a list of the alias names of a UUID.
@@ -126,7 +125,7 @@ namespace zina {
          * @authorization the authorization data
          * @return List of strings or empty shared pointer if alias is not known.
          */
-        const shared_ptr<list<string> > getAliases(const string& uuid);
+        const std::shared_ptr<std::list<std::string> > getAliases(const std::string& uuid);
 
         /**
          * @brief Add an alias name and user info to an UUID.
@@ -159,7 +158,7 @@ namespace zina {
          * @authorization the authorization data
          * @return a value > 0 to indicate success, < 0 on failure.
          */
-        AliasAdd addAliasToUuid(const string& alias, const string& uuid, const string& userInfo);
+        AliasAdd addAliasToUuid(const std::string& alias, const std::string& uuid, const std::string& userInfo);
 
         void clearNameCache() { nameMap_.clear(); }
 
@@ -172,7 +171,7 @@ namespace zina {
          * @authorization the authorization data
          * @return The display name or an empty shared pointer if none available
          */
-        const shared_ptr<string> getDisplayName(const string& uuid);
+        const std::shared_ptr<std::string> getDisplayName(const std::string& uuid);
 
         /**
          * @brief Refresh cached user data
@@ -184,13 +183,13 @@ namespace zina {
          * @param cacheOnly If true only look in the cache, don't contact server if not in cache
          * @return The refreshed UserInfo or an empty shared pointer if alias is not known or error.
          */
-        shared_ptr<UserInfo> refreshUserData(const string& aliasUuid, const string& authorization);
+        std::shared_ptr<UserInfo> refreshUserData(const std::string& aliasUuid, const std::string& authorization);
 
     private:
-        int32_t parseUserInfo(const string& json, UserInfo &userInfo);
-        NameLookup::AliasAdd insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> userInfo);
+        int32_t parseUserInfo(const std::string& json, UserInfo &userInfo);
+        NameLookup::AliasAdd insertUserInfoWithUuid(const std::string& alias, std::shared_ptr<UserInfo> userInfo);
 
-        map<string, shared_ptr<UserInfo> > nameMap_;
+        std::map<std::string, std::shared_ptr<UserInfo> > nameMap_;
         static NameLookup* instance_;
     };
 }

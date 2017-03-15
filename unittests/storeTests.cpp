@@ -33,10 +33,11 @@ limitations under the License.
 static const uint8_t keyInData[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,30};
 static const uint8_t keyInData_1[] = {0,1,2,3,4,5,6,7,8,9,19,18,17,16,15,14,13,12,11,10,20,21,22,23,24,25,26,27,28,20,31,32};
 static const uint8_t keyInData_2[] = "ZZZZZzzzzzYYYYYyyyyyXXXXXxxxxxW";  // 32 bytes
-static     string empty;
 
 using namespace std;
 using namespace zina;
+
+static string empty;
 
 static string* preKeyJson(const DhKeyPair& preKeyPair)
 {
@@ -121,11 +122,29 @@ TEST_F(StoreTestFixture, PreKeyStore)
 TEST_F(StoreTestFixture, PreKeyGenerate)
 {
     // generate and store a key pair
-    pair<int32_t, KeyPairUnique> preKeyBundle = PreKeys::generatePreKey(pks);
+    PreKeys::PreKeyData preKeyBundle = PreKeys::generatePreKey(pks);
 
     string pk_1;
-    int32_t result = pks->loadPreKey(preKeyBundle.first, pk_1);
+    int32_t result = pks->loadPreKey(preKeyBundle.keyId, pk_1);
+    ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
     ASSERT_FALSE(pk_1.empty()) <<  "Generated key not found, " << pk_1 << endl;
+    auto parsedKey = PreKeys::parsePreKeyData(pk_1);
+    ASSERT_EQ(preKeyBundle.keyPair->getPublicKey(), parsedKey->getPublicKey());
+}
+
+TEST_F(StoreTestFixture, PreKeyGenerateList)
+{
+    // generate and store a key pair
+    auto* preKeyList = PreKeys::generatePreKeys(pks);
+
+    string pk_1;
+    for (auto &preKey : *preKeyList ) {
+        int32_t result = pks->loadPreKey(preKey.keyId, pk_1);
+        ASSERT_FALSE(SQL_FAIL(result)) << pks->getLastError();
+        ASSERT_FALSE(pk_1.empty()) << "Generated key not found, " << pk_1 << endl;
+        auto parsedKey = PreKeys::parsePreKeyData(pk_1);
+        ASSERT_EQ(preKey.keyPair->getPublicKey(), parsedKey->getPublicKey());
+    }
 }
 
 TEST_F(StoreTestFixture, MsgHashStore)

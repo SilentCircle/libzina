@@ -30,6 +30,7 @@ limitations under the License.
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
 
+using namespace std;
 using namespace zina;
 
 // Locks, conditional variables and flags to synchronize the functions to re-key a device
@@ -196,10 +197,10 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
 
         cJSON* pkrObject;
         cJSON_AddItemToArray(jsonPkrArray, pkrObject = cJSON_CreateObject());
-        cJSON_AddNumberToObject(pkrObject, "id", pkPair.first);
+        cJSON_AddNumberToObject(pkrObject, "id", pkPair.keyId);
 
         // Get pre-key's public key data, serialized
-        const string keyData = pkPair.second->getPublicKey().serialize();
+        const string keyData = pkPair.keyPair->getPublicKey().serialize();
 
         b64Encode((const uint8_t*) keyData.data(), keyData.size(), b64Buffer, MAX_KEY_BYTES_ENCODED * 2);
         cJSON_AddStringToObject(pkrObject, "key", b64Buffer);
@@ -242,7 +243,7 @@ int32_t AppInterfaceImpl::getNumPreKeys() const
 // and if yes send a "ping" message to the new devices to create an Axolotl conversation
 // for the new devices. The real implementation is in the command handling function below.
 
-void AppInterfaceImpl::rescanUserDevices(string& userName)
+void AppInterfaceImpl::rescanUserDevices(const string& userName)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -276,7 +277,7 @@ void AppInterfaceImpl::setS3Helper(S3_FUNC s3Helper)
     ScDataRetention::setS3Helper(s3Helper);
 }
 
-void AppInterfaceImpl::reKeyAllDevices(string &userName) {
+void AppInterfaceImpl::reKeyAllDevices(const string &userName) {
     list<StringUnique> devices;
 
     if (!store_->isReady()) {

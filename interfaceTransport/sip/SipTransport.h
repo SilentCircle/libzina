@@ -33,7 +33,6 @@ limitations under the License.
 
 static const char* scSipDomain = "@sip.silentcircle.net";
 
-using namespace std;
 
 namespace zina {
 
@@ -48,7 +47,7 @@ public:
 
     SEND_DATA_FUNC getTransport() { return sendAxoData_; }
 
-    void sendAxoMessage(const CmdQueueInfo &info, const string& envelope);
+    void sendAxoMessage(const CmdQueueInfo &info, const std::string& envelope);
 
     int32_t receiveAxoMessage(uint8_t* data, size_t length);
 

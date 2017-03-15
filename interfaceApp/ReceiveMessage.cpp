@@ -30,6 +30,7 @@ limitations under the License.
 
 #include <zrtp/crypto/sha256.h>
 
+using namespace std;
 using namespace zina;
 
 static string receiveErrorJson(const string& sender, const string& senderScClientDevId, const string& msgId,

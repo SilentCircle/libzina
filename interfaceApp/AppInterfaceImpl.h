@@ -32,12 +32,10 @@ limitations under the License.
 #include "../Constants.h"
 #include "../ratchet/state/ZinaConversation.h"
 
-typedef int32_t (*HTTP_FUNC)(const string& requestUri, const string& requestData, const string& method, string* response);
+typedef int32_t (*HTTP_FUNC)(const std::string& requestUri, const std::string& requestData, const std::string& method, std::string* response);
 
 // Same as in ScProvisioning, keep in sync
-typedef int32_t (*S3_FUNC)(const string& region, const string& requestData, string* response);
-
-using namespace std;
+typedef int32_t (*S3_FUNC)(const std::string& region, const std::string& requestData, std::string* response);
 
 namespace zina {
 typedef enum CmdQueueCommands_ {
@@ -53,13 +51,13 @@ typedef enum CmdQueueCommands_ {
 
 typedef struct CmdQueueInfo_ {
     CmdQueueCommands command;
-    string stringData1;
-    string stringData2;
-    string stringData3;
-    string stringData4;
-    string stringData5;
-    string stringData6;
-    string stringData7;
+    std::string stringData1;
+    std::string stringData2;
+    std::string stringData3;
+    std::string stringData4;
+    std::string stringData5;
+    std::string stringData6;
+    std::string stringData7;
     uint64_t uint64Data;
     int64_t int64Data;
     int32_t int32Data;
@@ -107,19 +105,19 @@ class GroupUpdateSetAvatar;
 class GroupUpdateSetBurn;
 
 // This is the ping command the code sends to new devices to create an Axolotl setup
-static string ping("{\"cmd\":\"ping\"}");
+static std::string ping("{\"cmd\":\"ping\"}");
 
 class AppInterfaceImpl : public AppInterface
 {
 public:
 #ifdef UNITTESTS
     explicit AppInterfaceImpl(SQLiteStoreConv* store) : AppInterface(), tempBuffer_(NULL), store_(store), transport_(NULL) {}
-    AppInterfaceImpl(SQLiteStoreConv* store, const string& ownUser, const string& authorization, const string& scClientDevId) : 
+    AppInterfaceImpl(SQLiteStoreConv* store, const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId) :
                     AppInterface(), tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization),
                     scClientDevId_(scClientDevId), store_(store), transport_(NULL), siblingDevicesScanned_(false),
                     drLrmm_(false), drLrmp_(false), drLrap_(false), drBldr_(false), drBlmr_(false), drBrdr_(false), drBrmr_(false) {}
 #endif
-    AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId, 
+    AppInterfaceImpl(const std::string& ownUser, const std::string& authorization, const std::string& scClientDevId,
                      RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
                      GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,
                      GROUP_STATE_FUNC groupStateCallback);
@@ -131,83 +129,87 @@ public:
 
     Transport* getTransport()               { return transport_; }
 
-    int32_t receiveMessage(const string& messageEnvelope, const string& uid, const string& displayName);
+    int32_t receiveMessage(const std::string& messageEnvelope, const std::string& uid, const std::string& displayName);
 
-    string* getKnownUsers();
+    std::string* getKnownUsers();
 
-    string getOwnIdentityKey();
+    std::string getOwnIdentityKey();
 
-    shared_ptr<list<string> > getIdentityKeys(string& user);
+    std::shared_ptr<std::list<std::string> > getIdentityKeys(std::string& user);
 
-    int32_t registerZinaDevice(string* result);
+    int32_t registerZinaDevice(std::string* result);
 
-    int32_t removeZinaDevice(string& scClientDevId, string* result);
+    int32_t removeZinaDevice(std::string& scClientDevId, std::string* result);
 
     int32_t newPreKeys(int32_t number);
 
-    void addMsgInfoToRunQueue(unique_ptr<CmdQueueInfo> messageToProcess);
+    void addMsgInfoToRunQueue(std::unique_ptr<CmdQueueInfo> messageToProcess);
 
     int32_t getNumPreKeys() const;
 
-    void rescanUserDevices(string& userName);
+    void rescanUserDevices(const std::string& userName);
 
-    void reKeyAllDevices(string &userName);
+    void reKeyAllDevices(const std::string &userName);
 
-    void reKeyDevice(const string &userName, const string &deviceId);
+    void reKeyDevice(const std::string &userName, const std::string &deviceId);
 
-    void setIdKeyVerified(const string& userName, const string& deviceId, bool flag);
+    void setIdKeyVerified(const std::string& userName, const std::string& deviceId, bool flag);
 
-    string createNewGroup(string& groupName, string& groupDescription);
+    std::string createNewGroup(const std::string& groupName, std::string& groupDescription);
 
-    bool modifyGroupSize(string& groupId, int32_t newSize);
+    bool modifyGroupSize(const std::string& groupId, int32_t newSize);
 
-    int32_t setGroupName(const string& groupUuid, const string* groupName);
+    int32_t setGroupName(const std::string& groupUuid, const std::string* groupName);
 
-    int32_t setGroupBurnTime(const string& groupUuid, uint64_t burnTime, int32_t mode);
+    int32_t setGroupBurnTime(const std::string& groupUuid, uint64_t burnTime, int32_t mode);
 
-    int32_t setGroupAvatar(const string& groupUuid, const string* avatar);
+    int32_t setGroupAvatar(const std::string& groupUuid, const std::string* avatar);
 
-    int32_t addUser(const string& groupUuid, const string& userId);
+    int32_t addUser(const std::string& groupUuid, const std::string& userId);
 
-    int32_t removeUserFromAddUpdate(const string& groupUuid, const string& userId);
+    int32_t removeUserFromAddUpdate(const std::string& groupUuid, const std::string& userId);
 
-    int32_t cancelGroupChangeSet(const string& groupUuid);
+    int32_t cancelGroupChangeSet(const std::string& groupUuid);
 
-    int32_t applyGroupChangeSet(const string& groupId);
+    int32_t applyGroupChangeSet(const std::string& groupId);
 
-    int32_t sendGroupMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes);
+    int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes);
 
-    int32_t leaveGroup(const string& groupId);
+    int32_t leaveGroup(const std::string& groupId);
 
-    int32_t removeUser(const string& groupId, const string& userId, bool allowOwnUser = false);
+    int32_t removeUser(const std::string& groupId, const std::string& userId, bool allowOwnUser = false);
 
-    int32_t removeUserFromRemoveUpdate(const string& groupUuid, const string& userId);
+    int32_t removeUserFromRemoveUpdate(const std::string& groupUuid, const std::string& userId);
 
-    int32_t groupMessageRemoved(const string& groupId, const string& messageId);
+    int32_t groupMessageRemoved(const std::string& groupId, const std::string& messageId);
 
-    DEPRECATED_ZINA shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor,
-                                                                       const string& attachmentDescriptor,
-                                                                       const string& messageAttributes,
-                                                                       bool normalMsg, int32_t* result);
+    DEPRECATED_ZINA std::shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > >
+    prepareMessage(const std::string& messageDescriptor,
+                   const std::string& attachmentDescriptor,
+                   const std::string& messageAttributes,
+                   bool normalMsg, int32_t* result);
 
-    DEPRECATED_ZINA shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessageToSiblings(const string &messageDescriptor,
-                                                                                 const string &attachmentDescriptor,
-                                                                                 const string &messageAttributes,
-                                                                                 bool normalMsg, int32_t *result);
+    DEPRECATED_ZINA std::shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > >
+    prepareMessageToSiblings(const std::string &messageDescriptor,
+                             const std::string &attachmentDescriptor,
+                             const std::string &messageAttributes,
+                             bool normalMsg, int32_t *result);
 
-    unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageNormal(const string &messageDescriptor,
-                                                                             const string &attachmentDescriptor,
-                                                                             const string &messageAttributes,
-                                                                             bool normalMsg, int32_t *result);
+    std::unique_ptr<std::list<std::unique_ptr<PreparedMessageData> > >
+    prepareMessageNormal(const std::string &messageDescriptor,
+                         const std::string &attachmentDescriptor,
+                         const std::string &messageAttributes,
+                         bool normalMsg, int32_t *result);
 
-    unique_ptr<list<unique_ptr<PreparedMessageData> > > prepareMessageSiblings(const string &messageDescriptor,
-                                                                               const string &attachmentDescriptor,
-                                                                               const string &messageAttributes,
-                                                                               bool normalMsg, int32_t *result);
+    std::unique_ptr<std::list<std::unique_ptr<PreparedMessageData> > >
+    prepareMessageSiblings(const std::string &messageDescriptor,
+                           const std::string &attachmentDescriptor,
+                           const std::string &messageAttributes,
+                           bool normalMsg, int32_t *result);
 
-        int32_t doSendMessages(shared_ptr<vector<uint64_t> > transportIds);
+    int32_t doSendMessages(std::shared_ptr<std::vector<uint64_t> > transportIds);
 
-    int32_t removePreparedMessages(shared_ptr<vector<uint64_t> > transportIds);
+    int32_t removePreparedMessages(std::shared_ptr<std::vector<uint64_t> > transportIds);
 
     // **** Below are methods for this implementation, not part of AppInterface.h
     /**
@@ -228,18 +230,18 @@ public:
     /**
      * @brief Get name of local user for this Axolotl conversation.
      */
-    const string& getOwnUser() const         { return ownUser_; }
+    const std::string& getOwnUser() const         { return ownUser_; }
 
     /**
      * @brief Get authorization data of local user.
      */
-    const string& getOwnAuthrization() const { return authorization_; }
+    const std::string& getOwnAuthrization() const { return authorization_; }
 
     /**
      * @brief Get own device identifier.
      * @return Reference to own device identifier string
      */
-    const string& getOwnDeviceId() const     { return scClientDevId_; }
+    const std::string& getOwnDeviceId() const     { return scClientDevId_; }
 
     /**
      * @brief Return the stored error information.
@@ -254,7 +256,7 @@ public:
      * 
      * @return The stored error information string.
      */
-    const string& getErrorInfo() { return errorInfo_; }
+    const std::string& getErrorInfo() { return errorInfo_; }
 
     /**
      * @brief Initialization code must set a HTTP helper function
@@ -318,7 +320,7 @@ public:
      * @return SUCCESS (0) or error code. The function does not change flags in case of
      *         error return
      */
-    int32_t setDataRetentionFlags(const string& jsonFlags);
+    int32_t setDataRetentionFlags(const std::string& jsonFlags);
 
     /**
      * @brief Create and send group sync data to a sibling device.
@@ -334,7 +336,7 @@ public:
      * @param deviceId The requestor's (sibling's) device id
      * @return {@code SUCCESS} or an error code.
      */
-    int32_t groupsSyncSibling(const string &deviceId);
+    int32_t groupsSyncSibling(const std::string &deviceId);
 
     /**
      * @brief Create and send a group's sync data to a sibling device.
@@ -349,7 +351,7 @@ public:
      * @param deviceId The requestor's (sibling's) device id
      * @return {@code SUCCESS} or an error code.
      */
-    int32_t groupSyncSibling(const string &groupId, const string &deviceId);
+    int32_t groupSyncSibling(const std::string &groupId, const std::string &deviceId);
 
     /**
      * @brief Request group synchronization data from sibling devices.
@@ -382,18 +384,18 @@ private:
     AppInterfaceImpl& operator= ( const AppInterfaceImpl& other ) = delete;
     bool operator== ( const AppInterfaceImpl& other ) const  = delete;
 
-    int32_t parseMsgDescriptor(const string& messageDescriptor, string* recipient, string* msgId, string* message, bool receivedMsg = false);
+    int32_t parseMsgDescriptor(const std::string& messageDescriptor, std::string* recipient, std::string* msgId, std::string* message, bool receivedMsg = false);
 
     /**
      * @brief Handle a group message, either a normal or a command message.
      *
      * The normal receiver function already decrypted the message, attribute, and attachment data.
      */
-    int32_t processGroupMessage(int32_t msgType, const string &msgDescriptor,
-                                const string &attachmentDescr, string *attributesDescr);
+    int32_t processGroupMessage(int32_t msgType, const std::string &msgDescriptor,
+                                const std::string &attachmentDescr, std::string *attributesDescr);
 
-    int32_t processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId, const string &sender, 
-                                     const string &deviceId, bool hasGroup, GroupChangeSet *ackRmSet);
+    int32_t processReceivedChangeSet(const GroupChangeSet &changeSet, const std::string &groupId, const std::string &sender,
+                                     const std::string &deviceId, bool hasGroup, GroupChangeSet *ackRmSet);
 
     /**
      *
@@ -402,13 +404,13 @@ private:
      * The @c processGroupMessage function calls this function after it checked
      * the message type.
      */
-    int32_t processGroupCommand(const string &msgDescriptor, string *commandIn);
+    int32_t processGroupCommand(const std::string &msgDescriptor, std::string *commandIn);
 
-    int32_t sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command);
+    int32_t sendGroupCommandToAll(const std::string& groupId, const std::string &msgId, const std::string &command);
 
-    int32_t sendGroupCommand(const string &recipient, const string &msgId, const string &command);
+    int32_t sendGroupCommand(const std::string &recipient, const std::string &msgId, const std::string &command);
 
-    int32_t checkAndProcessChangeSet(const string &msgDescriptor, string *messageAttributes);
+    int32_t checkAndProcessChangeSet(const std::string &msgDescriptor, std::string *messageAttributes);
 
     /**
      * @brief Leave a group.
@@ -423,7 +425,7 @@ private:
      * @param fromSibling If a sibling sent this change set
      * @return SUCCESS if the message list was processed without error.
      */
-    int32_t processLeaveGroup(const string &groupId, const string &userId, bool fromSibling);
+    int32_t processLeaveGroup(const std::string &groupId, const std::string &userId, bool fromSibling);
 
     /**
      * @brief Prepare the change set before sending.
@@ -434,7 +436,7 @@ private:
      * @param groupId The group id of the change set
      * @return SUCCESS if processing was successful, an error code otherwise
      */
-    int32_t prepareChangeSetSend(const string &groupId);
+    int32_t prepareChangeSetSend(const std::string &groupId);
 
     /**
      * @brief Create the device specific change set.
@@ -447,7 +449,7 @@ private:
      * @param newAttributes The upadted attribute string which contains the change set
      * @return SUCCESS or an error code
      */
-    int32_t createChangeSetDevice(const string &groupId, const string &deviceId, const string &attributes, string *newAttributes);
+    int32_t createChangeSetDevice(const std::string &groupId, const std::string &deviceId, const std::string &attributes, std::string *newAttributes);
 
 
     /**
@@ -457,23 +459,23 @@ private:
      *
      * @param groupId The group id of the processed change set
      */
-    void groupUpdateSendDone(const string& groupId);
+    void groupUpdateSendDone(const std::string& groupId);
 
     /**
      * @brief Helper function add a message info structure to the run-Q
      *
      * @param msgInfo The message information structure of the message to send
      */
-    void queuePreparedMessage(unique_ptr<CmdQueueInfo> msgInfo);
+    void queuePreparedMessage(std::unique_ptr<CmdQueueInfo> msgInfo);
 
 
-    unique_ptr<list<unique_ptr<PreparedMessageData> > >
-    prepareMessageInternal(const string& messageDescriptor,
-                           const string& attachmentDescriptor,
-                           const string& messageAttributes,
+    std::unique_ptr<std::list<std::unique_ptr<PreparedMessageData> > >
+    prepareMessageInternal(const std::string& messageDescriptor,
+                           const std::string& attachmentDescriptor,
+                           const std::string& messageAttributes,
                            bool toSibling, uint32_t messageType, int32_t* result,
-                           const string& grpRecipient = Empty,
-                           const string &groupId = Empty);
+                           const std::string& grpRecipient = Empty,
+                           const std::string &groupId = Empty);
 
     /**
      * @brief Send a message to a user who has a valid ratchet conversation.
@@ -489,7 +491,7 @@ private:
      * @param zinaConversation an optional valid ratchet conversation
      * @return An error code in case of a failure, @c SUCCESS otherwise
      */
-    int32_t sendMessageExisting(const CmdQueueInfo &sendInfo, unique_ptr<ZinaConversation> zinaConversation = nullptr);
+    int32_t sendMessageExisting(const CmdQueueInfo &sendInfo, std::unique_ptr<ZinaConversation> zinaConversation = nullptr);
 
     /**
      * @brief Send a message to a use who does not have a valid ratchet conversation.
@@ -513,7 +515,7 @@ private:
      *
      * @param messagesToProcess The list of message info structures
      */
-    void addMsgInfosToRunQueue(list<unique_ptr<CmdQueueInfo> >& messagesToProcess);
+    void addMsgInfosToRunQueue(std::list<std::unique_ptr<CmdQueueInfo> >& messagesToProcess);
 
     /**
      * @brief Setup a retry command message info structure and add it to the run-Q.
@@ -586,7 +588,7 @@ private:
      * @param idKeys List of already known sibling device id keys,
      * @return The list of new, yet unkonwn sibling devices, may be empty.
      */
-    shared_ptr<list<string> > addSiblingDevices(shared_ptr<list<string> > idKeys);
+    std::shared_ptr<std::list<std::string> > addSiblingDevices(std::shared_ptr<std::list<std::string> > idKeys);
 
     /**
      * @brief Helper function which creates a JSON formatted message descriptor.
@@ -596,7 +598,7 @@ private:
      * @param msg The message, optional.
      * @return JSON formatted string
      */
-    string createMessageDescriptor(const string& recipient, const string& msgId, const string& msg = Empty);
+    std::string createMessageDescriptor(const std::string& recipient, const std::string& msgId, const std::string& msg = Empty);
 
 #ifdef SC_ENABLE_DR_SEND
     /**
@@ -616,7 +618,7 @@ private:
      * @param It data rention is OK then holds local retention flags: 1 - retain data, 2 - retain meta data
      * @return OK if data retention is OK, an error code otherwise
      */
-    int32_t checkDataRetentionSend(const string &recipient, const string &msgAttributes,
+    int32_t checkDataRetentionSend(const std::string &recipient, const std::string &msgAttributes,
                                    shared_ptr<string> newMsgAttributes, uint8_t *localRetentionFlags);
 #endif //SC_ENABLE_DR_SEND
 
@@ -647,7 +649,7 @@ private:
      * @param attributes JSON formatted string that contains the message attributes
      * @return @c true if it's a command message, @c false otherwise
      */
-    bool isCommand(int32_t msgType, const string& attributes);
+    bool isCommand(int32_t msgType, const std::string& attributes);
 
     /**
      * @brief Check if the message is a command message
@@ -667,7 +669,7 @@ private:
      * @param sender The message sender's uid
      * @param msgId The id of the message in error
      */
-    void sendErrorCommand(const string& error, const string& sender, const string& msgId);
+    void sendErrorCommand(const std::string& error, const std::string& sender, const std::string& msgId);
 
     /**
      * @brief Setup data and call data retention functions.
@@ -689,9 +691,9 @@ private:
 
     void rescanUserDevicesCommand(const CmdQueueInfo &command);
 
-    int32_t deleteGroupAndMembers(string const& groupId);
+    int32_t deleteGroupAndMembers(const std::string& groupId);
 
-    int32_t insertNewGroup(const string &groupId, const GroupChangeSet &changeSet, string *callbackCmd);
+    int32_t insertNewGroup(const std::string &groupId, const GroupChangeSet &changeSet, std::string *callbackCmd);
 
     /**
      * @brief Send a message to a specific device of a group member.
@@ -710,22 +712,22 @@ private:
      * @param msg the message to send, maybe empty
      * @return @c SUCCESS or an error code (<0)
      */
-    int32_t sendGroupMessageToSingleUserDevice(const string &groupId, const string &userId, const string &deviceId,
-                                         const string &attributes, const string &msg, int32_t msgType);
+    int32_t sendGroupMessageToSingleUserDevice(const std::string &groupId, const std::string &userId, const std::string &deviceId,
+                                         const std::string &attributes, const std::string &msg, int32_t msgType);
 
-    void makeBinaryDeviceId(const string &deviceId, string *binaryId);
+    void makeBinaryDeviceId(const std::string &deviceId, std::string *binaryId);
 
-    bool removeFromPendingChangeSets(const string &key);
+    bool removeFromPendingChangeSets(const std::string &key);
 
-    int32_t processAcks(const GroupChangeSet &changeSet, const string &groupId, const string &deviceId);
+    int32_t processAcks(const GroupChangeSet &changeSet, const std::string &groupId, const std::string &deviceId);
 
-    int32_t processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId, GroupChangeSet *ackSet);
+    int32_t processUpdateName(const GroupUpdateSetName &changeSet, const std::string &groupId, GroupChangeSet *ackSet);
 
-    int32_t processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, GroupChangeSet *ackSet);
+    int32_t processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const std::string &groupId, GroupChangeSet *ackSet);
 
-    int32_t processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, GroupChangeSet *ackSet);
+    int32_t processUpdateBurn(const GroupUpdateSetBurn &changeSet, const std::string &groupId, GroupChangeSet *ackSet);
 
-    int32_t processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId, GroupChangeSet *ackSet);
+    int32_t processUpdateMembers(const GroupChangeSet &changeSet, const std::string &groupId, GroupChangeSet *ackSet);
 
     /**
      * @brief Helper function to create the JSON formatted supplementary message data.
@@ -734,7 +736,7 @@ private:
      * @param messageAttrib The message attributes, may be empty
      * @return JSON formatted string
      */
-    static string createSupplementString(const string& attachmentDesc, const string& messageAttrib);
+    static std::string createSupplementString(const std::string& attachmentDesc, const std::string& messageAttrib);
 
     /**
      * @brief Helper function to create a JSON formatted error report if sending fails.
@@ -743,7 +745,7 @@ private:
      * @param errorCode The error code, failure reason
      * @return JSON formatted string
      */
-    static string createSendErrorJson(const CmdQueueInfo& info, int32_t errorCode);
+    static std::string createSendErrorJson(const CmdQueueInfo& info, int32_t errorCode);
 
     /**
      * @brief Helper function to extract transport ids from prepage message data.
@@ -754,10 +756,10 @@ private:
      * @param data List of prepared message data
      * @return Vector with the transport ids
      */
-    static shared_ptr<vector<uint64_t> > extractTransportIds(list<unique_ptr<PreparedMessageData> >* data);
+    static std::shared_ptr<std::vector<uint64_t> > extractTransportIds(std::list<std::unique_ptr<PreparedMessageData> >* data);
 
-    void queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
-                                        const string &deviceName, const string &attributes, const string &msg,
+    void queueMessageToSingleUserDevice(const std::string &userId, const std::string &msgId, const std::string &deviceId,
+                                        const std::string &deviceName, const std::string &attributes, const std::string &msg,
                                         int32_t msgType, int64_t counter, bool newDevice,
                                         SendCallbackAction sendCallbackAction);
 
@@ -777,28 +779,28 @@ private:
      */
     int32_t processSiblingGroupSyncData(cJSON* root);
 
-    int32_t syncGroupName(const GroupUpdateSetName &changeSet, const string &groupId);
-    int32_t syncGroupAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId);
-    int32_t syncGroupBurn(const GroupUpdateSetBurn &changeSet, const string &groupId);
-    int32_t syncGroupMembers(const GroupChangeSet &changeSet, const string &groupId);
+    int32_t syncGroupName(const GroupUpdateSetName &changeSet, const std::string &groupId);
+    int32_t syncGroupAvatar(const GroupUpdateSetAvatar &changeSet, const std::string &groupId);
+    int32_t syncGroupBurn(const GroupUpdateSetBurn &changeSet, const std::string &groupId);
+    int32_t syncGroupMembers(const GroupChangeSet &changeSet, const std::string &groupId);
 
-    static string generateMsgIdTime() {
+    static std::string generateMsgIdTime() {
         uuid_t uuid = {0};
         uuid_string_t uuidString = {0};
 
         uuid_generate_time(uuid);
         uuid_unparse(uuid, uuidString);
-        return string(uuidString);
+        return std::string(uuidString);
     }
 
     char* tempBuffer_;
     size_t tempBufferSize_;
-    string ownUser_;
-    string authorization_;
-    string scClientDevId_;
+    std::string ownUser_;
+    std::string authorization_;
+    std::string scClientDevId_;
 
     int32_t errorCode_;
-    string errorInfo_;
+    std::string errorInfo_;
     SQLiteStoreConv* store_;
     Transport* transport_;
     int32_t flags_;
