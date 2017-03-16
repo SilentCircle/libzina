@@ -36,7 +36,7 @@ AppInterfaceImpl::prepareMessage(const string& messageDescriptor,
                                  const string& attachmentDescriptor,
                                  const string& messageAttributes, bool normalMsg, int32_t* result)
 {
-    auto resultList = prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true,
+    auto resultList = prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, false,
                                              normalMsg ? MSG_NORMAL : MSG_CMD, result);
 
     auto returnList = make_shared<list<shared_ptr<PreparedMessageData> > >();
