@@ -36,11 +36,11 @@ AppInterfaceImpl::prepareMessage(const string& messageDescriptor,
                                  const string& attachmentDescriptor,
                                  const string& messageAttributes, bool normalMsg, int32_t* result)
 {
-    auto resultList = prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, true,
+    auto resultList = prepareMessageInternal(messageDescriptor, attachmentDescriptor, messageAttributes, false,
                                              normalMsg ? MSG_NORMAL : MSG_CMD, result);
 
     auto returnList = make_shared<list<shared_ptr<PreparedMessageData> > >();
-    for (; resultList->empty(); resultList->pop_front()) {
+    for (; !resultList->empty(); resultList->pop_front()) {
         auto msgData = shared_ptr<PreparedMessageData>(resultList->front().release());
         returnList->push_back(msgData);
     }
@@ -56,7 +56,7 @@ AppInterfaceImpl::prepareMessageToSiblings(const string &messageDescriptor,
                                              normalMsg ? MSG_NORMAL : MSG_CMD, result);
 
     auto returnList = make_shared<list<shared_ptr<PreparedMessageData> > >();
-    for (; resultList->empty(); resultList->pop_front()) {
+    for (; !resultList->empty(); resultList->pop_front()) {
         auto msgData = shared_ptr<PreparedMessageData>(resultList->front().release());
         returnList->push_back(msgData);
     }
