@@ -17,10 +17,12 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <cstring>
 #include "cJSON.h"
 
 namespace zina {
     class Utilities {
+
     public:
         /**
          * @brief Return true if the cJSON structure has the given key
@@ -118,7 +120,7 @@ namespace zina {
         static std::string currentTimeISO8601();
 
         /**
-         * @brief get the cuurent time in milliseconds.
+         * @brief get the current time in milliseconds.
          *
          * @return The time in milliseconds
          */
@@ -132,6 +134,19 @@ namespace zina {
          * @param toWipe The string to wipe.
          */
         static void wipeString(std::string &toWipe);
+
+        /**
+         * @brief Wipe memory.
+         *
+         * Fills a data buffer with zeros.
+         *
+         * @param data pointer to the data buffer.
+         * @param length length of the data buffer in bytes
+         */
+        static inline void wipeMemory(void* data, size_t length) {
+            static void * (*volatile memset_volatile)(void *, int, size_t) = std::memset;
+            memset_volatile(data, 0, length);
+        }
 
         /**
          * @brief URL-encode the input string and return the encoded string

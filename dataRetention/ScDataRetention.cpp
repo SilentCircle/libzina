@@ -95,7 +95,7 @@ std::string time_to_string(time_t time)
 std::string compress(const std::string& input)
 {
     z_stream zs;
-    memset_volatile(&zs, 0, sizeof(zs));
+    Utilities::wipeMemory(&zs, sizeof(zs));
 
     if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED,
                      ZLIB_DEFAULT_WINDOW_BITS + USE_GZIP_FORMAT, ZLIB_DEFAULT_MEMLEVEL,

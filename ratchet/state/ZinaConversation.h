@@ -38,8 +38,6 @@ limitations under the License.
 #include "../../Constants.h"
 #include "../../storage/sqlite/SQLiteStoreConv.h"
 
-static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
-
 static const std::string emptyString;
 
 namespace zina {

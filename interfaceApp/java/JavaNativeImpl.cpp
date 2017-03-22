@@ -613,7 +613,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
 
     string dbPw((const char*)pw, pwLen);
 
-    memset_volatile((void*)pw, 0, pwLen);
+    Utilities::wipeMemory((void*)pw, pwLen);
     env->ReleaseByteArrayElements(dbPassphrase, (jbyte*)pw, 0);
 
     // initialize and open the persistent store singleton instance
@@ -624,7 +624,7 @@ JNI_FUNCTION(doInit)(JNIEnv* env, jobject thiz, jint flags, jstring dbName, jbyt
     store->openStore(string (db));
     env->ReleaseStringUTFChars(dbName, db);
 
-    memset_volatile((void*)dbPw.data(), 0, dbPw.size());
+    Utilities::wipeMemory((void*)dbPw.data(), dbPw.size());
 
     int32_t retVal = 1;
     auto ownZinaConv = ZinaConversation::loadLocalConversation(name, *store);
@@ -1864,14 +1864,14 @@ JNI_FUNCTION(repoOpenDatabase) (JNIEnv* env, jclass clazz, jstring dbName, jbyte
 
     string dbPw((const char*)pw, pwLen);
 
-    memset_volatile((void*)pw, 0, pwLen);
+    Utilities::wipeMemory((void*)pw, pwLen);
     env->ReleaseByteArrayElements(keyData, (jbyte*)pw, 0);
 
     appRepository = AppRepository::getStore();
     appRepository->setKey(dbPw);
     appRepository->openStore(nameString);
 
-    memset_volatile((void*)dbPw.data(), 0, dbPw.size());
+    Utilities::wipeMemory((void*)dbPw.data(), dbPw.size());
 
     return appRepository->getSqlCode();
 }

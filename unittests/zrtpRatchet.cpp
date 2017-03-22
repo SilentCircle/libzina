@@ -15,6 +15,9 @@ limitations under the License.
 */
 #include "gtest/gtest.h"
 
+#include <zrtp/crypto/sha256.h>
+#include <common/osSpecifics.h>
+
 #include "../ratchet/state/ZinaConversation.h"
 #include "../storage/sqlite/SQLiteStoreConv.h"
 #include "../ratchet/crypto/EcCurve.h"
@@ -405,8 +408,57 @@ TEST_F(RatchetTestFixture, RatchetTest)
     }
 }
 
+static const uint32_t MaxSasValue = 0xfffffed8;     // 4294967000 decimal
+TEST(SAS, SASDigitTest) {
+    uint8_t sasHash[SHA256_DIGEST_LENGTH];
 
+    // Simulate a 256 bit sasHash value using a simple hash.
+    sha256((uint8_t*)keyInData, static_cast<uint>(sizeof(keyInData)), sasHash);
 
+    // Make sure the compiler properly aligns the byte array to an int boundary and
+    // we can use it as an int
+    union alignmentUnion{
+        uint32_t toAlign;
+        uint8_t bytes[4];
+    };
+
+    int32_t found = 0;
+    int32_t sasDigits[2];
+
+    // Treat the sasHash as a big endian value: the most significant byte is on lowest address.
+    // Keep that order while looping over the data.
+    // The loop creates and checks at most 28 values
+    //
+    // Set index 0
+    // Loop:
+    // - Take 4 bytes, create an unsigned int, check against the max value and use it if it fits
+    // - If it does not fit continue
+    // - increment byte index by one
+    // - if not found 2 values and more data available try next value
+    // - terminate loop if 2 values found or data exhausted
+    for (int32_t i = 0; i < SHA256_DIGEST_LENGTH - 4 && found < 2; i++) {
+        alignmentUnion data;
+        data.bytes[0] = sasHash[i];
+        data.bytes[1] = sasHash[i+1];
+        data.bytes[2] = sasHash[i+2];
+        data.bytes[3] = sasHash[i+3];
+
+        // For comparing and further processing we need the host order
+        uint32_t value = zrtpNtohl(*reinterpret_cast<uint32_t*>(data.bytes));
+
+        if (value > MaxSasValue) {
+            continue;
+        }
+        sasDigits[found] = value % 1000;
+        found++;
+    }
+
+    if (found != 2) {
+        cout << "Here be dragons!" << endl;
+    }
+
+    cout << "SAS digits: " << sasDigits[0] << " " << sasDigits[1] << endl;
+}
 
 
 

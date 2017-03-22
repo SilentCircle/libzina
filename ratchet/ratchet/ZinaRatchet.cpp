@@ -108,14 +108,14 @@ static int32_t deriveRkCk(ZinaConversation& conv, string* newRK, string* newCK)
                         SILENT_RATCHET_DERIVE.size(),                       // fixed string "SilentCircleRKCKDerive" as info
                        derivedSecretBytes, SYMMETRIC_KEY_LENGTH*2);
 
-    memset_volatile((void*)agreement, 0, MAX_KEY_BYTES);
+    Utilities::wipeMemory((void*)agreement, MAX_KEY_BYTES);
 
     newRK->assign((const char*)derivedSecretBytes, length);
     newCK->assign((const char*)derivedSecretBytes+length, length);
 //     hexdump("deriveRkCk old RK", conv.getRK());  LOGGER(VERBOSE, hexBuffer);
 //     hexdump("deriveRkCk RK", *newRK);  LOGGER(VERBOSE, hexBuffer);
 //     hexdump("deriveRkCk CK", *newCK);  LOGGER(VERBOSE, hexBuffer);
-    memset_volatile((void*)derivedSecretBytes, 0, MAX_KEY_BYTES*2);
+    Utilities::wipeMemory((void*)derivedSecretBytes, MAX_KEY_BYTES*2);
     LOGGER(DEBUGGING, __func__, " <--");
     return OK;
 }
@@ -139,13 +139,13 @@ static void deriveMk(const string& chainKey, string* MK, string* iv, string* mac
                         SILENT_MSG_DERIVE.size(),                       // fixed string "SilentCircleMessageKeyDerive" as info
                         keyMaterialBytes, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
 
-    memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
+    Utilities::wipeMemory((void*)ckMac, SHA256_DIGEST_LENGTH);
 
     MK->assign((const char*)keyMaterialBytes, SYMMETRIC_KEY_LENGTH);
     iv->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH, AES_BLOCK_SIZE);
     macKey->assign((const char*)keyMaterialBytes+SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE, SYMMETRIC_KEY_LENGTH);
 
-    memset_volatile((void*)keyMaterialBytes, 0, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
+    Utilities::wipeMemory((void*)keyMaterialBytes, SYMMETRIC_KEY_LENGTH+AES_BLOCK_SIZE+SYMMETRIC_KEY_LENGTH);
     LOGGER(DEBUGGING, __func__, " <--");
 }
 
@@ -511,7 +511,7 @@ static int32_t stageSkippedMessageKeys(ZinaConversation* conv, int32_t Nr, int32
     Utilities::wipeString(MK);
     Utilities::wipeString(iv);
     Utilities::wipeString(mKey);
-    memset_volatile((void*)ckMac, 0, SHA256_DIGEST_LENGTH);
+    Utilities::wipeMemory((void*)ckMac, SHA256_DIGEST_LENGTH);
     LOGGER(INFO, __func__, " Number of new staged keys: ", Np - Nr);
 
     LOGGER(DEBUGGING, __func__, " <--");

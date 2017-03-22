@@ -15,14 +15,11 @@ limitations under the License.
 */
 #include "SQLiteStoreConv.h"
 #include "SQLiteStoreInternal.h"
-
-#include <cryptcommon/ZrtpRandom.h>
+#include "../../util/Utilities.h"
 
 using namespace std;
 
 static mutex sqlLock;
-
-static void *(*volatile memset_volatile)(void *, int, size_t) = memset;
 
 static const char *beginTransactionSql  = "BEGIN TRANSACTION;";
 static const char *commitTransactionSql = "COMMIT;";
@@ -293,7 +290,7 @@ int SQLiteStoreConv::openStore(const std::string& name)
     if (keyData_ != NULL) {
         sqlite3_key(db, keyData_->data(), static_cast<int>(keyData_->size()));
 
-        memset_volatile((void *) keyData_->data(), 0, keyData_->size());
+        Utilities::wipeMemory((void *) keyData_->data(), keyData_->size());
         delete keyData_;
         keyData_ = NULL;
     }

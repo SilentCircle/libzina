@@ -69,7 +69,7 @@ int32_t ZinaConversation::storeConversation(SQLiteStoreConv &store)
     const string* data = serialize();
 
     int32_t result= store.storeConversation(partner_.getName(), deviceId_, localUser_, *data);
-    memset_volatile((void*)data->data(), 0, data->size());
+    Utilities::wipeMemory((void*)data->data(), data->size());
 
     delete data;
     errorCode_ = SUCCESS;
@@ -421,15 +421,15 @@ void ZinaConversation::reset()
     A0.reset();
 
     if (!CKr.empty())
-        memset_volatile((void*)CKr.data(), 0 , CKr.size());
+        Utilities::wipeMemory((void*)CKr.data(), CKr.size());
     CKr.clear();
 
     if (!CKs.empty())
-        memset_volatile((void*)CKs.data(), 0 , CKs.size());
+        Utilities::wipeMemory((void*)CKs.data(), CKs.size());
     CKs.clear();
 
     if (!RK.empty())
-        memset_volatile((void*)RK.data(), 0 , RK.size());
+        Utilities::wipeMemory((void*)RK.data(), RK.size());
     RK.clear();
     Nr = Ns = PNs = preKeyId = versionNumber = 0;
     ratchetFlag = false;

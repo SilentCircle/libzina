@@ -121,8 +121,8 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     std::string root;
     std::string chain;
     createDerivedKeys(master, &root, &chain, SYMMETRIC_KEY_LENGTH);
-    memset_volatile(masterSecret, 0, EcCurveTypes::Curve25519KeyLength*3);
-    memset_volatile((void*)master.data(), 0, master.size());
+    Utilities::wipeMemory(masterSecret, EcCurveTypes::Curve25519KeyLength*3);
+    Utilities::wipeMemory((void*)master.data(), master.size());
 
     // Initialize conversation (ratchet context), conversation takes over the ownership of the keys.
     conv->setDHIr(move(bobKeys.first)); // Bob is receiver, set his public identity key
@@ -210,8 +210,8 @@ int32_t ZinaPreKeyConnector::setupConversationBob(ZinaConversation* conv, int32_
     std::string root;
     std::string chain;
     createDerivedKeys(master, &root, &chain, SYMMETRIC_KEY_LENGTH);
-    memset_volatile(masterSecret, 0, EcCurveTypes::Curve25519KeyLength*3);
-    memset_volatile((void*)master.data(), 0, master.size());
+    Utilities::wipeMemory(masterSecret, EcCurveTypes::Curve25519KeyLength*3);
+    Utilities::wipeMemory((void*)master.data(), master.size());
 
     conv->setDHRs(move(A0));        // Actually Bob's pre-key - because of the optimized pre-key handling
     conv->setDHIs(move(A));         // Bob's (own) identity key
