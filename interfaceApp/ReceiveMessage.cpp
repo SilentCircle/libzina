@@ -632,7 +632,7 @@ void AppInterfaceImpl::sendDeliveryReceipt(const CmdQueueInfo &plainMsgInfo)
 {
     LOGGER(DEBUGGING, __func__, " -->");
     // don't send delivery receipt group messages, group commands, normal commands, only for real messages
-    if (plainMsgInfo.queueInfo_msgType > GROUP_MSG_NORMAL || isCommand(plainMsgInfo)) {
+    if (plainMsgInfo.queueInfo_msgType >= GROUP_MSG_NORMAL || isCommand(plainMsgInfo)) {
         LOGGER(DEBUGGING, __func__, " <-- no delivery receipt");
         return;
     }

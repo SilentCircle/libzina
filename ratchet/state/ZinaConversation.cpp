@@ -40,7 +40,7 @@ ZinaConversation::loadConversation(const string& localUser, const string& user, 
         return conv;
     }
     if (!found) {
-        LOGGER(INFO, __func__, " <-- No such conversation: ", user);
+        LOGGER(INFO, __func__, " <-- No such conversation: ", user, ", device: ", deviceId);
         return conv;            // SUCCESS, however return an empty conversation
     }
 

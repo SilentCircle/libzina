@@ -41,7 +41,7 @@ static map<string, PtrChangeSet> currentChangeSets;
 static map<string, PtrChangeSet> pendingChangeSets;
 
 // Update-id is just some random data, guarded by "update in progress" flag
-static uint8_t updateId[UPDATE_ID_LENGTH];
+static uint8_t updateIdGlobal[UPDATE_ID_LENGTH];
 static bool updateInProgress = false;
 
 /* ***************************************************************************
@@ -402,7 +402,7 @@ static int32_t serializeChangeSet(PtrChangeSet changeSet, cJSON *root, string *n
     return SUCCESS;
 }
 
-static int32_t addMissingMetaData(PtrChangeSet changeSet, const string& groupId, const string& binDeviceId, SQLiteStoreConv &store)
+static int32_t addMissingMetaData(PtrChangeSet changeSet, const string& groupId, const string& binDeviceId, const uint8_t *updateId, SQLiteStoreConv &store)
 {
     int32_t result;
     auto groupShared = store.listGroup(groupId, &result);
@@ -698,7 +698,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         return GROUP_UPDATE_RUNNING;
     }
     updateInProgress = true;
-    ZrtpRandom::getRandomData(updateId, sizeof(updateId));
+    ZrtpRandom::getRandomData(updateIdGlobal, sizeof(updateIdGlobal));
 
     int32_t returnCode;
 
@@ -715,7 +715,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
 
     // Now check each update: add vector clocks, update id, then store the new data in group and member tables
     if (changeSet->has_updatename()) {
-        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateId, *store_);
+        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateIdGlobal, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -723,7 +723,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupName(groupId, changeSet->updatename().name());
     }
     if (changeSet->has_updateavatar()) {
-        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateId, *store_);
+        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateIdGlobal, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -731,7 +731,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupAvatarInfo(groupId, changeSet->updateavatar().avatar());
     }
     if (changeSet->has_updateburn()) {
-        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateId, *store_);
+        returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateIdGlobal, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;
@@ -739,7 +739,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         store_->setGroupBurnTime(groupId, changeSet->updateburn().burn_ttl_sec(), changeSet->updateburn().burn_mode());
     }
     if (changeSet->has_updateaddmember()) {
-        changeSet->mutable_updateaddmember()->set_update_id(updateId, UPDATE_ID_LENGTH);
+        changeSet->mutable_updateaddmember()->set_update_id(updateIdGlobal, UPDATE_ID_LENGTH);
         const int32_t size = changeSet->updateaddmember().addmember_size();
         for (int i = 0; i < size; i++) {
             const string &userId = changeSet->updateaddmember().addmember(i).user_id();
@@ -748,13 +748,13 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
             }
         }
         // A new member needs to know the group metadata
-        addMissingMetaData(changeSet, groupId, binDeviceId, *store_);
+        addMissingMetaData(changeSet, groupId, binDeviceId, updateIdGlobal, *store_);
 
         // A new member also needs knowledge of existing members. The function adds these, filters duplicates.
         addExistingMembers(changeSet, groupId, *store_);
     }
     if (changeSet->has_updatermmember()) {
-        changeSet->mutable_updatermmember()->set_update_id(updateId, UPDATE_ID_LENGTH);
+        changeSet->mutable_updatermmember()->set_update_id(updateIdGlobal, UPDATE_ID_LENGTH);
         const int32_t size = changeSet->updatermmember().rmmember_size();
         for (int i = 0; i < size; i++) {
             const string &userId = changeSet->updatermmember().rmmember(i).user_id();
@@ -812,7 +812,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     string binDeviceId;
     makeBinaryDeviceId(deviceId, &binDeviceId);
 
-    string updateIdString(reinterpret_cast<const char*>(updateId), UPDATE_ID_LENGTH);
+    string updateIdString(reinterpret_cast<const char*>(updateIdGlobal), UPDATE_ID_LENGTH);
 
     auto oldEnd = pendingChangeSets.cend();
     for (auto it = pendingChangeSets.cbegin(); it != oldEnd; ++it) {
@@ -852,7 +852,13 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     // We may now have an add member update: may have added names from old change set, thus add
     // meta data if necessary.
     if (changeSet->has_updateaddmember()) {
-        addMissingMetaData(changeSet, groupId, binDeviceId, *store_);
+        addMissingMetaData(changeSet, groupId, binDeviceId, updateIdGlobal, *store_);
+    }
+
+    int32_t result = serializeChangeSet(changeSet, root, newAttributes);
+    if (result != SUCCESS) {
+        errorCode_ = result;
+        return result;
     }
 
     // Because we send a new group update we can remove older group updates from wait-for-ack. The
@@ -879,10 +885,6 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_REMOVE_MEMBER);
     }
 
-    int32_t result = serializeChangeSet(changeSet, root, newAttributes);
-    if (result != SUCCESS) {
-        errorCode_ = result;
-    }
     LOGGER(DEBUGGING, __func__, " <-- ");
     return result;
 }
@@ -897,9 +899,9 @@ void AppInterfaceImpl::groupUpdateSendDone(const string& groupId)
         return;
     }
     string currentKey;
-    currentKey.assign(reinterpret_cast<const char*>(updateId), sizeof(updateId)).append(groupId);
+    currentKey.assign(reinterpret_cast<const char*>(updateIdGlobal), sizeof(updateIdGlobal)).append(groupId);
 
-    memset(updateId, 0, sizeof(updateId));
+    memset(updateIdGlobal, 0, sizeof(updateIdGlobal));
 
     // Remove old change sets of the group. This guarantees that we have at most one pending change set per group
     auto oldEnd = pendingChangeSets.end();
@@ -949,11 +951,11 @@ bool AppInterfaceImpl::removeFromPendingChangeSets(const string &key)
     return false;
 }
 
-int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
+int32_t AppInterfaceImpl::performGroupHellos(const string &userId, const string &deviceId, const string &deviceName)
 {
     LOGGER(DEBUGGING, __func__, " --> ");
 
-    if (deviceId.empty()) {
+    if (deviceId.empty() || userId.empty()) {
         return ILLEGAL_ARGUMENT;
     }
     list<JsonUnique>groups;
@@ -963,6 +965,7 @@ int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
         return GROUP_ERROR_BASE + result;
     }
 
+    LOGGER(INFO, __func__, "groups: ", groups.size());
     // If no groups to sync, just do nothing
     if (groups.empty()) {
         return SUCCESS;
@@ -970,36 +973,43 @@ int32_t AppInterfaceImpl::groupsSyncSibling(const string &deviceId)
 
     for (auto& group : groups) {
         const string groupId = Utilities::getJsonString(group.get(), GROUP_ID, "");
-        result = groupSyncSibling(groupId, deviceId);
-        if (result != SUCCESS) {
-            return result;
+
+        if (store_->isMemberOfGroup(groupId, userId)) {
+            result = performGroupHello(groupId, userId, deviceId, deviceName);
+            if (result != SUCCESS) {
+                return result;
+            }
         }
     }
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::groupSyncSibling(const string &groupId, const string &deviceId)
+int32_t AppInterfaceImpl::performGroupHello(const string &groupId, const string &userId, const string &deviceId, const string &deviceName)
 {
     LOGGER(DEBUGGING, __func__, " --> ");
 
+    uint8_t updateId[UPDATE_ID_LENGTH];
     string binDeviceId;
     makeBinaryDeviceId(deviceId, &binDeviceId);
 
+    ZrtpRandom::getRandomData(updateIdGlobal, sizeof(updateIdGlobal));
+
     // Get an empty change set and add the group's current data (meta data, members)
     auto changeSet = make_shared<GroupChangeSet>();
-    int32_t result = addMissingMetaData(changeSet, groupId, binDeviceId, *store_);
+    int32_t result = addMissingMetaData(changeSet, groupId, binDeviceId, updateId, *store_);
     if (result != SUCCESS) {
         return result;
     }
-    result = addExistingMembers(changeSet,groupId, *store_);
+    changeSet->mutable_updateaddmember()->set_update_id(updateId, UPDATE_ID_LENGTH);
+    result = addExistingMembers(changeSet, groupId, *store_);
     if (result != SUCCESS) {
         return result;
     }
 
     JsonUnique jsonUnique(cJSON_CreateObject());
     cJSON* root = jsonUnique.get();
-    cJSON_AddStringToObject(root, GROUP_COMMAND, SYNC_SIBLING);
+    cJSON_AddStringToObject(root, GROUP_COMMAND, HELLO);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, MSG_DEVICE_ID, getOwnDeviceId().c_str());
 
@@ -1008,9 +1018,23 @@ int32_t AppInterfaceImpl::groupSyncSibling(const string &groupId, const string &
     if (result != SUCCESS) {
         return result;
     }
-    const string msgId = generateMsgIdTime();
+    string updateIdString(reinterpret_cast<const char*>(updateIdGlobal), UPDATE_ID_LENGTH);
+    if (changeSet->has_updatename()) {
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_NAME);
+    }
+    if (changeSet->has_updateavatar()) {
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
+    }
+    if (changeSet->has_updateburn()) {
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
+    }
+    if (changeSet->has_updateaddmember()) {
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_ADD_MEMBER);
+    }
 
-    queueMessageToSingleUserDevice(getOwnUser(), msgId, deviceId, Empty, attributes, Empty, GROUP_MSG_CMD, 0, false, NoAction);
+    // Queue the hello message, assume the device is new - if a valid ratchet exists the send function handles this
+    const string msgId = generateMsgIdTime();
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, deviceName, attributes, Empty, GROUP_MSG_CMD, true, NoAction);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;

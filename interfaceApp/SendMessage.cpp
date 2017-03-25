@@ -523,7 +523,7 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, unique_ptr<Z
 
     errorCode_ = SUCCESS;
 
-    // Don't send this to sender device when sending to my sibling devices
+    // Don't send this to my own device
     if (sendInfo.queueInfo_toSibling && sendInfo.queueInfo_deviceId == scClientDevId_) {
         return SUCCESS;
     }
@@ -631,7 +631,7 @@ AppInterfaceImpl::sendMessageNewUser(const CmdQueueInfo &sendInfo)
 
     errorCode_ = SUCCESS;
 
-    // Don't send this to sender device, even when sending to my sibling devices
+    // Don't send this to my own device
     if (sendInfo.queueInfo_toSibling && sendInfo.queueInfo_deviceId == scClientDevId_) {
         return SUCCESS;
     }

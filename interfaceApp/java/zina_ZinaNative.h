@@ -291,30 +291,6 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_groupMessageRemoved
 
 /*
  * Class:     zina_ZinaNative
- * Method:    groupsSyncSibling
- * Signature: (Ljava/lang/String;)I
- */
-JNIEXPORT jint JNICALL Java_zina_ZinaNative_groupsSyncSibling
-  (JNIEnv *, jclass, jstring);
-
-/*
- * Class:     zina_ZinaNative
- * Method:    groupSyncSibling
- * Signature: (Ljava/lang/String;Ljava/lang/String;)I
- */
-JNIEXPORT jint JNICALL Java_zina_ZinaNative_groupSyncSibling
-  (JNIEnv *, jclass, jstring, jstring);
-
-/*
- * Class:     zina_ZinaNative
- * Method:    requestGroupsSync
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_zina_ZinaNative_requestGroupsSync
-  (JNIEnv *, jclass);
-
-/*
- * Class:     zina_ZinaNative
  * Method:    repoOpenDatabase
  * Signature: (Ljava/lang/String;[B)I
  */

@@ -323,49 +323,31 @@ public:
     int32_t setDataRetentionFlags(const std::string& jsonFlags);
 
     /**
-     * @brief Create and send group sync data to a sibling device.
+     * @brief Send HELLO command for all groups to a member's device
      *
-     * A new sibling device may request group synchronization data. Checks if groups
-     * are available and loops over the set over available groups and calls
-     * groupSyncSibling(const string &groupId, const string &deviceId) to create and
-     * send the sync data.
+     * Check the membership of the user in all our groups. If the user is a group member
+     * then create and send a group HELLO command to the user'S device. The HELLO command
+     * contains a change set which has all our group meta data and members.
      *
-     * The UI should call this function from a device that has group data and likes
-     * to sync (push) the data to another sibling device.
-     *
-     * @param deviceId The requestor's (sibling's) device id
-     * @return {@code SUCCESS} or an error code.
+     * @param userId The user who added a new device
+     * @param deviceId The device id of the new device
+     * @param deviceName The device's name
+     * @return
      */
-    int32_t groupsSyncSibling(const std::string &deviceId);
+    int32_t performGroupHellos(const std::string &userId, const std::string &deviceId, const std::string &deviceName);
 
     /**
-     * @brief Create and send a group's sync data to a sibling device.
+     * @brief Create and send a group HELLO command to a device
      *
-     * A new sibling device may request group synchronization data. This function
-     * creates and sends the data to the requesting sibling.
-     *
-     * The UI should call this function from a device that has group data and likes
-     * to sync (push) the data to another sibling device.
+     * A group member's new device needs the group data. This function creates and sends
+     * the data to the new device.
      *
      * @param groupId To which group this data belongs
-     * @param deviceId The requestor's (sibling's) device id
+     * @param deviceId The new device's device id
+     * @param deviceName The device's name
      * @return {@code SUCCESS} or an error code.
      */
-    int32_t groupSyncSibling(const std::string &groupId, const std::string &deviceId);
-
-    /**
-     * @brief Request group synchronization data from sibling devices.
-     *
-     * A device, usually a new sibling device on an account, needs information of groups
-     * known to other sibling devices. The UI may call this function to get this data.
-     *
-     * Usually ZINA calls this function when it registers a new messaging device, thus
-     * the UI code may call this only if this implicit request failed, for example all
-     * other sibling devices were offline.
-     *
-     * @return {@code SUCCESS} or an error code.
-     */
-    int32_t requestGroupsSync();
+    int32_t performGroupHello(const std::string &groupId, const std::string &userId, const std::string &deviceId, const std::string &deviceName);
 
 #ifdef UNITTESTS
         void setStore(SQLiteStoreConv* store) { store_ = store; }
@@ -699,8 +681,8 @@ private:
      * @brief Send a message to a specific device of a group member.
      *
      * ZINA uses this function to prepare and send a change set to a group member's device.
-     * Thus ZINA can send ACK or other change sets to the sender' device. Thie function does not
-     * support sending of attachment descriptor.
+     * Thus ZINA can send ACK or other change sets to the sender' device. This function does not
+     * support sending of anattachment descriptor.
      *
      * The function adds the group id to the attributes, handles change set, creates a send message command and
      * queues it for normal send message processing.
@@ -713,7 +695,30 @@ private:
      * @return @c SUCCESS or an error code (<0)
      */
     int32_t sendGroupMessageToSingleUserDevice(const std::string &groupId, const std::string &userId, const std::string &deviceId,
-                                         const std::string &attributes, const std::string &msg, int32_t msgType);
+                                               const std::string &attributes, const std::string &msg, int32_t msgType);
+
+    /**
+     * @brief Send a message to a specific device of a group member.
+     *
+     * ZINA uses this function to prepare and send a change set to a group member's device.
+     * Thus ZINA can send ACK or other change sets to the sender' device. This function does not
+     * support sending of an attachment descriptor.
+     *
+     * The function adds the group id to the attributes, creates a send message command and
+     * queues it for normal send message processing.
+     *
+     * This function does not prepare or add a change set to the attribute data. Often the
+     * attribute has a change set already, for example when sending ACKs
+     *
+     * @param groupId The group id to get the change set
+     * @param userId The group member's id
+     * @param deviceId The device of of the group member
+     * @param attributes The message attributes, may be empty
+     * @param msg the message to send, maybe empty
+     * @return @c SUCCESS or an error code (<0)
+     */
+    int32_t sendGroupMessageToSingleUserDeviceNoCS(const std::string &groupId, const std::string &userId, const std::string &deviceId,
+                                                   const std::string &attributes, const std::string &msg, int32_t msgType);
 
     void makeBinaryDeviceId(const std::string &deviceId, std::string *binaryId);
 
@@ -760,7 +765,7 @@ private:
 
     void queueMessageToSingleUserDevice(const std::string &userId, const std::string &msgId, const std::string &deviceId,
                                         const std::string &deviceName, const std::string &attributes, const std::string &msg,
-                                        int32_t msgType, int64_t counter, bool newDevice,
+                                        int32_t msgType, bool newDevice,
                                         SendCallbackAction sendCallbackAction);
 
 
@@ -770,19 +775,6 @@ private:
      * @param sendCallbackAction Which action to perform
      */
     void sendActionCallback(SendCallbackAction sendCallbackAction);
-
-    /**
-     * @brief Process group sync data change set.
-     *
-     * @param root Pointer to parsed JSON data that contains the change set, group id
-     * @return {@code SUCCESS} or an error code.
-     */
-    int32_t processSiblingGroupSyncData(cJSON* root);
-
-    int32_t syncGroupName(const GroupUpdateSetName &changeSet, const std::string &groupId);
-    int32_t syncGroupAvatar(const GroupUpdateSetAvatar &changeSet, const std::string &groupId);
-    int32_t syncGroupBurn(const GroupUpdateSetBurn &changeSet, const std::string &groupId);
-    int32_t syncGroupMembers(const GroupChangeSet &changeSet, const std::string &groupId);
 
     static std::string generateMsgIdTime() {
         uuid_t uuid = {0};

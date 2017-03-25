@@ -299,19 +299,6 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
 
     string groupCommand(Utilities::getJsonString(root, GROUP_COMMAND, ""));
 
-    // process a sync sibling command before any normal change set stuff and return the result
-    if (groupCommand.compare(SYNC_SIBLING) == 0) {
-        return processSiblingGroupSyncData(root);
-    }
-    // Need to process this _before_ any other group handling because the sender
-    // requested a group data synchronization, thus sender does not have any group info
-    // yet. This is a special group command: it only contains the command and the device
-    // id of the requesting device.
-    else if (groupCommand.compare(REQUEST_GROUPS_SYNC) == 0) {
-        const string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
-        return groupsSyncSibling(deviceId);
-    }
-
     // A command message may have a change set, process it
     int32_t result = checkAndProcessChangeSet(msgDescriptor, commandIn);
     if (result != SUCCESS) {
@@ -323,6 +310,9 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     // Ignore unknown commands, just report them
     if (groupCommand.compare(REMOVE_MSG) == 0) {
         groupCmdCallback_(*commandIn);
+    }
+    else if (groupCommand.compare(HELLO) == 0) {
+        LOGGER(INFO, __func__, "HELLO group command");
     }
     else {
         LOGGER(WARNING, __func__, "Unknown group command: ", groupCommand);
@@ -375,7 +365,7 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
         }
         // message from unknown group, ask sender to remove me
         // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
-        return sendGroupMessageToSingleUserDevice(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
+        return sendGroupMessageToSingleUserDeviceNoCS(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
     }
     if (changeSetString.size() > tempBufferSize_) {
         delete[] tempBuffer_;
@@ -409,7 +399,7 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
         }
 #ifndef UNITTESTS
         // It's a non-user visible message, thus send it as type command. This prevents callback to UI etc.
-        result = sendGroupMessageToSingleUserDevice(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
+        result = sendGroupMessageToSingleUserDeviceNoCS(groupId, sender, deviceId, attributes, Empty, GROUP_MSG_CMD);
         if (result != SUCCESS) {
             return result;
         }
@@ -944,12 +934,32 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &group
 
     const string msgId = generateMsgIdTime();
 
-    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, 0, false, NoAction);
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, false, NoAction);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
 
+int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDeviceNoCS(const string &groupId, const string &userId,
+                                                                 const string &deviceId, const string &attributes,
+                                                                 const string &msg, int32_t msgType)
+{
+    LOGGER(DEBUGGING, __func__, " -->");
+
+    JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string newAttributes(out.get());
+
+    const string msgId = generateMsgIdTime();
+
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, false, NoAction);
+
+    LOGGER(DEBUGGING, __func__, " <-- ");
+    return SUCCESS;
+}
 
 int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command) {
     LOGGER(DEBUGGING, __func__, " --> ");
@@ -1044,203 +1054,6 @@ int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChang
         callbackCmd->assign(newGroupCommand(groupId, MAXIMUM_GROUP_SIZE));
     }
 
-    LOGGER(DEBUGGING, __func__, " <-- ");
-    return SUCCESS;
-}
-
-// ************* Below the functions that handle group synchronization for siblings
-
-int32_t AppInterfaceImpl::processSiblingGroupSyncData(cJSON* root)
-{
-    LOGGER(DEBUGGING, __func__, " --> ");
-    string groupId(Utilities::getJsonString(root, GROUP_ID, ""));
-    string changeSetString(Utilities::getJsonString(root, GROUP_CHANGE_SET, ""));
-
-    bool hasGroup = store_->hasGroup(groupId);
-
-    string senderDeviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
-
-    // Don't sync an existing group
-    if (changeSetString.empty() || hasGroup) {
-        return SUCCESS;
-    }
-
-    if (changeSetString.size() > tempBufferSize_) {
-        delete[] tempBuffer_;
-        tempBuffer_ = new char[changeSetString.size()];
-        tempBufferSize_ = changeSetString.size();
-    }
-    size_t binLength = b64Decode(changeSetString.data(), changeSetString.size(), (uint8_t *) tempBuffer_, tempBufferSize_);
-    if (binLength == 0) {
-        LOGGER(ERROR, __func__, "Base64 decoding of group change set failed.");
-        return CORRUPT_DATA;
-    }
-
-    GroupChangeSet changeSet;
-    if (!changeSet.ParseFromArray(tempBuffer_, static_cast<int32_t>(binLength))) {
-        LOGGER(ERROR, __func__, "ProtoBuffer decoding of group change set failed.");
-        return CORRUPT_DATA;
-    }
-
-    // Implicitly create a new group if it does not exist yet and we should add a member to it
-    // Works the same for sibling devices and other member devices
-    if (changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) {
-        string callbackCmd;
-        const int32_t result = insertNewGroup(groupId, changeSet, &callbackCmd);
-        if (result != SUCCESS) {
-            errorCode_ = result;
-            errorInfo_ = "Cannot add new group (sync sibling).";
-            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-            return result;
-        }
-        groupCmdCallback_(callbackCmd);
-    }
-
-    int32_t result = syncGroupName(changeSet.updatename(), groupId);
-    if (result != SUCCESS) {
-        return result;
-    }
-
-    result = syncGroupAvatar(changeSet.updateavatar(), groupId);
-    if (result != SUCCESS) {
-        return result;
-    }
-
-    result = syncGroupBurn(changeSet.updateburn(), groupId);
-    if (result != SUCCESS) {
-        return result;
-    }
-
-    result = syncGroupMembers(changeSet, groupId);
-    LOGGER(DEBUGGING, __func__, " <-- ");
-    return result;
-}
-
-int32_t static updateAndStoreClock(const google::protobuf::RepeatedPtrField<VClock> &vclock, const string &updateId, const string &groupId,
-                                   GroupUpdateType type, SQLiteStoreConv &store)
-{
-    LOGGER(DEBUGGING, __func__, " --> ");
-
-    LocalVClock lvc;                    // the serialized proto-buffer representation for the local clock data
-
-    // Copy and store the remote vector clock as our local vector clock because the remote clock
-    // reflects the latest changes.
-    lvc.set_update_id(updateId.data(), UPDATE_ID_LENGTH);
-    lvc.mutable_vclock()->CopyFrom(vclock);
-
-    return storeLocalVectorClock(store, groupId, type, lvc);
-}
-
-int32_t AppInterfaceImpl::syncGroupName(const GroupUpdateSetName &changeSet, const string &groupId) {
-    LOGGER(DEBUGGING, __func__, " --> ");
-
-    const string &groupName = changeSet.name();
-    int32_t result = store_->setGroupName(groupId, groupName);
-    if (SQL_FAIL(result)) {
-        errorCode_ = result;
-        errorInfo_ = "Cannot update group name";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-
-    result = updateAndStoreClock(changeSet.vclock(), changeSet.update_id(), groupId, GROUP_SET_NAME, *store_);
-    if (SQL_FAIL(result)) {
-        errorCode_ = result;
-        errorInfo_ = "Group set name: Cannot store new local vector clock";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-    groupCmdCallback_(newGroupNameCommand(groupId, groupName));
-    LOGGER(DEBUGGING, __func__, " <-- ");
-    return SUCCESS;
-}
-
-int32_t AppInterfaceImpl::syncGroupAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId) {
-    LOGGER(DEBUGGING, __func__, " --> ");
-
-    const string &groupAvatar = changeSet.avatar();
-    int32_t result = store_->setGroupAvatarInfo(groupId, groupAvatar);
-    if (SQL_FAIL(result)) {
-        errorCode_ = result;
-        errorInfo_ = "Cannot update group name";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-
-    result = updateAndStoreClock(changeSet.vclock(), changeSet.update_id(), groupId, GROUP_SET_AVATAR, *store_);
-    if (SQL_FAIL(result)) {
-        errorCode_ = result;
-        errorInfo_ = "Group set name: Cannot store new local vector clock";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-    groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar));
-    LOGGER(DEBUGGING, __func__, " <-- ");
-    return SUCCESS;
-}
-
-int32_t AppInterfaceImpl::syncGroupBurn(const GroupUpdateSetBurn &changeSet, const string &groupId) {
-    LOGGER(DEBUGGING, __func__, " --> ");
-
-    const int64_t burnTime = changeSet.burn_ttl_sec();
-    const int32_t burnMode = changeSet.burn_mode();
-
-    int32_t result = store_->setGroupBurnTime(groupId, burnTime, burnMode);
-    if (SQL_FAIL(result)) {
-        errorCode_ = result;
-        errorInfo_ = "Cannot update group name";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-
-    result = updateAndStoreClock(changeSet.vclock(), changeSet.update_id(), groupId, GROUP_SET_BURN, *store_);
-    if (SQL_FAIL(result)) {
-        errorCode_ = result;
-        errorInfo_ = "Group set name: Cannot store new local vector clock";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-    groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode));
-    LOGGER(DEBUGGING, __func__, " <-- ");
-    return SUCCESS;
-}
-
-int32_t AppInterfaceImpl::syncGroupMembers(const GroupChangeSet &changeSet, const string &groupId)
-{
-    LOGGER(DEBUGGING, __func__, " --> ");
-    if (!changeSet.has_updateaddmember()) {
-        return SUCCESS;
-    }
-
-    list<string> addMembers;
-    const int32_t size = changeSet.updateaddmember().addmember_size();
-    for (int32_t i = 0; i < size; i++) {
-        const string &name = changeSet.updateaddmember().addmember(i).user_id();
-        int32_t result;
-        bool isMember = store_->isMemberOfGroup(groupId, name, &result);
-        if (SQL_FAIL(result)) {
-            errorCode_ = result;
-            errorInfo_ = "Cannot check group membership";
-            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-            return result;
-        }
-        // already a member, just continue, no need for action
-        if (isMember) {
-            continue;
-        }
-        result = store_->insertMember(groupId, name);
-        if (SQL_FAIL(result)) {
-            errorCode_ = result;
-            errorInfo_ = "Cannot add new group member";
-            LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-            return result;
-        }
-        addMembers.push_back(name);
-    }
-
-    if (!addMembers.empty()) {
-        groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS));
-    }
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
 }
