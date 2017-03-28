@@ -193,6 +193,14 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_setGroupAvatar
 JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_listAllGroups
   (JNIEnv *, jclass, jintArray);
 
+  /*
+   * Class:     zina_ZinaNative
+   * Method:    listAllGroupsWithMember
+   * Signature: ([I)[[B
+   */
+  JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_listAllGroupsWithMember
+    (JNIEnv *, jclass, jstring, jintArray);
+
 /*
  * Class:     zina_ZinaNative
  * Method:    getGroup

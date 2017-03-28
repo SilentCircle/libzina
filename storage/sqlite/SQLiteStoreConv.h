@@ -426,6 +426,20 @@ public:
     int32_t listAllGroups(std::list<JsonUnique> &groups);
 
     /**
+     * @brief List data of all known groups which have a certain user as participant.
+     *
+     * Creates and returns a list of shared pointers to cJSON data structures that contain
+     * the groups' data. The shared pointers have a special deleter that calls @c cJSON_delete
+     * to free the data structure.
+     *
+     * @param sqlCode If not @c NULL returns the SQLite return/error code
+     * @param participantUuid Participant's uuid to use in query
+     * @param groups pointer to list which get thew unique JSON data pointers
+     * @return SQLite code
+     */
+    int32_t listAllGroupsWithMember(const std::string& participantUuid, std::list<JsonUnique> &groups);
+
+    /**
      * @brief Get data of a group.
      *
      * Returns a shared pointer to a cJSON data structure that contains the group's

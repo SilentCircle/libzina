@@ -1393,7 +1393,53 @@ JNI_FUNCTION(listAllGroups)(JNIEnv *env, jclass clazz, jintArray code)
         env->DeleteLocalRef(retData);
     }
     return retArray;
+}
 
+/*
+ * Class:     zina_ZinaNative
+ * Method:    listAllGroupsWithMember
+ * Signature: ([I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(listAllGroupsWithMember)(JNIEnv *env, jclass clazz, jstring participantUuid, jintArray code)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return NULL;
+
+    if (participantUuid == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    string participant;
+    const char* temp = env->GetStringUTFChars(participantUuid, 0);
+    participant = temp;
+    env->ReleaseStringUTFChars(participantUuid, temp);
+
+
+    list<JsonUnique> groups;
+    int32_t result = zinaAppInterface->getStore()->listAllGroupsWithMember(participant, groups);
+    setReturnCode(env, code, result);
+
+    size_t size = groups.size();
+    if (size == 0)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    for (auto& group : groups) {
+        CharUnique out(cJSON_PrintUnformatted(group.get()));
+        jbyteArray retData = stringToArray(env, out.get());
+
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
 }
 
 /*

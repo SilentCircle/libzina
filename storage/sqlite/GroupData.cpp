@@ -80,6 +80,10 @@ static const char* selectForHash = "SELECT DISTINCT memberId FROM members WHERE 
 static const char* isMemberOfGroupSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE groupId=?1 AND memberId=?2) WHEN 1 THEN 1 ELSE 0 END;";
 static const char* isGroupMemberSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM members WHERE memberId=?1) WHEN 1 THEN 1 ELSE 0 END;";
 
+static const char* selectAllGroupsWithParticipant = "SELECT g.groupId, g.name, g.ownerId, g.description, "
+        "g.maxMembers, g.memberCount, g.attributes, g.lastModified, g.burnTime, g.burnMode, g.avatarInfo "
+        "FROM groups g INNER JOIN members m ON g.groupId=m.groupId WHERE m.memberId=?1;";
+
 using namespace zina;
 
 int32_t SQLiteStoreConv::createGroupTables()
@@ -315,6 +319,38 @@ int32_t SQLiteStoreConv::listAllGroups(list<JsonUnique> &groups)
 
     // char* selectAllGroups = "SELECT groupId, name, ownerId, description, maxMembers, memberCount, attributes, lastModified, burnTime, burnMode, avatarInfo FROM groups;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectAllGroups, -1, &stmt, NULL));
+
+    sqlResult= sqlite3_step(stmt);
+    ERRMSG;
+
+    while (sqlResult == SQLITE_ROW) {
+        // Get group records and create a JSON object, wrap it in a unique_ptr with a custom delete
+        groups.push_back(JsonUnique(createGroupJson(stmt)));
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::listAllGroupsWithMember(const std::string& participantUuid, list<JsonUnique> &groups)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    LOGGER(DEBUGGING, __func__, " -->");
+
+    /*
+     * SELECT g.groupId, g.name, g.ownerId, g.description, g.maxMembers,
+     *       g.memberCount, g.attributes, g.lastModified, g.burnTime, g.burnMode, g.avatarInfo
+     *       FROM groups g INNER JOIN members m ON g.groupId=m.groupId WHERE m.memberId=?1;
+     */
+    SQLITE_CHK(SQLITE_PREPARE(db, selectAllGroupsWithParticipant, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, participantUuid.data(), static_cast<int32_t>(participantUuid.size()), SQLITE_STATIC));
 
     sqlResult= sqlite3_step(stmt);
     ERRMSG;
