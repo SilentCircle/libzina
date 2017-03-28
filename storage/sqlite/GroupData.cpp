@@ -53,9 +53,9 @@ static const char* selectGroupAttributeSql = "SELECT attributes, lastModified FR
 static const char* removeGroup = "DELETE FROM groups WHERE groupId=?1;";
 static const char* hasGroupSql = "SELECT NULL, CASE EXISTS (SELECT 0 FROM groups WHERE groupId=?1) WHEN 1 THEN 1 ELSE 0 END;";
 
-static const char* setGroupNewName = "UPDATE groups SET name=?1 WHERE groupId=?2;";
-static const char* setGroupBurn = "UPDATE groups SET burnTime=?1, burnMode=?2 WHERE groupId=?3;";
-static const char* setGroupAvatar = "UPDATE groups SET avatarInfo=?1 WHERE groupId=?2;";
+static const char* setGroupNewName = "UPDATE groups SET name=?1, lastModified=?2 WHERE groupId=?3;";
+static const char* setGroupBurn = "UPDATE groups SET burnTime=?1, burnMode=?2, lastModified=?3 WHERE groupId=?4;";
+static const char* setGroupAvatar = "UPDATE groups SET avatarInfo=?1, lastModified=?2 WHERE groupId=?3;";
 
 /* *****************************************************************************
  * SQL statements to process group member table
@@ -494,15 +494,17 @@ cleanup:
     LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
     return sqlResult;
 }
+
 int32_t SQLiteStoreConv::setGroupName(const string& groupUuid, const string& name)
 {
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    // char* setGroupNewName = "UPDATE groups SET name=?1 WHERE groupId=?2;";
+    // char* setGroupNewName = "UPDATE groups SET name=?1, lastModified=?2 WHERE groupId=?3;";
     sqlResult = SQLITE_PREPARE(db, setGroupNewName, -1, &stmt, NULL);
-    sqlite3_bind_text(stmt, 1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  1, name.data(), static_cast<int32_t>(name.size()), SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, time(nullptr));
+    sqlite3_bind_text(stmt,  3, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC);
     if (sqlResult != SQLITE_OK) {
         goto cleanup;
     }
@@ -519,11 +521,12 @@ int32_t SQLiteStoreConv::setGroupBurnTime(const string& groupUuid, int64_t timeI
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    // char* setGroupBurn = "UPDATE groups SET burnTime=?1, burnMode=?2 WHERE groupId=?3;";
+    // char* setGroupBurn = "UPDATE groups SET burnTime=?1, burnMode=?2, lastModified=?3 WHERE groupId=?4;";
     sqlResult = SQLITE_PREPARE(db, setGroupBurn, -1, &stmt, NULL);
     sqlite3_bind_int64(stmt, 1, timeInSeconds);
     sqlite3_bind_int(stmt,   2, mode);
-    sqlite3_bind_text(stmt,  3, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 3, time(nullptr));
+    sqlite3_bind_text(stmt,  4, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC);
     if (sqlResult != SQLITE_OK) {
         goto cleanup;
     }
@@ -539,10 +542,11 @@ int32_t SQLiteStoreConv::setGroupAvatarInfo(const string& groupUuid, const strin
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
-    // char* setGroupAvatar = "UPDATE groups SET avatarInfo=?1 WHERE groupId=?2;";
+    // char* setGroupAvatar = "UPDATE groups SET avatarInfo=?1, lastModified=?2 WHERE groupId=?3;";
     sqlResult = SQLITE_PREPARE(db, setGroupAvatar, -1, &stmt, NULL);
-    sqlite3_bind_text(stmt, 1, avatarInfo.data(), static_cast<int32_t>(avatarInfo.size()), SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  1, avatarInfo.data(), static_cast<int32_t>(avatarInfo.size()), SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, time(nullptr));
+    sqlite3_bind_text(stmt,  3, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC);
     if (sqlResult != SQLITE_OK) {
         goto cleanup;
     }
