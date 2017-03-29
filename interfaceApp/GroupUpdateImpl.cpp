@@ -704,7 +704,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
 
     // Check if this change set is for a new group
     if (!store_->hasGroup(groupId)) {
-        returnCode = insertNewGroup(groupId, *changeSet, nullptr);
+        returnCode = insertNewGroup(groupId, *changeSet, 0, nullptr);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             return returnCode;

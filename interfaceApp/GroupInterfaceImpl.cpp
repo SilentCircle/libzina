@@ -43,12 +43,13 @@ static void fillMemberArray(cJSON* root, const list<string> &members)
     }
 }
 
-static string prepareMemberList(const string &groupId, const list<string> &members, const char *command) {
+static string prepareMemberList(const string &groupId, const list<string> &members, const char *command, time_t stamp) {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
     cJSON_AddStringToObject(root, GROUP_COMMAND, command);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
     fillMemberArray(root, members);
 
@@ -58,13 +59,14 @@ static string prepareMemberList(const string &groupId, const list<string> &membe
     return listCommand;
 }
 
-static string leaveCommand(const string& groupId, const string& memberId)
+static string leaveCommand(const string& groupId, const string& memberId, time_t stamp)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, LEAVE);
     cJSON_AddStringToObject(root, MEMBER_ID, memberId.c_str());
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -72,13 +74,14 @@ static string leaveCommand(const string& groupId, const string& memberId)
     return command;
 }
 
-static string newGroupCommand(const string& groupId, int32_t maxMembers)
+static string newGroupCommand(const string& groupId, int32_t maxMembers, time_t stamp)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_GROUP);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddNumberToObject(root, GROUP_MAX_MEMBERS, maxMembers);
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -86,13 +89,14 @@ static string newGroupCommand(const string& groupId, int32_t maxMembers)
     return command;
 }
 
-static string newGroupNameCommand(const string& groupId, const string& groupName)
+static string newGroupNameCommand(const string& groupId, const string& groupName, time_t stamp)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_NAME);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, GROUP_NAME, groupName.c_str());
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -100,13 +104,14 @@ static string newGroupNameCommand(const string& groupId, const string& groupName
     return command;
 }
 
-static string newGroupAvatarCommand(const string& groupId, const string& groupAvatar)
+static string newGroupAvatarCommand(const string& groupId, const string& groupAvatar, time_t stamp)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, NEW_AVATAR);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddStringToObject(root, GROUP_AVATAR, groupAvatar.c_str());
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -114,7 +119,7 @@ static string newGroupAvatarCommand(const string& groupId, const string& groupAv
     return command;
 }
 
-static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32_t burnMode)
+static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32_t burnMode, time_t stamp)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
@@ -122,6 +127,7 @@ static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddNumberToObject(root, GROUP_BURN_SEC, burnTime);
     cJSON_AddNumberToObject(root, GROUP_BURN_MODE, burnMode);
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -351,6 +357,10 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
     string sender(Utilities::getJsonString(root, MSG_SENDER, ""));
     string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
 
+    uuid_t uu = {0};
+    uuid_parse(Utilities::getJsonString(root, MSG_ID, ""), uu);
+    time_t msgTime = uuid_time(uu, NULL);
+
     // We have an empty CS here and no group: an unsolicited message, tell sender to remove me from group
     if (changeSetString.empty()) {
         GroupChangeSet rmSet;
@@ -386,7 +396,7 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
     }
 
     GroupChangeSet ackRmSet;              // Gathers all ACKs and a remove on unexpected group change sets
-    int32_t result = processReceivedChangeSet(changeSet, groupId, sender, deviceId, hasGroup, &ackRmSet);
+    int32_t result = processReceivedChangeSet(changeSet, groupId, sender, deviceId, hasGroup, msgTime, &ackRmSet);
     if (result != SUCCESS) {
         return result;
     }
@@ -413,7 +423,7 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
 
 int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId,
                                                    const string &sender, const string &deviceId, bool hasGroup,
-                                                   GroupChangeSet *ackRmSet)
+                                                   time_t stamp, GroupChangeSet *ackRmSet)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -432,7 +442,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
             LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
             return result;
         }
-        groupCmdCallback_(leaveCommand(groupId, getOwnUser()));
+        groupCmdCallback_(leaveCommand(groupId, getOwnUser(), stamp));
         return result;
     }
 
@@ -440,7 +450,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
     // Works the same for sibling devices and other member devices
     if (!hasGroup && changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) {
         string callbackCmd;
-        const int32_t result = insertNewGroup(groupId, changeSet, &callbackCmd);
+        const int32_t result = insertNewGroup(groupId, changeSet, stamp, &callbackCmd);
         if (result != SUCCESS) {
             errorCode_ = result;
             errorInfo_ = "Cannot add new group.";
@@ -484,21 +494,21 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
 
         if (changeSet.has_updatename()) {
             // Update the group's name
-            const int32_t result = processUpdateName(changeSet.updatename(), groupId, ackRmSet);
+            const int32_t result = processUpdateName(changeSet.updatename(), groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
         }
         if (changeSet.has_updateavatar()) {
             // Update the group's avatar info
-            const int32_t result = processUpdateAvatar(changeSet.updateavatar(), groupId, ackRmSet);
+            const int32_t result = processUpdateAvatar(changeSet.updateavatar(), groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
         }
         if (changeSet.has_updateburn()) {
             // Update the group's burn timer info
-            const int32_t result = processUpdateBurn(changeSet.updateburn(), groupId, ackRmSet);
+            const int32_t result = processUpdateBurn(changeSet.updateburn(), groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
@@ -506,7 +516,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
         if ((changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) ||
             (changeSet.has_updatermmember() && changeSet.updatermmember().rmmember_size() > 0)) {
 
-            const int32_t result = processUpdateMembers(changeSet, groupId, ackRmSet);
+            const int32_t result = processUpdateMembers(changeSet, groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
@@ -566,7 +576,7 @@ static Ordering resolveConflict(const VectorClock<string> &remoteVc, const Vecto
     return remoteSum > localSum ? After : Before;
 }
 
-int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId, GroupChangeSet *ackSet)
+int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet, const string &groupId, time_t stamp, GroupChangeSet *ackSet)
 {
     const string &updateIdRemote = changeSet.update_id();
 
@@ -620,7 +630,7 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
         ack->set_type(GROUP_SET_NAME);
         ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
 
-        groupCmdCallback_(newGroupNameCommand(groupId, groupName));
+        groupCmdCallback_(newGroupNameCommand(groupId, groupName, stamp));
         return SUCCESS;
     }
     GroupUpdateAck *ack = ackSet->add_acks();
@@ -642,7 +652,7 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
     return GENERIC_ERROR;
 }
 
-int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, GroupChangeSet *ackSet)
+int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, time_t stamp, GroupChangeSet *ackSet)
 {
     const string &updateIdRemote = changeSet.update_id();
 
@@ -694,7 +704,7 @@ int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &change
         ack->set_type(GROUP_SET_AVATAR);
         ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
 
-        groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar));
+        groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar, stamp));
         return SUCCESS;
     }
     GroupUpdateAck *ack = ackSet->add_acks();
@@ -716,7 +726,7 @@ int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &change
     return GENERIC_ERROR;
 }
 
-int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, GroupChangeSet *ackSet)
+int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, time_t stamp, GroupChangeSet *ackSet)
 {
     const string &updateIdRemote = changeSet.update_id();
 
@@ -771,7 +781,7 @@ int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet,
         ack->set_type(GROUP_SET_BURN);
         ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
 
-        groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode));
+        groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode, stamp));
         return SUCCESS;
     }
     GroupUpdateAck *ack = ackSet->add_acks();
@@ -793,7 +803,7 @@ int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet,
     return GENERIC_ERROR;
 }
 
-int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId,
+int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId, time_t stamp,
                                                GroupChangeSet *ackSet) {
 
     // The function first processes the add member update, then remove member. It removes members
@@ -894,11 +904,11 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
         ++it;
     }
     if (!addMembers.empty()) {
-        groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS));
+        groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS, stamp));
     }
 
     if (!rmMembers.empty()) {
-        groupCmdCallback_(prepareMemberList(groupId, rmMembers, RM_MEMBERS));
+        groupCmdCallback_(prepareMemberList(groupId, rmMembers, RM_MEMBERS, stamp));
     }
     return SUCCESS;
 }
@@ -1035,7 +1045,7 @@ int32_t AppInterfaceImpl::deleteGroupAndMembers(string const& groupId)
 
 // Insert data of a new group into the database. This function also adds myself as a member to the
 // new group.
-int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChangeSet &changeSet, string *callbackCmd)
+int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChangeSet &changeSet, time_t stamp, string *callbackCmd)
 {
     LOGGER(DEBUGGING, __func__, " --> ");
     const string &groupName = changeSet.has_updatename() ? changeSet.updatename().name() : Empty;
@@ -1051,7 +1061,7 @@ int32_t AppInterfaceImpl::insertNewGroup(const string &groupId, const GroupChang
         return GROUP_ERROR_BASE + sqlResult;
     }
     if (callbackCmd != nullptr) {
-        callbackCmd->assign(newGroupCommand(groupId, MAXIMUM_GROUP_SIZE));
+        callbackCmd->assign(newGroupCommand(groupId, MAXIMUM_GROUP_SIZE, stamp));
     }
 
     LOGGER(DEBUGGING, __func__, " <-- ");
