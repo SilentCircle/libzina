@@ -321,7 +321,7 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
         LOGGER(INFO, __func__, "HELLO group command");
     }
     else {
-        LOGGER(WARNING, __func__, "Unknown group command: ", groupCommand);
+        LOGGER(WARNING, __func__, "Unknown group command: ", *commandIn, "msg descriptor: ", msgDescriptor);
     }
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
