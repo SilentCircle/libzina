@@ -521,43 +521,34 @@ int32_t AppInterfaceImpl::leaveGroup(const string& groupId) {
     }
     applyGroupChangeSet(groupId);
 
-    processLeaveGroup(groupId, getOwnUser(), true);
+    processLeaveGroup(groupId, getOwnUser());
 
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::processLeaveGroup(const string &groupId, const string &userId, bool fromSibling) {
+int32_t AppInterfaceImpl::processLeaveGroup(const string &groupId, const string &userId) {
 
     LOGGER(DEBUGGING, __func__, " --> ");
 
     // The leave/not user command from a sibling, thus remove group completely
-    if (fromSibling) {
-        // No wait-for-ack, ignore any ACKs from members of the group, we are gone
-        store_->removeWaitAckWithGroup(groupId);
+    // No wait-for-ack, ignore any ACKs from members of the group, we are gone
+    store_->removeWaitAckWithGroup(groupId);
 
-        // Remove group's pending change set
-        auto end = pendingChangeSets.end();
-        for (auto it = pendingChangeSets.begin(); it != end; ) {
-            string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
-            if (oldGroupId != groupId) {
-                ++it;
-                continue;
-            }
-            it = pendingChangeSets.erase(it);
+    // Delete all vector clocks of this group
+    store_->deleteVectorClocks(groupId);
+
+    // Remove group's pending change set
+    auto end = pendingChangeSets.end();
+    for (auto it = pendingChangeSets.begin(); it != end; ) {
+        string oldGroupId = it->first.substr(UPDATE_ID_LENGTH);
+        if (oldGroupId != groupId) {
+            ++it;
+            continue;
         }
-        return deleteGroupAndMembers(groupId);
+        it = pendingChangeSets.erase(it);
     }
-    int32_t result = store_->deleteMember(groupId, userId);
-    if (SQL_FAIL(result)) {
-        LOGGER(ERROR, __func__, "Could not delete member from group: ", groupId, " (", userId, "), SQL code: ", result);
-        // Try to deactivate the member at least
-        store_->clearMemberAttribute(groupId, userId, ACTIVE);
-        store_->setMemberAttribute(groupId, userId, INACTIVE);
-        return GROUP_ERROR_BASE + result;
-    }
-    LOGGER(DEBUGGING, __func__, " <--");
-    return SUCCESS;
+    return deleteGroupAndMembers(groupId);
 }
 
 int32_t AppInterfaceImpl::removeUser(const string& groupId, const string& userId, bool allowOwnUser)

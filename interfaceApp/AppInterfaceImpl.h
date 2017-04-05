@@ -404,10 +404,9 @@ private:
      *
      * @param groupId The group to leave.
      * @param userId Which user leaves
-     * @param fromSibling If a sibling sent this change set
      * @return SUCCESS if the message list was processed without error.
      */
-    int32_t processLeaveGroup(const std::string &groupId, const std::string &userId, bool fromSibling);
+    int32_t processLeaveGroup(const std::string &groupId, const std::string &userId);
 
     /**
      * @brief Prepare the change set before sending.

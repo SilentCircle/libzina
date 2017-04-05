@@ -435,7 +435,7 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
             changeSet.updatermmember().rmmember_size() == 1 &&
             changeSet.updatermmember().rmmember(0).user_id() == getOwnUser()) {
 
-        const int32_t result = processLeaveGroup(groupId, getOwnUser(), true);
+        const int32_t result = processLeaveGroup(groupId, getOwnUser());
         if (result != SUCCESS) {
             errorCode_ = result;
             errorInfo_ = "Sibling: cannot remove group.";
