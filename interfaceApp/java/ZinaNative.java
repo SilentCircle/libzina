@@ -200,7 +200,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int removePreparedMessages(@NonNull long[] transportIds);
 
     /**
-     * Request names of known trusted ZIAN user identities.
+     * Request names of known trusted ZINA user identities.
      *
      * The ZINA library stores an identity (name) for each remote user.
      *
@@ -224,7 +224,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * @return public part of own identity key, {@code null} if no own identity key available
      */
-     public static native byte[] getOwnIdentityKey();
+    public static native byte[] getOwnIdentityKey();
 
     /**
      * Get a list of all identity keys of a remote party.
@@ -350,7 +350,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int testCommand(String command, byte[] data);
 
     /**
-     * Command interface to send management commands and to request management information.
+     * Command interface to send management command and to request management information.
      *
      * @param command the management command string.
      * @param optional data required for the command.
@@ -552,6 +552,20 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native byte[][] listAllGroups(@NonNull int[] code);
 
     /**
+     * Get data of all known groups which have certain user as participant.
+     *
+     * Creates and returns JSON data structures that contain the groups' data.
+     *
+     * This function does no trigger any network actions, save to run from UI thread,
+     * uses database functions.
+     *
+     * @param participantUuid User id to look for in group participants
+     * @param code array of length 1 to return the request result code at index 0, usually a SQLITE code
+     * @return Byte array of JSON formatted data as byte array.
+     */
+    public static native byte[][] listAllGroupsWithMember(@NonNull String participantUuid, @NonNull int[] code);
+
+    /**
      * Get data of a single group.
      *
      * Returns a JSON data structure that contains the group's data.
@@ -698,7 +712,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * Just remove the user's uid from the remove (remove group) member update change set, no other
      * actions or side effects, thus this function is the opposite of `removeUser`
      *
-     * @param groupUuid The group id
+     * @param groupId The group id
      * @param userId The user id to remove from the change set
      * @return {@code SUCCESS} if function could send invitation, error code (<0) otherwise
      */
@@ -799,7 +813,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * This function does no trigger any network actions, save to run from UI thread.
      *
-     * @param namePattern This name is the parameter with the unique conversation name.
+     * @param name This name is the parameter with the unique conversation name.
      * @return {@code true} if the pattern exists, {@code false} if not.
      */
     public static native boolean existConversation(byte[] name);
@@ -889,7 +903,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * This function does no trigger any network actions, save to run from UI thread.
      *
-     * @param msgId The message id
+     * @param eventId The message id
      * @param code An int array with a minimum length of 1. Index 0 has the SQL code
      *        on return
      * @return the message or {@code null} if no message found
@@ -1072,7 +1086,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     /**
      * Delete all attachment status entries with a given status.
      *
-     * @param the status code
+     * @param status the status code
      * @return the SQL code
      */
     public static native int deleteWithAttachmentStatus(int status);
@@ -1133,7 +1147,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      *
      * @param data     The data to encrypt
      *
-     * @param metadata The meta data that describes the data
+     * @param metaData The meta data that describes the data
      *
      * @param errorCode A 1 element integer array that returns the result code/error code.
      *
@@ -1345,7 +1359,6 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * {
      *   "uid":          "<string>"
      *   "display_name": "<string>"
-     *   "display_organization": "<string>"
      *   "alias0":       "<string>"
      *   "lookup_uri":   "<string>"
      *   "avatar_url":   "<string>"
@@ -1445,7 +1458,6 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * {
      *   "uuid":          "<string>",
      *   "display_name":  "<string>",
-     *   "display_organization": <string>,
      *   "display_alias": "<string>"
      *   "lookup_uri":    "<string>"
      *   "avatar_url":    "<string>"
@@ -1493,7 +1505,7 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * @param errorCode A 1 element integer array that returns the result code/error code.
      * @return byte array of UTF-8 byte trace records, maybe empty, or {@code null} in case of parameter error.
      */
-     public static native byte[][] loadCapturedMsgs(byte[] name, byte[] messageId, byte[] deviceId, int[] errorCode);
+    public static native byte[][] loadCapturedMsgs(byte[] name, byte[] messageId, byte[] deviceId, int[] errorCode);
 
     /**
      * Send the message data to the Data Retention S3 bucket if this user is
