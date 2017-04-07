@@ -236,21 +236,23 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     list<JsonUnique> members;
     result = store_->getAllGroupMembers(groupId, members);
     size_t membersFound = members.size();
+    int32_t errorResult = OK;
     for (auto& member: members) {
         string recipient(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
         bool toSibling = recipient == ownUser_;
         auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes,
                                                       toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
         if (result != SUCCESS) {
-            LOGGER(ERROR, __func__, " <-- Error: ", result);
-            groupUpdateSendDone(groupId);
-            return result;
+            LOGGER(ERROR, __func__, " Error sending group message to: ", recipient);
+            errorResult = result;
         }
-        doSendMessages(extractTransportIds(preparedMsgData.get()));
+        if (!preparedMsgData->empty()) {
+            doSendMessages(extractTransportIds(preparedMsgData.get()));
+        }
     }
     groupUpdateSendDone(groupId);
     LOGGER(DEBUGGING, __func__, " <--, ", membersFound);
-    return OK;
+    return errorResult;
 }
 
 int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const string& messageId)
@@ -1014,6 +1016,7 @@ void AppInterfaceImpl::clearGroupData()
         string groupId(Utilities::getJsonString(group.get(), GROUP_ID, ""));
         store_->deleteAllMembers(groupId);
         store_->deleteGroup(groupId);
+        store_->deleteVectorClocks(groupId);
     }
     LOGGER(DEBUGGING, __func__, " <-- ");
 }
