@@ -40,6 +40,7 @@ class GroupUpdateSetAvatar;
 class GroupUpdateSetBurn;
 class GroupUpdateAddMember;
 class GroupUpdateRmMember;
+class GroupBurnMessage;
 class GroupUpdateAck;
 class GroupChangeSet;
 
@@ -58,11 +59,12 @@ enum GroupUpdateType {
   GROUP_SET_AVATAR = 2,
   GROUP_SET_BURN = 3,
   GROUP_ADD_MEMBER = 4,
-  GROUP_REMOVE_MEMBER = 5
+  GROUP_REMOVE_MEMBER = 5,
+  GROUP_BURN_MESSSAGE = 6
 };
 bool GroupUpdateType_IsValid(int value);
 const GroupUpdateType GroupUpdateType_MIN = TYPE_NONE;
-const GroupUpdateType GroupUpdateType_MAX = GROUP_REMOVE_MEMBER;
+const GroupUpdateType GroupUpdateType_MAX = GROUP_BURN_MESSSAGE;
 const int GroupUpdateType_ARRAYSIZE = GroupUpdateType_MAX + 1;
 
 enum GroupUpdateResult {
@@ -999,6 +1001,129 @@ class GroupUpdateRmMember : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
+class GroupBurnMessage : public ::google::protobuf::MessageLite {
+ public:
+  GroupBurnMessage();
+  virtual ~GroupBurnMessage();
+
+  GroupBurnMessage(const GroupBurnMessage& from);
+
+  inline GroupBurnMessage& operator=(const GroupBurnMessage& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::std::string& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::std::string* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const GroupBurnMessage& default_instance();
+
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const GroupBurnMessage* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+
+  void Swap(GroupBurnMessage* other);
+
+  // implements Message ----------------------------------------------
+
+  GroupBurnMessage* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const GroupBurnMessage& from);
+  void MergeFrom(const GroupBurnMessage& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  void DiscardUnknownFields();
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  ::std::string GetTypeName() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional bytes update_id = 1;
+  inline bool has_update_id() const;
+  inline void clear_update_id();
+  static const int kUpdateIdFieldNumber = 1;
+  inline const ::std::string& update_id() const;
+  inline void set_update_id(const ::std::string& value);
+  inline void set_update_id(const char* value);
+  inline void set_update_id(const void* value, size_t size);
+  inline ::std::string* mutable_update_id();
+  inline ::std::string* release_update_id();
+  inline void set_allocated_update_id(::std::string* update_id);
+
+  // optional string msgId = 2;
+  inline bool has_msgid() const;
+  inline void clear_msgid();
+  static const int kMsgIdFieldNumber = 2;
+  inline const ::std::string& msgid() const;
+  inline void set_msgid(const ::std::string& value);
+  inline void set_msgid(const char* value);
+  inline void set_msgid(const char* value, size_t size);
+  inline ::std::string* mutable_msgid();
+  inline ::std::string* release_msgid();
+  inline void set_allocated_msgid(::std::string* msgid);
+
+  // optional .zina.Member member = 3;
+  inline bool has_member() const;
+  inline void clear_member();
+  static const int kMemberFieldNumber = 3;
+  inline const ::zina::Member& member() const;
+  inline ::zina::Member* mutable_member();
+  inline ::zina::Member* release_member();
+  inline void set_allocated_member(::zina::Member* member);
+
+  // @@protoc_insertion_point(class_scope:zina.GroupBurnMessage)
+ private:
+  inline void set_has_update_id();
+  inline void clear_has_update_id();
+  inline void set_has_msgid();
+  inline void clear_has_msgid();
+  inline void set_has_member();
+  inline void clear_has_member();
+
+  ::std::string _unknown_fields_;
+
+  ::google::protobuf::uint32 _has_bits_[1];
+  mutable int _cached_size_;
+  ::std::string* update_id_;
+  ::std::string* msgid_;
+  ::zina::Member* member_;
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_GroupProtocol_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_GroupProtocol_2eproto();
+  friend void protobuf_ShutdownFile_GroupProtocol_2eproto();
+
+  void InitAsDefaultInstance();
+  static GroupBurnMessage* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class GroupUpdateAck : public ::google::protobuf::MessageLite {
  public:
   GroupUpdateAck();
@@ -1233,6 +1358,15 @@ class GroupChangeSet : public ::google::protobuf::MessageLite {
   inline ::zina::GroupUpdateRmMember* release_updatermmember();
   inline void set_allocated_updatermmember(::zina::GroupUpdateRmMember* updatermmember);
 
+  // optional .zina.GroupBurnMessage burnMessage = 8;
+  inline bool has_burnmessage() const;
+  inline void clear_burnmessage();
+  static const int kBurnMessageFieldNumber = 8;
+  inline const ::zina::GroupBurnMessage& burnmessage() const;
+  inline ::zina::GroupBurnMessage* mutable_burnmessage();
+  inline ::zina::GroupBurnMessage* release_burnmessage();
+  inline void set_allocated_burnmessage(::zina::GroupBurnMessage* burnmessage);
+
   // repeated .zina.GroupUpdateAck acks = 7;
   inline int acks_size() const;
   inline void clear_acks();
@@ -1259,6 +1393,8 @@ class GroupChangeSet : public ::google::protobuf::MessageLite {
   inline void clear_has_updateaddmember();
   inline void set_has_updatermmember();
   inline void clear_has_updatermmember();
+  inline void set_has_burnmessage();
+  inline void clear_has_burnmessage();
 
   ::std::string _unknown_fields_;
 
@@ -1270,6 +1406,7 @@ class GroupChangeSet : public ::google::protobuf::MessageLite {
   ::zina::GroupUpdateSetBurn* updateburn_;
   ::zina::GroupUpdateAddMember* updateaddmember_;
   ::zina::GroupUpdateRmMember* updatermmember_;
+  ::zina::GroupBurnMessage* burnmessage_;
   ::google::protobuf::RepeatedPtrField< ::zina::GroupUpdateAck > acks_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
@@ -2332,6 +2469,207 @@ GroupUpdateRmMember::mutable_rmmember() {
 
 // -------------------------------------------------------------------
 
+// GroupBurnMessage
+
+// optional bytes update_id = 1;
+inline bool GroupBurnMessage::has_update_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void GroupBurnMessage::set_has_update_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void GroupBurnMessage::clear_has_update_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void GroupBurnMessage::clear_update_id() {
+  if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    update_id_->clear();
+  }
+  clear_has_update_id();
+}
+inline const ::std::string& GroupBurnMessage::update_id() const {
+  // @@protoc_insertion_point(field_get:zina.GroupBurnMessage.update_id)
+  return *update_id_;
+}
+inline void GroupBurnMessage::set_update_id(const ::std::string& value) {
+  set_has_update_id();
+  if (update_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    update_id_ = new ::std::string;
+  }
+  update_id_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupBurnMessage.update_id)
+}
+inline void GroupBurnMessage::set_update_id(const char* value) {
+  set_has_update_id();
+  if (update_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    update_id_ = new ::std::string;
+  }
+  update_id_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupBurnMessage.update_id)
+}
+inline void GroupBurnMessage::set_update_id(const void* value, size_t size) {
+  set_has_update_id();
+  if (update_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    update_id_ = new ::std::string;
+  }
+  update_id_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupBurnMessage.update_id)
+}
+inline ::std::string* GroupBurnMessage::mutable_update_id() {
+  set_has_update_id();
+  if (update_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    update_id_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupBurnMessage.update_id)
+  return update_id_;
+}
+inline ::std::string* GroupBurnMessage::release_update_id() {
+  clear_has_update_id();
+  if (update_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = update_id_;
+    update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupBurnMessage::set_allocated_update_id(::std::string* update_id) {
+  if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete update_id_;
+  }
+  if (update_id) {
+    set_has_update_id();
+    update_id_ = update_id;
+  } else {
+    clear_has_update_id();
+    update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupBurnMessage.update_id)
+}
+
+// optional string msgId = 2;
+inline bool GroupBurnMessage::has_msgid() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void GroupBurnMessage::set_has_msgid() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void GroupBurnMessage::clear_has_msgid() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void GroupBurnMessage::clear_msgid() {
+  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_->clear();
+  }
+  clear_has_msgid();
+}
+inline const ::std::string& GroupBurnMessage::msgid() const {
+  // @@protoc_insertion_point(field_get:zina.GroupBurnMessage.msgId)
+  return *msgid_;
+}
+inline void GroupBurnMessage::set_msgid(const ::std::string& value) {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  msgid_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupBurnMessage.msgId)
+}
+inline void GroupBurnMessage::set_msgid(const char* value) {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  msgid_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupBurnMessage.msgId)
+}
+inline void GroupBurnMessage::set_msgid(const char* value, size_t size) {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  msgid_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupBurnMessage.msgId)
+}
+inline ::std::string* GroupBurnMessage::mutable_msgid() {
+  set_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    msgid_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupBurnMessage.msgId)
+  return msgid_;
+}
+inline ::std::string* GroupBurnMessage::release_msgid() {
+  clear_has_msgid();
+  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = msgid_;
+    msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupBurnMessage::set_allocated_msgid(::std::string* msgid) {
+  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete msgid_;
+  }
+  if (msgid) {
+    set_has_msgid();
+    msgid_ = msgid;
+  } else {
+    clear_has_msgid();
+    msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupBurnMessage.msgId)
+}
+
+// optional .zina.Member member = 3;
+inline bool GroupBurnMessage::has_member() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void GroupBurnMessage::set_has_member() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void GroupBurnMessage::clear_has_member() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void GroupBurnMessage::clear_member() {
+  if (member_ != NULL) member_->::zina::Member::Clear();
+  clear_has_member();
+}
+inline const ::zina::Member& GroupBurnMessage::member() const {
+  // @@protoc_insertion_point(field_get:zina.GroupBurnMessage.member)
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return member_ != NULL ? *member_ : *default_instance().member_;
+#else
+  return member_ != NULL ? *member_ : *default_instance_->member_;
+#endif
+}
+inline ::zina::Member* GroupBurnMessage::mutable_member() {
+  set_has_member();
+  if (member_ == NULL) member_ = new ::zina::Member;
+  // @@protoc_insertion_point(field_mutable:zina.GroupBurnMessage.member)
+  return member_;
+}
+inline ::zina::Member* GroupBurnMessage::release_member() {
+  clear_has_member();
+  ::zina::Member* temp = member_;
+  member_ = NULL;
+  return temp;
+}
+inline void GroupBurnMessage::set_allocated_member(::zina::Member* member) {
+  delete member_;
+  member_ = member;
+  if (member) {
+    set_has_member();
+  } else {
+    clear_has_member();
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupBurnMessage.member)
+}
+
+// -------------------------------------------------------------------
+
 // GroupUpdateAck
 
 // optional .zina.GroupUpdateType type = 1;
@@ -2763,6 +3101,51 @@ inline void GroupChangeSet::set_allocated_updatermmember(::zina::GroupUpdateRmMe
     clear_has_updatermmember();
   }
   // @@protoc_insertion_point(field_set_allocated:zina.GroupChangeSet.updateRmMember)
+}
+
+// optional .zina.GroupBurnMessage burnMessage = 8;
+inline bool GroupChangeSet::has_burnmessage() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void GroupChangeSet::set_has_burnmessage() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void GroupChangeSet::clear_has_burnmessage() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void GroupChangeSet::clear_burnmessage() {
+  if (burnmessage_ != NULL) burnmessage_->::zina::GroupBurnMessage::Clear();
+  clear_has_burnmessage();
+}
+inline const ::zina::GroupBurnMessage& GroupChangeSet::burnmessage() const {
+  // @@protoc_insertion_point(field_get:zina.GroupChangeSet.burnMessage)
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return burnmessage_ != NULL ? *burnmessage_ : *default_instance().burnmessage_;
+#else
+  return burnmessage_ != NULL ? *burnmessage_ : *default_instance_->burnmessage_;
+#endif
+}
+inline ::zina::GroupBurnMessage* GroupChangeSet::mutable_burnmessage() {
+  set_has_burnmessage();
+  if (burnmessage_ == NULL) burnmessage_ = new ::zina::GroupBurnMessage;
+  // @@protoc_insertion_point(field_mutable:zina.GroupChangeSet.burnMessage)
+  return burnmessage_;
+}
+inline ::zina::GroupBurnMessage* GroupChangeSet::release_burnmessage() {
+  clear_has_burnmessage();
+  ::zina::GroupBurnMessage* temp = burnmessage_;
+  burnmessage_ = NULL;
+  return temp;
+}
+inline void GroupChangeSet::set_allocated_burnmessage(::zina::GroupBurnMessage* burnmessage) {
+  delete burnmessage_;
+  burnmessage_ = burnmessage;
+  if (burnmessage) {
+    set_has_burnmessage();
+  } else {
+    clear_has_burnmessage();
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupChangeSet.burnMessage)
 }
 
 // repeated .zina.GroupUpdateAck acks = 7;

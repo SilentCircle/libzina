@@ -24,6 +24,7 @@ void protobuf_ShutdownFile_GroupProtocol_2eproto() {
   delete GroupUpdateSetBurn::default_instance_;
   delete GroupUpdateAddMember::default_instance_;
   delete GroupUpdateRmMember::default_instance_;
+  delete GroupBurnMessage::default_instance_;
   delete GroupUpdateAck::default_instance_;
   delete GroupChangeSet::default_instance_;
 }
@@ -48,6 +49,7 @@ void protobuf_AddDesc_GroupProtocol_2eproto() {
   GroupUpdateSetBurn::default_instance_ = new GroupUpdateSetBurn();
   GroupUpdateAddMember::default_instance_ = new GroupUpdateAddMember();
   GroupUpdateRmMember::default_instance_ = new GroupUpdateRmMember();
+  GroupBurnMessage::default_instance_ = new GroupBurnMessage();
   GroupUpdateAck::default_instance_ = new GroupUpdateAck();
   GroupChangeSet::default_instance_ = new GroupChangeSet();
   VClock::default_instance_->InitAsDefaultInstance();
@@ -58,6 +60,7 @@ void protobuf_AddDesc_GroupProtocol_2eproto() {
   GroupUpdateSetBurn::default_instance_->InitAsDefaultInstance();
   GroupUpdateAddMember::default_instance_->InitAsDefaultInstance();
   GroupUpdateRmMember::default_instance_->InitAsDefaultInstance();
+  GroupBurnMessage::default_instance_->InitAsDefaultInstance();
   GroupUpdateAck::default_instance_->InitAsDefaultInstance();
   GroupChangeSet::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_GroupProtocol_2eproto);
@@ -85,6 +88,7 @@ bool GroupUpdateType_IsValid(int value) {
     case 3:
     case 4:
     case 5:
+    case 6:
       return true;
     default:
       return false;
@@ -2112,6 +2116,288 @@ void GroupUpdateRmMember::Swap(GroupUpdateRmMember* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int GroupBurnMessage::kUpdateIdFieldNumber;
+const int GroupBurnMessage::kMsgIdFieldNumber;
+const int GroupBurnMessage::kMemberFieldNumber;
+#endif  // !_MSC_VER
+
+GroupBurnMessage::GroupBurnMessage()
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+  // @@protoc_insertion_point(constructor:zina.GroupBurnMessage)
+}
+
+void GroupBurnMessage::InitAsDefaultInstance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  member_ = const_cast< ::zina::Member*>(
+      ::zina::Member::internal_default_instance());
+#else
+  member_ = const_cast< ::zina::Member*>(&::zina::Member::default_instance());
+#endif
+}
+
+GroupBurnMessage::GroupBurnMessage(const GroupBurnMessage& from)
+  : ::google::protobuf::MessageLite() {
+  SharedCtor();
+  MergeFrom(from);
+  // @@protoc_insertion_point(copy_constructor:zina.GroupBurnMessage)
+}
+
+void GroupBurnMessage::SharedCtor() {
+  ::google::protobuf::internal::GetEmptyString();
+  _cached_size_ = 0;
+  update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  member_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+GroupBurnMessage::~GroupBurnMessage() {
+  // @@protoc_insertion_point(destructor:zina.GroupBurnMessage)
+  SharedDtor();
+}
+
+void GroupBurnMessage::SharedDtor() {
+  if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete update_id_;
+  }
+  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete msgid_;
+  }
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  if (this != &default_instance()) {
+  #else
+  if (this != default_instance_) {
+  #endif
+    delete member_;
+  }
+}
+
+void GroupBurnMessage::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const GroupBurnMessage& GroupBurnMessage::default_instance() {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  protobuf_AddDesc_GroupProtocol_2eproto();
+#else
+  if (default_instance_ == NULL) protobuf_AddDesc_GroupProtocol_2eproto();
+#endif
+  return *default_instance_;
+}
+
+GroupBurnMessage* GroupBurnMessage::default_instance_ = NULL;
+
+GroupBurnMessage* GroupBurnMessage::New() const {
+  return new GroupBurnMessage;
+}
+
+void GroupBurnMessage::Clear() {
+  if (_has_bits_[0 / 32] & 7) {
+    if (has_update_id()) {
+      if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        update_id_->clear();
+      }
+    }
+    if (has_msgid()) {
+      if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        msgid_->clear();
+      }
+    }
+    if (has_member()) {
+      if (member_ != NULL) member_->::zina::Member::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->clear();
+}
+
+bool GroupBurnMessage::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) goto failure
+  ::google::protobuf::uint32 tag;
+  ::google::protobuf::io::StringOutputStream unknown_fields_string(
+      mutable_unknown_fields());
+  ::google::protobuf::io::CodedOutputStream unknown_fields_stream(
+      &unknown_fields_string);
+  // @@protoc_insertion_point(parse_start:zina.GroupBurnMessage)
+  for (;;) {
+    ::std::pair< ::google::protobuf::uint32, bool> p = input->ReadTagWithCutoff(127);
+    tag = p.first;
+    if (!p.second) goto handle_unusual;
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional bytes update_id = 1;
+      case 1: {
+        if (tag == 10) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
+                input, this->mutable_update_id()));
+        } else {
+          goto handle_unusual;
+        }
+        if (input->ExpectTag(18)) goto parse_msgId;
+        break;
+      }
+
+      // optional string msgId = 2;
+      case 2: {
+        if (tag == 18) {
+         parse_msgId:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_msgid()));
+        } else {
+          goto handle_unusual;
+        }
+        if (input->ExpectTag(26)) goto parse_member;
+        break;
+      }
+
+      // optional .zina.Member member = 3;
+      case 3: {
+        if (tag == 26) {
+         parse_member:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_member()));
+        } else {
+          goto handle_unusual;
+        }
+        if (input->ExpectAtEnd()) goto success;
+        break;
+      }
+
+      default: {
+      handle_unusual:
+        if (tag == 0 ||
+            ::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          goto success;
+        }
+        DO_(::google::protobuf::internal::WireFormatLite::SkipField(
+            input, tag, &unknown_fields_stream));
+        break;
+      }
+    }
+  }
+success:
+  // @@protoc_insertion_point(parse_success:zina.GroupBurnMessage)
+  return true;
+failure:
+  // @@protoc_insertion_point(parse_failure:zina.GroupBurnMessage)
+  return false;
+#undef DO_
+}
+
+void GroupBurnMessage::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // @@protoc_insertion_point(serialize_start:zina.GroupBurnMessage)
+  // optional bytes update_id = 1;
+  if (has_update_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
+      1, this->update_id(), output);
+  }
+
+  // optional string msgId = 2;
+  if (has_msgid()) {
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      2, this->msgid(), output);
+  }
+
+  // optional .zina.Member member = 3;
+  if (has_member()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      3, this->member(), output);
+  }
+
+  output->WriteRaw(unknown_fields().data(),
+                   unknown_fields().size());
+  // @@protoc_insertion_point(serialize_end:zina.GroupBurnMessage)
+}
+
+int GroupBurnMessage::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional bytes update_id = 1;
+    if (has_update_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::BytesSize(
+          this->update_id());
+    }
+
+    // optional string msgId = 2;
+    if (has_msgid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->msgid());
+    }
+
+    // optional .zina.Member member = 3;
+    if (has_member()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->member());
+    }
+
+  }
+  total_size += unknown_fields().size();
+
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void GroupBurnMessage::CheckTypeAndMergeFrom(
+    const ::google::protobuf::MessageLite& from) {
+  MergeFrom(*::google::protobuf::down_cast<const GroupBurnMessage*>(&from));
+}
+
+void GroupBurnMessage::MergeFrom(const GroupBurnMessage& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_update_id()) {
+      set_update_id(from.update_id());
+    }
+    if (from.has_msgid()) {
+      set_msgid(from.msgid());
+    }
+    if (from.has_member()) {
+      mutable_member()->::zina::Member::MergeFrom(from.member());
+    }
+  }
+  mutable_unknown_fields()->append(from.unknown_fields());
+}
+
+void GroupBurnMessage::CopyFrom(const GroupBurnMessage& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool GroupBurnMessage::IsInitialized() const {
+
+  return true;
+}
+
+void GroupBurnMessage::Swap(GroupBurnMessage* other) {
+  if (other != this) {
+    std::swap(update_id_, other->update_id_);
+    std::swap(msgid_, other->msgid_);
+    std::swap(member_, other->member_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.swap(other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::std::string GroupBurnMessage::GetTypeName() const {
+  return "zina.GroupBurnMessage";
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
 const int GroupUpdateAck::kTypeFieldNumber;
 const int GroupUpdateAck::kUpdateIdFieldNumber;
 const int GroupUpdateAck::kResultFieldNumber;
@@ -2411,6 +2697,7 @@ const int GroupChangeSet::kUpdateAvatarFieldNumber;
 const int GroupChangeSet::kUpdateBurnFieldNumber;
 const int GroupChangeSet::kUpdateAddMemberFieldNumber;
 const int GroupChangeSet::kUpdateRmMemberFieldNumber;
+const int GroupChangeSet::kBurnMessageFieldNumber;
 const int GroupChangeSet::kAcksFieldNumber;
 #endif  // !_MSC_VER
 
@@ -2451,6 +2738,12 @@ void GroupChangeSet::InitAsDefaultInstance() {
 #else
   updatermmember_ = const_cast< ::zina::GroupUpdateRmMember*>(&::zina::GroupUpdateRmMember::default_instance());
 #endif
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  burnmessage_ = const_cast< ::zina::GroupBurnMessage*>(
+      ::zina::GroupBurnMessage::internal_default_instance());
+#else
+  burnmessage_ = const_cast< ::zina::GroupBurnMessage*>(&::zina::GroupBurnMessage::default_instance());
+#endif
 }
 
 GroupChangeSet::GroupChangeSet(const GroupChangeSet& from)
@@ -2469,6 +2762,7 @@ void GroupChangeSet::SharedCtor() {
   updateburn_ = NULL;
   updateaddmember_ = NULL;
   updatermmember_ = NULL;
+  burnmessage_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2491,6 +2785,7 @@ void GroupChangeSet::SharedDtor() {
     delete updateburn_;
     delete updateaddmember_;
     delete updatermmember_;
+    delete burnmessage_;
   }
 }
 
@@ -2515,7 +2810,7 @@ GroupChangeSet* GroupChangeSet::New() const {
 }
 
 void GroupChangeSet::Clear() {
-  if (_has_bits_[0 / 32] & 63) {
+  if (_has_bits_[0 / 32] & 127) {
     if (has_group_id()) {
       if (group_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         group_id_->clear();
@@ -2535,6 +2830,9 @@ void GroupChangeSet::Clear() {
     }
     if (has_updatermmember()) {
       if (updatermmember_ != NULL) updatermmember_->::zina::GroupUpdateRmMember::Clear();
+    }
+    if (has_burnmessage()) {
+      if (burnmessage_ != NULL) burnmessage_->::zina::GroupBurnMessage::Clear();
     }
   }
   acks_.Clear();
@@ -2643,6 +2941,19 @@ bool GroupChangeSet::MergePartialFromCodedStream(
           goto handle_unusual;
         }
         if (input->ExpectTag(58)) goto parse_acks;
+        if (input->ExpectTag(66)) goto parse_burnMessage;
+        break;
+      }
+
+      // optional .zina.GroupBurnMessage burnMessage = 8;
+      case 8: {
+        if (tag == 66) {
+         parse_burnMessage:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_burnmessage()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -2714,6 +3025,12 @@ void GroupChangeSet::SerializeWithCachedSizes(
       7, this->acks(i), output);
   }
 
+  // optional .zina.GroupBurnMessage burnMessage = 8;
+  if (has_burnmessage()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessage(
+      8, this->burnmessage(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:zina.GroupChangeSet)
@@ -2765,6 +3082,13 @@ int GroupChangeSet::ByteSize() const {
           this->updatermmember());
     }
 
+    // optional .zina.GroupBurnMessage burnMessage = 8;
+    if (has_burnmessage()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->burnmessage());
+    }
+
   }
   // repeated .zina.GroupUpdateAck acks = 7;
   total_size += 1 * this->acks_size();
@@ -2809,6 +3133,9 @@ void GroupChangeSet::MergeFrom(const GroupChangeSet& from) {
     if (from.has_updatermmember()) {
       mutable_updatermmember()->::zina::GroupUpdateRmMember::MergeFrom(from.updatermmember());
     }
+    if (from.has_burnmessage()) {
+      mutable_burnmessage()->::zina::GroupBurnMessage::MergeFrom(from.burnmessage());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -2832,6 +3159,7 @@ void GroupChangeSet::Swap(GroupChangeSet* other) {
     std::swap(updateburn_, other->updateburn_);
     std::swap(updateaddmember_, other->updateaddmember_);
     std::swap(updatermmember_, other->updatermmember_);
+    std::swap(burnmessage_, other->burnmessage_);
     acks_.Swap(&other->acks_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);

@@ -719,22 +719,14 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int removeUserFromRemoveUpdate(@NonNull String groupId, @NonNull byte[] userId);
 
     /**
-     * Synchronize sibling devices after group UI removed a group message.
-     *
-     * If the group UI offers a function to locally remove messages from the group conversation
-     * then it should call this function to synchronize the siblings. The function prepares and
-     * send a command to the sibling devices thus they also can locally remove the message. This
-     * keeps the group conversation in sync between sibling devices.
-     *
-     * A sibling device calls the group UI implementation if it receives the command and the UI
-     * should then take action to locally remove the message for the group conversation.
+     * Manually burn a group message.
      *
      * @param groupId The id of the group
      * @param messageId The message id of the removed message
      * @return {@code OK} or an error code
      */
     @WorkerThread
-    public static native int groupMessageRemoved(@NonNull String groupId, @NonNull String messageId);
+    public static native int burnGroupMessage(@NonNull String groupId, @NonNull String messageId);
 
     /**
      * Callback to UI to receive a normal group message.

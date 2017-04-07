@@ -131,7 +131,6 @@ static bool setGroupNameToChangeSet(const string &groupId, const string &name, S
     if (!changeSet) {
         return false;
     }
-    // Proto buffer implementation takes ownership of pointer, also releases an already set update message
     changeSet->mutable_updatename()->set_name(name);
 
     return true;
@@ -162,7 +161,6 @@ static bool setGroupAvatarToChangeSet(const string &groupId, const string &avata
     if (!changeSet) {
         return false;
     }
-    // Proto buffer implementation takes ownership of pointer, also releases an already set update message
     changeSet->mutable_updateavatar()->set_avatar(avatar);
 
     return true;
@@ -334,6 +332,21 @@ static bool addRemoveNameToChangeSet(const string &groupId, const string &name, 
     }
     removeAddNameFromChangeSet(changeSet, name);
     return addRemoveNameToChangeSet(changeSet, name);
+}
+
+static bool setMsgBurnToChangeSet(const string &groupId, const string& msgId, const string &name, SQLiteStoreConv &store)
+{
+    unique_lock<mutex> lck(currentChangeSetLock);
+
+    // get mutable pointer
+    auto changeSet = getCurrentGroupChangeSet(groupId, store);
+    if (!changeSet) {
+        return false;
+    }
+    changeSet->mutable_burnmessage()->set_msgid(msgId);
+    changeSet->mutable_burnmessage()->mutable_member()->set_user_id(name);
+
+    return true;
 }
 
 static int32_t prepareChangeSetClocks(const string &groupId, const string &binDeviceId, PtrChangeSet changeSet,
@@ -644,6 +657,19 @@ int32_t AppInterfaceImpl::setGroupAvatar(const string& groupId, const string* av
     return SUCCESS;
 }
 
+int32_t AppInterfaceImpl::burnGroupMessage(const string& groupId, const string& messageId)
+{
+    LOGGER(DEBUGGING, __func__, " -->");
+    if (groupId.empty() || messageId.empty()) {
+        return DATA_MISSING;
+    }
+    if (!setMsgBurnToChangeSet(groupId, messageId, getOwnUser(), *store_)) {
+        return NO_SUCH_ACTIVE_GROUP;
+    }
+    LOGGER(DEBUGGING, __func__, " <--");
+    return SUCCESS;
+}
+
 int32_t AppInterfaceImpl::cancelGroupChangeSet(const string& groupId)
 {
     LOGGER(DEBUGGING, __func__, " -->");
@@ -729,6 +755,12 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         }
         store_->setGroupBurnTime(groupId, changeSet->updateburn().burn_ttl_sec(), changeSet->updateburn().burn_mode());
     }
+
+    // Burn message change has no clock, we also do not collapse it
+    if (changeSet->has_burnmessage()) {
+        changeSet->mutable_burnmessage()->set_update_id(updateIdGlobal, UPDATE_ID_LENGTH);
+    }
+
     if (changeSet->has_updateaddmember()) {
         changeSet->mutable_updateaddmember()->set_update_id(updateIdGlobal, UPDATE_ID_LENGTH);
         const int32_t size = changeSet->updateaddmember().addmember_size();
@@ -783,7 +815,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
         }
         // Do we have any updates? If not, remove from current change set map and just return
         if (!changeSet->has_updatename() && !changeSet->has_updateavatar() && !changeSet->has_updateburn()
-            && !changeSet->has_updateaddmember() && !changeSet->has_updatermmember()) {
+            && !changeSet->has_updateaddmember() && !changeSet->has_updatermmember() && !changeSet->has_burnmessage()) {
             removeGroupFromChangeSet(groupId);
             return SUCCESS;
         }
@@ -865,7 +897,13 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
     }
     if (changeSet->has_updateburn()) {
         store_->removeWaitAckWithType(groupId, binDeviceId, GROUP_SET_BURN);
-        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_AVATAR);
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_BURN);
+    }
+
+    // Wait for ACK for each message burn, we don't collapse message burn changes because
+    // this does not overwrite older burn message commands
+    if (changeSet->has_burnmessage()) {
+        store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_BURN_MESSSAGE);
     }
 
     // Add wait-for-ack records for add/remove group updates

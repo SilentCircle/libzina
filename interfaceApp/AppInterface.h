@@ -606,7 +606,7 @@ public:
      * @param messageId The message id of the removed message
      * @return @c SUCCESS or an error code
      */
-    virtual int32_t groupMessageRemoved(const std::string& groupId, const std::string& messageId) = 0;
+    virtual int32_t burnGroupMessage(const std::string& groupId, const std::string& messageId) = 0;
 
     // *************************************************************
     // Callback functions to UI part

@@ -135,6 +135,22 @@ static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32
     return command;
 }
 
+static string groupBurnMsgCommand(const string& groupId, const string& msgId, const string& member, time_t stamp)
+{
+    JsonUnique sharedRoot(cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
+    cJSON_AddStringToObject(root, GROUP_COMMAND, REMOVE_MSG);
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+    cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
+    cJSON_AddStringToObject(root, MEMBER_ID, member.c_str());
+    cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
+
+    CharUnique out(cJSON_PrintUnformatted(root));
+    string command(out.get());
+
+    return command;
+}
+
 static int32_t serializeChangeSet(const GroupChangeSet changeSet, string *attributes)
 {
 
@@ -255,25 +271,6 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     return errorResult;
 }
 
-int32_t AppInterfaceImpl::groupMessageRemoved(const string& groupId, const string& messageId)
-{
-    if (groupId.empty() || messageId.empty()) {
-        return DATA_MISSING;
-    }
-    JsonUnique sharedRoot(cJSON_CreateObject());
-    cJSON* root = sharedRoot.get();
-
-    cJSON_AddStringToObject(root, GROUP_COMMAND, REMOVE_MSG);
-    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(root, MSG_ID, messageId.c_str());
-
-    CharUnique out(cJSON_PrintUnformatted(root));
-    string command(out.get());
-
-    sendGroupCommand(ownUser_, generateMsgIdTime(), command);
-    return OK;
-}
-
 // ****** Non public instance functions and helpers
 // ******************************************************
 
@@ -316,10 +313,7 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     // Now handle commands as usual, maybe forward them to UI for further processing.
     // Changes set was deleted from JSON data by the check and process change set function
     // Ignore unknown commands, just report them
-    if (groupCommand.compare(REMOVE_MSG) == 0) {
-        groupCmdCallback_(*commandIn);
-    }
-    else if (groupCommand.compare(HELLO) == 0) {
+    if (groupCommand.compare(HELLO) == 0) {
         LOGGER(INFO, __func__, "HELLO group command");
     }
     else {
@@ -515,6 +509,13 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
                 return result;
             }
         }
+        if (changeSet.has_burnmessage()) {
+            // burn a group's message (manual burn)
+            const int32_t result = processBurnMessage(changeSet.burnmessage(), groupId, stamp, ackRmSet);
+            if (result != SUCCESS) {
+                return result;
+            }
+        }
         if ((changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) ||
             (changeSet.has_updatermmember() && changeSet.updatermmember().rmmember_size() > 0)) {
 
@@ -656,6 +657,8 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
 
 int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const string &groupId, time_t stamp, GroupChangeSet *ackSet)
 {
+    LOGGER(DEBUGGING, __func__, " -->");
+
     const string &updateIdRemote = changeSet.update_id();
 
     VectorClock<string> remoteVc;
@@ -730,6 +733,8 @@ int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &change
 
 int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet, const string &groupId, time_t stamp, GroupChangeSet *ackSet)
 {
+    LOGGER(DEBUGGING, __func__, " -->");
+
     const string &updateIdRemote = changeSet.update_id();
 
     VectorClock<string> remoteVc;
@@ -803,6 +808,25 @@ int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet,
         return SUCCESS;
     }
     return GENERIC_ERROR;
+}
+
+int32_t AppInterfaceImpl::processBurnMessage(const GroupBurnMessage &changeSet, const string &groupId, time_t stamp,
+                                             GroupChangeSet *ackSet)
+{
+    LOGGER(DEBUGGING, __func__, " -->");
+
+    const string& msgId = changeSet.msgid();
+    const string& member = changeSet.member().user_id();
+    const string &updateIdRemote = changeSet.update_id();
+
+    GroupUpdateAck *ack = ackSet->add_acks();
+    ack->set_update_id(updateIdRemote);
+    ack->set_type(GROUP_BURN_MESSSAGE);
+
+    groupCmdCallback_(groupBurnMsgCommand(groupId, msgId, member, stamp));
+
+    LOGGER(DEBUGGING, __func__, " <--");
+    return SUCCESS;
 }
 
 int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId, time_t stamp,

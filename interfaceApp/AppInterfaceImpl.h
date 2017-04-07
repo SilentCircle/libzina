@@ -103,6 +103,7 @@ class GroupChangeSet;
 class GroupUpdateSetName;
 class GroupUpdateSetAvatar;
 class GroupUpdateSetBurn;
+class GroupBurnMessage;
 
 // This is the ping command the code sends to new devices to create an Axolotl setup
 static std::string ping("{\"cmd\":\"ping\"}");
@@ -181,7 +182,7 @@ public:
 
     int32_t removeUserFromRemoveUpdate(const std::string& groupUuid, const std::string& userId);
 
-    int32_t groupMessageRemoved(const std::string& groupId, const std::string& messageId);
+    int32_t burnGroupMessage(const std::string& groupId, const std::string& messageId);
 
     DEPRECATED_ZINA std::shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > >
     prepareMessage(const std::string& messageDescriptor,
@@ -730,6 +731,8 @@ private:
     int32_t processUpdateAvatar(const GroupUpdateSetAvatar &changeSet, const std::string &groupId, time_t stamp, GroupChangeSet *ackSet);
 
     int32_t processUpdateBurn(const GroupUpdateSetBurn &changeSet, const std::string &groupId, time_t stamp, GroupChangeSet *ackSet);
+
+    int32_t processBurnMessage(const GroupBurnMessage &changeSet, const std::string &groupId, time_t stamp, GroupChangeSet *ackSet);
 
     int32_t processUpdateMembers(const GroupChangeSet &changeSet, const std::string &groupId, time_t stamp, GroupChangeSet *ackSet);
 

@@ -1780,11 +1780,11 @@ JNI_FUNCTION(removeUserFromRemoveUpdate)(JNIEnv *env, jclass clazz, jstring grou
 
 /*
  * Class:     zina_ZinaNative
- * Method:    groupMessageRemoved
+ * Method:    burnGroupMessage
  * Signature: (Ljava/lang/String;Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(groupMessageRemoved)(JNIEnv* env, jclass clazz, jstring groupId, jstring messageId)
+JNI_FUNCTION(burnGroupMessage)(JNIEnv* env, jclass clazz, jstring groupId, jstring messageId)
 {
     (void)clazz;
 
@@ -1802,7 +1802,8 @@ JNI_FUNCTION(groupMessageRemoved)(JNIEnv* env, jclass clazz, jstring groupId, js
     string message(temp);
     env->ReleaseStringUTFChars(messageId, temp);
 
-    return zinaAppInterface->groupMessageRemoved(group, message);
+    int32_t result = zinaAppInterface->burnGroupMessage(group, message);
+    return result == SUCCESS ? OK : result;
 }
 
 

@@ -193,13 +193,13 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_setGroupAvatar
 JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_listAllGroups
   (JNIEnv *, jclass, jintArray);
 
-  /*
-   * Class:     zina_ZinaNative
-   * Method:    listAllGroupsWithMember
-   * Signature: ([I)[[B
-   */
-  JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_listAllGroupsWithMember
-    (JNIEnv *, jclass, jstring, jintArray);
+/*
+ * Class:     zina_ZinaNative
+ * Method:    listAllGroupsWithMember
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_listAllGroupsWithMember
+  (JNIEnv *, jclass, jstring, jintArray);
 
 /*
  * Class:     zina_ZinaNative
@@ -291,10 +291,10 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_removeUserFromRemoveUpdate
 
 /*
  * Class:     zina_ZinaNative
- * Method:    groupMessageRemoved
+ * Method:    burnGroupMessage
  * Signature: (Ljava/lang/String;Ljava/lang/String;)I
  */
-JNIEXPORT jint JNICALL Java_zina_ZinaNative_groupMessageRemoved
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_burnGroupMessage
   (JNIEnv *, jclass, jstring, jstring);
 
 /*

@@ -49,6 +49,7 @@ enum GroupUpdateType {
   GROUP_SET_BURN        = 3;
   GROUP_ADD_MEMBER      = 4;
   GROUP_REMOVE_MEMBER   = 5;
+  GROUP_BURN_MESSSAGE   = 6;
 }
 
 message GroupUpdateSetName {
@@ -91,6 +92,12 @@ message GroupUpdateAddMember {
 message GroupUpdateRmMember {
   optional bytes update_id                  = 1;
   repeated Member rmMember                  = 2;
+}
+
+message GroupBurnMessage {
+  optional bytes update_id                  = 1;
+  optional string msgId                     = 2;    // Which message to burn
+  optional Member member                    = 3;    // Member who burned the message, usually the author of the message
 }
 
 enum GroupUpdateResult {
@@ -138,6 +145,7 @@ message GroupChangeSet {
   optional GroupUpdateSetBurn updateBurn        = 4;    // set group burn time
   optional GroupUpdateAddMember updateAddMember = 5;    // add group member
   optional GroupUpdateRmMember updateRmMember   = 6;    // remove group member
+  optional GroupBurnMessage burnMessage         = 8;    // burn a message (manual burn)
 
   repeated GroupUpdateAck acks                  = 7;    // set of ACKs to return
 }
