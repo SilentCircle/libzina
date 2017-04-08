@@ -1798,7 +1798,7 @@ JNI_FUNCTION(burnGroupMessage)(JNIEnv* env, jclass clazz, jstring groupId, jstri
     string group(temp);
     env->ReleaseStringUTFChars(groupId, temp);
 
-    temp = env->GetStringUTFChars(groupId, 0);
+    temp = env->GetStringUTFChars(messageId, 0);
     string message(temp);
     env->ReleaseStringUTFChars(messageId, temp);
 
