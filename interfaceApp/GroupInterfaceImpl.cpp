@@ -135,13 +135,20 @@ static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32
     return command;
 }
 
-static string groupBurnMsgCommand(const string& groupId, const string& msgId, const string& member, time_t stamp)
+static string groupBurnMsgCommand(const string& groupId, const ::google::protobuf::RepeatedPtrField< ::std::string>& msgIds,
+                                  const string& member, time_t stamp)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, GROUP_COMMAND, REMOVE_MSG);
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
-    cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
+
+    cJSON* idArray;
+    cJSON_AddItemToObject(root, MSG_IDS, idArray = cJSON_CreateArray());
+
+    for (auto const &id : msgIds) {
+        cJSON_AddItemToArray(idArray, cJSON_CreateString(id.c_str()));
+    }
     cJSON_AddStringToObject(root, MEMBER_ID, member.c_str());
     cJSON_AddNumberToObject(root, COMMAND_TIME, stamp);
 
@@ -815,7 +822,7 @@ int32_t AppInterfaceImpl::processBurnMessage(const GroupBurnMessage &changeSet, 
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
-    const string& msgId = changeSet.msgid();
+    const ::google::protobuf::RepeatedPtrField< ::std::string>& msgIds = changeSet.msgid();
     const string& member = changeSet.member().user_id();
     const string &updateIdRemote = changeSet.update_id();
 
@@ -823,7 +830,7 @@ int32_t AppInterfaceImpl::processBurnMessage(const GroupBurnMessage &changeSet, 
     ack->set_update_id(updateIdRemote);
     ack->set_type(GROUP_BURN_MESSSAGE);
 
-    groupCmdCallback_(groupBurnMsgCommand(groupId, msgId, member, stamp));
+    groupCmdCallback_(groupBurnMsgCommand(groupId, msgIds, member, stamp));
 
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;

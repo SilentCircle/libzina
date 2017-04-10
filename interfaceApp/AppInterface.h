@@ -592,21 +592,13 @@ public:
     virtual int32_t removeUserFromRemoveUpdate(const std::string& groupUuid, const std::string& userId) = 0;
 
     /**
-     * @brief Synchronize sibling devices if group UI removed a group message.
-     *
-     * If the group UI offers a function to locally remove messages from the group conversation
-     * then it should call this function to synchronize the siblings. The function prepares and
-     * send a command to the sibling devices thus they also can locally remove the message. This
-     * keeps the group conversation in sync between sibling devices.
-     *
-     * A sibling device calls the group UI implementation if it receives the command and the UI
-     * should then take action to locally remove the message for the group conversation.
+     * @brief Manually burn one or more group message(s).
      *
      * @param groupId The id of the group
-     * @param messageId The message id of the removed message
-     * @return @c SUCCESS or an error code
+     * @param messageIds The message ids of the removed message
+     * @return {@code OK} or an error code
      */
-    virtual int32_t burnGroupMessage(const std::string& groupId, const std::string& messageId) = 0;
+    virtual int32_t burnGroupMessage(const std::string& groupId, const std::vector<std::string>& messageIds) = 0;
 
     // *************************************************************
     // Callback functions to UI part

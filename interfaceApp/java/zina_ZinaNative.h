@@ -292,10 +292,10 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_removeUserFromRemoveUpdate
 /*
  * Class:     zina_ZinaNative
  * Method:    burnGroupMessage
- * Signature: (Ljava/lang/String;Ljava/lang/String;)I
+ * Signature: (Ljava/lang/String;[Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL Java_zina_ZinaNative_burnGroupMessage
-  (JNIEnv *, jclass, jstring, jstring);
+  (JNIEnv *, jclass, jstring, jobjectArray);
 
 /*
  * Class:     zina_ZinaNative

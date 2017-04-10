@@ -96,7 +96,7 @@ message GroupUpdateRmMember {
 
 message GroupBurnMessage {
   optional bytes update_id                  = 1;
-  optional string msgId                     = 2;    // Which message to burn
+  repeated string msgId                     = 2;    // Which message(s) to burn
   optional Member member                    = 3;    // Member who burned the message, usually the author of the message
 }
 

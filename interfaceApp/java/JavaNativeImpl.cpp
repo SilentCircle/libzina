@@ -1781,28 +1781,38 @@ JNI_FUNCTION(removeUserFromRemoveUpdate)(JNIEnv *env, jclass clazz, jstring grou
 /*
  * Class:     zina_ZinaNative
  * Method:    burnGroupMessage
- * Signature: (Ljava/lang/String;Ljava/lang/String;)I
+ * Signature: (Ljava/lang/String;[Ljava/lang/String;)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(burnGroupMessage)(JNIEnv* env, jclass clazz, jstring groupId, jstring messageId)
+JNI_FUNCTION(burnGroupMessage)(JNIEnv* env, jclass clazz, jstring groupId, jobjectArray messageIds)
 {
     (void)clazz;
 
     if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
 
-    if (groupId == nullptr || messageId == nullptr)
+    if (groupId == nullptr || messageIds == nullptr || env->GetArrayLength(messageIds) < 1)
         return DATA_MISSING;
 
     const char* temp = env->GetStringUTFChars(groupId, 0);
     string group(temp);
     env->ReleaseStringUTFChars(groupId, temp);
 
-    temp = env->GetStringUTFChars(messageId, 0);
-    string message(temp);
-    env->ReleaseStringUTFChars(messageId, temp);
+    jsize elements =  env->GetArrayLength(messageIds);
+    vector<string> msgIds(static_cast<size_t>(elements));
 
-    int32_t result = zinaAppInterface->burnGroupMessage(group, message);
+    for (jsize i = 0; i < elements; i++) {
+        jstring msgId = (jstring)env->GetObjectArrayElement(messageIds, i);
+
+        temp = env->GetStringUTFChars(msgId, 0);
+        string id(temp);
+        env->ReleaseStringUTFChars(msgId, temp);
+        msgIds.push_back(id);
+
+        env->DeleteLocalRef(msgId);
+    }
+
+    int32_t result = zinaAppInterface->burnGroupMessage(group, msgIds);
     return result == SUCCESS ? OK : result;
 }
 

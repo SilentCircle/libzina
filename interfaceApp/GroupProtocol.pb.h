@@ -1074,17 +1074,21 @@ class GroupBurnMessage : public ::google::protobuf::MessageLite {
   inline ::std::string* release_update_id();
   inline void set_allocated_update_id(::std::string* update_id);
 
-  // optional string msgId = 2;
-  inline bool has_msgid() const;
+  // repeated string msgId = 2;
+  inline int msgid_size() const;
   inline void clear_msgid();
   static const int kMsgIdFieldNumber = 2;
-  inline const ::std::string& msgid() const;
-  inline void set_msgid(const ::std::string& value);
-  inline void set_msgid(const char* value);
-  inline void set_msgid(const char* value, size_t size);
-  inline ::std::string* mutable_msgid();
-  inline ::std::string* release_msgid();
-  inline void set_allocated_msgid(::std::string* msgid);
+  inline const ::std::string& msgid(int index) const;
+  inline ::std::string* mutable_msgid(int index);
+  inline void set_msgid(int index, const ::std::string& value);
+  inline void set_msgid(int index, const char* value);
+  inline void set_msgid(int index, const char* value, size_t size);
+  inline ::std::string* add_msgid();
+  inline void add_msgid(const ::std::string& value);
+  inline void add_msgid(const char* value);
+  inline void add_msgid(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& msgid() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_msgid();
 
   // optional .zina.Member member = 3;
   inline bool has_member() const;
@@ -1099,8 +1103,6 @@ class GroupBurnMessage : public ::google::protobuf::MessageLite {
  private:
   inline void set_has_update_id();
   inline void clear_has_update_id();
-  inline void set_has_msgid();
-  inline void clear_has_msgid();
   inline void set_has_member();
   inline void clear_has_member();
 
@@ -1109,7 +1111,7 @@ class GroupBurnMessage : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint32 _has_bits_[1];
   mutable int _cached_size_;
   ::std::string* update_id_;
-  ::std::string* msgid_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> msgid_;
   ::zina::Member* member_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
@@ -2547,80 +2549,58 @@ inline void GroupBurnMessage::set_allocated_update_id(::std::string* update_id) 
   // @@protoc_insertion_point(field_set_allocated:zina.GroupBurnMessage.update_id)
 }
 
-// optional string msgId = 2;
-inline bool GroupBurnMessage::has_msgid() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void GroupBurnMessage::set_has_msgid() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void GroupBurnMessage::clear_has_msgid() {
-  _has_bits_[0] &= ~0x00000002u;
+// repeated string msgId = 2;
+inline int GroupBurnMessage::msgid_size() const {
+  return msgid_.size();
 }
 inline void GroupBurnMessage::clear_msgid() {
-  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    msgid_->clear();
-  }
-  clear_has_msgid();
+  msgid_.Clear();
 }
-inline const ::std::string& GroupBurnMessage::msgid() const {
+inline const ::std::string& GroupBurnMessage::msgid(int index) const {
   // @@protoc_insertion_point(field_get:zina.GroupBurnMessage.msgId)
-  return *msgid_;
+  return msgid_.Get(index);
 }
-inline void GroupBurnMessage::set_msgid(const ::std::string& value) {
-  set_has_msgid();
-  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    msgid_ = new ::std::string;
-  }
-  msgid_->assign(value);
+inline ::std::string* GroupBurnMessage::mutable_msgid(int index) {
+  // @@protoc_insertion_point(field_mutable:zina.GroupBurnMessage.msgId)
+  return msgid_.Mutable(index);
+}
+inline void GroupBurnMessage::set_msgid(int index, const ::std::string& value) {
   // @@protoc_insertion_point(field_set:zina.GroupBurnMessage.msgId)
+  msgid_.Mutable(index)->assign(value);
 }
-inline void GroupBurnMessage::set_msgid(const char* value) {
-  set_has_msgid();
-  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    msgid_ = new ::std::string;
-  }
-  msgid_->assign(value);
+inline void GroupBurnMessage::set_msgid(int index, const char* value) {
+  msgid_.Mutable(index)->assign(value);
   // @@protoc_insertion_point(field_set_char:zina.GroupBurnMessage.msgId)
 }
-inline void GroupBurnMessage::set_msgid(const char* value, size_t size) {
-  set_has_msgid();
-  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    msgid_ = new ::std::string;
-  }
-  msgid_->assign(reinterpret_cast<const char*>(value), size);
+inline void GroupBurnMessage::set_msgid(int index, const char* value, size_t size) {
+  msgid_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
   // @@protoc_insertion_point(field_set_pointer:zina.GroupBurnMessage.msgId)
 }
-inline ::std::string* GroupBurnMessage::mutable_msgid() {
-  set_has_msgid();
-  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    msgid_ = new ::std::string;
-  }
-  // @@protoc_insertion_point(field_mutable:zina.GroupBurnMessage.msgId)
+inline ::std::string* GroupBurnMessage::add_msgid() {
+  return msgid_.Add();
+}
+inline void GroupBurnMessage::add_msgid(const ::std::string& value) {
+  msgid_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:zina.GroupBurnMessage.msgId)
+}
+inline void GroupBurnMessage::add_msgid(const char* value) {
+  msgid_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:zina.GroupBurnMessage.msgId)
+}
+inline void GroupBurnMessage::add_msgid(const char* value, size_t size) {
+  msgid_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:zina.GroupBurnMessage.msgId)
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+GroupBurnMessage::msgid() const {
+  // @@protoc_insertion_point(field_list:zina.GroupBurnMessage.msgId)
   return msgid_;
 }
-inline ::std::string* GroupBurnMessage::release_msgid() {
-  clear_has_msgid();
-  if (msgid_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    return NULL;
-  } else {
-    ::std::string* temp = msgid_;
-    msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-    return temp;
-  }
-}
-inline void GroupBurnMessage::set_allocated_msgid(::std::string* msgid) {
-  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete msgid_;
-  }
-  if (msgid) {
-    set_has_msgid();
-    msgid_ = msgid;
-  } else {
-    clear_has_msgid();
-    msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  }
-  // @@protoc_insertion_point(field_set_allocated:zina.GroupBurnMessage.msgId)
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+GroupBurnMessage::mutable_msgid() {
+  // @@protoc_insertion_point(field_mutable_list:zina.GroupBurnMessage.msgId)
+  return &msgid_;
 }
 
 // optional .zina.Member member = 3;

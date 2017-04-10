@@ -334,7 +334,7 @@ static bool addRemoveNameToChangeSet(const string &groupId, const string &name, 
     return addRemoveNameToChangeSet(changeSet, name);
 }
 
-static bool setMsgBurnToChangeSet(const string &groupId, const string& msgId, const string &name, SQLiteStoreConv &store)
+static bool setMsgBurnToChangeSet(const string &groupId, const vector<string>& msgIds, const string &name, SQLiteStoreConv &store)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
@@ -343,7 +343,9 @@ static bool setMsgBurnToChangeSet(const string &groupId, const string& msgId, co
     if (!changeSet) {
         return false;
     }
-    changeSet->mutable_burnmessage()->set_msgid(msgId);
+    for (auto const& msgId : msgIds) {
+        changeSet->mutable_burnmessage()->add_msgid(msgId);
+    }
     changeSet->mutable_burnmessage()->mutable_member()->set_user_id(name);
 
     return true;
@@ -657,13 +659,13 @@ int32_t AppInterfaceImpl::setGroupAvatar(const string& groupId, const string* av
     return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::burnGroupMessage(const string& groupId, const string& messageId)
+int32_t AppInterfaceImpl::burnGroupMessage(const string& groupId, const vector<string>& messageIds)
 {
     LOGGER(DEBUGGING, __func__, " -->");
-    if (groupId.empty() || messageId.empty()) {
+    if (groupId.empty() || messageIds.empty()) {
         return DATA_MISSING;
     }
-    if (!setMsgBurnToChangeSet(groupId, messageId, getOwnUser(), *store_)) {
+    if (!setMsgBurnToChangeSet(groupId, messageIds, getOwnUser(), *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
     LOGGER(DEBUGGING, __func__, " <--");

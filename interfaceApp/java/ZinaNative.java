@@ -719,14 +719,14 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
     public static native int removeUserFromRemoveUpdate(@NonNull String groupId, @NonNull byte[] userId);
 
     /**
-     * Manually burn a group message.
+     * Manually burn one or more group message(s).
      *
      * @param groupId The id of the group
      * @param messageId The message id of the removed message
      * @return {@code OK} or an error code
      */
     @WorkerThread
-    public static native int burnGroupMessage(@NonNull String groupId, @NonNull String messageId);
+    public static native int burnGroupMessage(@NonNull String groupId, @NonNull String[] messageId);
 
     /**
      * Callback to UI to receive a normal group message.

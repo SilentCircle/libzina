@@ -182,7 +182,7 @@ public:
 
     int32_t removeUserFromRemoveUpdate(const std::string& groupUuid, const std::string& userId);
 
-    int32_t burnGroupMessage(const std::string& groupId, const std::string& messageId);
+    int32_t burnGroupMessage(const std::string& groupId, const std::vector<std::string>& messageIds);
 
     DEPRECATED_ZINA std::shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > >
     prepareMessage(const std::string& messageDescriptor,

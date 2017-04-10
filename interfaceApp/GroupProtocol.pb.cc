@@ -2147,7 +2147,6 @@ void GroupBurnMessage::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
   update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  msgid_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   member_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -2160,9 +2159,6 @@ GroupBurnMessage::~GroupBurnMessage() {
 void GroupBurnMessage::SharedDtor() {
   if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete update_id_;
-  }
-  if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-    delete msgid_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -2194,21 +2190,17 @@ GroupBurnMessage* GroupBurnMessage::New() const {
 }
 
 void GroupBurnMessage::Clear() {
-  if (_has_bits_[0 / 32] & 7) {
+  if (_has_bits_[0 / 32] & 5) {
     if (has_update_id()) {
       if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         update_id_->clear();
-      }
-    }
-    if (has_msgid()) {
-      if (msgid_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-        msgid_->clear();
       }
     }
     if (has_member()) {
       if (member_ != NULL) member_->::zina::Member::Clear();
     }
   }
+  msgid_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->clear();
 }
@@ -2239,15 +2231,16 @@ bool GroupBurnMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // optional string msgId = 2;
+      // repeated string msgId = 2;
       case 2: {
         if (tag == 18) {
          parse_msgId:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_msgid()));
+                input, this->add_msgid()));
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(18)) goto parse_msgId;
         if (input->ExpectTag(26)) goto parse_member;
         break;
       }
@@ -2296,10 +2289,10 @@ void GroupBurnMessage::SerializeWithCachedSizes(
       1, this->update_id(), output);
   }
 
-  // optional string msgId = 2;
-  if (has_msgid()) {
-    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      2, this->msgid(), output);
+  // repeated string msgId = 2;
+  for (int i = 0; i < this->msgid_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->msgid(i), output);
   }
 
   // optional .zina.Member member = 3;
@@ -2324,13 +2317,6 @@ int GroupBurnMessage::ByteSize() const {
           this->update_id());
     }
 
-    // optional string msgId = 2;
-    if (has_msgid()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->msgid());
-    }
-
     // optional .zina.Member member = 3;
     if (has_member()) {
       total_size += 1 +
@@ -2339,6 +2325,13 @@ int GroupBurnMessage::ByteSize() const {
     }
 
   }
+  // repeated string msgId = 2;
+  total_size += 1 * this->msgid_size();
+  for (int i = 0; i < this->msgid_size(); i++) {
+    total_size += ::google::protobuf::internal::WireFormatLite::StringSize(
+      this->msgid(i));
+  }
+
   total_size += unknown_fields().size();
 
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
@@ -2354,12 +2347,10 @@ void GroupBurnMessage::CheckTypeAndMergeFrom(
 
 void GroupBurnMessage::MergeFrom(const GroupBurnMessage& from) {
   GOOGLE_CHECK_NE(&from, this);
+  msgid_.MergeFrom(from.msgid_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_update_id()) {
       set_update_id(from.update_id());
-    }
-    if (from.has_msgid()) {
-      set_msgid(from.msgid());
     }
     if (from.has_member()) {
       mutable_member()->::zina::Member::MergeFrom(from.member());
@@ -2382,7 +2373,7 @@ bool GroupBurnMessage::IsInitialized() const {
 void GroupBurnMessage::Swap(GroupBurnMessage* other) {
   if (other != this) {
     std::swap(update_id_, other->update_id_);
-    std::swap(msgid_, other->msgid_);
+    msgid_.Swap(&other->msgid_);
     std::swap(member_, other->member_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
