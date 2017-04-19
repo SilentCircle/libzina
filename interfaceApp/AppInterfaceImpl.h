@@ -176,6 +176,8 @@ public:
 
     int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes);
 
+    int32_t sendGroupCommand(const std::string &recipient, const std::string &msgId, const std::string &command);
+
     int32_t leaveGroup(const std::string& groupId);
 
     int32_t removeUser(const std::string& groupId, const std::string& userId, bool allowOwnUser = false);
@@ -391,7 +393,6 @@ private:
 
     int32_t sendGroupCommandToAll(const std::string& groupId, const std::string &msgId, const std::string &command);
 
-    int32_t sendGroupCommand(const std::string &recipient, const std::string &msgId, const std::string &command);
 
     int32_t checkAndProcessChangeSet(const std::string &msgDescriptor, std::string *messageAttributes);
 

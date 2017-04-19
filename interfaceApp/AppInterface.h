@@ -552,6 +552,27 @@ public:
     virtual int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes) = 0;
 
     /**
+     * @brief Send a group command to a single recipient.
+     *
+     * This is a blocking call and the function returns after the transport layer accepted the
+     * message and returns.
+     *
+     * The function creates an empty message either using a provided message-id or, if the parameter
+     * is {@code null}, it generates a message id.
+     *
+     * The {@code sendMessage} function does not interpret or re-format the command string. It takes
+     * the string, encrypts it with the same key as the message data and puts it into the message
+     * bundle. The same is true for the message attributes.
+     *
+     *
+     * @param recipient             The recipient (user id)
+     * @param msgId                 Optional message id
+     * @param command               A string that contains a command.
+     * @return {@code OK} if function could send the command, error code (<0) otherwise
+     */
+    virtual int32_t sendGroupCommand(const std::string &recipient, const std::string &msgId, const std::string &command) = 0;
+
+    /**
      * @brief Leave a group.
      *
      * The application (UI part) calls this function to remove this member (myself) from the

@@ -1695,9 +1695,39 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
         arrayToString(env, messageAttributes, &attributes);
         Log("sendGroupMessage - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    int32_t result  = zinaAppInterface->sendGroupMessage(message, attachment, attributes);
-    return result;
+    return zinaAppInterface->sendGroupMessage(message, attachment, attributes);
 }
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    sendGroupCommand
+ * Signature: ([BLjava/lang/String;[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(sendGroupCommand)(JNIEnv *env, jclass clazz, jbyteArray recipient, jstring msgId, jbyteArray command)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    string recipientString;
+    if (!arrayToString(env, recipient, &recipientString)) {
+        return ILLEGAL_ARGUMENT;
+    }
+    string id;
+    if (msgId != nullptr) {
+        const char *temp = env->GetStringUTFChars(msgId, 0);
+        id = temp;
+        env->ReleaseStringUTFChars(msgId, temp);
+    }
+    string cmd;
+    if (!arrayToString(env, command, &cmd)) {
+        return ILLEGAL_ARGUMENT;
+    }
+    return zinaAppInterface->sendGroupCommand(recipientString, id, cmd);
+}
+
 
 /*
  * Class:     zina_ZinaNative

@@ -318,13 +318,14 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     }
 
     // Now handle commands as usual, maybe forward them to UI for further processing.
-    // Changes set was deleted from JSON data by the check and process change set function
-    // Ignore unknown commands, just report them
+    // Change set was deleted from JSON data by the check and process change set function
+    // Forward unknown commands to UI and let UI decide what to do.
     if (groupCommand.compare(HELLO) == 0) {
         LOGGER(INFO, __func__, "HELLO group command");
     }
     else {
-        LOGGER(WARNING, __func__, "Unknown group command: ", *commandIn, "msg descriptor: ", msgDescriptor);
+        LOGGER(INFO, __func__, "Unknown group command: ", *commandIn, "msg descriptor: ", msgDescriptor);
+        groupCmdCallback_(*commandIn);
     }
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
@@ -653,8 +654,7 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
         ack->set_result(hasConflict ? REJECTED_CONFLICT : REJECTED_PAST);
         return SUCCESS;
     }
-    // The local data is more recent than the remote data (remote change was _before_ ours). No need to
-    // change any data, just return an ACK
+    // The local data and the remote data are equal. No need to change any data, just return an ACK
     if (order == Equal) {
         ack->set_result(REJECTED_NOP);
         return SUCCESS;
@@ -1026,7 +1026,8 @@ int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string
 
     bool toSibling = recipient == ownUser_;
     int32_t result;
-    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(recipient, msgId), Empty, command, toSibling, GROUP_MSG_CMD, &result, recipient);
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(recipient, msgId.empty() ? generateMsgIdTime() : msgId),
+                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, recipient);
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return result;
