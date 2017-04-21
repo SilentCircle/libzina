@@ -1704,7 +1704,7 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
  * Signature: (Ljava/lang/String;[BLjava/lang/String;[B)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(sendGroupCommand)(JNIEnv *env, jclass clazz, jstring groupId, jbyteArray member, jstring msgId, jbyteArray command)
+JNI_FUNCTION(sendGroupCommandToMember)(JNIEnv *env, jclass clazz, jstring groupId, jbyteArray member, jstring msgId, jbyteArray command)
 {
     (void)clazz;
 
@@ -1714,9 +1714,9 @@ JNI_FUNCTION(sendGroupCommand)(JNIEnv *env, jclass clazz, jstring groupId, jbyte
     if (groupId == nullptr) {
         return ILLEGAL_ARGUMENT;
     }
-    const char *temp = env->GetStringUTFChars(msgId, 0);
+    const char *temp = env->GetStringUTFChars(groupId, 0);
     string group(temp);
-    env->ReleaseStringUTFChars(msgId, temp);
+    env->ReleaseStringUTFChars(groupId, temp);
     if (group.empty()) {
         return DATA_MISSING;
     }
