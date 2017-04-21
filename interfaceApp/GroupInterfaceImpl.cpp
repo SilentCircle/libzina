@@ -1027,7 +1027,7 @@ int32_t AppInterfaceImpl::sendGroupCommandToMember(const string& groupId, const 
     bool toSibling = member == ownUser_;
     int32_t result;
     auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(member, msgId.empty() ? generateMsgIdTime() : msgId),
-                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, groupId);
+                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, member, groupId);
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return result;
