@@ -1700,24 +1700,34 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
 
 /*
  * Class:     zina_ZinaNative
- * Method:    sendGroupCommand
- * Signature: ([BLjava/lang/String;[B)I
+ * Method:    sendGroupCommandToMember
+ * Signature: (Ljava/lang/String;[BLjava/lang/String;[B)I
  */
 JNIEXPORT jint JNICALL
-JNI_FUNCTION(sendGroupCommand)(JNIEnv *env, jclass clazz, jbyteArray recipient, jstring msgId, jbyteArray command)
+JNI_FUNCTION(sendGroupCommand)(JNIEnv *env, jclass clazz, jstring groupId, jbyteArray member, jstring msgId, jbyteArray command)
 {
     (void)clazz;
 
     if (zinaAppInterface == NULL)
         return GENERIC_ERROR;
 
-    string recipientString;
-    if (!arrayToString(env, recipient, &recipientString)) {
+    if (groupId == nullptr) {
+        return ILLEGAL_ARGUMENT;
+    }
+    const char *temp = env->GetStringUTFChars(msgId, 0);
+    string group(temp);
+    env->ReleaseStringUTFChars(msgId, temp);
+    if (group.empty()) {
+        return DATA_MISSING;
+    }
+
+    string recipient;
+    if (!arrayToString(env, member, &recipient)) {
         return ILLEGAL_ARGUMENT;
     }
     string id;
     if (msgId != nullptr) {
-        const char *temp = env->GetStringUTFChars(msgId, 0);
+        temp = env->GetStringUTFChars(msgId, 0);
         id = temp;
         env->ReleaseStringUTFChars(msgId, temp);
     }
@@ -1725,7 +1735,7 @@ JNI_FUNCTION(sendGroupCommand)(JNIEnv *env, jclass clazz, jbyteArray recipient, 
     if (!arrayToString(env, command, &cmd)) {
         return ILLEGAL_ARGUMENT;
     }
-    return zinaAppInterface->sendGroupCommand(recipientString, id, cmd);
+    return zinaAppInterface->sendGroupCommandToMember(group, recipient, id, cmd);
 }
 
 

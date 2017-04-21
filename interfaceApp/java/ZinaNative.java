@@ -691,13 +691,14 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * the string, encrypts it with the same key as the message data and puts it into the message
      * bundle. The same is true for the message attributes.
      *
-     * @param recipient             The recipient (user id)
+     * @param groupId               Group of the member
+     * @param member                The recipient (user id)
      * @param msgId                 Optional message id
      * @param command               A string that contains a command.
      * @return {@code OK} if function could send the command, error code (<0) otherwise
      */
     @WorkerThread
-    public static native int sendGroupCommand(@NonNull byte[] recipient, String msgId, @NonNull byte[] command);
+    public static native int sendGroupCommandToMember(@NonNull String groupId, @NonNull byte[] member, String msgId, @NonNull byte[] command);
 
     /**
      * Leave a group.

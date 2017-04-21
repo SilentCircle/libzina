@@ -1014,20 +1014,20 @@ int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const str
         return result;
     }
     for (auto& member : members) {
-        string recipient(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
-        sendGroupCommand(recipient, msgId, command);
+        string memberId(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
+        sendGroupCommandToMember(groupId, memberId, msgId, command);
     }
     LOGGER(DEBUGGING, __func__, " <--");
     return OK;
 }
 
-int32_t AppInterfaceImpl::sendGroupCommand(const string &recipient, const string &msgId, const string &command) {
-    LOGGER(DEBUGGING, __func__, " --> ", recipient, ", ", ownUser_);
+int32_t AppInterfaceImpl::sendGroupCommandToMember(const string& groupId, const string &member, const string &msgId, const string &command) {
+    LOGGER(DEBUGGING, __func__, " --> ", member, ", ", ownUser_);
 
-    bool toSibling = recipient == ownUser_;
+    bool toSibling = member == ownUser_;
     int32_t result;
-    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(recipient, msgId.empty() ? generateMsgIdTime() : msgId),
-                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, recipient);
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(member, msgId.empty() ? generateMsgIdTime() : msgId),
+                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, groupId);
     if (result != SUCCESS) {
         LOGGER(ERROR, __func__, " <-- Error: ", result);
         return result;

@@ -176,7 +176,7 @@ public:
 
     int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes);
 
-    int32_t sendGroupCommand(const std::string &recipient, const std::string &msgId, const std::string &command);
+    int32_t sendGroupCommandToMember(const std::string& groupId, const std::string &member, const std::string &msgId, const std::string &command);
 
     int32_t leaveGroup(const std::string& groupId);
 
