@@ -783,6 +783,10 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         const int32_t size = changeSet->updatermmember().rmmember_size();
         for (int i = 0; i < size; i++) {
             const string &userId = changeSet->updatermmember().rmmember(i).user_id();
+            // If removing myself then don't update DB, this is part of the leaveGroup function above.
+            if (userId == getOwnUser()) {
+                continue;
+            }
             store_->deleteMember(groupId, userId);
         }
     }
