@@ -471,7 +471,7 @@ void AppInterfaceImpl::processMessagePlain(const CmdQueueInfo &msgInfo)
     }
     else {
         result = receiveCallback_(msgInfo.queueInfo_message_desc, attachmentDescr, attributesDescr);
-        if (result != OK) {
+        if (!(result == OK || result == SUCCESS)) {
             stateReportCallback_(0, result, receiveErrorDescriptor(msgInfo.queueInfo_message_desc, result));
             return;
         }

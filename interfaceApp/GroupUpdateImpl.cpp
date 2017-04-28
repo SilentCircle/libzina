@@ -993,14 +993,22 @@ int32_t AppInterfaceImpl::performGroupHellos(const string &userId, const string 
     if (deviceId.empty() || userId.empty()) {
         return ILLEGAL_ARGUMENT;
     }
+    // First check if the user is a member of some group
+    int32_t result = 0;
+    if (!store_->isGroupMember(userId, &result)) {
+        if (SQL_FAIL(result)) {
+            return GROUP_ERROR_BASE + result;
+        }
+        return SUCCESS;
+    }
+
     list<JsonUnique>groups;
 
-    int32_t result = store_->listAllGroups(groups);
+    result = store_->listAllGroups(groups);
     if (SQL_FAIL(result)) {
         return GROUP_ERROR_BASE + result;
     }
 
-    LOGGER(INFO, __func__, "groups: ", groups.size());
     // If no groups to sync, just do nothing
     if (groups.empty()) {
         return SUCCESS;
