@@ -425,6 +425,8 @@ int32_t AppInterfaceImpl::checkAndProcessChangeSet(const string &msgDescriptor, 
     return result;
 }
 
+static list<string> sentRemoveTo;
+
 int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeSet, const string &groupId,
                                                    const string &sender, const string &deviceId, bool hasGroup,
                                                    time_t stamp, GroupChangeSet *ackRmSet)
@@ -478,9 +480,21 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
                 changeSet.updatermmember().rmmember(0).user_id() == getOwnUser()) {
                 return SUCCESS;
             }
+            string sentTo = groupId + deviceId;
+            for (string sent : sentRemoveTo) {
+                if (sent == sentTo) {
+                    LOGGER(INFO, __func__, " <-- unexpected group change set, already sent remove");
+                    return SUCCESS;
+                }
+            }
+
             GroupUpdateRmMember *updateRmMember = ackRmSet->mutable_updatermmember();
             Member *member = updateRmMember->add_rmmember();
             member->set_user_id(getOwnUser());
+            if (sentRemoveTo.size() > 30) {
+                sentRemoveTo.pop_front();
+            }
+            sentRemoveTo.push_back(sentTo);
             LOGGER(INFO, __func__, " <-- unexpected group change set");
         }
     }
