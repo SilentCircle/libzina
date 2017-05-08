@@ -679,6 +679,24 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
                                               @Nullable byte[] messageAttributes);
 
     /**
+     * Send a group message to a single group member with an optional attachment and attributes.
+     *
+     * This function works in the same way as the normal {@code sendGroupMessage} but sends the message to
+     * one member only
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @param recipient              User id of the group member
+     * @return @c OK if function could send the message, error code (<0) otherwise
+     */
+    @WorkerThread
+    public static native int sendGroupMessageToMember(@NonNull byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
+                                                      @Nullable byte[] messageAttributes, @NonNull byte[] recipient);
+
+    /**
      * Send a group command to a single group member.
      *
      * This is a blocking call and the function returns after the transport layer accepted the

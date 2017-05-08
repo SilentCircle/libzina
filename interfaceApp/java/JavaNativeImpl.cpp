@@ -1700,6 +1700,44 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    sendGroupMessageToMember
+ * Signature: ([B[B[B[B)I
+ */
+JNIEXPORT jint JNICALL
+JNI_FUNCTION(sendGroupMessageToMember)(JNIEnv *env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachmentDescriptor,
+                                       jbyteArray messageAttributes, jbyteArray recipient)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return GENERIC_ERROR;
+
+    string message;
+    if (!arrayToString(env, messageDescriptor, &message)) {
+        return GROUP_MSG_DATA_INCONSISTENT;
+    }
+    string receiver;
+    if (!arrayToString(env, recipient, &receiver)) {
+        return ILLEGAL_ARGUMENT;
+    }
+    Log("sendGroupMessageToMember - message: '%s' - length: %d", message.c_str(), message.size());
+
+    string attachment;
+    if (attachmentDescriptor != NULL) {
+        arrayToString(env, attachmentDescriptor, &attachment);
+        Log("sendGroupMessageToMember - attachment: '%s' - length: %d", attachment.c_str(), attachment.size());
+    }
+    string attributes;
+    if (messageAttributes != NULL) {
+        arrayToString(env, messageAttributes, &attributes);
+        Log("sendGroupMessageToMember - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
+    }
+    return zinaAppInterface->sendGroupMessageToMember(message, attachment, attributes, receiver);
+}
+
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    sendGroupCommandToMember
  * Signature: (Ljava/lang/String;[BLjava/lang/String;[B)I
  */

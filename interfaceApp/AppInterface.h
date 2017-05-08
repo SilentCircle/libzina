@@ -552,6 +552,22 @@ public:
     virtual int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes) = 0;
 
     /**
+     * @brief Send a group message to a single group member with an optional attachment and attributes.
+     *
+     * This function works in the same way as the normal @c sendGroupMessage but sends the message to
+     * one member only
+     *
+     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
+     *                               shows that not attachment descriptor is available.
+     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
+     *                               An empty string shows that not attributes are available.
+     * @param recipient              User id of the group member
+     * @return @c OK if function could send the message, error code (<0) otherwise
+     */
+    virtual int32_t sendGroupMessageToMember(const std::string &messageDescriptor, const std::string &attachmentDescriptor,
+                                                       const std::string &messageAttributes, const std::string &recipient) = 0;
+    /**
      * @brief Send a group command to a single group member.
      *
      * This is a blocking call and the function returns after the transport layer accepted the

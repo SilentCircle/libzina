@@ -267,6 +267,14 @@ JNIEXPORT jint JNICALL Java_zina_ZinaNative_sendGroupMessage
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    sendGroupMessageToMember
+ * Signature: ([B[B[B[B)I
+ */
+JNIEXPORT jint JNICALL Java_zina_ZinaNative_sendGroupMessageToMember
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    sendGroupCommandToMember
  * Signature: (Ljava/lang/String;[BLjava/lang/String;[B)I
  */

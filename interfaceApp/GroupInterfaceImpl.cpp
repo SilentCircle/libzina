@@ -278,6 +278,55 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
     return errorResult;
 }
 
+int32_t AppInterfaceImpl::sendGroupMessageToMember(const string &messageDescriptor, const string &attachmentDescriptor,
+                                           const string &messageAttributes, const string &recipient) {
+    string groupId;
+    string msgId;
+    string message;
+
+    LOGGER(DEBUGGING, __func__, " -->");
+    int32_t result = parseMsgDescriptor(messageDescriptor, &groupId, &msgId, &message);
+    if (result < 0) {
+        errorCode_ = result;
+        LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", result);
+        return result;
+    }
+    JsonUnique sharedRoot(!messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject());
+    cJSON* root = sharedRoot.get();
+
+    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
+
+    char *out = cJSON_PrintUnformatted(root);
+    string newAttributes(out);
+    free(out);
+
+    result = prepareChangeSetSend(groupId);
+    if (result < 0) {
+        errorCode_ = result;
+        errorInfo_ = "Error preparing group change set";
+        LOGGER(ERROR, __func__, " Error preparing group change set, error code: ", result);
+        return result;
+    }
+    if (!store_->hasGroup(groupId) || ((store_->getGroupAttribute(groupId).first & ACTIVE) != ACTIVE)) {
+        return NO_SUCH_ACTIVE_GROUP;
+    }
+
+    int32_t errorResult = OK;
+    bool toSibling = recipient == ownUser_;
+    auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes,
+                                                  toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
+    if (result != SUCCESS) {
+        LOGGER(ERROR, __func__, " Error sending group message to: ", recipient);
+        errorResult = result;
+    }
+    if (!preparedMsgData->empty()) {
+        doSendMessages(extractTransportIds(preparedMsgData.get()));
+    }
+    groupUpdateSendDone(groupId);
+    LOGGER(DEBUGGING, __func__, " <--");
+    return errorResult;
+}
+
 // ****** Non public instance functions and helpers
 // ******************************************************
 
