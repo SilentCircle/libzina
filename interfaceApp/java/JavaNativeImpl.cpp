@@ -1701,11 +1701,11 @@ JNI_FUNCTION(sendGroupMessage)(JNIEnv *env, jclass clazz, jbyteArray messageDesc
 /*
  * Class:     zina_ZinaNative
  * Method:    sendGroupMessageToMember
- * Signature: ([B[B[B[B)I
+ * Signature: ([B[B[B[BLjava/lang/String;)I
  */
 JNIEXPORT jint JNICALL
 JNI_FUNCTION(sendGroupMessageToMember)(JNIEnv *env, jclass clazz, jbyteArray messageDescriptor, jbyteArray attachmentDescriptor,
-                                       jbyteArray messageAttributes, jbyteArray recipient)
+                                       jbyteArray messageAttributes, jbyteArray recipient, jstring deviceId)
 {
     (void)clazz;
 
@@ -1732,7 +1732,13 @@ JNI_FUNCTION(sendGroupMessageToMember)(JNIEnv *env, jclass clazz, jbyteArray mes
         arrayToString(env, messageAttributes, &attributes);
         Log("sendGroupMessageToMember - attributes: '%s' - length: %d", attributes.c_str(), attributes.size());
     }
-    return zinaAppInterface->sendGroupMessageToMember(message, attachment, attributes, receiver);
+    string devId;
+    if (deviceId != nullptr) {
+        const char *temp = env->GetStringUTFChars(deviceId, 0);
+        devId = temp;
+        env->ReleaseStringUTFChars(deviceId, temp);
+    }
+    return zinaAppInterface->sendGroupMessageToMember(message, attachment, attributes, receiver, devId);
 }
 
 

@@ -279,7 +279,9 @@ int32_t AppInterfaceImpl::sendGroupMessage(const string &messageDescriptor, cons
 }
 
 int32_t AppInterfaceImpl::sendGroupMessageToMember(const string &messageDescriptor, const string &attachmentDescriptor,
-                                           const string &messageAttributes, const string &recipient) {
+                                                   const string &messageAttributes, const string &recipient,
+                                                   const string &deviceId)
+{
     string groupId;
     string msgId;
     string message;
@@ -291,8 +293,8 @@ int32_t AppInterfaceImpl::sendGroupMessageToMember(const string &messageDescript
         LOGGER(ERROR, __func__, " Wrong JSON data to send group message, error code: ", result);
         return result;
     }
-    JsonUnique sharedRoot(!messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject());
-    cJSON* root = sharedRoot.get();
+    JsonUnique uniqueRoot(!messageAttributes.empty() ? cJSON_Parse(messageAttributes.c_str()) : cJSON_CreateObject());
+    cJSON* root = uniqueRoot.get();
 
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
 
@@ -312,19 +314,44 @@ int32_t AppInterfaceImpl::sendGroupMessageToMember(const string &messageDescript
     }
 
     int32_t errorResult = OK;
-    bool toSibling = recipient == ownUser_;
-    auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes,
-                                                  toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
-    if (result != SUCCESS) {
-        LOGGER(ERROR, __func__, " Error sending group message to: ", recipient);
-        errorResult = result;
+    if (!deviceId.empty()) {
+        queueMessageToSingleUserDevice(recipient, msgId, deviceId, Empty, newAttributes, attachmentDescriptor,
+                                       messageDescriptor, GROUP_MSG_NORMAL, false, NoAction);
     }
-    if (!preparedMsgData->empty()) {
-        doSendMessages(extractTransportIds(preparedMsgData.get()));
+    else {
+        const bool toSibling = recipient == ownUser_;
+
+        auto preparedMsgData = prepareMessageInternal(messageDescriptor, attachmentDescriptor, newAttributes,
+                                                      toSibling, GROUP_MSG_NORMAL, &result, recipient, groupId);
+        if (result != SUCCESS) {
+            LOGGER(ERROR, __func__, " Error sending group message to: ", recipient);
+            errorResult = result;
+        }
+        if (!preparedMsgData->empty()) {
+            doSendMessages(extractTransportIds(preparedMsgData.get()));
+        }
     }
     groupUpdateSendDone(groupId);
     LOGGER(DEBUGGING, __func__, " <--");
     return errorResult;
+}
+
+int32_t AppInterfaceImpl::sendGroupCommandToMember(const string& groupId, const string &member, const string &msgId, const string &command)
+{
+    LOGGER(DEBUGGING, __func__, " --> ", member, ", ", ownUser_);
+
+    bool toSibling = member == ownUser_;
+    int32_t result;
+    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(member, msgId.empty() ? generateMsgIdTime() : msgId),
+                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, member, groupId);
+    if (result != SUCCESS) {
+        LOGGER(ERROR, __func__, " <-- Error: ", result);
+        return result;
+    }
+    doSendMessages(extractTransportIds(preparedMsgData.get()));
+
+    LOGGER(DEBUGGING, __func__, " <--");
+    return OK;
 }
 
 // ****** Non public instance functions and helpers
@@ -1009,43 +1036,6 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
     return SUCCESS;
 }
 
-int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDevice(const string &groupId, const string &userId,
-                                                             const string &deviceId, const string &attributes,
-                                                             const string &msg, int32_t msgType)
-{
-    LOGGER(DEBUGGING, __func__, " -->");
-
-    JsonUnique sharedRoot(!attributes.empty() ? cJSON_Parse(attributes.c_str()) : cJSON_CreateObject());
-    cJSON* root = sharedRoot.get();
-
-    cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
-    CharUnique out(cJSON_PrintUnformatted(root));
-    string newAttributes(out.get());
-
-    int32_t result = prepareChangeSetSend(groupId);
-    if (result < 0) {
-        errorCode_ = result;
-        errorInfo_ = "Error preparing group change set";
-        LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
-        return result;
-    }
-
-    result = createChangeSetDevice(groupId, deviceId, newAttributes, &newAttributes);
-    if (result < 0) {
-        errorCode_ = result;
-        errorInfo_ = "Cannot create and store group update records for a device";
-        LOGGER(ERROR, __func__, " Cannot create and store group update records, error code: ", result);
-        return result;
-    }
-
-    const string msgId = generateMsgIdTime();
-
-    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, false, NoAction);
-
-    LOGGER(DEBUGGING, __func__, " <-- ");
-    return SUCCESS;
-}
-
 int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDeviceNoCS(const string &groupId, const string &userId,
                                                                  const string &deviceId, const string &attributes,
                                                                  const string &msg, int32_t msgType)
@@ -1061,44 +1051,10 @@ int32_t AppInterfaceImpl::sendGroupMessageToSingleUserDeviceNoCS(const string &g
 
     const string msgId = generateMsgIdTime();
 
-    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, msgType, false, NoAction);
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, Empty, newAttributes, msg, Empty, msgType, false, NoAction);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;
-}
-
-int32_t AppInterfaceImpl::sendGroupCommandToAll(const string& groupId, const string &msgId, const string &command) {
-    LOGGER(DEBUGGING, __func__, " --> ");
-
-    list<JsonUnique> members;
-    int32_t result= store_->getAllGroupMembers(groupId, members);
-    if (result != SUCCESS) {
-        LOGGER(ERROR, __func__, " <-- Error: ", result);
-        return result;
-    }
-    for (auto& member : members) {
-        string memberId(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
-        sendGroupCommandToMember(groupId, memberId, msgId, command);
-    }
-    LOGGER(DEBUGGING, __func__, " <--");
-    return OK;
-}
-
-int32_t AppInterfaceImpl::sendGroupCommandToMember(const string& groupId, const string &member, const string &msgId, const string &command) {
-    LOGGER(DEBUGGING, __func__, " --> ", member, ", ", ownUser_);
-
-    bool toSibling = member == ownUser_;
-    int32_t result;
-    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(member, msgId.empty() ? generateMsgIdTime() : msgId),
-                                                  Empty, command, toSibling, GROUP_MSG_CMD, &result, member, groupId);
-    if (result != SUCCESS) {
-        LOGGER(ERROR, __func__, " <-- Error: ", result);
-        return result;
-    }
-    doSendMessages(extractTransportIds(preparedMsgData.get()));
-
-    LOGGER(DEBUGGING, __func__, " <--");
-    return OK;
 }
 
 void AppInterfaceImpl::clearGroupData()

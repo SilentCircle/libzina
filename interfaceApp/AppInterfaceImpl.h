@@ -177,9 +177,11 @@ public:
     int32_t sendGroupMessage(const std::string& messageDescriptor, const std::string& attachmentDescriptor, const std::string& messageAttributes);
 
     int32_t sendGroupMessageToMember(const std::string &messageDescriptor, const std::string &attachmentDescriptor,
-                                                 const std::string &messageAttributes, const std::string &recipient);
+                                     const std::string &messageAttributes, const std::string &recipient,
+                                     const std::string &deviceId);
 
-    int32_t sendGroupCommandToMember(const std::string& groupId, const std::string &member, const std::string &msgId, const std::string &command);
+    int32_t sendGroupCommandToMember(const std::string& groupId, const std::string &member, const std::string &msgId,
+                                     const std::string &command);
 
     int32_t leaveGroup(const std::string& groupId);
 
@@ -393,9 +395,6 @@ private:
      * the message type.
      */
     int32_t processGroupCommand(const std::string &msgDescriptor, std::string *commandIn);
-
-    int32_t sendGroupCommandToAll(const std::string& groupId, const std::string &msgId, const std::string &command);
-
 
     int32_t checkAndProcessChangeSet(const std::string &msgDescriptor, std::string *messageAttributes);
 
@@ -686,26 +685,6 @@ private:
      *
      * ZINA uses this function to prepare and send a change set to a group member's device.
      * Thus ZINA can send ACK or other change sets to the sender' device. This function does not
-     * support sending of anattachment descriptor.
-     *
-     * The function adds the group id to the attributes, handles change set, creates a send message command and
-     * queues it for normal send message processing.
-     *
-     * @param groupId The group id to get the change set
-     * @param userId The group member's id
-     * @param deviceId The device of of the group member
-     * @param attributes The message attributes, may be empty
-     * @param msg the message to send, maybe empty
-     * @return @c SUCCESS or an error code (<0)
-     */
-    int32_t sendGroupMessageToSingleUserDevice(const std::string &groupId, const std::string &userId, const std::string &deviceId,
-                                               const std::string &attributes, const std::string &msg, int32_t msgType);
-
-    /**
-     * @brief Send a message to a specific device of a group member.
-     *
-     * ZINA uses this function to prepare and send a change set to a group member's device.
-     * Thus ZINA can send ACK or other change sets to the sender' device. This function does not
      * support sending of an attachment descriptor.
      *
      * The function adds the group id to the attributes, creates a send message command and
@@ -770,9 +749,8 @@ private:
     static std::shared_ptr<std::vector<uint64_t> > extractTransportIds(std::list<std::unique_ptr<PreparedMessageData> >* data);
 
     void queueMessageToSingleUserDevice(const std::string &userId, const std::string &msgId, const std::string &deviceId,
-                                        const std::string &deviceName, const std::string &attributes, const std::string &msg,
-                                        int32_t msgType, bool newDevice,
-                                        SendCallbackAction sendCallbackAction);
+                                        const std::string &deviceName, const std::string &attributes, const std::string &attachement,
+                                        const std::string &msg, int32_t msgType, bool newDevice, SendCallbackAction sendCallbackAction);
 
 
     /**

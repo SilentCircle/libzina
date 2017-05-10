@@ -682,19 +682,22 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * Send a group message to a single group member with an optional attachment and attributes.
      *
      * This function works in the same way as the normal {@code sendGroupMessage} but sends the message to
-     * one member only
+     * one member only. If the caller specifies a {@code deviceId} then the function sends this message to
+     * the member's device.
      *
-     * @param messageDescriptor      The JSON formatted message descriptor, required
+     * @param messageDescriptor     The JSON formatted message descriptor, required
      * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
-     *                               shows that not attachment descriptor is available.
-     * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
-     *                               An empty string shows that not attributes are available.
-     * @param recipient              User id of the group member
+     *                              shows that not attachment descriptor is available.
+     * @param messageAttributes     Optional, a JSON formatted string that contains message attributes.
+     *                              An empty string shows that not attributes are available.
+     * @param recipient             User id of the group member
+     * @param device id             If specified then the function sends the message to the selected device
+     *                              of the group member. Maybe {@code null} or empty.
      * @return @c OK if function could send the message, error code (<0) otherwise
      */
     @WorkerThread
     public static native int sendGroupMessageToMember(@NonNull byte[] messageDescriptor, @Nullable byte[] attachmentDescriptor,
-                                                      @Nullable byte[] messageAttributes, @NonNull byte[] recipient);
+                                                      @Nullable byte[] messageAttributes, @NonNull byte[] recipient, @Nullable String deviceId);
 
     /**
      * Send a group command to a single group member.

@@ -555,7 +555,8 @@ public:
      * @brief Send a group message to a single group member with an optional attachment and attributes.
      *
      * This function works in the same way as the normal @c sendGroupMessage but sends the message to
-     * one member only
+     * one member only.  If the caller specifies a @c deviceId then the function sends this message to
+     * the member's device.
      *
      * @param messageDescriptor      The JSON formatted message descriptor, required
      * @param attachmentDescriptor  A string that contains an attachment descriptor. An empty string
@@ -563,10 +564,13 @@ public:
      * @param messageAttributes      Optional, a JSON formatted string that contains message attributes.
      *                               An empty string shows that not attributes are available.
      * @param recipient              User id of the group member
+     * @param device id             If specified then the function sends the message to the selected device
+     *                              of the group member. Maybe empty.
      * @return @c OK if function could send the message, error code (<0) otherwise
      */
     virtual int32_t sendGroupMessageToMember(const std::string &messageDescriptor, const std::string &attachmentDescriptor,
-                                                       const std::string &messageAttributes, const std::string &recipient) = 0;
+                                             const std::string &messageAttributes, const std::string &recipient,
+                                             const std::string &deviceId) = 0;
     /**
      * @brief Send a group command to a single group member.
      *

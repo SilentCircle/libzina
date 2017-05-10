@@ -1077,7 +1077,7 @@ int32_t AppInterfaceImpl::performGroupHello(const string &groupId, const string 
 
     // Queue the hello message, assume the device is new - if a valid ratchet exists the send function handles this
     const string msgId = generateMsgIdTime();
-    queueMessageToSingleUserDevice(userId, msgId, deviceId, deviceName, attributes, Empty, GROUP_MSG_CMD, true, NoAction);
+    queueMessageToSingleUserDevice(userId, msgId, deviceId, deviceName, attributes, Empty, Empty, GROUP_MSG_CMD, true, NoAction);
 
     LOGGER(DEBUGGING, __func__, " <-- ");
     return SUCCESS;

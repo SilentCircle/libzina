@@ -476,7 +476,7 @@ void AppInterfaceImpl::reKeyDeviceCommand(const CmdQueueInfo &command) {
         return;
     }
     queueMessageToSingleUserDevice(command.queueInfo_recipient, generateMsgIdTime(), command.queueInfo_deviceId,
-                                   deviceName, ping, Empty, MSG_CMD, true, ReKeyAction);
+                                   deviceName, ping, Empty, Empty, MSG_CMD, true, ReKeyAction);
     LOGGER(DEBUGGING, __func__, " <--");
     return;
 }
@@ -664,7 +664,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
         }
 
         LOGGER(INFO, __func__, "Send Ping to new found device: ", deviceId);
-        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_CMD,
+        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, Empty, MSG_CMD,
                                        true, NoAction);
 
         performGroupHellos(userName, deviceId, deviceName);
@@ -676,7 +676,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // then return, send callback function handles unlock/synchronize actions. Sending a Ping a second time does
     // not do any harm. We do this to signal: done with rescanning devices.
     if (counter > 0) {
-        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, MSG_CMD,
+        queueMessageToSingleUserDevice(userName, generateMsgIdTime(), deviceId, deviceName, ping, Empty, Empty, MSG_CMD,
                                        true, ReScanAction);
         LOGGER(DEBUGGING, __func__, " <--");
         return;
@@ -689,7 +689,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
 }
 
 void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
-                                                      const string &deviceName, const string &attributes,
+                                                      const string &deviceName, const string &attributes, const string &attachement,
                                                       const string &msg, int32_t msgType, bool newDevice,
                                                       SendCallbackAction sendCallbackAction)
 {
@@ -708,7 +708,7 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
     msgInfo->queueInfo_deviceId = deviceId;                     // to this user device
     msgInfo->queueInfo_msgId = msgId;
     msgInfo->queueInfo_message = msg;
-    msgInfo->queueInfo_attachment = Empty;                      // No attachments
+    msgInfo->queueInfo_attachment = attachement;
     msgInfo->queueInfo_attributes = attributes;                 // message attributes
     msgInfo->queueInfo_transportMsgId = transportMsgId | msgType;
     msgInfo->queueInfo_toSibling = userId == getOwnUser();
