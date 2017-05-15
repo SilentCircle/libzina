@@ -737,7 +737,7 @@ void AppInterfaceImpl::sendActionCallback(SendCallbackAction sendCallbackAction)
             break;
 
         default:
-            LOGGER(WARNING, __func__, " Unknown send action callback code.");
+            LOGGER(WARNING, __func__, " Unknown send action callback code: ", sendCallbackAction);
             return;
     }
     synchronizeCv.notify_one();
