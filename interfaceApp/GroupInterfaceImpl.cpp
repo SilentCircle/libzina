@@ -316,7 +316,7 @@ int32_t AppInterfaceImpl::sendGroupMessageToMember(const string &messageDescript
     int32_t errorResult = OK;
     if (!deviceId.empty()) {
         queueMessageToSingleUserDevice(recipient, msgId, deviceId, Empty, newAttributes, attachmentDescriptor,
-                                       messageDescriptor, GROUP_MSG_NORMAL, false, NoAction);
+                                       message, GROUP_MSG_NORMAL, false, NoAction);
     }
     else {
         const bool toSibling = recipient == ownUser_;
