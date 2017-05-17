@@ -34,6 +34,9 @@ static mutex threadLock;
 static condition_variable commandQueueCv;
 static thread commandQueueThread;
 
+static bool cmdThreadRunning = false;
+static bool cmdRun;
+
 #ifdef UNITTESTS
 static AppInterfaceImpl* testIf_;
 void setTestIfObj_(AppInterfaceImpl* obj)
@@ -44,10 +47,12 @@ void setTestIfObj_(AppInterfaceImpl* obj)
 
 void AppInterfaceImpl::checkStartRunThread()
 {
-    if (!commandQueueThread.joinable()) {
+    if (!cmdThreadRunning) {
         unique_lock<mutex> lck(threadLock);
-        if (!commandQueueThread.joinable()) {
+        if (!cmdThreadRunning) {
+            cmdRun = true;
             commandQueueThread = thread(commandQueueHandler, this);
+            cmdThreadRunning = true;
         }
         lck.unlock();
     }
@@ -82,7 +87,7 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
     LOGGER(DEBUGGING, __func__, " -->");
 
     unique_lock<mutex> listLock(commandQueueLock);
-    while (commandQueueThread.joinable()) {
+    while (cmdRun) {
         while (commandQueue.empty()) commandQueueCv.wait(listLock);
 
         for (; !commandQueue.empty(); commandQueue.pop_front()) {
@@ -154,6 +159,7 @@ void AppInterfaceImpl::commandQueueHandler(AppInterfaceImpl *obj)
             listLock.lock();
         }
     }
+    LOGGER(DEBUGGING, __func__, " <--");
 }
 
 shared_ptr<vector<uint64_t> >
