@@ -158,7 +158,7 @@ NameLookup::insertUserInfoWithUuid(const string& alias, shared_ptr<UserInfo> use
 
 const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const string &authorization, bool cacheOnly, int32_t* errorCode) {
 
-    LOGGER(DEBUGGING, __func__ , " -->");
+    LOGGER(DEBUGGING, __func__ , " --> ", alias);
     if (alias.empty()) {
         LOGGER(ERROR, __func__ , " <-- empty alias name");
         if (errorCode != NULL)
@@ -234,7 +234,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
         LOGGER(DEBUGGING, __func__ , " <-- return null name");
         return shared_ptr<UserInfo>();
     }
-    LOGGER(DEBUGGING, __func__ , " <-- ", userInfo->displayName);
+    LOGGER(DEBUGGING, __func__ , " <-- ", alias, ", ", userInfo->displayName);
     return userInfo;
 }
 
