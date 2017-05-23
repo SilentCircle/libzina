@@ -1036,7 +1036,7 @@ int32_t AppInterfaceImpl::performGroupHello(const string &groupId, const string 
     string binDeviceId;
     makeBinaryDeviceId(deviceId, &binDeviceId);
 
-    ZrtpRandom::getRandomData(updateIdGlobal, sizeof(updateIdGlobal));
+    ZrtpRandom::getRandomData(updateId, sizeof(updateId));
 
     // Get an empty change set and add the group's current data (meta data, members)
     auto changeSet = make_shared<GroupChangeSet>();
@@ -1061,7 +1061,7 @@ int32_t AppInterfaceImpl::performGroupHello(const string &groupId, const string 
     if (result != SUCCESS) {
         return result;
     }
-    string updateIdString(reinterpret_cast<const char*>(updateIdGlobal), UPDATE_ID_LENGTH);
+    string updateIdString(reinterpret_cast<const char*>(updateId), UPDATE_ID_LENGTH);
     if (changeSet->has_updatename()) {
         store_->insertWaitAck(groupId, binDeviceId, updateIdString, GROUP_SET_NAME);
     }
