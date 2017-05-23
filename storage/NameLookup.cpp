@@ -178,6 +178,7 @@ const shared_ptr<UserInfo> NameLookup::getUserInfo(const string &alias, const st
         return it->second;
     }
     if (cacheOnly) {
+        LOGGER(DEBUGGING, __func__ , " <-- cached data");
         return shared_ptr<UserInfo>();
     }
     if (authorization.empty()) {

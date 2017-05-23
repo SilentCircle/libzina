@@ -364,7 +364,7 @@ static const char* getUserInfoRequest = "/v1/user/%s/?api_key=%s";
 
 int32_t Provisioning::getUserInfo(const string& alias,  const string& authorization, string* result)
 {
-    LOGGER(DEBUGGING, __func__, " <--");
+    LOGGER(DEBUGGING, __func__, " -->");
 
     string encoded = Utilities::urlEncode(alias);
     char temp[1000];
