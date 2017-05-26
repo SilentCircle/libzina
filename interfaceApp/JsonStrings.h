@@ -78,6 +78,7 @@ namespace zina {
     static const char* NEW_NAME = "nnm";        //!< New group name
     static const char* NEW_AVATAR = "navtr";    //!< New group avatar information
     static const char* NEW_BURN = "nbrn";       //!< New group burn information
+    static const char* REQUEST_HELLO = "rhel";  //!< New group burn information
 
 
     static const char* INVITE_SYNC = "s_inv";   //!< Sync accepted Group Invitation
@@ -87,6 +88,7 @@ namespace zina {
     static const char* INITIAL_LIST = "ini";
     static const char* DELIVERY_TIME = "dr_time";
     static const char* COMMAND_TIME = "cmd_time"; //!< Time at client (ZULU) when it created the command
+    static const char* DEVICE_NAME = "dev_name";
 
     // JSON keys for local messaging retention flags
     static const char* LRMM = "lrmm";           //!< local client retains message metadata
