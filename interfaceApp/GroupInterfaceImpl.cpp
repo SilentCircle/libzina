@@ -399,12 +399,6 @@ int32_t AppInterfaceImpl::processGroupCommand(const string &msgDescriptor, strin
     if (groupCommand.compare(HELLO) == 0) {
         LOGGER(INFO, __func__, "HELLO group command");
     }
-    // A new sibling device rqeuests group hellos to update group data
-    else if (groupCommand.compare(REQUEST_HELLO) == 0) {
-        LOGGER(INFO, __func__, "REQUEST_HELLO group command");
-        string deviceId(Utilities::getJsonString(root, MSG_DEVICE_ID, ""));
-        performGroupHellos(ownUser_, deviceId, Empty);
-    }
     else {
         LOGGER(INFO, __func__, "Unknown group command: ", *commandIn, "msg descriptor: ", msgDescriptor);
         groupCmdCallback_(*commandIn);

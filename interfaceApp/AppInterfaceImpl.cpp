@@ -44,20 +44,6 @@ static bool reScanDone;
 static mutex synchronizeLock;
 static condition_variable synchronizeCv;
 
-static string requestGroupsHello(const string& deviceId)
-{
-    JsonUnique sharedRoot(cJSON_CreateObject());
-    cJSON* root = sharedRoot.get();
-    cJSON_AddStringToObject(root, GROUP_COMMAND, REQUEST_HELLO);
-    cJSON_AddStringToObject(root, MSG_DEVICE_ID, deviceId.c_str());
-
-    CharUnique out(cJSON_PrintUnformatted(root));
-    string command(out.get());
-
-    return command;
-}
-
-
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
                                    GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
@@ -214,21 +200,10 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     int32_t code = Provisioning::registerZinaDevice(registerRequest, authorization_, scClientDevId_, result);
     if (code != SUCCESS) {
         LOGGER(ERROR, __func__, "Failed to register device for ZINA usage, code: ", code);
-        return code;
     }
-
-    // Request a group hello with group meta data from my sibling devices if sibling devices exist
-    // This updates possible groups.
-    // PrepareMessageInternal handles the case if no other sibling exists, it just does not process the command
-    auto preparedMsgData = prepareMessageInternal(createMessageDescriptor(ownUser_, generateMsgIdTime()),
-                                                  Empty, requestGroupsHello(scClientDevId_), true, GROUP_MSG_CMD, &code);
-    if (code != SUCCESS) {
-        LOGGER(ERROR, __func__, " <-- Error: ", code);
-        return code;
+    else {
+        LOGGER(DEBUGGING, __func__, " <-- ", code);
     }
-    doSendMessages(extractTransportIds(preparedMsgData.get()));
-
-    LOGGER(DEBUGGING, __func__, " <-- ", code);
     return code;
 }
 

@@ -97,8 +97,8 @@ namespace zina {
     static const int32_t SESSION_NOT_INITED  = -19;   //!< Session not initialized
     static const int32_t OLD_MESSAGE  = -20;          //!< Message too old to decrypt
     static const int32_t CORRUPT_DATA = -21;          //!< Incoming data CORRUPT_DATA
-    static const int32_t AXO_CONV_EXISTS = -22;       //!< Axolotl conversation exsists while tyring to setup new one
-    static const int32_t MAC_CHECK_FAILED = -23;      //!< HMAC check of encrypted message faild
+    static const int32_t AXO_CONV_EXISTS = -22;       //!< Axolotl conversation exists while tyring to setup new one
+    static const int32_t MAC_CHECK_FAILED = -23;      //!< HMAC check of encrypted message failed
     static const int32_t MSG_PADDING_FAILED = -24;    //!< Incorrect padding of decrypted message
     static const int32_t SUP_PADDING_FAILED = -25;    //!< Incorrect padding of decrypted supplemntary data
     static const int32_t NO_STAGED_KEYS = -26;        //!< Not a real error, just to report that no staged keys available

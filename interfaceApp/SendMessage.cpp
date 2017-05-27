@@ -289,23 +289,21 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     // has no sibling devices.
     auto idKeys = getIdentityKeys(recipient);
 
-    // If we haven't scanned for new sibling devices then do it now
-    bool handleNewSiblings = false;
-    shared_ptr<list<string> > newSiblingDevices;
-    if (toSibling && !siblingDevicesScanned_) {
-        newSiblingDevices = addSiblingDevices(idKeys);
-        siblingDevicesScanned_ = true;
-
-        // Need to handle new sibling devices
-        handleNewSiblings = !newSiblingDevices->empty();
+    // No known sibling devices, just return empty data and SUCCESS. This is a valid case
+    if (toSibling && idKeys->empty()) {
+        LOGGER(DEBUGGING, __func__, " <-- no sibling device");
+        if (result != nullptr) {
+            *result = SUCCESS;
+        }
+        errorCode_ = SUCCESS;
+        return messageData;
     }
 
-    // If we got no identity keys and no device information for this user then we need to handle this as
-    // a new user, thus get some data from provisioning server. However, do this only if not sending
-    // data to a sibling device
     bool newUser = false;
-    bool nextNewUser = false;
 
+    // If we got no identity keys/no device information we need to handle this as
+    // a new user, thus get some data from provisioning server. However, do this
+    // only if not sending data to a sibling device
     if (!toSibling && idKeys->empty()) {
         list<pair<string, string> > devicesNewUser;
         int32_t errorCode = getDevicesNewUser(recipient, authorization_, devicesNewUser);
@@ -323,24 +321,13 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
 
     // If idKeys is empty:
     // - happens if a new user has no ZINA devices registered
-    // - when preparing to send to siblings: we have new sibling devices only, no known sibling devices.
-    //   In this case just copy over found new sibling devices and mark them as processed.
     if (idKeys->empty()) {
-        if (!handleNewSiblings) {
-            int32_t code = toSibling ? SUCCESS : NO_DEVS_FOUND; // A user may not have sibling devices
-            if (result != nullptr) {
-                *result = code;
-            }
-            errorCode_ = code;
-            errorInfo_ = "No device available for this user.";
-            return messageData;
+        if (result != nullptr) {
+            *result = NO_DEVS_FOUND;
         }
-        else {
-            // We have new sibling device only
-            idKeys = newSiblingDevices;
-            handleNewSiblings = false;
-            nextNewUser = true;
-        }
+        errorCode_ = NO_DEVS_FOUND;
+        errorInfo_ = "No device available for this user.";
+        return messageData;
     }
     uint64_t transportMsgId;
     ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&transportMsgId), 8);
@@ -350,44 +337,23 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
 
     uint64_t counter = 0;
 
-    while (!idKeys->empty() || handleNewSiblings) {
-        const string idDevInfo = (idKeys->front());
-
+    for (auto idDevInfo: *idKeys) {
         // idDevInfo has the format:
         //       0           1         2        3
         // 'identityKey:deviceName:deviceId:verifyState', deviceName may be empty
         auto info = Utilities::splitString(idDevInfo, ":");
-        idKeys->pop_front();
 
-        // This is a bit tricky: if we prepare to send messages to siblings then 'idKeys'
-        // list contains the information of known sibling devices, 'newSiblingDevices' list
-        // the information of yet unknown sibling devices. We need to handle this, thus:
-        //
-        // - if 'idKeys' is now empty and 'newSiblingDevices' is not empty then copy the
-        //   pointer of 'newSiblingDevices' list to 'idKeys' and prepare to set 'newUser'
-        //   to 'true' for the next iteration
-        //
-        // - don't send to myself
-        //
+        // don't send to myself
         string& deviceId = info->at(2);
-        if (toSibling) {
-            newUser = nextNewUser;
-
-            if (idKeys->empty() && handleNewSiblings) {
-                idKeys = newSiblingDevices;
-                nextNewUser = true;
-                handleNewSiblings = false;
-            }
-            if (deviceId == scClientDevId_) {
-                continue;
-            }
+        if (toSibling && deviceId == scClientDevId_) {
+            continue;
         }
 
         // Setup and queue the prepared message info data
         auto msgInfo = new CmdQueueInfo;
         msgInfo->command = SendMessage;
 
-        // Specific handling to group messages: each device may have its own update change set, depending on it's ACK status.
+        // Specific handling to group messages: each device may have its own update change set, depending on its ACK status.
         if (messageType >= GROUP_MSG_NORMAL && !groupId.empty()) {
             string newAttributes;
             returnCode = createChangeSetDevice(groupId, deviceId, msgAttributes, &newAttributes);
@@ -436,7 +402,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         retainInfoMap.insert(pair<uint64_t, uint32_t>(transportMsgId, retainInfo));
     }
 #endif
-
+    idKeys->clear();
     LOGGER(DEBUGGING, __func__, " <-- ", messageData->size());
     return messageData;
 }

@@ -26,7 +26,6 @@ limitations under the License.
 #include "../vectorclock/VectorHelper.h"
 #include "JsonStrings.h"
 #include "../util/Utilities.h"
-#include "../provisioning/Provisioning.h"
 
 using namespace std;
 using namespace zina;
@@ -997,24 +996,6 @@ int32_t AppInterfaceImpl::performGroupHellos(const string &userId, const string 
 
     string devName = deviceName;
 
-    // If now device name known, ask the provisioning server
-    if (devName.empty()) {
-        list<pair<string, string> > siblingDevices;
-        int32_t errorCode = Provisioning::getZinaDeviceIds(ownUser_, authorization_, siblingDevices);
-
-        // The provisioning server reported an error or both lists are empty: no new siblings known yet
-        if (errorCode != SUCCESS || siblingDevices.empty()) {
-            LOGGER(WARNING, __func__, "Unknown device (sibling device), id: ", deviceId);
-            return NO_DEVS_FOUND;
-        }
-        for (auto siblingDevice : siblingDevices) {
-            // Don't add own device to unknown siblings
-            if (siblingDevice.first != deviceId)
-                continue;
-            devName = siblingDevice.second;
-            break;
-        }
-    }
     // First check if the user is a member of some group
     int32_t result = 0;
     if (!store_->isGroupMember(userId, &result)) {
