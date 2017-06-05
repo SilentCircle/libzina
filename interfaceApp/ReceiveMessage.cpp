@@ -209,7 +209,8 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
     shared_ptr<const string> messagePlain;
     cJSON *convJson = nullptr;
     unique_ptr<CmdQueueInfo> plainMsgInfo;
-    shared_ptr<ZinaConversation> axoConv;
+    unique_ptr<ZinaConversation> primaryConv;
+    unique_ptr<ZinaConversation> secondaryConv;
     string msgDescriptor;
 
     // The msg id is a time based UUID, parse it and check if the message is too old
@@ -250,20 +251,20 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         }
     }
 
-    axoConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId, *store_);
-    errorCode_ = axoConv->getErrorCode();
+    primaryConv = ZinaConversation::loadConversation(ownUser_, sender, senderScClientDevId, *store_);
+    errorCode_ = primaryConv->getErrorCode();
     if (errorCode_ != SUCCESS) {
         goto errorMessage_;
     }
     // Prepare some data for debugging if we have a develop build and debugging is enabled
     LOGGER_BEGIN(INFO)
-        convJson = axoConv->prepareForCapture(nullptr, true);
+        convJson = primaryConv->prepareForCapture(nullptr, true);
     LOGGER_END
 
     // OK, do the real decryption here
-    messagePlain = ZinaRatchet::decrypt(axoConv.get(), envelope, *store_, &supplementsPlain);
+    messagePlain = ZinaRatchet::decrypt(primaryConv.get(), envelope, *store_, &supplementsPlain, secondaryConv);
     if (!messagePlain) {
-        errorCode_ = axoConv->getErrorCode();
+        errorCode_ = primaryConv->getErrorCode();
         goto errorMessage_;
     }
 
@@ -272,7 +273,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
     // Prepare some data for debugging if we have a develop build and debugging is enabled
     // We don't capture the message itself but only some relevant, public context data
     LOGGER_BEGIN(INFO)
-        convJson = axoConv->prepareForCapture(convJson, false);
+        convJson = primaryConv->prepareForCapture(convJson, false);
 
         CharUnique out(cJSON_PrintUnformatted(convJson));
         string convState(out.get());
@@ -302,7 +303,7 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         cJSON_AddStringToObject(root, MSG_DEVICE_ID, senderScClientDevId.c_str());
         cJSON_AddStringToObject(root, MSG_ID, msgId.c_str());
         cJSON_AddStringToObject(root, MSG_MESSAGE, messagePlain->c_str());
-        cJSON_AddBoolToObject(root, MSG_ID_KEY_CHANGED, axoConv->isIdentityKeyChanged());
+        cJSON_AddBoolToObject(root, MSG_ID_KEY_CHANGED, primaryConv->isIdentityKeyChanged());
 
         cJSON_AddNumberToObject(root, MSG_TYPE, msgType);
         messagePlain.reset();
@@ -333,11 +334,20 @@ void AppInterfaceImpl::processMessageRaw(const CmdQueueInfo &msgInfo) {
         if (SQL_FAIL(result))
             goto error_;
 
-        result = axoConv->storeStagedMks(*store_);
+        if (secondaryConv) {
+            result = secondaryConv->storeStagedMks(*store_);
+            if (SQL_FAIL(result))
+                goto error_;
+
+            result = secondaryConv->storeConversation(*store_);
+            if (SQL_FAIL(result))
+                goto error_;
+        }
+        result = primaryConv->storeStagedMks(*store_);
         if (SQL_FAIL(result))
             goto error_;
 
-        result = axoConv->storeConversation(*store_);
+        result = primaryConv->storeConversation(*store_);
         if (SQL_FAIL(result))
             goto error_;
 

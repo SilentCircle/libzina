@@ -46,13 +46,13 @@ public:
         // initialization code here
     }
 
+    // code here will execute just before the test ensues
     void SetUp() {
-        // code here will execute just before the test ensues
-        LOGGER_INSTANCE setLogLevel(ERROR);
-
         // capture the memory state at the beginning of the test
         struct mallinfo minfo = mallinfo();
         beginMemoryState = minfo.uordblks;
+
+        LOGGER_INSTANCE setLogLevel(WARNING);
 
         store = SQLiteStoreConv::getStore();
         store->setKey(std::string((const char*)keyInData, 32));
@@ -65,6 +65,11 @@ public:
         SQLiteStoreConv::closeStore();
 
         // only check for memory leaks if the test did not end in a failure
+
+        // NOTE: the logging via LOGGER statements may give wronge results. Thus either switch of
+        // logging (LOGGER_INSTANCE setLogLevel(NONE);) during tests (after debugging :-) ) or make
+        // sure that no errors etc are logged. The memory info may be wrong if the LOGGER really
+        // prints out some data.
         if (!HasFailure())
         {
             // Gets information about the currently running test.
@@ -200,6 +205,43 @@ TEST_F(StoreTestFixture, SimpleFields)
     conv.storeConversation(*store);
     auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
 
+    ASSERT_EQ(RK, conv1->getRK());
+    ASSERT_EQ(CKr, conv1->getCKr());
+    ASSERT_EQ(CKs, conv1->getCKs());
+
+    ASSERT_EQ(3, conv1->getNr());
+    ASSERT_EQ(7, conv1->getNs());
+    ASSERT_EQ(11, conv1->getPNs());
+    ASSERT_EQ(13, conv1->getPreKeyId());
+    ASSERT_TRUE(tst == conv1->getDeviceName());
+}
+
+TEST_F(StoreTestFixture, SecondaryRatchet)
+{
+    string RK("RootKey");
+    string CKs("ChainKeyS 1");
+    string CKr("ChainKeyR 1");
+
+    // localUser, remote user, remote dev id
+    ZinaConversation conv(aliceName,   bobName,   bobDev);
+    conv.setRK(RK);
+    conv.setCKr(CKr);
+    conv.setCKs(CKs);
+
+    conv.saveSecondaryAddress(aliceDev, 4711);
+
+    conv.setNr(3);
+    conv.setNs(7);
+    conv.setPNs(11);
+    conv.setPreKeyId(13);
+    string tst("test");
+    conv.setDeviceName(tst);
+
+    conv.storeConversation(*store);
+    auto conv1 = ZinaConversation::loadConversation(aliceName, bobName, bobDev, *store);
+
+    string devId = conv1->lookupSecondaryDevId(4711);
+    ASSERT_EQ(aliceDev, devId);
     ASSERT_EQ(RK, conv1->getRK());
     ASSERT_EQ(CKr, conv1->getCKr());
     ASSERT_EQ(CKs, conv1->getCKs());

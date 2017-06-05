@@ -40,7 +40,7 @@ ZinaConversation::loadConversation(const string& localUser, const string& user, 
         return conv;
     }
     if (!found) {
-        LOGGER(INFO, __func__, " <-- No such conversation: ", user, ", device: ", deviceId);
+        LOGGER(INFO, __func__, " <-- No such conversation, return empty conversation: ", user, ", device: ", deviceId);
         return conv;            // SUCCESS, however return an empty conversation
     }
 
@@ -50,7 +50,7 @@ ZinaConversation::loadConversation(const string& localUser, const string& user, 
         return conv;
     }
     if (data == NULL || data->empty()) {   // Illegal state, should not happen
-        LOGGER(ERROR, __func__, " <-- Cannot load conversation: ", user);
+        LOGGER(ERROR, __func__, " <-- Cannot load conversation data: ", user, ", ", deviceId);
         conv->errorCode_ = NO_SESSION_DATA;
         return conv;
     }
@@ -177,6 +177,48 @@ void ZinaConversation::deleteStagedMk(string& mkiv, SQLiteStoreConv &store)
     LOGGER(DEBUGGING, __func__, " <--");
 }
 
+string ZinaConversation::lookupSecondaryDevId(int32_t prekeyId)
+{
+    for (auto& secInfo : secondaryRatchets) {
+        if (secInfo->preKeyId == prekeyId) {
+            return secInfo->deviceId;
+        }
+    }
+    return Empty;
+}
+
+void ZinaConversation::saveSecondaryAddress(const std::string& secondaryDevId, int32_t preKeyId)
+{
+    unique_ptr<SecondaryInfo> secInfo(new SecondaryInfo);
+
+    secInfo->deviceId = secondaryDevId;
+    secInfo->preKeyId = preKeyId;
+    secInfo->creationTime = time(nullptr);
+
+    secondaryRatchets.push_back(move(secInfo));
+}
+
+unique_ptr<ZinaConversation>
+ZinaConversation::getSecondaryRatchet(int32_t index, SQLiteStoreConv &store)
+{
+    if (index < 0 || index >= secondaryRatchets.size()) {
+        return unique_ptr<ZinaConversation>();
+    }
+    auto conv = loadConversation(getLocalUser(), getPartner().getName(), secondaryRatchets[index]->deviceId, store);
+
+    if (!conv->isValid()) {
+        return unique_ptr<ZinaConversation>();
+    }
+    return conv;
+}
+
+void ZinaConversation::deleteSecondaryRatchets(SQLiteStoreConv &store)
+{
+    for (auto& secInfo : secondaryRatchets) {
+        store.deleteConversation(getPartner().getName(), secInfo->deviceId, getLocalUser());
+    }
+
+}
 /* *****************************************************************************
  * Private functions
  ***************************************************************************** */
@@ -301,6 +343,19 @@ void ZinaConversation::deserialize(const std::string& data)
     if (zrtpVerifyState > 0) {
         identityKeyChanged = false;
     }
+    if (Utilities::hasJsonKey(root, "secondaries")) {
+        cJSON* secondaries = cJSON_GetObjectItem(root, "secondaries");
+        int32_t numSecondaries = cJSON_GetArraySize(secondaries);
+
+        for (int i = 0; i < numSecondaries; i++) {
+            cJSON* arrayItem = cJSON_GetArrayItem(secondaries, i);
+            unique_ptr<SecondaryInfo> secInfo(new SecondaryInfo);
+            secInfo->preKeyId = Utilities::getJsonInt(arrayItem, "prekeyid", 0);
+            secInfo->deviceId = Utilities::getJsonString(arrayItem, "deviceid", "");
+            secInfo->creationTime = Utilities::getJsonInt(arrayItem, "timestamp", 0);
+            secondaryRatchets.push_back(move(secInfo));
+        }
+    }
 
     LOGGER(DEBUGGING, __func__, " <--");
 }
@@ -403,6 +458,20 @@ const string* ZinaConversation::serialize() const
     cJSON_AddNumberToObject(root, "contextId", contextId);
     cJSON_AddNumberToObject(root, "versionNumber", versionNumber);
     cJSON_AddBoolToObject(root, "identityKeyChanged", identityKeyChanged);
+
+    if (secondaryRatchets.size()> 0) {
+        // Create and add JSON array
+        cJSON* secondaries = cJSON_CreateArray();
+        cJSON_AddItemToObject(root, "secondaries", secondaries);
+
+        for (auto &secInfo : secondaryRatchets) {
+            cJSON* secJson = cJSON_CreateObject();
+            cJSON_AddNumberToObject(secJson, "prekeyid", secInfo->preKeyId);
+            cJSON_AddStringToObject(secJson, "deviceid", secInfo->deviceId.c_str());
+            cJSON_AddNumberToObject(secJson, "timestamp", secInfo->creationTime);
+            cJSON_AddItemToArray(secondaries, secJson);
+        }
+    }
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string* data = new string(out.get());

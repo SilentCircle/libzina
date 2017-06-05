@@ -25,6 +25,7 @@ limitations under the License.
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>
 #include <common/osSpecifics.h>
+#include <cryptcommon/ZrtpRandom.h>
 
 using namespace std;
 
@@ -164,7 +165,7 @@ static void createWireMessageV1(ZinaConversation &conv, string &message, string 
 
     // A0 is set only if we use pre-keys and this is 'Alice' and generated a pre-key info, thus
     // wire message type 2 only if we use pre-key initialization
-    msgType = static_cast<uint8_t>(!conv.hasA0() ? 1 : 2);
+    msgType = static_cast<uint8_t>(!conv.hasA0() ? RATCHET_NORMAL_MSG : RATCHET_SETUP_MSG);
 
     // The code below currently uses the curve 25519 only. This curve requires 32 byte key data.
     // To support other curves we need to adapt that code
@@ -189,7 +190,7 @@ static void createWireMessageV1(ZinaConversation &conv, string &message, string 
     size_t keyLength = EcCurveTypes::Curve25519KeyLength;  // fixed for curve 25519
     size_t msgLength = FIXED_TYPE1_OVERHEAD + keyLength;   // at least a msg type, Ns, PNs, and message length
 
-    if (msgType == 2) {
+    if (msgType == RATCHET_SETUP_MSG) {
         msgLength += ADD_TYPE2_OVERHEAD + keyLength + keyLength;    // add remote pre-key id, local generated pre-key, identity key
     }
     msgLength += message.size();
@@ -244,12 +245,12 @@ static void createWireMessageVx(ZinaConversation &conv, MessageEnvelope& envelop
     envelope.set_message(encryptedData);
 
     // Determine the wire message type:
-    // 1: Normal message with new Ratchet key
-    // 2: Message with new Ratchet Key and pre-key information, set-up context
+    // RATCHET_NORMAL_MSG: Normal message with new Ratchet key
+    // RATCHET_SETUP_MSG:  Message with new Ratchet Key and pre-key information, set-up context
 
     // A0 is set only if we use pre-keys and this is 'Alice' and generated a pre-key info, thus
     // wire message type 2 only if we use pre-key initialization
-    int32_t msgType = static_cast<uint8_t>(!conv.hasA0() ? 1 : 2);
+    int32_t msgType = static_cast<uint8_t>(!conv.hasA0() ? RATCHET_NORMAL_MSG : RATCHET_SETUP_MSG);
 
     RatchetData* ratchet = envelope.mutable_ratchet();
     ratchet->set_ratchetmsgtype(msgType);
@@ -543,6 +544,7 @@ static int32_t compareHashes(const string& recvIdHash, const string& senderIdHas
     LOGGER(DEBUGGING, __func__, " <--");
     return SUCCESS;
 }
+
 /*
 if (plaintext = try_skipped_header_and_message_keys()):
   return plaintext
@@ -575,7 +577,8 @@ Nr = Np + 1
 CKr = CKp
 return read()
  */
-static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& supplements,
+static shared_ptr<const string>
+decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& supplements,
     SQLiteStoreConv &store, string* supplementsPlain, const string& recvIdHash, const string& senderIdHash)
 {
     LOGGER(DEBUGGING, __func__, " -->");
@@ -595,7 +598,7 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
         conv->setContextId(msgStruct.contextId);
 
         // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
-        // Called function get ownership of the two key pointers aliceId, alicePreKey
+        // Called function gets ownership of the two key pointers aliceId, alicePreKey
         result = ZinaPreKeyConnector::setupConversationBob(conv, msgStruct.localPreKeyId, move(aliceId), move(alicePreKey), store);
         if (result < SUCCESS ) {
             return shared_ptr<string>();
@@ -626,8 +629,8 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     conv->setVersionNumber(msgStruct.maxVersion);
 
     if (conv->getContextId() != 0 && msgStruct.contextId != 0 && conv->getContextId() != msgStruct.contextId) {
-        LOGGER(ERROR, __func__, " <-- Context ID mismatch, message ignored: ", conv->getContextId(), ", ", msgStruct.contextId);
-        conv->setErrorCode(OLD_MESSAGE);
+        LOGGER(ERROR, __func__, " <-- Context ID mismatch, message ignored, data out of sync: ", conv->getContextId(), ", ", msgStruct.contextId);
+        conv->setErrorCode(CONTEXT_ID_MISTMATCH);
         return shared_ptr<string>();
     }
 
@@ -746,7 +749,52 @@ static shared_ptr<const string>decryptInternal(ZinaConversation* conv, ParsedMes
     return decrypted;
 }
 
-shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnvelope& envelope, SQLiteStoreConv &store, string* supplementsPlain)
+static bool localIdKeyGreater(const ParsedMessage &msgStruct, const ZinaConversation& conv, SQLiteStoreConv &store)
+{
+    LOGGER(DEBUGGING, __func__, " -->");
+
+    auto localConv = ZinaConversation::loadLocalConversation(conv.getLocalUser(), store);
+    const uint8_t* localPubIdentity = localConv->getDHIs().getPublicKey().getPublicKeyPointer();
+
+    // return true if the local identity key (public part) is greater than the remote key
+    return (memcmp(localPubIdentity, msgStruct.remoteIdKey, EcCurveTypes::Curve25519KeyLength) > 0);
+}
+
+// This function gets called only in case of a conflicting setup message to get or create a secondary
+// ratchet
+static unique_ptr<ZinaConversation>
+getSecondaryConv(ZinaConversation* primaryConv, const ParsedMessage &msgStruct, SQLiteStoreConv &store)
+{
+    // check if we already have a secondary ratchet context that uses one of our pre-keys
+    string secondaryDevId = primaryConv->lookupSecondaryDevId(msgStruct.localPreKeyId);
+
+    // if no secondary ratchet yet create a secondary device id by concatenating the pre key id data to the
+    // primary device id and save it together with some other data in the primary ratchet. The secondary
+    // device id is the main pointer to the secondary ratchet context. The pre-key id defines which data
+    // (pre-key) was used to create the ratchet data. Using the pre-key id we can later lookup the correct
+    // ratchet context.
+    if (secondaryDevId.empty()) {
+        char tmpChars[30] = {'\0'};
+        int32_t tmp;
+
+        ZrtpRandom::getRandomData(reinterpret_cast<uint8_t*>(&tmp), sizeof(int32_t));
+        tmp &= 0x7fffffff;                                  // always a positive value
+        snprintf(tmpChars, 29, "_%x_%x", msgStruct.localPreKeyId, tmp);
+        secondaryDevId = primaryConv->getDeviceId() + tmpChars;
+        primaryConv->saveSecondaryAddress(secondaryDevId, msgStruct.localPreKeyId);
+        LOGGER(INFO, __func__, " New secondary device id: ", secondaryDevId);
+    }
+
+    auto secondaryConv = ZinaConversation::loadConversation(primaryConv->getLocalUser(), primaryConv->getPartner().getName(),
+                                                            secondaryDevId, store);
+    if (primaryConv->getErrorCode() != SUCCESS) {
+        return unique_ptr<ZinaConversation>();
+    }
+    return secondaryConv;
+}
+
+shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* primaryConv, MessageEnvelope& envelope, SQLiteStoreConv &store,
+                                              string* supplementsPlain, unique_ptr<ZinaConversation>& secondaryConv)
 {
     LOGGER(DEBUGGING, __func__, " -->");
 
@@ -762,7 +810,7 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnv
     if (envelope.has_ratchet()) {
         useVersion = envelope.ratchet().useversion();
         if (useVersion > SUPPORTED_VERSION) {
-            conv->setErrorCode(VERSION_NOT_SUPPORTED);
+            primaryConv->setErrorCode(VERSION_NOT_SUPPORTED);
             return shared_ptr<string>();
         }
         msgStruct.maxVersion = envelope.ratchet().maxversion();
@@ -778,11 +826,11 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnv
         result = parseWireMsgV1(wire, &msgStruct);
     }
     if (msgStruct.encryptedMsg == NULL) {
-        conv->setErrorCode(CORRUPT_DATA);
+        primaryConv->setErrorCode(CORRUPT_DATA);
         return shared_ptr<string>();
     }
     if (result < 0) {
-        conv->setErrorCode(result);
+        primaryConv->setErrorCode(result);
         return shared_ptr<string>();
     }
 
@@ -795,7 +843,59 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* conv, MessageEnv
 
     const string& supplements = envelope.has_supplement() ? envelope.supplement() : Empty;
 
-    return decryptInternal(conv, msgStruct, supplements, store, supplementsPlain, recvIdHash, senderIdHash);
+    // Check the message type and the conversation state to detect a conflicting ratchet setup:
+    // - if the conversation has a valid A0 then this client created the conversation and assumed Alice role
+    // - if we now receive a type 2 message (setup message) then our partner also created a conversation
+    //   assuming Alice role - and this is not correct
+    // In this case we have to perform some conflict resolution and manage the ratchet contexts
+
+    // If our local long term identity key (public part) is greater than the partner's key then we won :-) and
+    // use our ratchet data. Otherwise we lost and just use the partner's setup message to re-set (re-key)
+    // the ratchet context.
+
+    // However, to avoid losing messages the winner has to prepare a secondary ratchet context, initialize
+    // it, save it, etc and use it if necessary.
+
+    unique_ptr<ZinaConversation> secondary;
+    if (msgStruct.msgType == RATCHET_SETUP_MSG && primaryConv->hasA0() && localIdKeyGreater(msgStruct, *primaryConv, store)) {
+        LOGGER(WARNING, __func__, " Collision detected, this is master");
+        secondary = getSecondaryConv(primaryConv, msgStruct, store);
+        if (primaryConv->getErrorCode() != SUCCESS) {
+            return shared_ptr<string>();
+        }
+    }
+
+    // If we have a secondary ratchet then use it for decrypt processing, otherwise go on with the primary.
+    // Message at this point is either a setup message or a normal message.
+    // We can have a secondary only in case of a setup message, see if-statement above, however usually
+    // we have a primary only.
+    auto plainText = decryptInternal(!secondary? primaryConv : secondary.get(), msgStruct, supplements, store,
+                                     supplementsPlain, recvIdHash, senderIdHash);
+
+    // If decryption of a normal message failed, check if if have secondary ratchets. If yes then use them and
+    // try to decrypt with the secondary ratchets
+    if (msgStruct.msgType == RATCHET_NORMAL_MSG && !plainText) {
+        int32_t index = 0;
+        for (secondary = primaryConv->getSecondaryRatchet(index++, store);
+            secondary;
+            secondary = primaryConv->getSecondaryRatchet(index++, store)) {
+
+            plainText = decryptInternal(secondary.get(), msgStruct, supplements, store, supplementsPlain, recvIdHash, senderIdHash);
+            if (plainText) {       // Successful decryption with a secondary ratchet, break loop here
+                break;
+            }
+        }
+        // If decryption failed and if we had a secondary ratchet forward error code to primary ratchet to have
+        // some proper error reporting.
+        if (!plainText && secondary) {
+            primaryConv->setErrorCode(secondary->getErrorCode());
+        }
+    }
+    // Return the secondary if we have one, the caller performs the actions to save it
+    if (secondary) {
+        secondaryConv = move(secondary);
+    }
+    return plainText;
 }
 
 /*
@@ -889,7 +989,7 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     Utilities::wipeString(macKey);
     string computedMac((const char *) mac, SHA256_DIGEST_LENGTH);
 
-    // if partner supports a better version than we: use our supported version, else the version of out partner
+    // if partner supports a better version than we: use our supported version, else the version of our partner
     // which may be lower than our version number. A new partner's conversation currently has a initial version
     // number 0 which is treated as version 1. This is for backward compatibility with older clients.
     // If we dismiss version 1 sometimes in the future a new conversation will have another initial version number.

@@ -29,6 +29,7 @@ limitations under the License.
 #include <list>
 #include <utility>
 #include <memory>
+#include <vector>
 
 #include "../crypto/DhPublicKey.h"
 #include "../crypto/DhKeyPair.h"
@@ -196,6 +197,32 @@ public:
 
     void setVersionNumber(int32_t version) { versionNumber = version; }
 
+    /**
+     * @brief Check if a secondary ratchet exists for the pre-key id.
+     *
+     * @param prekeyId the pre-key id to check
+     * @return the secondary device id or an empty string if no ratchet exists.
+     */
+    std::string lookupSecondaryDevId(int32_t prekeyId);
+
+    void saveSecondaryAddress(const std::string& secondaryDevId, int32_t localPreKeyId);
+
+    /**
+     * @brief Get a secondary ratchet from vector.
+     *
+     * @param index The index of the secondary ratchet
+     * @param store database
+     * @return the secondary ratchet or an empty unique pointer if no ratchet/wrong index
+     */
+    std::unique_ptr<ZinaConversation> getSecondaryRatchet(int32_t index, SQLiteStoreConv &store);
+
+    /**
+     * @brief Delete all existing secondary ratchet data from database.
+     *
+     * @param store database
+     */
+    void deleteSecondaryRatchets(SQLiteStoreConv &store);
+
     void reset();
 
     /**
@@ -218,6 +245,13 @@ public:
 #endif
 
 private:
+
+    struct SecondaryInfo {
+        int32_t     preKeyId;
+        std::string deviceId;
+        time_t      creationTime;
+
+    };
     void deserialize(const std::string& data);
     const std::string* serialize() const;
 
@@ -265,7 +299,8 @@ private:
                 Entries may be stored with a timestamp, and deleted after
                 a certain age.
     Implemented via database and temporary list, see stagedMk above.
-    */ 
+    */
+    std::vector<std::unique_ptr<SecondaryInfo> > secondaryRatchets;
     int32_t errorCode_;
     int32_t sqlErrorCode_;      //!< Valid if errorCode_ is DATABASE_ERROR
     bool valid_;

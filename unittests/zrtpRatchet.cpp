@@ -149,7 +149,8 @@ TEST_F(RatchetTestFixture, RatchetTest)
     int32_t result = ZinaRatchet::encrypt(*p1p2Conv, p1toP2, envelope, emptySharedString, *store);
     ASSERT_EQ(SUCCESS, result);
 
-    shared_ptr<const string> p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+    unique_ptr<ZinaConversation> conv;
+    shared_ptr<const string> p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
     ASSERT_TRUE(p1p2Plain != NULL);
 //    hexdump("p1p2Plain", *p1p2Plain);
 //    cerr << *p1p2Plain << endl;
@@ -159,7 +160,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
     result = ZinaRatchet::encrypt(*p2p1Conv, p2toP1, envelope, emptySharedString, *store);
     ASSERT_EQ(SUCCESS, result);
 
-    shared_ptr<const string> p2p1Plain =  ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr);
+    shared_ptr<const string> p2p1Plain =  ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr, conv);
     ASSERT_TRUE(p2p1Plain.get() != NULL);
 //    hexdump("p2p1Plain", *p2p1Plain);
 //    cerr << *p2p1Plain << endl;
@@ -177,7 +178,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p1p2Conv, loop, envelope, emptySharedString, *store);
 
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
@@ -193,7 +194,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p2p1Conv, loop, envelope, emptySharedString, *store);
 
-        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr);
+        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
@@ -226,7 +227,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p1p2Conv, loop, envelope, emptySharedString, *store);
 
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
@@ -242,7 +243,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p2p1Conv, loop, envelope, emptySharedString, *store);
 
-        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr);
+        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
@@ -253,7 +254,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
     for(auto it = outOfOrder.begin(); it != outOfOrder.end();) {
         auto pair = *it;
 //        cerr << pair->first << endl;
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), *(pair->second), *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), *(pair->second), *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL) << "Expected: " << pair->first;
         ASSERT_EQ(pair->first, *p1p2Plain);
@@ -271,7 +272,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p1p2Conv, loop, envelope, emptySharedString, *store);
 
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
@@ -287,7 +288,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p2p1Conv, loop, envelope, emptySharedString, *store);
 
-        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr);
+        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
@@ -303,7 +304,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p1p2Conv, loop, envelope, emptySharedString, *store);
 
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
@@ -339,7 +340,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p2p1Conv, loop, envelope, emptySharedString, *store);
 
-        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr);
+        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
@@ -355,7 +356,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p1p2Conv, loop, envelope, emptySharedString, *store);
 
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);
@@ -366,7 +367,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
     for(auto it = outOfOrder.begin(); it != outOfOrder.end();) {
         auto pair = *it;
 //        cerr << pair->first << endl;
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), *(pair->second), *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), *(pair->second), *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL) << "Expected: " << pair->first;
         ASSERT_EQ(pair->first, *p1p2Plain);
@@ -384,7 +385,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p2p1Conv, loop, envelope, emptySharedString, *store);
 
-        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr);
+        p2p1Plain = ZinaRatchet::decrypt(p1p2Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p2p1Plain << '\n';
         ASSERT_TRUE(p2p1Plain != NULL);
         ASSERT_EQ(loop, *p2p1Plain);
@@ -400,7 +401,7 @@ TEST_F(RatchetTestFixture, RatchetTest)
 //        cerr << loop << endl;
         result = ZinaRatchet::encrypt(*p1p2Conv, loop, envelope, emptySharedString, *store);
 
-        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr);
+        p1p2Plain = ZinaRatchet::decrypt(p2p1Conv.get(), envelope, *store, nullptr, conv);
 //        std::cerr << *p1p2Plain << '\n';
         ASSERT_TRUE(p1p2Plain != NULL);
         ASSERT_EQ(loop, *p1p2Plain);

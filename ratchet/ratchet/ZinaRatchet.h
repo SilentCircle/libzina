@@ -50,7 +50,7 @@ public:
     /**
      * @brief Parse a wire message and decrypt the payload.
      * 
-     * @param conv The Axolotl conversation
+     * @param primaryConv The Axolotl conversation
      * @param wire The wire message.
      * @param supplements Encrypted additional data for the message
      * @param supplementsPlain Additional data for the message if available and decryption was successful.
@@ -58,9 +58,12 @@ public:
      *                 not available
      * @param store Context storage
      * @return Plaintext or @c NULL if decryption failed
+     *
+     * Passing unique_ptr by reference is for in/out unique_ptr parameters.
+     * Guideline: Use a non-const unique_ptr& parameter only to modify the unique_ptr. (Herb Sutter)
      */
-    static std::shared_ptr<const std::string> decrypt(ZinaConversation* conv, MessageEnvelope& envelope, SQLiteStoreConv &store,
-                                                      std::string* supplementsPlain);
+    static std::shared_ptr<const std::string> decrypt(ZinaConversation* primaryConv, MessageEnvelope& envelope, SQLiteStoreConv &store,
+                                                      std::string* supplementsPlain, std::unique_ptr<ZinaConversation>& secondary);
 
 private:
     ZinaRatchet() {};

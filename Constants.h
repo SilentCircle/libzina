@@ -42,6 +42,9 @@ namespace zina {
     static const int MAX_ENCODED_MSG_LENGTH = 7*1024; //!< We silently ignore messages bigger than this (b64 encoded)
     static const int MK_STORE_TIME     = 31*86400;    //!< cleanup stored MKs and message hashes after 31 days
 
+    static const int RATCHET_NORMAL_MSG        = 1;
+    static const int RATCHET_SETUP_MSG         = 2;
+
     static const int NUM_PRE_KEYS          = 100;
     static const int MIN_NUM_PRE_KEYS      = 30;
 
@@ -112,6 +115,7 @@ namespace zina {
     static const int32_t REJECT_DATA_RETENTION = -34; //!< Reject data retention when sending a message
     static const int32_t PRE_KEY_HASH_WRONG = -35;    //!< Pre-key check failed during setup of new conversation or re-keying
     static const int32_t ILLEGAL_ARGUMENT = -36;      //!< Value of an argument is illegal/out of range
+    static const int32_t CONTEXT_ID_MISTMATCH = -37;  //!< Value of an argument is illegal/out of range
 
     // Error codes for public key modules, between -100 and -199
     static const int32_t NO_SUCH_CURVE     = -100;    //!< Curve not supported

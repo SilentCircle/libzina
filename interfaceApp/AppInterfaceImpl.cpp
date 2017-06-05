@@ -46,7 +46,8 @@ static condition_variable synchronizeCv;
 
 AppInterfaceImpl::AppInterfaceImpl(const string& ownUser, const string& authorization, const string& scClientDevId,
                                    RECV_FUNC receiveCallback, STATE_FUNC stateReportCallback, NOTIFY_FUNC notifyCallback,
-                                   GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,  GROUP_STATE_FUNC groupStateCallback):
+                                   GROUP_MSG_RECV_FUNC groupMsgCallback, GROUP_CMD_RECV_FUNC groupCmdCallback,
+                                   GROUP_STATE_FUNC groupStateCallback):
         AppInterface(receiveCallback, stateReportCallback, notifyCallback, groupMsgCallback, groupCmdCallback, groupStateCallback),
         tempBuffer_(NULL), tempBufferSize_(0), ownUser_(ownUser), authorization_(authorization), scClientDevId_(scClientDevId),
         errorCode_(0), transport_(NULL), flags_(0), siblingDevicesScanned_(false), drLrmm_(false), drLrmp_(false), drLrap_(false),
@@ -198,7 +199,7 @@ int32_t AppInterfaceImpl::registerZinaDevice(string* result)
     cJSON_Delete(root); free(out);
 
     int32_t code = Provisioning::registerZinaDevice(registerRequest, authorization_, scClientDevId_, result);
-    if (code != SUCCESS) {
+    if (code != 200) {
         LOGGER(ERROR, __func__, "Failed to register device for ZINA usage, code: ", code);
     }
     else {
@@ -535,7 +536,7 @@ void AppInterfaceImpl::checkRemoteIdKeyCommand(const CmdQueueInfo &command)
 {
     /*
      * Command data usage:
-    command.command = CkeckRemoteIdKey;
+    command.command = CheckRemoteIdKey;
     command.stringData1 = remoteName;
     command.stringData2 = deviceId;
     command.stringData3 = pubKey;
@@ -600,7 +601,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     }
 
     // Get known devices from DB, compare with devices from provisioning server
-    // and remove old devices in DB, i.e. devices not longer known to provisioning server
+    // and remove old devices and their data, i.e. devices not longer known to provisioning server
     //
     list<StringUnique> devicesDb;
 
@@ -616,6 +617,10 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
             }
         }
         if (!found) {
+            auto conv = ZinaConversation::loadConversation(ownUser_, userName, *devIdDb, *store_);
+            if (conv) {
+                conv->deleteSecondaryRatchets(*store_);
+            }
             store_->deleteConversation(userName, *devIdDb, ownUser_);
             LOGGER(INFO, __func__, "Remove device from database: ", *devIdDb);
         }
@@ -692,7 +697,7 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
 }
 
 void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
-                                                      const string &deviceName, const string &attributes, const string &attachement,
+                                                      const string &deviceName, const string &attributes, const string &attachment,
                                                       const string &msg, int32_t msgType, bool newDevice,
                                                       SendCallbackAction sendCallbackAction)
 {
@@ -711,7 +716,7 @@ void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, cons
     msgInfo->queueInfo_deviceId = deviceId;                     // to this user device
     msgInfo->queueInfo_msgId = msgId;
     msgInfo->queueInfo_message = msg;
-    msgInfo->queueInfo_attachment = attachement;
+    msgInfo->queueInfo_attachment = attachment;
     msgInfo->queueInfo_attributes = attributes;                 // message attributes
     msgInfo->queueInfo_transportMsgId = transportMsgId | msgType;
     msgInfo->queueInfo_toSibling = userId == getOwnUser();

@@ -125,13 +125,13 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     Utilities::wipeMemory((void*)master.data(), master.size());
 
     // Initialize conversation (ratchet context), conversation takes over the ownership of the keys.
-    conv->setDHIr(move(bobKeys.first)); // Bob is receiver, set his public identity key
-    conv->setDHIs(move(A));         // Alice is sender, set her identity key pair
-    conv->setDHRr(move(bobKeys.second)); // Bob's B0 (pre-key) public part
-    conv->setA0(move(A0));          // Alice's generated pre-key.
+    conv->setDHIr(move(bobKeys.first));     // Bob is receiver, set his public identity key
+    conv->setDHIs(move(A));                 // Alice is sender, set her identity key pair
+    conv->setDHRr(move(bobKeys.second));    // Bob's B0 (pre-key) public part
+    conv->setA0(move(A0));                  // Alice's generated pre-key.
     conv->setRK(root);
     conv->setCKr(chain);
-    conv->setPreKeyId(bobPreKeyId);
+    conv->setPreKeyId(bobPreKeyId);         // remember which of Bob's pre-key we used
     conv->setRatchetFlag(true);
     conv->storeConversation(store);
     retVal = conv->getErrorCode();
