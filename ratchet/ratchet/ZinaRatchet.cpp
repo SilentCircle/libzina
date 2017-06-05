@@ -630,7 +630,7 @@ decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& 
 
     if (conv->getContextId() != 0 && msgStruct.contextId != 0 && conv->getContextId() != msgStruct.contextId) {
         LOGGER(ERROR, __func__, " <-- Context ID mismatch, message ignored, data out of sync: ", conv->getContextId(), ", ", msgStruct.contextId);
-        conv->setErrorCode(CONTEXT_ID_MISTMATCH);
+        conv->setErrorCode(CONTEXT_ID_MISMATCH);
         return shared_ptr<string>();
     }
 
