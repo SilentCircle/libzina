@@ -381,6 +381,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
         msgInfo->queueInfo_transportMsgId = transportMsgId | (counter << 4) | messageType;
         msgInfo->queueInfo_toSibling = toSibling;
         msgInfo->queueInfo_newUserDevice = newUser;
+        msgInfo->queueInfo_callbackAction = NoAction;
         counter++;
 
         // Prepare the return data structure and fill into list
@@ -543,7 +544,7 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, unique_ptr<Z
         getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
         return result;
     }
-    zinaConversation->storeConversation(*store_);
+    zinaConversation->storeConversation(*store_);   // TODO - error handling!!
     /*
      * Create the message envelope:
      {
