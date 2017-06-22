@@ -544,7 +544,12 @@ AppInterfaceImpl::sendMessageExisting(const CmdQueueInfo &sendInfo, unique_ptr<Z
         getAndMaintainRetainInfo(sendInfo.queueInfo_transportMsgId  & ~0xff, false);
         return result;
     }
-    zinaConversation->storeConversation(*store_);   // TODO - error handling!!
+    result = zinaConversation->storeConversation(*store_);
+    if (result != SUCCESS) {
+        LOGGER(ERROR, "Storing ratchet data failed after encryption, device id: ", sendInfo.queueInfo_deviceId);
+        LOGGER(INFO, __func__, " <-- Encryption failed.");
+        return result;
+    }
     /*
      * Create the message envelope:
      {
