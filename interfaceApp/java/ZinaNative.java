@@ -1394,9 +1394,11 @@ public abstract class ZinaNative { //  extends Service {  -- depends on the impl
      * {
      *   "uid":          "<string>"
      *   "display_name": "<string>"
+     *   "display_organization": "<string>"
      *   "alias0":       "<string>"
      *   "lookup_uri":   "<string>"
      *   "avatar_url":   "<string>"
+     *   "same_organization": "<bool>"
      *   "dr_enabled":   "<bool>"
      * }
      * </pre>
