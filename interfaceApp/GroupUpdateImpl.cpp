@@ -726,6 +726,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         returnCode = insertNewGroup(groupId, *changeSet, 0, nullptr);
         if (returnCode < 0) {
             errorCode_ = returnCode;
+            updateInProgress = true;
             return returnCode;
         }
     }
@@ -737,6 +738,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_NAME, updateIdGlobal, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
+            updateInProgress = true;
             return returnCode;
         }
         store_->setGroupName(groupId, changeSet->updatename().name());
@@ -745,6 +747,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_AVATAR, updateIdGlobal, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
+            updateInProgress = true;
             return returnCode;
         }
         store_->setGroupAvatarInfo(groupId, changeSet->updateavatar().avatar());
@@ -753,6 +756,7 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
         returnCode = prepareChangeSetClocks(groupId, binDeviceId, changeSet, GROUP_SET_BURN, updateIdGlobal, *store_);
         if (returnCode < 0) {
             errorCode_ = returnCode;
+            updateInProgress = true;
             return returnCode;
         }
         store_->setGroupBurnTime(groupId, changeSet->updateburn().burn_ttl_sec(), changeSet->updateburn().burn_mode());
