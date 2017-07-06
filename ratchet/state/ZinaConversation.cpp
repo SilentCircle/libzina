@@ -72,7 +72,6 @@ int32_t ZinaConversation::storeConversation(SQLiteStoreConv &store)
     Utilities::wipeMemory((void*)data->data(), data->size());
 
     delete data;
-    errorCode_ = SUCCESS;
     if (SQL_FAIL(result)) {
         errorCode_ = DATABASE_ERROR;
         sqlErrorCode_ = result;
@@ -119,8 +118,6 @@ int32_t ZinaConversation::renameConversation(const string& localUserOld, const s
 
 int32_t ZinaConversation::storeStagedMks(SQLiteStoreConv &store) {
     LOGGER(DEBUGGING, __func__, " -->");
-
-    errorCode_ = SUCCESS;
 
     for (; !stagedMk.empty(); stagedMk.pop_front()) {
         string& mkIvMac = stagedMk.front();

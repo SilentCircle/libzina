@@ -25,6 +25,9 @@ static const char *beginTransactionSql  = "BEGIN TRANSACTION;";
 static const char *commitTransactionSql = "COMMIT;";
 static const char *rollbackTransactionSql = "ROLLBACK TRANSACTION;";
 
+static const char *beginSavepointSql  = "SAVEPOINT %s;";
+static const char *commitSavepointSql = "RELEASE SAVEPOINT %s;";
+static const char *rollbackSavepointSql = "ROLLBACK TO SAVEPOINT %s;";
 
 /* *****************************************************************************
  * SQL statements to process the sessions table.
@@ -242,6 +245,67 @@ int SQLiteStoreConv::rollbackTransaction()
 cleanup:
     sqlite3_finalize(stmt);
     return sqlResult;
+}
+
+
+
+int SQLiteStoreConv::beginSavepoint(const std::string& savepointName)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    char cmdBuffer[200];
+
+    snprintf(cmdBuffer, 190, beginSavepointSql, savepointName.c_str());
+    SQLITE_CHK(SQLITE_PREPARE(db, cmdBuffer, -1, &stmt, NULL));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlResult;
+}
+
+int SQLiteStoreConv::commitSavepoint(const std::string& savepointName)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    char cmdBuffer[200];
+
+    snprintf(cmdBuffer, 190, commitSavepointSql, savepointName.c_str());
+    SQLITE_CHK(SQLITE_PREPARE(db, cmdBuffer, -1, &stmt, NULL));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlResult;
+}
+
+
+int SQLiteStoreConv::rollbackSavepoint(const std::string& savepointName)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+    char cmdBuffer[200];
+
+    snprintf(cmdBuffer, 190, rollbackSavepointSql, savepointName.c_str());
+    SQLITE_CHK(SQLITE_PREPARE(db, cmdBuffer, -1, &stmt, NULL));
+
+    sqlResult = sqlite3_step(stmt);
+    if (sqlResult != SQLITE_DONE) {
+        ERRMSG;
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    return sqlResult;
+
 }
 
 static int32_t enableForeignKeys(sqlite3* db)
@@ -663,6 +727,8 @@ cleanup:
 
 int32_t SQLiteStoreConv::storeConversation(const string& name, const string& longDevId, const string& ownName, const string& data)
 {
+    static char savepointName[] = "conversation";
+
     sqlite3_stmt *stmt;
     int32_t sqlResult;
 
@@ -689,7 +755,7 @@ int32_t SQLiteStoreConv::storeConversation(const string& name, const string& lon
     SQLITE_CHK(sqlite3_bind_text(stmt, 3, devId, devIdLen, SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_text(stmt, 4, ownName.data(), static_cast<int32_t>(ownName.size()), SQLITE_STATIC));
 
-    beginTransaction();
+    beginSavepoint(savepointName);
     sqlResult = sqlite3_step(stmt);
     ERRMSG;
     sqlite3_finalize(stmt);
@@ -707,11 +773,11 @@ int32_t SQLiteStoreConv::storeConversation(const string& name, const string& lon
         ERRMSG;
     }
     if (!SQL_FAIL(sqlResult)) {
-        commitTransaction();
+        commitSavepoint(savepointName);
     }
     else {
         LOGGER(ERROR, __func__, " Store conversation failed, rolling back transaction");
-        rollbackTransaction();
+        rollbackSavepoint(savepointName);
     }
 
 cleanup:

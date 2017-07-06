@@ -817,6 +817,10 @@ public:
     int commitTransaction();
     int rollbackTransaction();
 
+    int beginSavepoint(const std::string& savepointName);
+    int commitSavepoint(const std::string& savepointName);
+    int rollbackSavepoint(const std::string& savepointName);
+
     int32_t getExtendedErrorCode() const { return extendedErrorCode_; }
 
 private:
