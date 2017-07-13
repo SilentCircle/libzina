@@ -599,14 +599,14 @@ int32_t SQLiteStoreConv::updateDb(int32_t oldVersion, int32_t newVersion) {
 const static char* dummyId = "__DUMMY__";
 
 
-shared_ptr<list<string> > SQLiteStoreConv::getKnownConversations(const string& ownName, int32_t* sqlCode)
+unique_ptr<set<std::string> >  SQLiteStoreConv::getKnownConversations(const string& ownName, int32_t* sqlCode)
 {
     sqlite3_stmt *stmt;
     int32_t nameLen;
     int32_t sqlResult;
 
     LOGGER(DEBUGGING, __func__, " -->");
-    shared_ptr<list<string> > names = make_shared<list<string> >();
+    unique_ptr<set<string> > names(new set<string>);
 
     // selectConvNames = "SELECT name FROM Conversations WHERE ownName=?1 ORDER BY name;";
     SQLITE_CHK(SQLITE_PREPARE(db, selectConvNames, -1, &stmt, NULL));
@@ -615,7 +615,7 @@ shared_ptr<list<string> > SQLiteStoreConv::getKnownConversations(const string& o
     while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         nameLen = sqlite3_column_bytes(stmt, 0);
         string name((const char*)sqlite3_column_text(stmt, 0), static_cast<size_t>(nameLen));
-        names->push_back(name);
+        names->insert(name);
     }
 
 cleanup:
@@ -667,8 +667,9 @@ int32_t SQLiteStoreConv::getLongDeviceIds(const string& name, const string& ownN
     while ((sqlResult = sqlite3_step(stmt)) == SQLITE_ROW) {
         idLen = sqlite3_column_bytes(stmt, 0);
         StringUnique id(new string((const char*)sqlite3_column_text(stmt, 0), static_cast<size_t>(idLen)));
-        if (id->compare(0, id->size(), dummyId, id->size()) == 0)
+        if (id->compare(0, id->size(), dummyId, id->size()) == 0 || id->find('_') != string::npos) {
             continue;
+        }
         devIds.push_back(move(id));
     }
 

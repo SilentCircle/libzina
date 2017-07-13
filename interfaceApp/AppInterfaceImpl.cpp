@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#include <set>
 #include "AppInterfaceImpl.h"
 
 #include "../keymanagment/PreKeys.h"
@@ -101,7 +102,7 @@ string* AppInterfaceImpl::getKnownUsers()
         return NULL;
     }
 
-    shared_ptr<list<string> > names = store_->getKnownConversations(ownUser_, &sqlCode);
+    unique_ptr<set<string> > names = store_->getKnownConversations(ownUser_, &sqlCode);
 
     if (SQL_FAIL(sqlCode) || !names) {
         LOGGER(INFO, __func__, " No known Axolotl conversations.");
@@ -116,10 +117,8 @@ string* AppInterfaceImpl::getKnownUsers()
     cJSON_AddItemToObject(root, "version", cJSON_CreateNumber(1));
     cJSON_AddItemToObject(root, "users", nameArray = cJSON_CreateArray());
 
-    for (int32_t i = 0; i < size; i++) {
-        const string& name = names->front();
-        cJSON_AddItemToArray(nameArray, cJSON_CreateString(name.c_str()));
-        names->pop_front();
+    for (auto name = names->cbegin(); name != names->cend(); ++name) {
+        cJSON_AddItemToArray(nameArray, cJSON_CreateString((*name).c_str()));
     }
     char *out = cJSON_PrintUnformatted(root);
     string* retVal = new string(out);

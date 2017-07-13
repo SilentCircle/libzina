@@ -25,6 +25,7 @@ limitations under the License.
 
 #include <stdint.h>
 #include <list>
+#include <set>
 
 #include "../../logging/ZinaLogging.h"
 #include "../../util/cJSON.h"
@@ -158,10 +159,10 @@ public:
      * Assemble a list of names for all known identities. 
      * 
      * @param sqlCode If not @c NULL returns the SQLite return/error code
-     * @return A new list with the, an empty list if now identities available,
+     * @return A new set with the names, an empty list if now identities available,
      *         NULL in case of error
      */
-    std::shared_ptr<std::list<std::string> > getKnownConversations(const std::string& ownName, int32_t* sqlCode = NULL);
+    std::unique_ptr<std::set<std::string> > getKnownConversations(const std::string& ownName, int32_t* sqlCode = NULL);
 
     /**
      * @brief Get a list of long device ids for a name.
