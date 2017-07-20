@@ -59,6 +59,9 @@ target_link_libraries(changesetsend_test gtest_main ${zinaLibName})
 add_executable(changesetrecv_test ChangesetRecvTests.cpp)
 target_link_libraries(changesetrecv_test gtest_main ${zinaLibName})
 
+add_executable(transport_test transportTest.cpp)
+target_link_libraries(transport_test gtest_main ${zinaLibName})
+
 # 
 # ############## Java testing #####################
 # 
