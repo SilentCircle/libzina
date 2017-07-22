@@ -271,7 +271,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
     }
 
     if (recipient == ownUser_ && !toSibling) {
-        LOGGER(WARNING, "Sending message to own receipient but toSibling no set, forcing toSibling.");
+        LOGGER(WARNING, "Sending message to own recipient but toSibling not set, forcing toSibling.");
         toSibling = true;
     }
 //    uint8_t localRetentionFlags = 0;

@@ -17,6 +17,7 @@ limitations under the License.
 
 #include <thread>
 #include <condition_variable>
+#include <cstdlib>
 
 #ifndef MAX_TIME_WAIT_FOR_SLOTS
 #define MAX_TIME_WAIT_FOR_SLOTS 1500
@@ -53,7 +54,7 @@ typedef struct SendMsgInfo_ {
     string recipient;
     string deviceId;
     string envelope;
-    uint64_t transportMsgId;
+    uint64_t transportMsgId = 0;
 } SendMsgInfo;
 
 static mutex sendListLock;

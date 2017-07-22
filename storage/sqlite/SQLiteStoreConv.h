@@ -26,6 +26,7 @@ limitations under the License.
 #include <stdint.h>
 #include <list>
 #include <set>
+#include <vector>
 
 #include "../../logging/ZinaLogging.h"
 #include "../../util/cJSON.h"
@@ -194,7 +195,7 @@ public:
     int32_t getLongDeviceIds(const std::string& name, const std::string& ownName, std::list<StringUnique> &devIds);
 
     // ***** Conversation store
-    std::string* loadConversation(const std::string& name, const std::string& longDevId, const std::string& ownName, int32_t* sqlCode = NULL) const;
+    StringUnique loadConversation(const std::string& name, const std::string& longDevId, const std::string& ownName, int32_t* sqlCode = NULL) const;
 
     int32_t storeConversation(const std::string& name, const std::string& longDevId, const std::string& ownName, const std::string& data);
 
@@ -814,6 +815,34 @@ public:
     int32_t cleanWaitAck(time_t timestamp);
 
 
+    /**
+     * @brief Insert a pending change set.
+     *
+     * The pending change set data is a serialized proto-buffer.
+     *
+     * @param groupId The group id
+     * @param ChangeSet The change
+     * @return SQLite code
+     */
+    int32_t insertChangeSet(const std::string &groupId, const std::string& changeSet);
+
+    /**
+     * @brief Remove a single pending change set.
+     *
+     * @param groupId The group id
+     * @return SQLite code
+     */
+    int32_t removeChangeSet(const std::string &groupId);
+
+    /**
+     * @brief Get all pending change sets of a group.
+     *
+     * @param groupId The group id
+     * @return SQLite code
+     */
+    int32_t getGroupChangeSet(const std::string &groupId, std::string* changeSet);
+
+
     int beginTransaction();
     int commitTransaction();
     int rollbackTransaction();
@@ -823,6 +852,7 @@ public:
     int rollbackSavepoint(const std::string& savepointName);
 
     int32_t getExtendedErrorCode() const { return extendedErrorCode_; }
+
 
 private:
     SQLiteStoreConv();
