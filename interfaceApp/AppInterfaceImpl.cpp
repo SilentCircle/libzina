@@ -594,14 +594,15 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     list<pair<string, string> > devices;
     int32_t errorCode = Provisioning::getZinaDeviceIds(userName, authorization_, devices);
 
-    if (errorCode != SUCCESS || devices.empty()) {
+    if (errorCode != SUCCESS) {
         sendActionCallback(ReScanAction);
         return;
     }
 
     // Get known devices from DB, compare with devices from provisioning server
     // and remove old devices and their data, i.e. devices not longer known to provisioning server
-    //
+    // If device list from provisioning server is empty the following loop removes _all_
+    // devices and contexts of the user.
     list<StringUnique> devicesDb;
 
     store_->getLongDeviceIds(userName, ownUser_, devicesDb);
@@ -692,7 +693,6 @@ void AppInterfaceImpl::rescanUserDevicesCommand(const CmdQueueInfo &command)
     // No new devices found, unlock/sync and return
     sendActionCallback(ReScanAction);
     LOGGER(DEBUGGING, __func__, " <-- no re-scan necessary");
-    return;
 }
 
 void AppInterfaceImpl::queueMessageToSingleUserDevice(const string &userId, const string &msgId, const string &deviceId,
