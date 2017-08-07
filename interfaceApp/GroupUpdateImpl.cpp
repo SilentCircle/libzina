@@ -736,7 +736,8 @@ int32_t AppInterfaceImpl::prepareChangeSetSend(const string &groupId) {
 
     // Check if this change set is for a new group
     if (!store_->hasGroup(groupId)) {
-        returnCode = insertNewGroup(groupId, *changeSet, 0, nullptr);
+        struct timeval emptyTime {0};
+        returnCode = insertNewGroup(groupId, *changeSet, emptyTime, nullptr);
         if (returnCode < 0) {
             errorCode_ = returnCode;
             updateInProgress = true;
