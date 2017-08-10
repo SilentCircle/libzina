@@ -341,7 +341,7 @@ AppInterfaceImpl::prepareMessageInternal(const string& messageDescriptor,
 
     uint64_t counter = 0;
 
-    for (auto idDevInfo: *idKeys) {
+    for (const auto& idDevInfo: *idKeys) {
         // idDevInfo has the format:
         //       0           1         2        3
         // 'identityKey:deviceName:deviceId:verifyState', deviceName may be empty

@@ -604,14 +604,15 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
 
         if (changeSet.has_updatename()) {
             // Update the group's name
+            stamp.tv_usec++;
             const int32_t result = processUpdateName(changeSet.updatename(), groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
-            stamp.tv_usec++;
         }
         if (changeSet.has_updateavatar()) {
             // Update the group's avatar info
+            stamp.tv_usec++;
             const int32_t result = processUpdateAvatar(changeSet.updateavatar(), groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
@@ -619,11 +620,11 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
         }
         if (changeSet.has_updateburn()) {
             // Update the group's burn timer info
+            stamp.tv_usec++;
             const int32_t result = processUpdateBurn(changeSet.updateburn(), groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
-            stamp.tv_usec++;
         }
         if (changeSet.has_burnmessage()) {
             // burn a group's message (manual burn)
@@ -635,11 +636,11 @@ int32_t AppInterfaceImpl::processReceivedChangeSet(const GroupChangeSet &changeS
         if ((changeSet.has_updateaddmember() && changeSet.updateaddmember().addmember_size() > 0) ||
             (changeSet.has_updatermmember() && changeSet.updatermmember().rmmember_size() > 0)) {
 
+            stamp.tv_usec++;
             const int32_t result = processUpdateMembers(changeSet, groupId, stamp, ackRmSet);
             if (result != SUCCESS) {
                 return result;
             }
-            stamp.tv_usec++;
         }
     }
     LOGGER(DEBUGGING, __func__, " <-- ");
