@@ -289,6 +289,110 @@ shared_ptr<UserInfo> NameLookup::refreshUserData(const string& aliasUuid, const 
     return it->second;
 }
 
+void NameLookup::setUserInfo(const string& aliasUuid, const string& info) {
+    LOGGER(DEBUGGING, __func__ , " --> ", aliasUuid, ", ", info);
+
+    int32_t code;
+    // Check if this alias name already exists in the name map
+    unique_lock<mutex> lck(nameLock);
+    map<string, shared_ptr<UserInfo> >::iterator it;
+    it = nameMap_.find(aliasUuid);
+    if (it == nameMap_.end()) {
+        shared_ptr<UserInfo> userInfo = make_shared<UserInfo>();
+        code = parseUserInfo(info, *userInfo);
+        if (code != OK) {
+            LOGGER(ERROR, __func__ , " Error return from parsing.");
+            return;
+        }
+
+        pair<map<string, shared_ptr<UserInfo> >::iterator, bool> ret;
+
+        // Check if we already have the user's UID in the map. If not then cache the
+        // userInfo with the UID
+        it = nameMap_.find(userInfo->uniqueId);
+        if (it == nameMap_.end()) {
+            insertUserInfoWithUuid(aliasUuid, userInfo);
+        }
+        else {
+            ret = nameMap_.insert(pair<string, shared_ptr<UserInfo> >(aliasUuid, it->second));
+            userInfo = it->second;
+        }
+        lck.unlock();
+        if (userInfo->displayName == USER_NULL_NAME) {
+            LOGGER(DEBUGGING, __func__ , " returning null name");
+        }
+        LOGGER(DEBUGGING, __func__ , " <-- ", userInfo->displayName);
+        return;
+    }
+
+    UserInfo userInfo;
+    code = parseUserInfo(info, userInfo);
+    if (code != OK) {
+        LOGGER(ERROR, __func__ , " Error return from parsing.");
+        return;
+    }
+    // Replace existing data, don't touch the lookup_uri because the server _never_ sends
+    // it. Only the application may delete it.
+    it->second->displayName.assign(userInfo.displayName);
+    it->second->alias0.assign(userInfo.alias0);
+    it->second->avatarUrl.assign(userInfo.avatarUrl);
+    it->second->organization.assign(userInfo.organization);
+    it->second->drEnabled = userInfo.drEnabled;
+
+    it->second->drRrmm = userInfo.drRrmm;
+    it->second->drRrmp = userInfo.drRrmp;
+    it->second->drRrcm = userInfo.drRrcm;
+    it->second->drRrcp = userInfo.drRrcp;
+    it->second->drRrap = userInfo.drRrap;
+    it->second->retainForOrg = userInfo.retainForOrg;
+
+    lck.unlock();
+
+    LOGGER(DEBUGGING, __func__ , " <-- ", userInfo.displayName);
+}
+
+bool NameLookup::isUserInfoAvailable(const string& uuid) {
+    LOGGER(DEBUGGING, __func__ , " --> ", uuid);
+    if (uuid.empty()) {
+        LOGGER(ERROR, __func__ , " <-- empty alias name");
+        return false;
+    }
+
+    // Check if this alias name exists in the name map
+    unique_lock<mutex> lck(nameLock);
+    map<string, shared_ptr<UserInfo> >::iterator it;
+    it = nameMap_.find(uuid);
+    if (it != nameMap_.end()) {
+        LOGGER(DEBUGGING, __func__ , " <-- cached data present");
+        return true;
+    }
+    LOGGER(DEBUGGING, __func__ , " <-- ", uuid, " not cached ");
+    return false;
+}
+
+shared_ptr<list<string> > NameLookup::getUnknownUsers(const list<string> &aliases) {
+    LOGGER(DEBUGGING, __func__ , " --> ");
+    if (aliases.empty()) {
+        LOGGER(DEBUGGING, __func__ , " <-- no aliases requested");
+        return shared_ptr<list<string> >();
+    }
+
+    shared_ptr<list<string> > unknownAliasList = make_shared<list<string> >();
+    unique_lock<mutex> lck(nameLock);
+    for (list<string>::const_iterator lit = aliases.begin(); lit != aliases.end(); ++lit) {
+        string alias = *lit;
+        map<string, shared_ptr<UserInfo> >::iterator it;
+        it = nameMap_.find(alias);
+        if (it == nameMap_.end()) {
+            LOGGER(DEBUGGING, __func__ , " <-- no cached data for ", alias);
+            unknownAliasList->push_back(alias);
+        }
+    }
+    lck.unlock();
+    LOGGER(DEBUGGING, __func__ , " <--");
+    return unknownAliasList;
+}
+
 const shared_ptr<list<string> > NameLookup::getAliases(const string& uuid)
 {
     LOGGER(DEBUGGING, __func__ , " -->");

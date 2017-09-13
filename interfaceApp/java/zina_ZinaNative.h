@@ -627,6 +627,30 @@ JNIEXPORT jbyteArray JNICALL Java_zina_ZinaNative_getUserInfo
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    setUserInfo
+ * Signature: (Ljava/lang/String;Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_zina_ZinaNative_setUserInfo
+  (JNIEnv *, jclass, jstring, jstring);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    isUserInfoAvailable
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_zina_ZinaNative_isUserInfoAvailable
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    getUnknownUsers
+ * Signature: (Ljava/util/List;)Ljava/util/List;
+ */
+JNIEXPORT jobject JNICALL Java_zina_ZinaNative_getUnknownUsers
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    refreshUserData
  * Signature: (Ljava/lang/String;[B)[B
  */

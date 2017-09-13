@@ -186,6 +186,12 @@ namespace zina {
          */
         std::shared_ptr<UserInfo> refreshUserData(const std::string& aliasUuid, const std::string& authorization);
 
+        void setUserInfo(const std::string& aliasUuid, const std::string& info);
+
+        bool isUserInfoAvailable(const std::string& aliasUuid);
+
+        std::shared_ptr<std::list<std::string> > getUnknownUsers(const std::list<std::string> &aliases);
+
     private:
         int32_t parseUserInfo(const std::string& json, UserInfo &userInfo);
         NameLookup::AliasAdd insertUserInfoWithUuid(const std::string& alias, std::shared_ptr<UserInfo> userInfo);
