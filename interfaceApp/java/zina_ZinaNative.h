@@ -219,6 +219,14 @@ JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_getAllGroupMembers
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    getAllGroupMemberUuids
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_getAllGroupMemberUuids
+  (JNIEnv *, jclass, jstring, jintArray);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    getGroupMember
  * Signature: (Ljava/lang/String;[B[I)[B
  */

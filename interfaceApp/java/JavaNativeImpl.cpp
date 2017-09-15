@@ -1527,6 +1527,51 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    getAllGroupMemberUuids
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(getAllGroupMemberUuids)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray code)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    if (groupUuid == NULL)
+        return NULL;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    list<string> members;
+    int32_t result = zinaAppInterface->getStore()->getAllGroupMemberUuids(group, members);
+    setReturnCode(env, code, result);
+
+    size_t size = members.size();
+    if (size == 0)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    for (auto& it : members) {
+        jbyteArray retData = stringToArray(env, it);
+
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
+}
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    getGroupMember
  * Signature: (Ljava/lang/String;[B[I)[B
  */
