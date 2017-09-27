@@ -35,7 +35,7 @@ limitations under the License.
 #ifdef ANDROID
 #include "android/jni/sqlcipher/sqlite3.h"
 #else
-#include <sqlcipher/sqlite3.h>
+#include "sqlcipher/sqlite3.h"
 #endif
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
