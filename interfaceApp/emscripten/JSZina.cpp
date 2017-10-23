@@ -239,6 +239,9 @@ public:
 
     // Manually burn a group message
     int burnGroupMessage(const wstring& uuid, const wstring& msgId);
+
+    // Get the canonical name (Uid) for the user.
+    wstring getUid(const wstring& userid16, const wstring& auth16);
 };
 
 // TODO: Find a way around using a global
@@ -1404,6 +1407,29 @@ int JSZina::burnGroupMessage(const wstring& uuid16, const wstring& msgId16)
     return result == SUCCESS ? OK : result;
 }
 
+wstring JSZina::getUid(const wstring& userid16, const wstring& auth16)
+{
+    string userid = toUTF8(userid16);
+    string auth = toUTF8(auth16);
+
+    if (userid16.empty()) {
+      return toUTF16("");
+    }
+
+    if (auth.empty()) {
+        auth = zinaAppInterface_->getOwnAuthrization();
+    }
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    string uid = nameCache->getUid(userid, auth);
+
+    if (uid.empty()) {
+        return toUTF16("");
+    }
+
+    return toUTF16(uid);
+}
+
 EMSCRIPTEN_BINDINGS(js_axolotl) {
     register_vector<std::string>("VectorString");
     class_<JSZina>("JSZina")
@@ -1456,6 +1482,7 @@ EMSCRIPTEN_BINDINGS(js_axolotl) {
       .function("sendGroupMessage", &JSZina::sendGroupMessage)
       .function("setZinaLogLevel", &JSZina::setZinaLogLevel)
       .function("burnGroupMessage", &JSZina::burnGroupMessage)
+      .function("getUid", &JSZina::getUid)
       .class_function("initializeFS", &JSZina::initializeFS)
       .class_function("getStoredApiKey", &JSZina::getStoredApiKey)
       .class_function("setStoredApiKey", &JSZina::setStoredApiKey)
