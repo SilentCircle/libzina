@@ -490,12 +490,26 @@ class GroupUpdateSetName : public ::google::protobuf::MessageLite {
   inline ::std::string* release_name();
   inline void set_allocated_name(::std::string* name);
 
+  // optional string user_id = 4;
+  inline bool has_user_id() const;
+  inline void clear_user_id();
+  static const int kUserIdFieldNumber = 4;
+  inline const ::std::string& user_id() const;
+  inline void set_user_id(const ::std::string& value);
+  inline void set_user_id(const char* value);
+  inline void set_user_id(const char* value, size_t size);
+  inline ::std::string* mutable_user_id();
+  inline ::std::string* release_user_id();
+  inline void set_allocated_user_id(::std::string* user_id);
+
   // @@protoc_insertion_point(class_scope:zina.GroupUpdateSetName)
  private:
   inline void set_has_update_id();
   inline void clear_has_update_id();
   inline void set_has_name();
   inline void clear_has_name();
+  inline void set_has_user_id();
+  inline void clear_has_user_id();
 
   ::std::string _unknown_fields_;
 
@@ -504,6 +518,7 @@ class GroupUpdateSetName : public ::google::protobuf::MessageLite {
   ::std::string* update_id_;
   ::google::protobuf::RepeatedPtrField< ::zina::VClock > vclock_;
   ::std::string* name_;
+  ::std::string* user_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
   #else
@@ -614,12 +629,26 @@ class GroupUpdateSetAvatar : public ::google::protobuf::MessageLite {
   inline ::std::string* release_avatar();
   inline void set_allocated_avatar(::std::string* avatar);
 
+  // optional string user_id = 4;
+  inline bool has_user_id() const;
+  inline void clear_user_id();
+  static const int kUserIdFieldNumber = 4;
+  inline const ::std::string& user_id() const;
+  inline void set_user_id(const ::std::string& value);
+  inline void set_user_id(const char* value);
+  inline void set_user_id(const char* value, size_t size);
+  inline ::std::string* mutable_user_id();
+  inline ::std::string* release_user_id();
+  inline void set_allocated_user_id(::std::string* user_id);
+
   // @@protoc_insertion_point(class_scope:zina.GroupUpdateSetAvatar)
  private:
   inline void set_has_update_id();
   inline void clear_has_update_id();
   inline void set_has_avatar();
   inline void clear_has_avatar();
+  inline void set_has_user_id();
+  inline void clear_has_user_id();
 
   ::std::string _unknown_fields_;
 
@@ -628,6 +657,7 @@ class GroupUpdateSetAvatar : public ::google::protobuf::MessageLite {
   ::std::string* update_id_;
   ::google::protobuf::RepeatedPtrField< ::zina::VClock > vclock_;
   ::std::string* avatar_;
+  ::std::string* user_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
   #else
@@ -753,6 +783,18 @@ class GroupUpdateSetBurn : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::uint64 burn_ttl_sec() const;
   inline void set_burn_ttl_sec(::google::protobuf::uint64 value);
 
+  // optional string user_id = 5;
+  inline bool has_user_id() const;
+  inline void clear_user_id();
+  static const int kUserIdFieldNumber = 5;
+  inline const ::std::string& user_id() const;
+  inline void set_user_id(const ::std::string& value);
+  inline void set_user_id(const char* value);
+  inline void set_user_id(const char* value, size_t size);
+  inline ::std::string* mutable_user_id();
+  inline ::std::string* release_user_id();
+  inline void set_allocated_user_id(::std::string* user_id);
+
   // @@protoc_insertion_point(class_scope:zina.GroupUpdateSetBurn)
  private:
   inline void set_has_update_id();
@@ -761,6 +803,8 @@ class GroupUpdateSetBurn : public ::google::protobuf::MessageLite {
   inline void clear_has_burn_mode();
   inline void set_has_burn_ttl_sec();
   inline void clear_has_burn_ttl_sec();
+  inline void set_has_user_id();
+  inline void clear_has_user_id();
 
   ::std::string _unknown_fields_;
 
@@ -769,6 +813,7 @@ class GroupUpdateSetBurn : public ::google::protobuf::MessageLite {
   ::std::string* update_id_;
   ::google::protobuf::RepeatedPtrField< ::zina::VClock > vclock_;
   ::google::protobuf::uint64 burn_ttl_sec_;
+  ::std::string* user_id_;
   int burn_mode_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
@@ -868,10 +913,24 @@ class GroupUpdateAddMember : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedPtrField< ::zina::Member >*
       mutable_addmember();
 
+  // optional string user_id = 3;
+  inline bool has_user_id() const;
+  inline void clear_user_id();
+  static const int kUserIdFieldNumber = 3;
+  inline const ::std::string& user_id() const;
+  inline void set_user_id(const ::std::string& value);
+  inline void set_user_id(const char* value);
+  inline void set_user_id(const char* value, size_t size);
+  inline ::std::string* mutable_user_id();
+  inline ::std::string* release_user_id();
+  inline void set_allocated_user_id(::std::string* user_id);
+
   // @@protoc_insertion_point(class_scope:zina.GroupUpdateAddMember)
  private:
   inline void set_has_update_id();
   inline void clear_has_update_id();
+  inline void set_has_user_id();
+  inline void clear_has_user_id();
 
   ::std::string _unknown_fields_;
 
@@ -879,6 +938,7 @@ class GroupUpdateAddMember : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::std::string* update_id_;
   ::google::protobuf::RepeatedPtrField< ::zina::Member > addmember_;
+  ::std::string* user_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
   #else
@@ -977,10 +1037,24 @@ class GroupUpdateRmMember : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::RepeatedPtrField< ::zina::Member >*
       mutable_rmmember();
 
+  // optional string user_id = 3;
+  inline bool has_user_id() const;
+  inline void clear_user_id();
+  static const int kUserIdFieldNumber = 3;
+  inline const ::std::string& user_id() const;
+  inline void set_user_id(const ::std::string& value);
+  inline void set_user_id(const char* value);
+  inline void set_user_id(const char* value, size_t size);
+  inline ::std::string* mutable_user_id();
+  inline ::std::string* release_user_id();
+  inline void set_allocated_user_id(::std::string* user_id);
+
   // @@protoc_insertion_point(class_scope:zina.GroupUpdateRmMember)
  private:
   inline void set_has_update_id();
   inline void clear_has_update_id();
+  inline void set_has_user_id();
+  inline void clear_has_user_id();
 
   ::std::string _unknown_fields_;
 
@@ -988,6 +1062,7 @@ class GroupUpdateRmMember : public ::google::protobuf::MessageLite {
   mutable int _cached_size_;
   ::std::string* update_id_;
   ::google::protobuf::RepeatedPtrField< ::zina::Member > rmmember_;
+  ::std::string* user_id_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_GroupProtocol_2eproto_impl();
   #else
@@ -1904,6 +1979,82 @@ inline void GroupUpdateSetName::set_allocated_name(::std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateSetName.name)
 }
 
+// optional string user_id = 4;
+inline bool GroupUpdateSetName::has_user_id() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void GroupUpdateSetName::set_has_user_id() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void GroupUpdateSetName::clear_has_user_id() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void GroupUpdateSetName::clear_user_id() {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_->clear();
+  }
+  clear_has_user_id();
+}
+inline const ::std::string& GroupUpdateSetName::user_id() const {
+  // @@protoc_insertion_point(field_get:zina.GroupUpdateSetName.user_id)
+  return *user_id_;
+}
+inline void GroupUpdateSetName::set_user_id(const ::std::string& value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupUpdateSetName.user_id)
+}
+inline void GroupUpdateSetName::set_user_id(const char* value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupUpdateSetName.user_id)
+}
+inline void GroupUpdateSetName::set_user_id(const char* value, size_t size) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupUpdateSetName.user_id)
+}
+inline ::std::string* GroupUpdateSetName::mutable_user_id() {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupUpdateSetName.user_id)
+  return user_id_;
+}
+inline ::std::string* GroupUpdateSetName::release_user_id() {
+  clear_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = user_id_;
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupUpdateSetName::set_allocated_user_id(::std::string* user_id) {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
+  }
+  if (user_id) {
+    set_has_user_id();
+    user_id_ = user_id;
+  } else {
+    clear_has_user_id();
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateSetName.user_id)
+}
+
 // -------------------------------------------------------------------
 
 // GroupUpdateSetAvatar
@@ -2090,6 +2241,82 @@ inline void GroupUpdateSetAvatar::set_allocated_avatar(::std::string* avatar) {
   // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateSetAvatar.avatar)
 }
 
+// optional string user_id = 4;
+inline bool GroupUpdateSetAvatar::has_user_id() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void GroupUpdateSetAvatar::set_has_user_id() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void GroupUpdateSetAvatar::clear_has_user_id() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void GroupUpdateSetAvatar::clear_user_id() {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_->clear();
+  }
+  clear_has_user_id();
+}
+inline const ::std::string& GroupUpdateSetAvatar::user_id() const {
+  // @@protoc_insertion_point(field_get:zina.GroupUpdateSetAvatar.user_id)
+  return *user_id_;
+}
+inline void GroupUpdateSetAvatar::set_user_id(const ::std::string& value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupUpdateSetAvatar.user_id)
+}
+inline void GroupUpdateSetAvatar::set_user_id(const char* value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupUpdateSetAvatar.user_id)
+}
+inline void GroupUpdateSetAvatar::set_user_id(const char* value, size_t size) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupUpdateSetAvatar.user_id)
+}
+inline ::std::string* GroupUpdateSetAvatar::mutable_user_id() {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupUpdateSetAvatar.user_id)
+  return user_id_;
+}
+inline ::std::string* GroupUpdateSetAvatar::release_user_id() {
+  clear_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = user_id_;
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupUpdateSetAvatar::set_allocated_user_id(::std::string* user_id) {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
+  }
+  if (user_id) {
+    set_has_user_id();
+    user_id_ = user_id;
+  } else {
+    clear_has_user_id();
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateSetAvatar.user_id)
+}
+
 // -------------------------------------------------------------------
 
 // GroupUpdateSetBurn
@@ -2249,6 +2476,82 @@ inline void GroupUpdateSetBurn::set_burn_ttl_sec(::google::protobuf::uint64 valu
   // @@protoc_insertion_point(field_set:zina.GroupUpdateSetBurn.burn_ttl_sec)
 }
 
+// optional string user_id = 5;
+inline bool GroupUpdateSetBurn::has_user_id() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void GroupUpdateSetBurn::set_has_user_id() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void GroupUpdateSetBurn::clear_has_user_id() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void GroupUpdateSetBurn::clear_user_id() {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_->clear();
+  }
+  clear_has_user_id();
+}
+inline const ::std::string& GroupUpdateSetBurn::user_id() const {
+  // @@protoc_insertion_point(field_get:zina.GroupUpdateSetBurn.user_id)
+  return *user_id_;
+}
+inline void GroupUpdateSetBurn::set_user_id(const ::std::string& value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupUpdateSetBurn.user_id)
+}
+inline void GroupUpdateSetBurn::set_user_id(const char* value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupUpdateSetBurn.user_id)
+}
+inline void GroupUpdateSetBurn::set_user_id(const char* value, size_t size) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupUpdateSetBurn.user_id)
+}
+inline ::std::string* GroupUpdateSetBurn::mutable_user_id() {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupUpdateSetBurn.user_id)
+  return user_id_;
+}
+inline ::std::string* GroupUpdateSetBurn::release_user_id() {
+  clear_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = user_id_;
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupUpdateSetBurn::set_allocated_user_id(::std::string* user_id) {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
+  }
+  if (user_id) {
+    set_has_user_id();
+    user_id_ = user_id;
+  } else {
+    clear_has_user_id();
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateSetBurn.user_id)
+}
+
 // -------------------------------------------------------------------
 
 // GroupUpdateAddMember
@@ -2359,6 +2662,82 @@ GroupUpdateAddMember::mutable_addmember() {
   return &addmember_;
 }
 
+// optional string user_id = 3;
+inline bool GroupUpdateAddMember::has_user_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void GroupUpdateAddMember::set_has_user_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void GroupUpdateAddMember::clear_has_user_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void GroupUpdateAddMember::clear_user_id() {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_->clear();
+  }
+  clear_has_user_id();
+}
+inline const ::std::string& GroupUpdateAddMember::user_id() const {
+  // @@protoc_insertion_point(field_get:zina.GroupUpdateAddMember.user_id)
+  return *user_id_;
+}
+inline void GroupUpdateAddMember::set_user_id(const ::std::string& value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupUpdateAddMember.user_id)
+}
+inline void GroupUpdateAddMember::set_user_id(const char* value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupUpdateAddMember.user_id)
+}
+inline void GroupUpdateAddMember::set_user_id(const char* value, size_t size) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupUpdateAddMember.user_id)
+}
+inline ::std::string* GroupUpdateAddMember::mutable_user_id() {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupUpdateAddMember.user_id)
+  return user_id_;
+}
+inline ::std::string* GroupUpdateAddMember::release_user_id() {
+  clear_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = user_id_;
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupUpdateAddMember::set_allocated_user_id(::std::string* user_id) {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
+  }
+  if (user_id) {
+    set_has_user_id();
+    user_id_ = user_id;
+  } else {
+    clear_has_user_id();
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateAddMember.user_id)
+}
+
 // -------------------------------------------------------------------
 
 // GroupUpdateRmMember
@@ -2467,6 +2846,82 @@ inline ::google::protobuf::RepeatedPtrField< ::zina::Member >*
 GroupUpdateRmMember::mutable_rmmember() {
   // @@protoc_insertion_point(field_mutable_list:zina.GroupUpdateRmMember.rmMember)
   return &rmmember_;
+}
+
+// optional string user_id = 3;
+inline bool GroupUpdateRmMember::has_user_id() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void GroupUpdateRmMember::set_has_user_id() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void GroupUpdateRmMember::clear_has_user_id() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void GroupUpdateRmMember::clear_user_id() {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_->clear();
+  }
+  clear_has_user_id();
+}
+inline const ::std::string& GroupUpdateRmMember::user_id() const {
+  // @@protoc_insertion_point(field_get:zina.GroupUpdateRmMember.user_id)
+  return *user_id_;
+}
+inline void GroupUpdateRmMember::set_user_id(const ::std::string& value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set:zina.GroupUpdateRmMember.user_id)
+}
+inline void GroupUpdateRmMember::set_user_id(const char* value) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(value);
+  // @@protoc_insertion_point(field_set_char:zina.GroupUpdateRmMember.user_id)
+}
+inline void GroupUpdateRmMember::set_user_id(const char* value, size_t size) {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  user_id_->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:zina.GroupUpdateRmMember.user_id)
+}
+inline ::std::string* GroupUpdateRmMember::mutable_user_id() {
+  set_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    user_id_ = new ::std::string;
+  }
+  // @@protoc_insertion_point(field_mutable:zina.GroupUpdateRmMember.user_id)
+  return user_id_;
+}
+inline ::std::string* GroupUpdateRmMember::release_user_id() {
+  clear_has_user_id();
+  if (user_id_ == &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    return NULL;
+  } else {
+    ::std::string* temp = user_id_;
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+    return temp;
+  }
+}
+inline void GroupUpdateRmMember::set_allocated_user_id(::std::string* user_id) {
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
+  }
+  if (user_id) {
+    set_has_user_id();
+    user_id_ = user_id;
+  } else {
+    clear_has_user_id();
+    user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  }
+  // @@protoc_insertion_point(field_set_allocated:zina.GroupUpdateRmMember.user_id)
 }
 
 // -------------------------------------------------------------------

@@ -43,7 +43,7 @@ static void fillMemberArray(cJSON* root, const list<string> &members)
     }
 }
 
-static string prepareMemberList(const string &groupId, const list<string> &members, const char *command, const struct timeval&  stamp) {
+static string prepareMemberList(const string &groupId, const list<string> &members, const char *command, const struct timeval&  stamp, const string& userId) {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
 
@@ -51,6 +51,9 @@ static string prepareMemberList(const string &groupId, const list<string> &membe
     cJSON_AddStringToObject(root, GROUP_ID, groupId.c_str());
     cJSON_AddNumberToObject(root, COMMAND_TIME, stamp.tv_sec);
     cJSON_AddNumberToObject(root, COMMAND_TIME_U, stamp.tv_usec);
+    if (!userId.empty()) {
+        cJSON_AddStringToObject(root, MEMBER_ID, userId.c_str());
+    }
 
     fillMemberArray(root, members);
 
@@ -92,7 +95,7 @@ static string newGroupCommand(const string& groupId, int32_t maxMembers, const s
     return command;
 }
 
-static string newGroupNameCommand(const string& groupId, const string& groupName, const struct timeval&  stamp)
+static string newGroupNameCommand(const string& groupId, const string& groupName, const struct timeval&  stamp, const string& userId)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
@@ -101,6 +104,9 @@ static string newGroupNameCommand(const string& groupId, const string& groupName
     cJSON_AddStringToObject(root, GROUP_NAME, groupName.c_str());
     cJSON_AddNumberToObject(root, COMMAND_TIME, stamp.tv_sec);
     cJSON_AddNumberToObject(root, COMMAND_TIME_U, stamp.tv_usec);
+    if (!userId.empty()) {
+        cJSON_AddStringToObject(root, MEMBER_ID, userId.c_str());
+    }
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -108,7 +114,7 @@ static string newGroupNameCommand(const string& groupId, const string& groupName
     return command;
 }
 
-static string newGroupAvatarCommand(const string& groupId, const string& groupAvatar, const struct timeval&  stamp)
+static string newGroupAvatarCommand(const string& groupId, const string& groupAvatar, const struct timeval&  stamp, const string& userId)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
@@ -117,6 +123,10 @@ static string newGroupAvatarCommand(const string& groupId, const string& groupAv
     cJSON_AddStringToObject(root, GROUP_AVATAR, groupAvatar.c_str());
     cJSON_AddNumberToObject(root, COMMAND_TIME, stamp.tv_sec);
     cJSON_AddNumberToObject(root, COMMAND_TIME_U, stamp.tv_usec);
+    if (!userId.empty()) {
+        cJSON_AddStringToObject(root, MEMBER_ID, userId.c_str());
+    }
+
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -124,7 +134,7 @@ static string newGroupAvatarCommand(const string& groupId, const string& groupAv
     return command;
 }
 
-static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32_t burnMode, const struct timeval&  stamp)
+static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32_t burnMode, const struct timeval&  stamp, const string& userId)
 {
     JsonUnique sharedRoot(cJSON_CreateObject());
     cJSON* root = sharedRoot.get();
@@ -134,6 +144,9 @@ static string newGroupBurnCommand(const string& groupId, int64_t burnTime, int32
     cJSON_AddNumberToObject(root, GROUP_BURN_MODE, burnMode);
     cJSON_AddNumberToObject(root, COMMAND_TIME, stamp.tv_sec);
     cJSON_AddNumberToObject(root, COMMAND_TIME_U, stamp.tv_usec);
+    if (!userId.empty()) {
+        cJSON_AddStringToObject(root, MEMBER_ID, userId.c_str());
+    }
 
     CharUnique out(cJSON_PrintUnformatted(root));
     string command(out.get());
@@ -728,6 +741,7 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
     // In case of a conflict the conflict resolution favoured the remote data
     if (order == After) {
         const string &groupName = changeSet.name();
+        const string &userId = changeSet.has_user_id() ? changeSet.user_id() : "";
         result = store_->setGroupName(groupId, groupName);
         if (SQL_FAIL(result)) {
             errorCode_ = result;
@@ -752,7 +766,7 @@ int32_t AppInterfaceImpl::processUpdateName(const GroupUpdateSetName &changeSet,
         ack->set_type(GROUP_SET_NAME);
         ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
 
-        groupCmdCallback_(newGroupNameCommand(groupId, groupName, stamp));
+        groupCmdCallback_(newGroupNameCommand(groupId, groupName, stamp, userId));
         return SUCCESS;
     }
     GroupUpdateAck *ack = ackSet->add_acks();
@@ -804,6 +818,7 @@ int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &change
     // In case of a conflict the conflict resolution favoured the remote data
     if (order == After) {
         const string &groupAvatar = changeSet.avatar();
+        const string &userId = changeSet.has_user_id() ? changeSet.user_id() : "";
         result = store_->setGroupAvatarInfo(groupId, groupAvatar);
         if (SQL_FAIL(result)) {
             errorCode_ = result;
@@ -828,7 +843,7 @@ int32_t AppInterfaceImpl::processUpdateAvatar(const GroupUpdateSetAvatar &change
         ack->set_type(GROUP_SET_AVATAR);
         ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
 
-        groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar, stamp));
+        groupCmdCallback_(newGroupAvatarCommand(groupId, groupAvatar, stamp, userId));
         return SUCCESS;
     }
     GroupUpdateAck *ack = ackSet->add_acks();
@@ -884,10 +899,11 @@ int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet,
     if (order == After) {
         const int64_t burnTime = changeSet.burn_ttl_sec();
         const int32_t burnMode = changeSet.burn_mode();
+        const string &userId = changeSet.has_user_id() ? changeSet.user_id() : "";
         result = store_->setGroupBurnTime(groupId, burnTime, burnMode);
         if (SQL_FAIL(result)) {
             errorCode_ = result;
-            errorInfo_ = "Cannot update group avatar info";
+            errorInfo_ = "Cannot update group burn info";
             LOGGER(ERROR, __func__, errorInfo_, "code: ", result);
             return result;
         }
@@ -908,7 +924,7 @@ int32_t AppInterfaceImpl::processUpdateBurn(const GroupUpdateSetBurn &changeSet,
         ack->set_type(GROUP_SET_BURN);
         ack->set_result(hasConflict ? ACCEPTED_CONFLICT : ACCEPTED_OK);
 
-        groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode, stamp));
+        groupCmdCallback_(newGroupBurnCommand(groupId, burnTime, burnMode, stamp, userId));
         return SUCCESS;
     }
     GroupUpdateAck *ack = ackSet->add_acks();
@@ -952,6 +968,8 @@ int32_t AppInterfaceImpl::processBurnMessage(const GroupBurnMessage &changeSet, 
 int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, const string &groupId,
                                                const struct timeval& stamp, GroupChangeSet *ackSet) {
 
+    string addUserId;
+    string rmUserId;
     // The function first processes the add member update, then remove member. It removes members
     // from the add member list if a member is also in the remove member update.
     list<string> addMembers;
@@ -963,6 +981,7 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
         ack->set_result(ACCEPTED_OK);
 
         const int32_t size = changeSet.updateaddmember().addmember_size();
+        addUserId = changeSet.updateaddmember().has_user_id() ? changeSet.updateaddmember().user_id() : "";
         for (int32_t i = 0; i < size; i++) {
             const string &name = changeSet.updateaddmember().addmember(i).user_id();
             addMembers.push_back(name);
@@ -978,6 +997,7 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
         ack->set_result(ACCEPTED_OK);
 
         const int32_t size = changeSet.updatermmember().rmmember_size();
+        rmUserId = changeSet.updatermmember().has_user_id() ? changeSet.updatermmember().user_id() : "";
         for (int32_t i = 0; i < size; i++) {
             const string &name = changeSet.updatermmember().rmmember(i).user_id();
             rmMembers.push_back(name);
@@ -1049,12 +1069,13 @@ int32_t AppInterfaceImpl::processUpdateMembers(const GroupChangeSet &changeSet, 
         }
         ++it;
     }
+
     if (!addMembers.empty()) {
-        groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS, stamp));
+        groupCmdCallback_(prepareMemberList(groupId, addMembers, ADD_MEMBERS, stamp, addUserId));
     }
 
     if (!rmMembers.empty()) {
-        groupCmdCallback_(prepareMemberList(groupId, rmMembers, RM_MEMBERS, stamp));
+        groupCmdCallback_(prepareMemberList(groupId, rmMembers, RM_MEMBERS, stamp, rmUserId));
     }
     return SUCCESS;
 }

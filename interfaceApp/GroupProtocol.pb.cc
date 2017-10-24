@@ -779,6 +779,7 @@ void Member::Swap(Member* other) {
 const int GroupUpdateSetName::kUpdateIdFieldNumber;
 const int GroupUpdateSetName::kVclockFieldNumber;
 const int GroupUpdateSetName::kNameFieldNumber;
+const int GroupUpdateSetName::kUserIdFieldNumber;
 #endif  // !_MSC_VER
 
 GroupUpdateSetName::GroupUpdateSetName()
@@ -802,6 +803,7 @@ void GroupUpdateSetName::SharedCtor() {
   _cached_size_ = 0;
   update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   name_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -816,6 +818,9 @@ void GroupUpdateSetName::SharedDtor() {
   }
   if (name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete name_;
+  }
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -846,7 +851,7 @@ GroupUpdateSetName* GroupUpdateSetName::New() const {
 }
 
 void GroupUpdateSetName::Clear() {
-  if (_has_bits_[0 / 32] & 5) {
+  if (_has_bits_[0 / 32] & 13) {
     if (has_update_id()) {
       if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         update_id_->clear();
@@ -855,6 +860,11 @@ void GroupUpdateSetName::Clear() {
     if (has_name()) {
       if (name_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         name_->clear();
+      }
+    }
+    if (has_user_id()) {
+      if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        user_id_->clear();
       }
     }
   }
@@ -912,6 +922,19 @@ bool GroupUpdateSetName::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(34)) goto parse_user_id;
+        break;
+      }
+
+      // optional string user_id = 4;
+      case 4: {
+        if (tag == 34) {
+         parse_user_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_user_id()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -959,6 +982,12 @@ void GroupUpdateSetName::SerializeWithCachedSizes(
       3, this->name(), output);
   }
 
+  // optional string user_id = 4;
+  if (has_user_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      4, this->user_id(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:zina.GroupUpdateSetName)
@@ -980,6 +1009,13 @@ int GroupUpdateSetName::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->name());
+    }
+
+    // optional string user_id = 4;
+    if (has_user_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->user_id());
     }
 
   }
@@ -1014,6 +1050,9 @@ void GroupUpdateSetName::MergeFrom(const GroupUpdateSetName& from) {
     if (from.has_name()) {
       set_name(from.name());
     }
+    if (from.has_user_id()) {
+      set_user_id(from.user_id());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -1034,6 +1073,7 @@ void GroupUpdateSetName::Swap(GroupUpdateSetName* other) {
     std::swap(update_id_, other->update_id_);
     vclock_.Swap(&other->vclock_);
     std::swap(name_, other->name_);
+    std::swap(user_id_, other->user_id_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -1051,6 +1091,7 @@ void GroupUpdateSetName::Swap(GroupUpdateSetName* other) {
 const int GroupUpdateSetAvatar::kUpdateIdFieldNumber;
 const int GroupUpdateSetAvatar::kVclockFieldNumber;
 const int GroupUpdateSetAvatar::kAvatarFieldNumber;
+const int GroupUpdateSetAvatar::kUserIdFieldNumber;
 #endif  // !_MSC_VER
 
 GroupUpdateSetAvatar::GroupUpdateSetAvatar()
@@ -1074,6 +1115,7 @@ void GroupUpdateSetAvatar::SharedCtor() {
   _cached_size_ = 0;
   update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   avatar_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1088,6 +1130,9 @@ void GroupUpdateSetAvatar::SharedDtor() {
   }
   if (avatar_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete avatar_;
+  }
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -1118,7 +1163,7 @@ GroupUpdateSetAvatar* GroupUpdateSetAvatar::New() const {
 }
 
 void GroupUpdateSetAvatar::Clear() {
-  if (_has_bits_[0 / 32] & 5) {
+  if (_has_bits_[0 / 32] & 13) {
     if (has_update_id()) {
       if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         update_id_->clear();
@@ -1127,6 +1172,11 @@ void GroupUpdateSetAvatar::Clear() {
     if (has_avatar()) {
       if (avatar_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         avatar_->clear();
+      }
+    }
+    if (has_user_id()) {
+      if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        user_id_->clear();
       }
     }
   }
@@ -1184,6 +1234,19 @@ bool GroupUpdateSetAvatar::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(34)) goto parse_user_id;
+        break;
+      }
+
+      // optional string user_id = 4;
+      case 4: {
+        if (tag == 34) {
+         parse_user_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_user_id()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -1231,6 +1294,12 @@ void GroupUpdateSetAvatar::SerializeWithCachedSizes(
       3, this->avatar(), output);
   }
 
+  // optional string user_id = 4;
+  if (has_user_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      4, this->user_id(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:zina.GroupUpdateSetAvatar)
@@ -1252,6 +1321,13 @@ int GroupUpdateSetAvatar::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->avatar());
+    }
+
+    // optional string user_id = 4;
+    if (has_user_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->user_id());
     }
 
   }
@@ -1286,6 +1362,9 @@ void GroupUpdateSetAvatar::MergeFrom(const GroupUpdateSetAvatar& from) {
     if (from.has_avatar()) {
       set_avatar(from.avatar());
     }
+    if (from.has_user_id()) {
+      set_user_id(from.user_id());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -1306,6 +1385,7 @@ void GroupUpdateSetAvatar::Swap(GroupUpdateSetAvatar* other) {
     std::swap(update_id_, other->update_id_);
     vclock_.Swap(&other->vclock_);
     std::swap(avatar_, other->avatar_);
+    std::swap(user_id_, other->user_id_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -1341,6 +1421,7 @@ const int GroupUpdateSetBurn::kUpdateIdFieldNumber;
 const int GroupUpdateSetBurn::kVclockFieldNumber;
 const int GroupUpdateSetBurn::kBurnModeFieldNumber;
 const int GroupUpdateSetBurn::kBurnTtlSecFieldNumber;
+const int GroupUpdateSetBurn::kUserIdFieldNumber;
 #endif  // !_MSC_VER
 
 GroupUpdateSetBurn::GroupUpdateSetBurn()
@@ -1365,6 +1446,7 @@ void GroupUpdateSetBurn::SharedCtor() {
   update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   burn_mode_ = 0;
   burn_ttl_sec_ = GOOGLE_ULONGLONG(0);
+  user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1376,6 +1458,9 @@ GroupUpdateSetBurn::~GroupUpdateSetBurn() {
 void GroupUpdateSetBurn::SharedDtor() {
   if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete update_id_;
+  }
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -1406,28 +1491,20 @@ GroupUpdateSetBurn* GroupUpdateSetBurn::New() const {
 }
 
 void GroupUpdateSetBurn::Clear() {
-#define OFFSET_OF_FIELD_(f) (reinterpret_cast<char*>(      \
-  &reinterpret_cast<GroupUpdateSetBurn*>(16)->f) - \
-   reinterpret_cast<char*>(16))
-
-#define ZR_(first, last) do {                              \
-    size_t f = OFFSET_OF_FIELD_(first);                    \
-    size_t n = OFFSET_OF_FIELD_(last) - f + sizeof(last);  \
-    ::memset(&first, 0, n);                                \
-  } while (0)
-
-  if (_has_bits_[0 / 32] & 13) {
-    ZR_(burn_ttl_sec_, burn_mode_);
+  if (_has_bits_[0 / 32] & 29) {
     if (has_update_id()) {
       if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         update_id_->clear();
       }
     }
+    burn_mode_ = 0;
+    burn_ttl_sec_ = GOOGLE_ULONGLONG(0);
+    if (has_user_id()) {
+      if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        user_id_->clear();
+      }
+    }
   }
-
-#undef OFFSET_OF_FIELD_
-#undef ZR_
-
   vclock_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->clear();
@@ -1505,6 +1582,19 @@ bool GroupUpdateSetBurn::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(42)) goto parse_user_id;
+        break;
+      }
+
+      // optional string user_id = 5;
+      case 5: {
+        if (tag == 42) {
+         parse_user_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_user_id()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -1557,6 +1647,12 @@ void GroupUpdateSetBurn::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->burn_ttl_sec(), output);
   }
 
+  // optional string user_id = 5;
+  if (has_user_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      5, this->user_id(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:zina.GroupUpdateSetBurn)
@@ -1584,6 +1680,13 @@ int GroupUpdateSetBurn::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
           this->burn_ttl_sec());
+    }
+
+    // optional string user_id = 5;
+    if (has_user_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->user_id());
     }
 
   }
@@ -1621,6 +1724,9 @@ void GroupUpdateSetBurn::MergeFrom(const GroupUpdateSetBurn& from) {
     if (from.has_burn_ttl_sec()) {
       set_burn_ttl_sec(from.burn_ttl_sec());
     }
+    if (from.has_user_id()) {
+      set_user_id(from.user_id());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -1642,6 +1748,7 @@ void GroupUpdateSetBurn::Swap(GroupUpdateSetBurn* other) {
     vclock_.Swap(&other->vclock_);
     std::swap(burn_mode_, other->burn_mode_);
     std::swap(burn_ttl_sec_, other->burn_ttl_sec_);
+    std::swap(user_id_, other->user_id_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -1658,6 +1765,7 @@ void GroupUpdateSetBurn::Swap(GroupUpdateSetBurn* other) {
 #ifndef _MSC_VER
 const int GroupUpdateAddMember::kUpdateIdFieldNumber;
 const int GroupUpdateAddMember::kAddMemberFieldNumber;
+const int GroupUpdateAddMember::kUserIdFieldNumber;
 #endif  // !_MSC_VER
 
 GroupUpdateAddMember::GroupUpdateAddMember()
@@ -1680,6 +1788,7 @@ void GroupUpdateAddMember::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
   update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1691,6 +1800,9 @@ GroupUpdateAddMember::~GroupUpdateAddMember() {
 void GroupUpdateAddMember::SharedDtor() {
   if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete update_id_;
+  }
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -1721,9 +1833,16 @@ GroupUpdateAddMember* GroupUpdateAddMember::New() const {
 }
 
 void GroupUpdateAddMember::Clear() {
-  if (has_update_id()) {
-    if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      update_id_->clear();
+  if (_has_bits_[0 / 32] & 5) {
+    if (has_update_id()) {
+      if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        update_id_->clear();
+      }
+    }
+    if (has_user_id()) {
+      if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        user_id_->clear();
+      }
     }
   }
   addmember_.Clear();
@@ -1767,6 +1886,19 @@ bool GroupUpdateAddMember::MergePartialFromCodedStream(
           goto handle_unusual;
         }
         if (input->ExpectTag(18)) goto parse_addMember;
+        if (input->ExpectTag(26)) goto parse_user_id;
+        break;
+      }
+
+      // optional string user_id = 3;
+      case 3: {
+        if (tag == 26) {
+         parse_user_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_user_id()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -1808,6 +1940,12 @@ void GroupUpdateAddMember::SerializeWithCachedSizes(
       2, this->addmember(i), output);
   }
 
+  // optional string user_id = 3;
+  if (has_user_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      3, this->user_id(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:zina.GroupUpdateAddMember)
@@ -1822,6 +1960,13 @@ int GroupUpdateAddMember::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::BytesSize(
           this->update_id());
+    }
+
+    // optional string user_id = 3;
+    if (has_user_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->user_id());
     }
 
   }
@@ -1853,6 +1998,9 @@ void GroupUpdateAddMember::MergeFrom(const GroupUpdateAddMember& from) {
     if (from.has_update_id()) {
       set_update_id(from.update_id());
     }
+    if (from.has_user_id()) {
+      set_user_id(from.user_id());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -1872,6 +2020,7 @@ void GroupUpdateAddMember::Swap(GroupUpdateAddMember* other) {
   if (other != this) {
     std::swap(update_id_, other->update_id_);
     addmember_.Swap(&other->addmember_);
+    std::swap(user_id_, other->user_id_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -1888,6 +2037,7 @@ void GroupUpdateAddMember::Swap(GroupUpdateAddMember* other) {
 #ifndef _MSC_VER
 const int GroupUpdateRmMember::kUpdateIdFieldNumber;
 const int GroupUpdateRmMember::kRmMemberFieldNumber;
+const int GroupUpdateRmMember::kUserIdFieldNumber;
 #endif  // !_MSC_VER
 
 GroupUpdateRmMember::GroupUpdateRmMember()
@@ -1910,6 +2060,7 @@ void GroupUpdateRmMember::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
   update_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  user_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1921,6 +2072,9 @@ GroupUpdateRmMember::~GroupUpdateRmMember() {
 void GroupUpdateRmMember::SharedDtor() {
   if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
     delete update_id_;
+  }
+  if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+    delete user_id_;
   }
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   if (this != &default_instance()) {
@@ -1951,9 +2105,16 @@ GroupUpdateRmMember* GroupUpdateRmMember::New() const {
 }
 
 void GroupUpdateRmMember::Clear() {
-  if (has_update_id()) {
-    if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
-      update_id_->clear();
+  if (_has_bits_[0 / 32] & 5) {
+    if (has_update_id()) {
+      if (update_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        update_id_->clear();
+      }
+    }
+    if (has_user_id()) {
+      if (user_id_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
+        user_id_->clear();
+      }
     }
   }
   rmmember_.Clear();
@@ -1997,6 +2158,19 @@ bool GroupUpdateRmMember::MergePartialFromCodedStream(
           goto handle_unusual;
         }
         if (input->ExpectTag(18)) goto parse_rmMember;
+        if (input->ExpectTag(26)) goto parse_user_id;
+        break;
+      }
+
+      // optional string user_id = 3;
+      case 3: {
+        if (tag == 26) {
+         parse_user_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_user_id()));
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -2038,6 +2212,12 @@ void GroupUpdateRmMember::SerializeWithCachedSizes(
       2, this->rmmember(i), output);
   }
 
+  // optional string user_id = 3;
+  if (has_user_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      3, this->user_id(), output);
+  }
+
   output->WriteRaw(unknown_fields().data(),
                    unknown_fields().size());
   // @@protoc_insertion_point(serialize_end:zina.GroupUpdateRmMember)
@@ -2052,6 +2232,13 @@ int GroupUpdateRmMember::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::BytesSize(
           this->update_id());
+    }
+
+    // optional string user_id = 3;
+    if (has_user_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->user_id());
     }
 
   }
@@ -2083,6 +2270,9 @@ void GroupUpdateRmMember::MergeFrom(const GroupUpdateRmMember& from) {
     if (from.has_update_id()) {
       set_update_id(from.update_id());
     }
+    if (from.has_user_id()) {
+      set_user_id(from.user_id());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -2102,6 +2292,7 @@ void GroupUpdateRmMember::Swap(GroupUpdateRmMember* other) {
   if (other != this) {
     std::swap(update_id_, other->update_id_);
     rmmember_.Swap(&other->rmmember_);
+    std::swap(user_id_, other->user_id_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

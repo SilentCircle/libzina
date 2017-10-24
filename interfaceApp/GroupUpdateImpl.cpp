@@ -135,7 +135,7 @@ static PtrChangeSet getGroupChangeSet(const string &groupId)
 
 // Sets name only. We add the vector clock later, just before sending out the change
 // Overwrites an existing name update
-static bool setGroupNameToChangeSet(const string &groupId, const string &name, SQLiteStoreConv &store)
+static bool setGroupNameToChangeSet(const string &groupId, const string &name, const string &changerId, SQLiteStoreConv &store)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
@@ -145,6 +145,7 @@ static bool setGroupNameToChangeSet(const string &groupId, const string &name, S
         return false;
     }
     changeSet->mutable_updatename()->set_name(name);
+    changeSet->mutable_updatename()->set_user_id(changerId);
 
     return true;
 }
@@ -166,7 +167,7 @@ static bool removeGroupNameFromChangeSet(const string &groupId, SQLiteStoreConv 
 
 // Sets avatar info only. We add the vector clock later, just before sending out the change
 // Overwrite an existing avatar update
-static bool setGroupAvatarToChangeSet(const string &groupId, const string &avatar, SQLiteStoreConv &store)
+static bool setGroupAvatarToChangeSet(const string &groupId, const string &avatar, const string &changerId, SQLiteStoreConv &store)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
@@ -175,6 +176,7 @@ static bool setGroupAvatarToChangeSet(const string &groupId, const string &avata
         return false;
     }
     changeSet->mutable_updateavatar()->set_avatar(avatar);
+    changeSet->mutable_updateavatar()->set_user_id(changerId);
 
     return true;
 }
@@ -195,7 +197,7 @@ static bool removeGroupAvatarFromChangeSet(const string &groupId, SQLiteStoreCon
 
 // Sets burn info only. We add the vector clock later, just before sending out the change
 // Overwrite an existing avatar update
-static bool setGroupBurnToChangeSet(const string &groupId, uint64_t burn, GroupUpdateSetBurn_BurnMode mode, SQLiteStoreConv &store)
+static bool setGroupBurnToChangeSet(const string &groupId, uint64_t burn, GroupUpdateSetBurn_BurnMode mode, const string &changerId, SQLiteStoreConv &store)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
@@ -206,6 +208,7 @@ static bool setGroupBurnToChangeSet(const string &groupId, uint64_t burn, GroupU
     // Proto buffer implementation takes ownership of pointer, also releases an already set update message
     changeSet->mutable_updateburn()->set_burn_mode(mode);
     changeSet->mutable_updateburn()->set_burn_ttl_sec(burn);
+    changeSet->mutable_updateburn()->set_user_id(changerId);
 
     return true;
 }
@@ -243,7 +246,7 @@ static bool removeRmNameFromChangeSet(const string &groupId, const string &name,
 
 // Function checks for duplicates and ignores them, otherwise adds the name to the group update
 // assumes the change set is locked
-static bool addAddNameToChangeSet(PtrChangeSet& changeSet, const string &name)
+static bool addAddNameToChangeSet(PtrChangeSet& changeSet, const string &name, const string &changerId)
 {
 
     GroupUpdateAddMember *updateAddMember = changeSet->mutable_updateaddmember();
@@ -257,15 +260,19 @@ static bool addAddNameToChangeSet(PtrChangeSet& changeSet, const string &name)
     }
     Member *member = updateAddMember->add_addmember();
     member->set_user_id(name);
-    return true;
 
+    if (!changerId.empty()) {
+        updateAddMember->set_user_id(changerId);
+    }
+
+    return true;
 }
 
 // Thus function adds an add member to the change set, collapsed into a repeated GROUP_ADD_MEMBER update
 // message. The function silently ignores duplicate names.
 // adding a new member to the change set checks the remove update and removes an entry with the
 // same name if found
-static bool addAddNameToChangeSet(const string &groupId, const string &name, SQLiteStoreConv &store)
+static bool addAddNameToChangeSet(const string &groupId, const string &name, const string &changerId, SQLiteStoreConv &store)
 {
     unique_lock<mutex> lck(currentChangeSetLock);
 
@@ -276,7 +283,7 @@ static bool addAddNameToChangeSet(const string &groupId, const string &name, SQL
     // In case we added this name to the current change set, remove it, don't need to remove
     // it. However, add it the the change set to add names.
     removeRmNameFromChangeSet(changeSet, name);
-    return addAddNameToChangeSet(changeSet, name);
+    return addAddNameToChangeSet(changeSet, name, changerId);
 }
 
 // Thus function removes an add member from the change set
@@ -475,7 +482,7 @@ static int32_t addExistingMembers(PtrChangeSet changeSet, const string &groupId,
     }
     for (auto& member: members) {
         string name(Utilities::getJsonString(member.get(), MEMBER_ID, ""));
-        addAddNameToChangeSet(changeSet, name);
+        addAddNameToChangeSet(changeSet, name, "");
     }
     return SUCCESS;
 }
@@ -496,9 +503,9 @@ string AppInterfaceImpl::createNewGroup(const string& groupName, string& groupDe
     string groupId(uuidString);
 
     addNewGroupToChangeSet(groupId);
-    addAddNameToChangeSet(groupId, getOwnUser(), *store_);
+    addAddNameToChangeSet(groupId, getOwnUser(), "", *store_);
     if (!groupName.empty()) {
-        setGroupNameToChangeSet(groupId, groupName, *store_);
+        setGroupNameToChangeSet(groupId, groupName, getOwnUser(), *store_);
     }
     LOGGER(DEBUGGING, __func__, " <--");
     return groupId;
@@ -514,7 +521,7 @@ int32_t AppInterfaceImpl::addUser(const string& groupUuid, const string& userId)
     if (userId == getOwnUser()) {
         return ILLEGAL_ARGUMENT;
     }
-    if (!addAddNameToChangeSet(groupUuid, userId, *store_)) {
+    if (!addAddNameToChangeSet(groupUuid, userId, getOwnUser(), *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
     LOGGER(DEBUGGING, __func__, " <--");
@@ -627,7 +634,7 @@ int32_t AppInterfaceImpl::setGroupName(const string& groupId, const string* grou
             return NO_SUCH_ACTIVE_GROUP;
         }
     }
-    else if (!setGroupNameToChangeSet(groupId, *groupName, *store_)) {
+    else if (!setGroupNameToChangeSet(groupId, *groupName, getOwnUser(), *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
     LOGGER(DEBUGGING, __func__, " <--");
@@ -645,7 +652,7 @@ int32_t AppInterfaceImpl::setGroupBurnTime(const string& groupId, uint64_t burnT
     if (mode == 0 || !GroupUpdateSetBurn_BurnMode_IsValid(mode)) {
         return ILLEGAL_ARGUMENT;
     }
-    if (!setGroupBurnToChangeSet(groupId, burnTime, (GroupUpdateSetBurn_BurnMode) mode, *store_)) {
+    if (!setGroupBurnToChangeSet(groupId, burnTime, (GroupUpdateSetBurn_BurnMode) mode, getOwnUser(), *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
     LOGGER(DEBUGGING, __func__, " <--");
@@ -665,7 +672,7 @@ int32_t AppInterfaceImpl::setGroupAvatar(const string& groupId, const string* av
             return NO_SUCH_ACTIVE_GROUP;
         }
     }
-    else if (!setGroupAvatarToChangeSet(groupId, *avatar, *store_)) {
+    else if (!setGroupAvatarToChangeSet(groupId, *avatar, getOwnUser(), *store_)) {
         return NO_SUCH_ACTIVE_GROUP;
     }
     LOGGER(DEBUGGING, __func__, " <--");
@@ -874,7 +881,7 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
             // Use the own addAddName function: skips duplicate names, checks the remove member data
             const int32_t size = oldChangeSet->updateaddmember().addmember_size();
             for (int i = 0; i < size; i++) {
-                addAddNameToChangeSet(changeSet, oldChangeSet->updateaddmember().addmember(i).user_id());
+                addAddNameToChangeSet(changeSet, oldChangeSet->updateaddmember().addmember(i).user_id(), "");
             }
         }
 

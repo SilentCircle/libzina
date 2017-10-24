@@ -11,10 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+syntax = "proto2";
 package zina;
 
 option optimize_for = LITE_RUNTIME;
+
 
 // Required Is Forever:
 // You should be very careful about marking fields as required. If at some point you wish
@@ -56,12 +57,14 @@ message GroupUpdateSetName {
   optional bytes update_id                  = 1;
   repeated VClock vclock                    = 2;
   optional string name                      = 3;
+  optional string user_id                   = 4;
 }
 
 message GroupUpdateSetAvatar {
   optional bytes update_id                  = 1;
   repeated VClock vclock                    = 2;
   optional string avatar                    = 3;    // link/key for group avatar
+  optional string user_id                   = 4;
 }
 
 message GroupUpdateSetBurn {
@@ -83,15 +86,18 @@ message GroupUpdateSetBurn {
   // In seconds, the oldest a message is allowed to be in this group
   // (based on the send time) before it is burned
   optional uint64 burn_ttl_sec              = 4;
+  optional string user_id                   = 5;
 }
 message GroupUpdateAddMember {
   optional bytes update_id                  = 1;
   repeated Member addMember                 = 2;
+  optional string user_id                   = 3;
 }
 
 message GroupUpdateRmMember {
   optional bytes update_id                  = 1;
   repeated Member rmMember                  = 2;
+  optional string user_id                   = 3;
 }
 
 message GroupBurnMessage {
