@@ -43,7 +43,7 @@ extern "C" {
   // Implemented in JavaScript
   extern char* httpRequest(const char* requestUri, const char* method, const char* requestData, int32_t* code);
   extern char* makeReadNotificationJSON();
-  extern char* mountFilesystem();
+  extern void mountFilesystem();
 }
 
 static string toUTF8(const wstring& s) {
@@ -325,12 +325,11 @@ int JSZina::doInit(int flags, const wstring& provisionUrl, const wstring& hash16
 
     g_axo = this;
 
-    char* prefix = mountFilesystem();
+    mountFilesystem();
     // initialize and open the persistent store singleton instance
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->setKey(dbPassphrase);
-    store->openStore(string(prefix) + dbName);
-    free(prefix);
+    store->openStore(dbName);
 
     Utilities::wipeMemory((void*)dbPassphrase.data(), dbPassphrase.size());
 
