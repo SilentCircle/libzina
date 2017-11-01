@@ -318,6 +318,8 @@ int JSZina::doInit(int flags, const wstring& provisionUrl, const wstring& hash16
     provisionUrl_ = toUTF8(provisionUrl);
 
     debugLevel = flags & 0xf;
+    void setZinaLogLevel(int32_t level);
+    ::setZinaLogLevel(debugLevel);
 
     string dbName = "/axolotl/" + hash + "_db.db";
     if (dbPassphrase.size() != 32)
