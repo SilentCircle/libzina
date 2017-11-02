@@ -43,7 +43,7 @@ extern "C" {
   // Implemented in JavaScript
   extern char* httpRequest(const char* requestUri, const char* method, const char* requestData, int32_t* code);
   extern char* makeReadNotificationJSON();
-  extern char* mountFilesystem();
+  extern void mountFilesystem();
 }
 
 static string toUTF8(const wstring& s) {
@@ -83,12 +83,15 @@ private:
 
 private:
     shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes, bool normal, int code[]);
-    int doSendMessage(uint64_t ids[], int n);
+    int doSendMessageInternal(uint64_t ids[], int n);
     void sendSyncOutgoing(string const& username, string const& displayName, string const& message, string const& attributes, shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > > &preparedMessageData);
     void sendSyncBurn(string const& username, string const& message_json, string const& attributes);
     void sendSyncReadNotification(string const& username, string const& message_json, string const& attributes);
     string makeMessageJSON(const string& username, const string& message, const string& deviceId, const string& messageId);
     string makeAttributeJSON(bool readReceipt, long burnSeconds);
+
+    // Return a string containing the hex characters of a transport Id
+    string transportIdHex(int64_t transportId);
 
     // Request AccountsWeb to delete the device
     bool deleteDevice(const string& device);
@@ -116,7 +119,20 @@ public:
     void registerGroupMessageCallback(int n) { groupMessageCallback_ = n; }
     void registerGroupStateCallback(int n) { groupStateCallback_ = n; }
 
-    string sendSimpleMessage(const wstring& user, const wstring& displayName, const wstring& message, long burnSeconds);
+    // Prepare a message to the user. Returns the message UUID of the message.
+    // Stores an array of JSON strings in 'deviceMessages'. Each item
+    // in the array is a JSON object containing:
+    //   transportId: string => transport id of the message sent to a specific device in hex format.
+    //   receiverInfo: string => Information about the receiver of the message.
+    // This data in 'deviceMessages' can be used to map error messages to messages on the JS side.
+    // To actually send the message call 'doSendMessage' after this function is called.
+    string prepareSimpleMessage(const wstring& user, const wstring& displayName, const wstring& message, long burnSeconds, vector<string>& deviceMessageData);
+
+    // Send previously prepared messages. Expects an array of strings containing the hex version
+    // of the transport id. This is the same transportId returned in the 'deviceMessageData'
+    // parameter of 'prepareSimpleMessage'. Returns >=0 on success.
+    int doSendMessage(const vector<string>& transportIds);
+
     string resendMessage(const wstring& messageId, const wstring& username, const wstring& displayName, const wstring& message, long burnSeconds);
     bool sendBurnMessage(const wstring& user, const wstring& messageId);
     bool sendBurnConfirmation(const wstring& username, const wstring& messageId);
@@ -223,6 +239,9 @@ public:
 
     // Manually burn a group message
     int burnGroupMessage(const wstring& uuid, const wstring& msgId);
+
+    // Get the canonical name (Uid) for the user.
+    wstring getUid(const wstring& userid16, const wstring& auth16);
 };
 
 // TODO: Find a way around using a global
@@ -299,6 +318,8 @@ int JSZina::doInit(int flags, const wstring& provisionUrl, const wstring& hash16
     provisionUrl_ = toUTF8(provisionUrl);
 
     debugLevel = flags & 0xf;
+    void setZinaLogLevel(int32_t level);
+    ::setZinaLogLevel(debugLevel);
 
     string dbName = "/axolotl/" + hash + "_db.db";
     if (dbPassphrase.size() != 32)
@@ -306,12 +327,11 @@ int JSZina::doInit(int flags, const wstring& provisionUrl, const wstring& hash16
 
     g_axo = this;
 
-    char* prefix = mountFilesystem();
+    mountFilesystem();
     // initialize and open the persistent store singleton instance
     SQLiteStoreConv* store = SQLiteStoreConv::getStore();
     store->setKey(dbPassphrase);
-    store->openStore(string(prefix) + dbName);
-    free(prefix);
+    store->openStore(dbName);
 
     Utilities::wipeMemory((void*)dbPassphrase.data(), dbPassphrase.size());
 
@@ -383,7 +403,27 @@ shared_ptr<list<shared_ptr<PreparedMessageData> > > JSZina::prepareMessage(const
     return prepMessageData;
 }
 
-int JSZina::doSendMessage(uint64_t ids[], int dataLen)
+int JSZina::doSendMessage(const vector<string>& transportIds)
+{
+    if (transportIds.size() == 0)
+        return DATA_MISSING;
+
+    auto idVector = make_shared<vector<uint64_t> >();
+    for (string transportId : transportIds) {
+        if (transportId.size() != sizeof(uint64_t) * 2)
+            return GENERIC_ERROR;
+
+        uint64_t id = 0;
+        size_t r = hex2bin(transportId.c_str(), (uint8_t*)&id);
+        if (r == (size_t)-1)
+            return GENERIC_ERROR;
+        idVector->push_back(id);
+    }
+
+    return zinaAppInterface_->doSendMessages(idVector);
+}
+
+int JSZina::doSendMessageInternal(uint64_t ids[], int dataLen)
 {
 
     if (dataLen < 1)
@@ -398,7 +438,7 @@ int JSZina::doSendMessage(uint64_t ids[], int dataLen)
     return zinaAppInterface_->doSendMessages(idVector);
 }
 
-string JSZina::sendSimpleMessage(const wstring& username16, const wstring& displayName16, const wstring& message16, long burnSeconds)
+string JSZina::prepareSimpleMessage(const wstring& username16, const wstring& displayName16, const wstring& message16, long burnSeconds, vector<string>& deviceMessageData)
 {
     string username = toUTF8(username16);
     string displayName = toUTF8(displayName16);
@@ -432,9 +472,13 @@ string JSZina::sendSimpleMessage(const wstring& username16, const wstring& displ
     int idx = 0;
     for (auto& msgD : *preparedMessageData) {
         transportIds[idx++] = msgD->transportId;
+        JsonUnique sharedRoot(cJSON_CreateObject());
+        cJSON* root = sharedRoot.get();
+        cJSON_AddStringToObject(root, "transportId", transportIdHex(msgD->transportId).c_str());
+        cJSON_AddStringToObject(root, "receiverInfo", msgD->receiverInfo.c_str());
+        CharUnique out(cJSON_PrintUnformatted(root));
+        deviceMessageData.push_back(out.get());
     }
-
-    doSendMessage(transportIds, size);
 
     sendSyncOutgoing(username, displayName, json, attributes, preparedMessageData);
 
@@ -471,7 +515,7 @@ string JSZina::resendMessage(const wstring& messageId16, const wstring& username
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 
     return messageId;
 }
@@ -506,7 +550,7 @@ bool JSZina::sendBurnMessage(const wstring& username16, const wstring& messageId
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 
     sendSyncBurn(username, json, attributes);
 
@@ -542,7 +586,7 @@ bool JSZina::sendBurnConfirmation(const wstring& username16, const wstring& mess
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 
     return true;
 }
@@ -577,7 +621,7 @@ bool JSZina::sendReadNotification(const wstring& username16, const wstring& mess
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 
     sendSyncReadNotification(username, json, attributes);
 
@@ -620,7 +664,7 @@ bool JSZina::sendEmptySyncToSiblings(const wstring& username16)
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
     return true;
 }
 
@@ -661,7 +705,7 @@ void JSZina::sendSyncOutgoing(string const& username, string const& displayName,
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 }
 
 void JSZina::sendSyncBurn(string const& username, string const& message_json, string const& attributes) {
@@ -694,7 +738,7 @@ void JSZina::sendSyncBurn(string const& username, string const& message_json, st
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 }
 
 void JSZina::sendSyncReadNotification(string const& username, string const& message_json, string const& attributes) {
@@ -727,7 +771,7 @@ void JSZina::sendSyncReadNotification(string const& username, string const& mess
         transportIds[idx++] = msgD->transportId;
     }
 
-    doSendMessage(transportIds, size);
+    doSendMessageInternal(transportIds, size);
 }
 
 string JSZina::makeMessageJSON(const string& username, const string& message, const string& deviceId, const string& messageId)
@@ -757,23 +801,23 @@ string JSZina::makeAttributeJSON(bool readReceipt, long burnSeconds)
     return json;
 }
 
+string JSZina::transportIdHex(int64_t transportId)
+{
+    char hex[32];
+    memset(hex, '\0', sizeof(hex));
+    size_t hex_len = 0;
+    bin2hex((unsigned char *)&transportId, sizeof(transportId), hex, &hex_len);
+    return string(hex, hex_len);
+}
+
 bool JSZina::sendData(uint8_t* name, uint8_t* devId, uint8_t* envelope, size_t size, uint64_t msgId)
 {
     if (!name || !devId || !envelope || !size || !sendCallback_)
         return false;
 
-    char hex[32];
-    memset(hex, '\0', sizeof(hex));
-    size_t hex_len = 0;
-    bin2hex((unsigned char *)&msgId, sizeof(msgId), hex, &hex_len);
-{
-    char foo[33];
-    memcpy(foo, hex, 32);
-    foo[32] = 0;
-}
-    typedef void (*Sender)(char* name, char* devId, char* envelope, char* msg_id, size_t size);
+    typedef void (*Sender)(const char* name, const char* devId, const char* envelope, const char* msg_id, size_t size);
     Sender sender = reinterpret_cast<Sender>(sendCallback_);
-    sender((char*)name, (char*)devId, (char*)envelope, hex, size);
+    sender((char*)name, (char*)devId, (char*)envelope, transportIdHex(msgId).c_str(), size);
     return true;
 }
 
@@ -1364,6 +1408,29 @@ int JSZina::burnGroupMessage(const wstring& uuid16, const wstring& msgId16)
     return result == SUCCESS ? OK : result;
 }
 
+wstring JSZina::getUid(const wstring& userid16, const wstring& auth16)
+{
+    string userid = toUTF8(userid16);
+    string auth = toUTF8(auth16);
+
+    if (userid16.empty()) {
+      return toUTF16("");
+    }
+
+    if (auth.empty()) {
+        auth = zinaAppInterface_->getOwnAuthrization();
+    }
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    string uid = nameCache->getUid(userid, auth);
+
+    if (uid.empty()) {
+        return toUTF16("");
+    }
+
+    return toUTF16(uid);
+}
+
 EMSCRIPTEN_BINDINGS(js_axolotl) {
     register_vector<std::string>("VectorString");
     class_<JSZina>("JSZina")
@@ -1377,7 +1444,8 @@ EMSCRIPTEN_BINDINGS(js_axolotl) {
       .function("registerGroupMessageCallback", &JSZina::registerGroupMessageCallback)
       .function("registerGroupStateCallback", &JSZina::registerGroupStateCallback)
       .function("registerZinaDevice", &JSZina::registerZinaDevice)
-      .function("sendSimpleMessage", &JSZina::sendSimpleMessage)
+      .function("prepareSimpleMessage", &JSZina::prepareSimpleMessage)
+      .function("doSendMessage", &JSZina::doSendMessage)
       .function("resendMessage", &JSZina::resendMessage)
       .function("sendBurnMessage", &JSZina::sendBurnMessage)
       .function("sendBurnConfirmation", &JSZina::sendBurnConfirmation)
@@ -1415,6 +1483,7 @@ EMSCRIPTEN_BINDINGS(js_axolotl) {
       .function("sendGroupMessage", &JSZina::sendGroupMessage)
       .function("setZinaLogLevel", &JSZina::setZinaLogLevel)
       .function("burnGroupMessage", &JSZina::burnGroupMessage)
+      .function("getUid", &JSZina::getUid)
       .class_function("initializeFS", &JSZina::initializeFS)
       .class_function("getStoredApiKey", &JSZina::getStoredApiKey)
       .class_function("setStoredApiKey", &JSZina::setStoredApiKey)

@@ -40,15 +40,10 @@ mergeInto(LibraryManager.library, {
     return buffer;
   },
   mountFilesystem: function() {
-    var prefix = "";
     if (ENVIRONMENT_IS_NODE) {
       FS.mkdir('/axolotl');
       FS.mount(NODEFS, { root: '.' }, '/axolotl');
-      prefix = "/axolotl/"
     }
-    var buffer = _malloc(prefix.length + 1);
-    writeStringToMemory(prefix, buffer);
-    return buffer;
   }
 });
 
