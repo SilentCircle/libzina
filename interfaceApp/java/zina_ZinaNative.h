@@ -219,6 +219,14 @@ JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_getAllGroupMembers
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    getAllGroupMemberUuids
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_zina_ZinaNative_getAllGroupMemberUuids
+  (JNIEnv *, jclass, jstring, jintArray);
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    getGroupMember
  * Signature: (Ljava/lang/String;[B[I)[B
  */
@@ -624,6 +632,30 @@ JNIEXPORT jstring JNICALL Java_zina_ZinaNative_getUid
  */
 JNIEXPORT jbyteArray JNICALL Java_zina_ZinaNative_getUserInfo
   (JNIEnv *, jclass, jstring, jbyteArray, jintArray);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    setUserInfo
+ * Signature: (Ljava/lang/String;Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_zina_ZinaNative_setUserInfo
+  (JNIEnv *, jclass, jstring, jstring);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    isUserInfoAvailable
+ * Signature: (Ljava/lang/String;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_zina_ZinaNative_isUserInfoAvailable
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     zina_ZinaNative
+ * Method:    getUnknownUsers
+ * Signature: (Ljava/util/List;)Ljava/util/List;
+ */
+JNIEXPORT jobject JNICALL Java_zina_ZinaNative_getUnknownUsers
+  (JNIEnv *, jclass, jobject);
 
 /*
  * Class:     zina_ZinaNative

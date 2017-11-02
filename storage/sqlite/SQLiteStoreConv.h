@@ -588,6 +588,15 @@ public:
     int32_t getAllGroupMembers(const std::string &groupUuid, std::list<JsonUnique> &members);
 
     /**
+     * @brief Get all member uuids for a specified group.
+     *
+     * @param groupUuid The group's UUID (RFC4122 time based UUID)
+     * @param members string list to store the result
+     * @return SQLite code
+     */
+    int32_t getAllGroupMemberUuids(const std::string &groupUuid, std::list<std::string> &members);
+
+    /**
      * @brief Get a member of a specified group.
      *
      * Creates and returns a shared pointer to a cJSON data structure that contains the member's

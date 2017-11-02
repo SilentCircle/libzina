@@ -1527,6 +1527,51 @@ JNI_FUNCTION(getAllGroupMembers)(JNIEnv *env, jclass clazz, jstring groupUuid, j
 
 /*
  * Class:     zina_ZinaNative
+ * Method:    getAllGroupMemberUuids
+ * Signature: (Ljava/lang/String;[I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL
+JNI_FUNCTION(getAllGroupMemberUuids)(JNIEnv *env, jclass clazz, jstring groupUuid, jintArray code)
+{
+    (void)clazz;
+
+    if (zinaAppInterface == NULL)
+        return NULL;
+
+    if (code == NULL || env->GetArrayLength(code) < 1)
+        return NULL;
+
+    if (groupUuid == NULL)
+        return NULL;
+
+    string group;
+    const char* temp = env->GetStringUTFChars(groupUuid, 0);
+    group = temp;
+    env->ReleaseStringUTFChars(groupUuid, temp);
+
+    list<string> members;
+    int32_t result = zinaAppInterface->getStore()->getAllGroupMemberUuids(group, members);
+    setReturnCode(env, code, result);
+
+    size_t size = members.size();
+    if (size == 0)
+        return NULL;
+
+    jclass byteArrayClass = env->FindClass("[B");
+    jobjectArray retArray = env->NewObjectArray(static_cast<jsize>(size), byteArrayClass, NULL);
+
+    int32_t index = 0;
+    for (auto& it : members) {
+        jbyteArray retData = stringToArray(env, it);
+
+        env->SetObjectArrayElement(retArray, index++, retData);
+        env->DeleteLocalRef(retData);
+    }
+    return retArray;
+}
+
+/*
+ * Class:     zina_ZinaNative
  * Method:    getGroupMember
  * Signature: (Ljava/lang/String;[B[I)[B
  */
@@ -3151,6 +3196,102 @@ JNICALL JNI_FUNCTION(refreshUserData)(JNIEnv* env, jclass clazz, jstring alias, 
 
     jbyteArray retData = stringToArray(env, createUserInfoJson(userInfo));
     return retData;
+}
+
+JNIEXPORT void JNICALL
+JNI_FUNCTION(setUserInfo)(JNIEnv* env, jclass clazz, jstring uuid, jstring info)
+{
+    if (uuid == NULL) {
+        return;
+    }
+
+    const char* uuidTmp = env->GetStringUTFChars(uuid, 0);
+    string uuidString(uuidTmp);
+    env->ReleaseStringUTFChars(uuid, uuidTmp);
+    if (uuidString.empty()) {
+        return;
+    }
+
+    const char* infoTmp = env->GetStringUTFChars(info, 0);
+    string infoString(infoTmp);
+    env->ReleaseStringUTFChars(info, infoTmp);
+    if (infoString.empty()) {
+        return;
+    }
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    nameCache->setUserInfo(uuidString, infoString);
+}
+
+JNIEXPORT jboolean JNICALL
+JNI_FUNCTION(isUserInfoAvailable)(JNIEnv* env, jclass clazz, jstring uuid)
+{
+    if (uuid == NULL) {
+        return static_cast<jboolean>(false);
+    }
+
+    const char* uuidTmp = env->GetStringUTFChars(uuid, 0);
+    string uuidString(uuidTmp);
+    env->ReleaseStringUTFChars(uuid, uuidTmp);
+    if (uuidString.empty()) {
+        return static_cast<jboolean>(false);
+    }
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    return static_cast<jboolean>(nameCache->isUserInfoAvailable(uuidString));
+}
+
+JNIEXPORT jobject JNICALL
+JNI_FUNCTION(getUnknownUsers)(JNIEnv* env, jclass clazz, jobject requestedUuids)
+{
+    if (requestedUuids == NULL) {
+       return NULL;
+    }
+
+    jclass listClass = env->FindClass("java/util/List");
+    jmethodID listClassSize = env->GetMethodID(listClass, "size", "()I");
+    jmethodID listClassGet = env->GetMethodID(listClass, "get", "(I)Ljava/lang/Object;");
+
+    jclass arrayListClass = env->FindClass("java/util/ArrayList");
+    jmethodID arrayListClassInit = env->GetMethodID(arrayListClass, "<init>", "(I)V");
+    jmethodID arrayListClassAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
+
+    if (listClassSize == NULL || listClassGet == NULL || arrayListClassInit == NULL || arrayListClassAdd == NULL) {
+        Log("Could not resolve methods for list class");
+        return NULL;
+    }
+
+    list<string> requestedUuidList;
+    int aliasCount = static_cast<int>(env->CallIntMethod(requestedUuids, listClassSize));
+    for (int i = 0; i < aliasCount; i++) {
+        jstring uuidJString = (jstring) env->CallObjectMethod(requestedUuids, listClassGet, i);
+        const char *uuidString = env->GetStringUTFChars(uuidJString, 0);
+        string uuid(uuidString);
+        requestedUuidList.push_back(uuid);
+        env->ReleaseStringUTFChars(uuidJString, uuidString);
+    }
+
+    NameLookup* nameCache = NameLookup::getInstance();
+    shared_ptr<list<string> > unknownUuids = nameCache->getUnknownUsers(requestedUuidList);
+    if (!unknownUuids) {
+        return NULL;
+    }
+    size_t size = unknownUuids->size();
+    if (size == 0) {
+        return NULL;
+    }
+
+    jclass stringArrayClass = env->FindClass("java/lang/String");
+    jobject retArray = env->NewObject(arrayListClass, arrayListClassInit, static_cast<jsize>(size));
+
+    int32_t index = 0;
+    for (; !unknownUuids->empty(); unknownUuids->pop_front()) {
+        const string& uuid = unknownUuids->front();
+        jstring uuidJString = env->NewStringUTF(uuid.c_str());
+        env->CallBooleanMethod(retArray, arrayListClassAdd, uuidJString);
+        env->DeleteLocalRef(uuidJString);
+    }
+    return retArray;
 }
 
 /*

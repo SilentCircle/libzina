@@ -71,6 +71,7 @@ static const char* insertMemberSql = "INSERT INTO members (groupId, memberId, at
 static const char* removeMember = "DELETE FROM members WHERE groupId=?1 AND memberId=?2;";
 static const char* removeAllMembers = "DELETE FROM members WHERE groupId=?1;";
 static const char* selectGroupMembers = "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
+static const char* selectGroupMemberUuids = "SELECT memberId FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
 static const char* selectMember =
         "SELECT groupId, memberId, attributes, lastModified FROM members WHERE groupId=?1 AND memberId=?2 ORDER BY memberId ASC;";
 static const char* setMemberAttributeSql = "UPDATE members SET attributes=attributes|?1, lastModified=?2 WHERE groupId=?3 AND memberId=?4;";
@@ -796,6 +797,32 @@ int32_t SQLiteStoreConv::getAllGroupMembers(const string &groupUuid, list<JsonUn
     while (sqlResult == SQLITE_ROW) {
         // Get member records and create a JSON object, wrap it in a unique_ptr with a custom delete
         members.push_back(JsonUnique(createMemberJson(stmt)));
+        sqlResult = sqlite3_step(stmt);
+    }
+
+cleanup:
+    sqlite3_finalize(stmt);
+    sqlCode_ = sqlResult;
+    LOGGER(DEBUGGING, __func__, " <-- ", sqlResult);
+
+    return sqlResult;
+}
+
+int32_t SQLiteStoreConv::getAllGroupMemberUuids(const string &groupUuid, list<string> &members)
+{
+    sqlite3_stmt *stmt;
+    int32_t sqlResult;
+
+    // char* selectGroupMemberUuids = "SELECT memberId FROM members WHERE groupId=?1 ORDER BY memberId ASC;";
+    SQLITE_CHK(SQLITE_PREPARE(db, selectGroupMemberUuids, -1, &stmt, NULL));
+    SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupUuid.data(), static_cast<int32_t>(groupUuid.size()), SQLITE_STATIC));
+
+    sqlResult= sqlite3_step(stmt);
+    ERRMSG;
+
+    while (sqlResult == SQLITE_ROW) {
+        string memberUuid((const char*)sqlite3_column_text(stmt, 0));
+        members.push_back(memberUuid);
         sqlResult = sqlite3_step(stmt);
     }
 
