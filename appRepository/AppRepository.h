@@ -32,7 +32,7 @@ limitations under the License.
 #include <time.h>
 #endif
 
-#include <sqlcipher/sqlite3.h>
+#include "sqlcipher/sqlite3.h"
 
 #define DB_CACHE_ERR_BUFF_SIZE  1000
 #define OUR_KEY_LENGTH          32
