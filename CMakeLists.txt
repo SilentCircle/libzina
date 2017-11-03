@@ -149,7 +149,7 @@ set (interface_src
     interfaceApp/ReceiveMessage.cpp
     interfaceApp/QueueHandling.cpp)
 
-if (JNI_FOUND)
+if (ANDROID OR JNI_FOUND)
 set (interface_src
     ${interface_src}
     interfaceApp/java/JavaNativeImpl.cpp
