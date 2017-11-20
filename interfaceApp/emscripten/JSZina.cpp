@@ -61,7 +61,7 @@ static int32_t debugLevel = -1;
 void Log(char const *format, ...) {
     va_list arg;
     va_start(arg, format);
-    if (debugLevel > 0) {
+    if (debugLevel >= DEBUGGING) {
       vfprintf(stderr, format, arg);
       fprintf(stderr, "\n");
     }
