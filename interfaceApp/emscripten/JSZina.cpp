@@ -301,7 +301,7 @@ static void group_state_report_func(int32_t errorCode, const string& stateInform
 
 string JSZina::httpRequest(const string& requestUri, const string& method, const string& requestData, int32_t* code)
 {
-    Log("httpRequest called: [%s%s] [%s]", provisionUrl_.c_str(), requestUri.c_str(), method.c_str());
+    Log("httpRequest called: [%s] [%s]", provisionUrl_.c_str(), method.c_str());
     char* buffer = ::httpRequest((provisionUrl_ + requestUri).c_str(), method.c_str(), requestData.c_str(), code);
     string r(buffer);
     free(buffer);
