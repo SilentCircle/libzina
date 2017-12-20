@@ -96,6 +96,9 @@ private:
     // Request AccountsWeb to delete the device
     bool deleteDevice(const string& device);
 
+    // Return the display name for a given user
+    string getDisplayName(const string& userid);
+
 public:
     bool sendData(uint8_t* names, uint8_t* devIds, uint8_t* envelope, size_t size, uint64_t msgIds);
     int32_t receiveMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& msgAttributes);
@@ -242,6 +245,9 @@ public:
 
     // Get the canonical name (Uid) for the user.
     wstring getUid(const wstring& userid16, const wstring& auth16);
+
+    // Refresh user data
+    void refreshUserData(const wstring& userid16);
 };
 
 // TODO: Find a way around using a global
@@ -670,6 +676,7 @@ bool JSZina::sendEmptySyncToSiblings(const wstring& username16)
 
 
 void JSZina::sendSyncOutgoing(string const& username, string const& displayName, string const& message_json, string const& attributes, shared_ptr<std::list<std::shared_ptr<PreparedMessageData> > > &siblingMessageData) {
+    string useDisplayName = displayName.empty() ? getDisplayName(username).c_str() : displayName.c_str();
     JsonUnique sharedRoot(cJSON_Parse(attributes.c_str()));
     if (!sharedRoot.get()) {
       sharedRoot.reset(cJSON_CreateObject());
@@ -678,7 +685,7 @@ void JSZina::sendSyncOutgoing(string const& username, string const& displayName,
     cJSON* root = sharedRoot.get();
     cJSON_AddStringToObject(root, "syc", "om");
     cJSON_AddStringToObject(root, "or", username.c_str());
-    cJSON_AddStringToObject(root, "dpn",  displayName.c_str());
+    cJSON_AddStringToObject(root, "dpn", useDisplayName.c_str());
     cJSON* ids = cJSON_CreateArray();
     cJSON_AddItemToObject(root, "rcvInfo", ids);
     for (auto& msgD : *siblingMessageData) {
@@ -688,7 +695,7 @@ void JSZina::sendSyncOutgoing(string const& username, string const& displayName,
     CharUnique out(cJSON_PrintUnformatted(root));
     string attr(out.get());
 
-    Log("sendSyncOutgoing: [%s] [%s]", message_json.c_str(), attr.c_str());
+    Log("sendSyncOutgoing: [%s] [%s] [%s]", useDisplayName.c_str(), message_json.c_str(), attr.c_str());
     int32_t code;
     auto preparedMessageData = zinaAppInterface_->prepareMessageToSiblings(message_json, "", attr, false, &code);
 
@@ -1431,6 +1438,27 @@ wstring JSZina::getUid(const wstring& userid16, const wstring& auth16)
     return toUTF16(uid);
 }
 
+string JSZina::getDisplayName(const string& userid)
+{
+    NameLookup* nameCache = NameLookup::getInstance();
+    int32_t errorCode = 0;
+    shared_ptr<UserInfo> userInfo = nameCache->getUserInfo(userid, zinaAppInterface_->getOwnAuthrization(), false, &errorCode);
+    if (!userInfo)
+        return "";
+
+    return userInfo->displayName;
+}
+
+void JSZina::refreshUserData(const wstring& userid16)
+{
+    string userid = toUTF8(userid16);
+    if (userid.empty()) {
+        userid = zinaAppInterface_->getOwnUser();
+    }
+    NameLookup* nameCache = NameLookup::getInstance();
+    shared_ptr<UserInfo> userInfo = nameCache->refreshUserData(userid, zinaAppInterface_->getOwnAuthrization());
+}
+
 EMSCRIPTEN_BINDINGS(js_axolotl) {
     register_vector<std::string>("VectorString");
     class_<JSZina>("JSZina")
@@ -1484,6 +1512,7 @@ EMSCRIPTEN_BINDINGS(js_axolotl) {
       .function("setZinaLogLevel", &JSZina::setZinaLogLevel)
       .function("burnGroupMessage", &JSZina::burnGroupMessage)
       .function("getUid", &JSZina::getUid)
+      .function("refreshUserData", &JSZina::refreshUserData)
       .class_function("initializeFS", &JSZina::initializeFS)
       .class_function("getStoredApiKey", &JSZina::getStoredApiKey)
       .class_function("setStoredApiKey", &JSZina::setStoredApiKey)
