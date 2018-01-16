@@ -101,7 +101,7 @@ if (NOT ANDROID)
         message(FATAL_ERROR "ProtocolBuffer library not found")
     endif()
 
-    pkg_check_modules(SQLCIPHER sqlcipher>=3.7)
+    pkg_check_modules(SQLCIPHER sqlcipher>=3.4)
     if (SQLCIPHER_FOUND)
         set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${SQLCIPHER_INCLUDE_DIRS})
         check_include_files(sqlite3.h HAVE_SQLCIPHER_H)
