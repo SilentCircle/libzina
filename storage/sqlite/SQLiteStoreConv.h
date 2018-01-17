@@ -23,6 +23,7 @@ limitations under the License.
  * @{
  */
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
 #include <list>
