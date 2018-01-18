@@ -49,6 +49,6 @@ LOCAL_STATIC_LIBRARIES := protobuf
 
 # For this Android build we can set the visibility to hidden. Access to functions is only via
 # exported JNI functions.
-LOCAL_CFLAGS := @EMBEDDED@ @LOG_MAX_LEVEL@ @NO_VISIBILITY@ -DSQLITE_HAS_CODEC -DSQL_CIPHER -DANDROID_NDK
+LOCAL_CFLAGS := @EMBEDDED@ @LOG_MAX_LEVEL@ @NO_VISIBILITY@ @SAN_FLAGS@ -DSQLITE_HAS_CODEC -DSQL_CIPHER -DANDROID_NDK
 include $(BUILD_@LIBRARY_BUILD_TYPE@_LIBRARY)
 
