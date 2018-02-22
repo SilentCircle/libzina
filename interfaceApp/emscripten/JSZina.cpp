@@ -80,6 +80,7 @@ private:
     int groupCommandCallback_;
     int groupMessageCallback_;
     int groupStateCallback_;
+    AppRepository* appRepository_;
 
 private:
     shared_ptr<list<shared_ptr<PreparedMessageData> > > prepareMessage(const string& messageDescriptor, const string& attachmentDescriptor, const string& messageAttributes, bool normal, int code[]);
@@ -110,7 +111,7 @@ public:
     string httpRequest(const string& requestUri, const string& method, const string& requestData, int32_t* code);
 
 public:
-    JSZina() : zinaAppInterface_(nullptr), sendCallback_(0), receiveCallback_(0), notifyCallback_(0), messageStateCallback_(0), groupCommandCallback_(0), groupMessageCallback_(0), groupStateCallback_(0) { }
+    JSZina() : zinaAppInterface_(nullptr), sendCallback_(0), receiveCallback_(0), notifyCallback_(0), messageStateCallback_(0), groupCommandCallback_(0), groupMessageCallback_(0), groupStateCallback_(0), appRepository_(0) { }
     // TODO: Should be string& parms.
     int doInit(int flags, const wstring& provisionUrl, const wstring& hash, const wstring& dbPassphrase, const wstring& userName, const wstring& authorization, const wstring& scClientDeviceId);
     int registerZinaDevice();
@@ -248,6 +249,81 @@ public:
 
     // Refresh user data
     void refreshUserData(const wstring& userid16);
+
+    // Open the repository database
+    int repoOpenDatabase(const wstring& databaseName, const wstring& keyData);
+
+    // Close the repository database
+    void repoCloseDatabase();
+
+    // Check if repository database is open.
+    bool repoIsOpen();
+
+    // Checks if a conversation for the name pattern exists.
+    bool existConversation(const wstring& name16);
+
+    // Store serialized conversation data.
+    int storeConversation(const wstring& name16, const wstring& conversation16);
+
+    // Load and return serialized conversation data.
+    wstring loadConversation(const wstring& name16 /* , int[] code */);
+
+    // Delete a conversation.
+    int deleteConversation(const wstring& name16);
+
+    // Return a list of names for all known conversations.
+    void listConversations(vector<string>& names);
+
+    // Insert serialized event/message data.
+    int insertEvent(const wstring& name16, const wstring& eventId16, const wstring& event16);
+
+    // Load and returns one serialized event/message data.
+    wstring loadEvent(const wstring& name16, const wstring& eventId16 /*, int[] code */);
+
+    // Load a message with a defined message id.
+    wstring loadEventWithMsgId(const wstring& eventId16 /*, int[] code */);
+
+    // Checks if an event exists.
+    bool existEvent(const wstring& name16, const wstring& eventId16);
+
+    // Load and returns a set of serialized event/message data.
+    int loadEvents(const wstring& name16, int offset, int number, int direction, vector<string>& data);
+
+    // Delete an event from a conversation.
+    int deleteEvent(const wstring& name16, const wstring& eventId16);
+
+    // Delete all events from given conversation.
+    int deleteAllEvents(const wstring& name16);
+
+    // Insert serialized Object (attachment) data.
+    int insertObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16, const wstring& object16);
+
+    // Load and returns one serialized object descriptor data.
+    wstring loadObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16 /* ,int[] code */);
+
+    // Checks if an object descriptor exists.
+    bool existObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16);
+
+    // Load and returns the serialized data of all object descriptors for this event/message.
+    int loadObjects(const wstring& name16, const wstring& eventId16, vector<string>& data);
+
+    // Delete an object descriptor from the event/message.
+    int deleteObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16);
+
+    // Insert or update the attachment status.
+    int storeAttachmentStatus(const wstring& msgId16, const wstring& partnerName16, int status);
+
+    // Delete the attachment status entry.
+    int deleteAttachmentStatus(const wstring& msgId16, const wstring& partnerName16);
+
+    // Delete all attachment status entries with a given status.
+    int deleteWithAttachmentStatus(int status);
+
+    // Return attachment status for msgId.
+    int loadAttachmentStatus(const wstring& msgId16, const wstring& partnerName16 /*, int[] code*/);
+
+    // Return all message ids with a given status.
+    int loadMsgsIdsWithAttachmentStatus(int status, vector<string>& ids);
 };
 
 // TODO: Find a way around using a global
@@ -1459,6 +1535,352 @@ void JSZina::refreshUserData(const wstring& userid16)
     shared_ptr<UserInfo> userInfo = nameCache->refreshUserData(userid, zinaAppInterface_->getOwnAuthrization());
 }
 
+int JSZina::repoOpenDatabase(const wstring& databaseName16, const wstring& keyData16)
+{
+    string databaseName = toUTF8(databaseName16);
+    string keyData = toUTF8(keyData16);
+
+    string dbName = "/axolotl/" + databaseName;
+    if (keyData.empty())
+        return -2;
+
+    if (keyData.size() != 32)
+        return -3;
+
+    appRepository_ = AppRepository::getStore();
+    appRepository_->setKey(keyData);
+    appRepository_->openStore(dbName);
+
+    return appRepository_->getSqlCode();
+}
+
+void JSZina::repoCloseDatabase()
+{
+    if (appRepository_) {
+        AppRepository::closeStore();
+        appRepository_ = nullptr;
+    }
+}
+
+bool JSZina::repoIsOpen()
+{
+    return appRepository_ != nullptr && appRepository_->isReady();
+}
+
+bool JSZina::existConversation(const wstring& name16)
+{
+    string name = toUTF8(name16);
+
+    if (!repoIsOpen())
+        return false;
+
+    return appRepository_->existConversation(name);
+}
+
+int JSZina::storeConversation(const wstring& name16, const wstring& conversation16)
+{
+    string name = toUTF8(name16);
+    string conversation = toUTF8(conversation16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    return appRepository_->storeConversation(name, conversation);
+}
+
+wstring JSZina::loadConversation(const wstring& name16 /* , int[] code */)
+{
+    string name = toUTF8(name16);
+
+    if (!repoIsOpen())
+      return toUTF16("");
+
+    string data;
+    int32_t result = appRepository_->loadConversation(name, &data);
+    if (SQL_FAIL(result)) {
+        // TODO: Handle return code
+        return toUTF16("");
+    }
+
+    return toUTF16(data);
+}
+
+int JSZina::deleteConversation(const wstring& name16)
+{
+    string name = toUTF8(name16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    return appRepository_->deleteConversation(name);
+}
+
+void JSZina::listConversations(vector<string>& names)
+{
+    if (!repoIsOpen())
+        return;
+
+    list<string>* convNames = appRepository_->listConversations();
+
+    if (!convNames)
+        return;
+
+    names.insert(names.end(), convNames->begin(), convNames->end());
+}
+
+int JSZina::insertEvent(const wstring& name16, const wstring& eventId16, const wstring& event16)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+    string event = toUTF8(event16);
+
+    if (!repoIsOpen())
+        return -3;
+
+    return appRepository_->insertEvent(name, eventId, event);
+}
+
+wstring JSZina::loadEvent(const wstring& name16, const wstring& eventId16 /*, int[] code */)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+
+    if (!repoIsOpen())
+        return toUTF16("");
+
+    int32_t msgNumber = 0;
+    string data;
+    int32_t result = appRepository_->loadEvent(name, eventId, &data, &msgNumber);
+    if (SQL_FAIL(result)) {
+        return toUTF16("");
+    }
+    // TODO: need to return msgNumber
+    return toUTF16(data);
+}
+
+wstring JSZina::loadEventWithMsgId(const wstring& eventId16 /*, int[] code */)
+{
+    string eventId = toUTF8(eventId16);
+
+    if (!repoIsOpen())
+        return toUTF16("");
+
+    string data;
+    int32_t result = appRepository_->loadEventWithMsgId(eventId, &data);
+    if (SQL_FAIL(result)) {
+        return toUTF16("");
+    }
+    return toUTF16(data);
+}
+
+bool JSZina::existEvent(const wstring& name16, const wstring& eventId16)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+
+    if (!repoIsOpen())
+        return false;
+
+    return appRepository_->existEvent(name, eventId);
+}
+
+int JSZina::loadEvents(const wstring& name16, int offset, int number, int direction, vector<string>& data)
+{
+    string name = toUTF8(name16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    int32_t msgNumber = 0;
+    list<string*> events;
+    int32_t result = appRepository_->loadEvents(name, offset, number, direction, &events, &msgNumber);
+    if (SQL_FAIL(result)) {
+        while (!events.empty()) {
+            string* s = events.front();
+            events.pop_front();
+            delete s;
+        }
+        return result;
+    }
+
+    while (!events.empty()) {
+        string* s = events.front();
+        events.pop_front();
+        data.push_back(*s);
+        delete s;
+    }
+    return msgNumber;
+}
+
+int JSZina::deleteEvent(const wstring& name16, const wstring& eventId16)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    return appRepository_->deleteEvent(name, eventId);
+}
+
+int JSZina::deleteAllEvents(const wstring& name16)
+{
+    string name = toUTF8(name16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    // try to delete all associated objects first otherwise there can be constraint violation
+    int rc = appRepository_->deleteAttachmentStatusWithName(name);
+    Log("deleteAllEvents: after removing attachment status: %d\n", rc);
+
+    rc = appRepository_->deleteObjectName(name);
+    Log("deleteAllEvents: after removing attachment objects: %d\n", rc);
+
+    rc = appRepository_->deleteEventName(name);
+    Log("deleteAllEvents: after removing events: %d\n", rc);
+    return rc;
+}
+
+int JSZina::insertObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16, const wstring& object16)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+    string objectId = toUTF8(objectId16);
+    string object = toUTF8(object16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    return appRepository_->insertObject(name, eventId, objectId, object);
+}
+
+wstring JSZina::loadObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16 /* ,int[] code */)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+    string objectId = toUTF8(objectId16);
+
+    if (!repoIsOpen())
+        return toUTF16("");
+
+    string data;
+    int32_t result = appRepository_->loadObject(name, eventId, objectId, &data);
+    if (SQL_FAIL(result)) {
+//        setReturnCode(env, code, result);
+        return toUTF16("");
+    }
+//    setReturnCode(env, code, result);
+    return toUTF16(data);
+}
+
+bool JSZina::existObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+    string objectId = toUTF8(objectId16);
+
+    if (!repoIsOpen())
+        return false;
+
+    return appRepository_->existObject(name, eventId, objectId);
+}
+
+int JSZina::loadObjects(const wstring& name16, const wstring& eventId16, vector<string>& data)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    list<string*> objects;
+    int32_t result = appRepository_->loadObjects(name, eventId, &objects);
+    if (SQL_FAIL(result)) {
+        while (!objects.empty()) {
+            string* s = objects.front();
+            objects.pop_front();
+            delete s;
+        }
+        return result;
+    }
+
+    while (!objects.empty()) {
+        string* s = objects.front();
+        objects.pop_front();
+        data.push_back(*s);
+        delete s;
+    }
+    return result;
+}
+
+int JSZina::deleteObject(const wstring& name16, const wstring& eventId16, const wstring& objectId16)
+{
+    string name = toUTF8(name16);
+    string eventId = toUTF8(eventId16);
+    string objectId = toUTF8(objectId16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    return appRepository_->deleteObject(name, eventId, objectId);
+}
+
+int JSZina::storeAttachmentStatus(const wstring& msgId16, const wstring& partnerName16, int status)
+{
+    string msgId = toUTF8(msgId16);
+    string partnerName = toUTF8(partnerName16);
+
+    if (!repoIsOpen())
+        return 1;
+
+    return appRepository_->storeAttachmentStatus(msgId, partnerName, status);
+}
+
+int JSZina::deleteAttachmentStatus(const wstring& msgId16, const wstring& partnerName16)
+{
+    string msgId = toUTF8(msgId16);
+    string partnerName = toUTF8(partnerName16);
+
+    if (!repoIsOpen())
+        return 1;
+
+    return appRepository_->deleteAttachmentStatus(msgId, partnerName);
+}
+
+int JSZina::deleteWithAttachmentStatus(int status)
+{
+    if (!repoIsOpen())
+        return 1;
+
+    return appRepository_->deleteWithAttachmentStatus(status);
+}
+
+int JSZina::loadAttachmentStatus(const wstring& msgId16, const wstring& partnerName16 /*, int[] code*/)
+{
+    string msgId = toUTF8(msgId16);
+    string partnerName = toUTF8(partnerName16);
+
+    if (!repoIsOpen())
+        return -1;
+
+    int32_t status;
+    int32_t result = appRepository_->loadAttachmentStatus(msgId, partnerName, &status);
+//    setReturnCode(env, code, result);
+    return status;
+}
+
+int JSZina::loadMsgsIdsWithAttachmentStatus(int status, vector<string>& ids)
+{
+    if (!repoIsOpen())
+        return -1;
+
+    list<string> msgIds;
+    int32_t result = appRepository_->loadMsgsIdsWithAttachmentStatus(status, &msgIds);
+    ids.insert(ids.end(), msgIds.begin(), msgIds.end());
+    return result;
+}
+
 EMSCRIPTEN_BINDINGS(js_axolotl) {
     register_vector<std::string>("VectorString");
     class_<JSZina>("JSZina")
@@ -1513,6 +1935,31 @@ EMSCRIPTEN_BINDINGS(js_axolotl) {
       .function("burnGroupMessage", &JSZina::burnGroupMessage)
       .function("getUid", &JSZina::getUid)
       .function("refreshUserData", &JSZina::refreshUserData)
+      .function("repoOpenDatabase", &JSZina::repoOpenDatabase)
+      .function("repoCloseDatabase", &JSZina::repoCloseDatabase)
+      .function("repoIsOpen", &JSZina::repoIsOpen)
+      .function("existConversation", &JSZina::existConversation)
+      .function("storeConversation", &JSZina::storeConversation)
+      .function("loadConversation", &JSZina::loadConversation)
+      .function("deleteConversation", &JSZina::deleteConversation)
+      .function("listConversations", &JSZina::listConversations)
+      .function("insertEvent", &JSZina::insertEvent)
+      .function("loadEvent", &JSZina::loadEvent)
+      .function("loadEventWithMsgId", &JSZina::loadEventWithMsgId)
+      .function("existEvent", &JSZina::existEvent)
+      .function("loadEvents", &JSZina::loadEvents)
+      .function("deleteEvent", &JSZina::deleteEvent)
+      .function("deleteAllEvents", &JSZina::deleteAllEvents)
+      .function("insertObject", &JSZina::insertObject)
+      .function("loadObject", &JSZina::loadObject)
+      .function("existObject", &JSZina::existObject)
+      .function("loadObjects", &JSZina::loadObjects)
+      .function("deleteObject", &JSZina::deleteObject)
+      .function("storeAttachmentStatus", &JSZina::storeAttachmentStatus)
+      .function("deleteAttachmentStatus", &JSZina::deleteAttachmentStatus)
+      .function("deleteWithAttachmentStatus", &JSZina::deleteWithAttachmentStatus)
+      .function("loadAttachmentStatus", &JSZina::loadAttachmentStatus)
+      .function("loadMsgsIdsWithAttachmentStatus", &JSZina::loadMsgsIdsWithAttachmentStatus)
       .class_function("initializeFS", &JSZina::initializeFS)
       .class_function("getStoredApiKey", &JSZina::getStoredApiKey)
       .class_function("setStoredApiKey", &JSZina::setStoredApiKey)
