@@ -271,7 +271,7 @@ bool SQLiteStoreConv::hasWaitAckGroupDevice(const string &groupId, const string 
 
     // char *hasWaitForAckGroupDevice = "SELECT NULL, CASE EXISTS (SELECT 0 FROM waitForAck WHERE groupId=?1 AND deviceId=?2)"
     // " WHEN 1 THEN 1 ELSE 0 END;";
-    SQLITE_CHK(SQLITE_PREPARE(db, hasWaitForAckGroupUpdate, -1, &stmt, NULL));
+    SQLITE_CHK(SQLITE_PREPARE(db, hasWaitForAckGroupDevice, -1, &stmt, NULL));
     SQLITE_CHK(sqlite3_bind_text(stmt, 1, groupId.data(), static_cast<int32_t>(groupId.size()), SQLITE_STATIC));
     SQLITE_CHK(sqlite3_bind_blob(stmt, 2, deviceId.data(), static_cast<int32_t>(deviceId.size()), SQLITE_STATIC));
 

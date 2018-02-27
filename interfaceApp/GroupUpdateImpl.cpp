@@ -839,6 +839,8 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
 
     PtrChangeSet changeSet;
 
+    string binDeviceId;
+    makeBinaryDeviceId(deviceId, &binDeviceId);
     if (updateInProgress) {
         changeSet = getGroupChangeSet(groupId);
         if (!changeSet) {
@@ -857,12 +859,9 @@ int32_t AppInterfaceImpl::createChangeSetDevice(const string &groupId, const str
             return SUCCESS;
         }
         // Resend a change set only if a device has pending ACKs for this group.
-        return store_->hasWaitAckGroupDevice(groupId, deviceId, nullptr) ?
+        return store_->hasWaitAckGroupDevice(groupId, binDeviceId, nullptr) ?
                serializeChangeSet(changeSet, root, newAttributes) : SUCCESS;
     }
-
-    string binDeviceId;
-    makeBinaryDeviceId(deviceId, &binDeviceId);
 
     string updateIdString(reinterpret_cast<const char*>(updateIdGlobal), UPDATE_ID_LENGTH);
 
