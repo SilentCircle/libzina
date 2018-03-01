@@ -22,6 +22,7 @@ limitations under the License.
 #include "../../interfaceApp/MessageEnvelope.pb.h"
 #include "../../util/Utilities.h"
 
+#include <limits.h>
 #include <zrtp/crypto/hmac256.h>
 #include <zrtp/crypto/sha256.h>
 #include <common/osSpecifics.h>
@@ -596,6 +597,9 @@ decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& 
         PublicKeyUnique aliceId = PublicKeyUnique(new Ec255PublicKey(msgStruct.remoteIdKey));
         PublicKeyUnique alicePreKey = PublicKeyUnique(new Ec255PublicKey(msgStruct.remotePreKey));
         conv->setContextId(msgStruct.contextId);
+        if (msgStruct.contextId == INT_MAX) {
+            LOGGER(WARNING, __func__, " <-- Supporting type-2 message with clamped contextId");
+        }
 
         // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
         // Called function gets ownership of the two key pointers aliceId, alicePreKey
@@ -815,6 +819,9 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* primaryConv, Mes
         }
         msgStruct.maxVersion = envelope.ratchet().maxversion();
         msgStruct.contextId = envelope.ratchet().contextid();
+        if (msgStruct.contextId == INT_MAX) {
+            LOGGER(WARNING, __func__, " <-- Supporting decryption with clamped contextId");
+        }
 
         msgStruct.preKeyHash = reinterpret_cast<const uint8_t*>(envelope.ratchet().prekeyhash().data());
     }
