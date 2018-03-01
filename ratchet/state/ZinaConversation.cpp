@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+#include <limits.h>
 #include "ZinaConversation.h"
 #include "../../util/b64helper.h"
 #include "../crypto/EcCurve.h"
@@ -333,7 +334,16 @@ void ZinaConversation::deserialize(const std::string& data)
     if (jsonItem != NULL)
         zrtpVerifyState = jsonItem->valueint;
 
-    contextId = (Utilities::getJsonInt(root, "contextId", 0) & 0xFFFFFFFF);
+    {
+        int ctxid = Utilities::getJsonInt(root, "contextId", 0);
+        if (ctxid == INT_MAX) {
+            LOGGER(WARNING, __func__, " <-- ZINA contextId is clamped value; undecryptable messages possible");
+        }
+        if (ctxid < 0) {
+            LOGGER(WARNING, __func__, " <-- ZINA contextId is less than zero; this is unexpected");
+        }
+        contextId = ctxid;
+    }
     versionNumber = Utilities::getJsonInt(root, "versionNumber", 0);
     identityKeyChanged = Utilities::getJsonBool(root, "identityKeyChanged", true);
     if (zrtpVerifyState > 0) {
