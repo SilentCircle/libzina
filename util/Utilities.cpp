@@ -44,6 +44,19 @@ int32_t Utilities::getJsonInt(const cJSON* const root, const char* const name, i
     return jsonItem->valueint;
 }
 
+uint32_t Utilities::getJsonUInt(const cJSON* const root, const char* const name, uint32_t error) {
+    if (root == nullptr)
+        return error;
+    cJSON* jsonItem = cJSON_GetObjectItem(const_cast<cJSON*>(root), name);
+    if (jsonItem == nullptr)
+        return error;
+    if (jsonItem->valuedouble > 0xffffffff)
+        return 0xffffffff;
+    if (jsonItem->valuedouble < 0)
+        return 0;
+    return (uint32_t)jsonItem->valuedouble;
+}
+
 
 double Utilities::getJsonDouble(const cJSON* const root, const char* const name, double error) {
     if (root == nullptr)

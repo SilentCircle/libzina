@@ -42,6 +42,15 @@ namespace zina {
         static int32_t getJsonInt(const cJSON* const root, const char* const name, int32_t error);
 
         /**
+         * @brief Return an unsigned integer value from a JSON structure.
+         *
+         * @param root the pointer to the cJSON structure
+         * @name Name of the value
+         * @error Error value, the function returns this value if the JSON structure contains no @c name
+         */
+        static uint32_t getJsonUInt(const cJSON* const root, const char* const name, uint32_t error);
+
+        /**
          * @brief Return a double value from a JSON structure.
          *
          * @param root the pointer to the cJSON structure
