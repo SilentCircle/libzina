@@ -96,7 +96,11 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     // Identify our context and count how often we ran thru this setup
     uint32_t contextId;
     ZrtpRandom::getRandomData((uint8_t*)&contextId, sizeof(uint32_t));
-    contextId &= 0xffff0000;
+    // Avoid generating context identifiers larger than `INT_MAX`.
+    // Values above `INT_MAX` would get clamped to `INT_MAX` when
+    // being deserialized.  Not generating these values significantly
+    // reduces aliasing of the `contextId` value.
+    contextId &= 0x7fff0000;
     uint32_t sequence = conv->getContextId() & 0xffff;
     sequence++;
     contextId |= sequence;
