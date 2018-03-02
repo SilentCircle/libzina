@@ -444,6 +444,13 @@ class RatchetData : public ::google::protobuf::MessageLite {
   inline ::std::string* release_prekeyhash();
   inline void set_allocated_prekeyhash(::std::string* prekeyhash);
 
+  // optional uint32 contextId2 = 15;
+  inline bool has_contextid2() const;
+  inline void clear_contextid2();
+  static const int kContextId2FieldNumber = 15;
+  inline ::google::protobuf::uint32 contextid2() const;
+  inline void set_contextid2(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:zina.RatchetData)
  private:
   inline void set_has_useversion();
@@ -474,6 +481,8 @@ class RatchetData : public ::google::protobuf::MessageLite {
   inline void clear_has_remoteidkey();
   inline void set_has_prekeyhash();
   inline void clear_has_prekeyhash();
+  inline void set_has_contextid2();
+  inline void clear_has_contextid2();
 
   ::std::string _unknown_fields_;
 
@@ -491,8 +500,9 @@ class RatchetData : public ::google::protobuf::MessageLite {
   ::std::string* mac_;
   ::std::string* remoteprekey_;
   ::std::string* remoteidkey_;
-  ::std::string* prekeyhash_;
   ::google::protobuf::int32 localprekeyid_;
+  ::google::protobuf::uint32 contextid2_;
+  ::std::string* prekeyhash_;
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_MessageEnvelope_2eproto_impl();
   #else
@@ -1786,6 +1796,30 @@ inline void RatchetData::set_allocated_prekeyhash(::std::string* prekeyhash) {
     prekeyhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   }
   // @@protoc_insertion_point(field_set_allocated:zina.RatchetData.preKeyHash)
+}
+
+// optional uint32 contextId2 = 15;
+inline bool RatchetData::has_contextid2() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void RatchetData::set_has_contextid2() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void RatchetData::clear_has_contextid2() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void RatchetData::clear_contextid2() {
+  contextid2_ = 0u;
+  clear_has_contextid2();
+}
+inline ::google::protobuf::uint32 RatchetData::contextid2() const {
+  // @@protoc_insertion_point(field_get:zina.RatchetData.contextId2)
+  return contextid2_;
+}
+inline void RatchetData::set_contextid2(::google::protobuf::uint32 value) {
+  set_has_contextid2();
+  contextid2_ = value;
+  // @@protoc_insertion_point(field_set:zina.RatchetData.contextId2)
 }
 
 

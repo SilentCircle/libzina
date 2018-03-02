@@ -633,6 +633,7 @@ const int RatchetData::kLocalPreKeyIdFieldNumber;
 const int RatchetData::kRemotePreKeyFieldNumber;
 const int RatchetData::kRemoteIdKeyFieldNumber;
 const int RatchetData::kPreKeyHashFieldNumber;
+const int RatchetData::kContextId2FieldNumber;
 #endif  // !_MSC_VER
 
 RatchetData::RatchetData()
@@ -668,6 +669,7 @@ void RatchetData::SharedCtor() {
   remoteprekey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   remoteidkey_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   prekeyhash_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  contextid2_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -734,7 +736,8 @@ void RatchetData::Clear() {
   if (_has_bits_[0 / 32] & 255) {
     ZR_(useversion_, pnp_);
   }
-  if (_has_bits_[8 / 32] & 16128) {
+  if (_has_bits_[8 / 32] & 32512) {
+    ZR_(localprekeyid_, contextid2_);
     if (has_ratchet()) {
       if (ratchet_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         ratchet_->clear();
@@ -745,7 +748,6 @@ void RatchetData::Clear() {
         mac_->clear();
       }
     }
-    localprekeyid_ = 0;
     if (has_remoteprekey()) {
       if (remoteprekey_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         remoteprekey_->clear();
@@ -979,6 +981,21 @@ bool RatchetData::MergePartialFromCodedStream(
         } else {
           goto handle_unusual;
         }
+        if (input->ExpectTag(120)) goto parse_contextId2;
+        break;
+      }
+
+      // optional uint32 contextId2 = 15;
+      case 15: {
+        if (tag == 120) {
+         parse_contextId2:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &contextid2_)));
+          set_has_contextid2();
+        } else {
+          goto handle_unusual;
+        }
         if (input->ExpectAtEnd()) goto success;
         break;
       }
@@ -1081,6 +1098,11 @@ void RatchetData::SerializeWithCachedSizes(
   if (has_prekeyhash()) {
     ::google::protobuf::internal::WireFormatLite::WriteBytesMaybeAliased(
       14, this->prekeyhash(), output);
+  }
+
+  // optional uint32 contextId2 = 15;
+  if (has_contextid2()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(15, this->contextid2(), output);
   }
 
   output->WriteRaw(unknown_fields().data(),
@@ -1192,6 +1214,13 @@ int RatchetData::ByteSize() const {
           this->prekeyhash());
     }
 
+    // optional uint32 contextId2 = 15;
+    if (has_contextid2()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->contextid2());
+    }
+
   }
   total_size += unknown_fields().size();
 
@@ -1253,6 +1282,9 @@ void RatchetData::MergeFrom(const RatchetData& from) {
     if (from.has_prekeyhash()) {
       set_prekeyhash(from.prekeyhash());
     }
+    if (from.has_contextid2()) {
+      set_contextid2(from.contextid2());
+    }
   }
   mutable_unknown_fields()->append(from.unknown_fields());
 }
@@ -1284,6 +1316,7 @@ void RatchetData::Swap(RatchetData* other) {
     std::swap(remoteprekey_, other->remoteprekey_);
     std::swap(remoteidkey_, other->remoteidkey_);
     std::swap(prekeyhash_, other->prekeyhash_);
+    std::swap(contextid2_, other->contextid2_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.swap(other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

@@ -344,6 +344,17 @@ void ZinaConversation::deserialize(const std::string& data)
         }
         contextId = ctxid;
     }
+    if (Utilities::hasJsonKey(root, "contextId2")) {
+        contextId2 = Utilities::getJsonUInt(root, "contextId2", 0);
+        hasContextId2 = true;
+    }
+    // We have to check that the `contextId` is not zero because this
+    // function is called on a very empty object representing our own
+    // device; verifing the `contextId` is nonzero excludes this
+    // pseudo-peer.
+    if (contextId != 0 && hasContextId2 == false) {
+        LOGGER(WARNING, __func__, " <-- Supporting ZINA conversation without contextId2");
+    }
     versionNumber = Utilities::getJsonInt(root, "versionNumber", 0);
     identityKeyChanged = Utilities::getJsonBool(root, "identityKeyChanged", true);
     if (zrtpVerifyState > 0) {
@@ -462,6 +473,9 @@ const string* ZinaConversation::serialize() const
     cJSON_AddNumberToObject(root, "zrtpState", zrtpVerifyState);
 
     cJSON_AddNumberToObject(root, "contextId", contextId);
+    if (hasContextId2) {
+        cJSON_AddNumberToObject(root, "contextId2", contextId2);
+    }
     cJSON_AddNumberToObject(root, "versionNumber", versionNumber);
     cJSON_AddBoolToObject(root, "identityKeyChanged", identityKeyChanged);
 

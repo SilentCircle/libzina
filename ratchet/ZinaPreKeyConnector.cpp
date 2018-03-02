@@ -105,6 +105,10 @@ int32_t ZinaPreKeyConnector::setupConversationAlice(const string& localUser, con
     sequence++;
     contextId |= sequence;
     conv->setContextId(contextId);
+    uint32_t contextId2;
+    ZrtpRandom::getRandomData((uint8_t*)&contextId2, sizeof(uint32_t));
+    conv->setContextId2(contextId2);
+    conv->setHasContextId2(true);
 
     KeyPairUnique A = KeyPairUnique(new DhKeyPair(localConv->getDHIs()));    // Alice's Identity key pair
     KeyPairUnique A0 = EcCurve::generateKeyPair(EcCurveTypes::Curve25519);   // generate Alice's pre-key

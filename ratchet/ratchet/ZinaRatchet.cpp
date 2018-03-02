@@ -66,6 +66,8 @@ typedef struct parsedMessage_ {
     uint32_t Np;
     uint32_t PNp;
     uint32_t contextId;
+    uint32_t contextId2;
+    bool hasContextId2;
 
     const uint8_t*  ratchet;
 
@@ -600,6 +602,14 @@ decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& 
         if (msgStruct.contextId == INT_MAX) {
             LOGGER(WARNING, __func__, " <-- Supporting type-2 message with clamped contextId");
         }
+        if (msgStruct.hasContextId2) {
+            conv->setContextId2(msgStruct.contextId2);
+            conv->setHasContextId2(true);
+        } else {
+            LOGGER(WARNING, __func__, " <-- Supporting type-2 message without contextId2");
+            conv->setContextId2(0);
+            conv->setHasContextId2(false);
+        }
 
         // Returns SUCCESS if setup created a new ratchet context, OK if we got multiple type 2 messages
         // Called function gets ownership of the two key pointers aliceId, alicePreKey
@@ -632,8 +642,14 @@ decryptInternal(ZinaConversation* conv, ParsedMessage& msgStruct, const string& 
     }
     conv->setVersionNumber(msgStruct.maxVersion);
 
-    if (conv->getContextId() != 0 && msgStruct.contextId != 0 && conv->getContextId() != msgStruct.contextId) {
-        LOGGER(ERROR, __func__, " <-- Context ID mismatch, message ignored, data out of sync: ", conv->getContextId(), ", ", msgStruct.contextId);
+    if ((conv->getContextId() != 0 && msgStruct.contextId != 0
+         && conv->getContextId() != msgStruct.contextId)
+        || (conv->getHasContextId2() && msgStruct.hasContextId2
+            && conv->getContextId2() != msgStruct.contextId2)) {
+        LOGGER(ERROR, __func__, " <-- Context ID mismatch, message ignored, data out of sync: ",
+               conv->getContextId(), "+", conv->getContextId2(), "?", conv->getHasContextId2(),
+               " != ",
+               msgStruct.contextId, "+", msgStruct.contextId2, "?", msgStruct.hasContextId2);
         conv->setErrorCode(CONTEXT_ID_MISMATCH);
         return shared_ptr<string>();
     }
@@ -821,6 +837,12 @@ shared_ptr<const string> ZinaRatchet::decrypt(ZinaConversation* primaryConv, Mes
         msgStruct.contextId = envelope.ratchet().contextid();
         if (msgStruct.contextId == INT_MAX) {
             LOGGER(WARNING, __func__, " <-- Supporting decryption with clamped contextId");
+        }
+        if (envelope.ratchet().has_contextid2()) {
+            msgStruct.contextId2 = envelope.ratchet().contextid2();
+            msgStruct.hasContextId2 = true;
+        } else {
+            LOGGER(WARNING, __func__, " <-- Supporting decryption without contextId2");
         }
 
         msgStruct.preKeyHash = reinterpret_cast<const uint8_t*>(envelope.ratchet().prekeyhash().data());
@@ -1023,6 +1045,9 @@ ZinaRatchet::encrypt(ZinaConversation& conv, const string& message, MessageEnvel
     // Common fields for all protocol versions in envelope.
     ratchet->set_maxversion(SUPPORTED_VERSION);
     ratchet->set_contextid(conv.getContextId());
+    if (conv.getHasContextId2()) {
+        ratchet->set_contextid2(conv.getContextId2());
+    }
 
     // We still send setup messages because Bob has not yet answered our messages yet
     if (conv.hasA0()) {

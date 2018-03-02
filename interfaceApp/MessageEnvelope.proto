@@ -57,4 +57,6 @@ message RatchetData {
     optional bytes remotePreKey = 12;       // The public key of Alice's generated pre-key
     optional bytes remoteIdKey  = 13;       // The public key of Alice's long term identity key
     optional bytes preKeyHash = 14;         // Hash of the pre-key Alice use to setup the ratchet context
+
+    optional uint32 contextId2   = 15;        // The second context id of the current active ratchet context
 }

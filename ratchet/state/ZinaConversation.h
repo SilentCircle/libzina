@@ -61,7 +61,7 @@ public:
     ZinaConversation(const std::string& localUser, const std::string& user, const std::string& deviceId) :
             partner_(user, emptyString),
             deviceId_(deviceId), localUser_(localUser), DHRs(nullptr), DHRr(nullptr), DHIs(nullptr), DHIr(nullptr), A0(nullptr), Ns(0),
-            Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0),
+            Nr(0), PNs(0), preKeyId(0), ratchetFlag(false), zrtpVerifyState(0), contextId(0), contextId2(0), hasContextId2(false),
             versionNumber(0), identityKeyChanged(false), errorCode_(SUCCESS), sqlErrorCode_(SUCCESS), valid_(false)
     { }
 
@@ -190,8 +190,12 @@ public:
     bool isValid() const                    { return valid_; }
 
     uint32_t getContextId() const { return contextId; }
+    uint32_t getContextId2() const { return contextId2; }
+    bool getHasContextId2() const { return hasContextId2; }
 
     void setContextId(uint32_t ctxId) { contextId = ctxId; }
+    void setContextId2(uint32_t ctxId) { contextId2 = ctxId; }
+    void setHasContextId2(bool flag) { hasContextId2 = flag; }
 
     int32_t getVersionNumber() const { return versionNumber; }
 
@@ -288,6 +292,8 @@ private:
     bool      ratchetFlag;      //!< True if the party will send a new ratchet key in next message
     int32_t   zrtpVerifyState;
     uint32_t  contextId;        //!< unique ID of context, changes with every re-keying
+    uint32_t  contextId2;       //!< second unique ID of context, changes with every re-keying
+    bool      hasContextId2;    //!< True if the conversation has `contextId2` value
     int32_t   versionNumber;    //!< This is the version number the partner supports
     bool      identityKeyChanged;
     // ***** end of persistent data
